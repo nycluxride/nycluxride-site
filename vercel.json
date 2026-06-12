@@ -6,6 +6,11 @@
       "source": "/book",
       "destination": "https://customer.moovs.app/nyc-lux-ride/request/new",
       "permanent": false
+    },
+    {
+      "source": "/fleet/:name.jpg",
+      "destination": "/fleet/:name.webp",
+      "statusCode": 301
     }
   ]
 }
