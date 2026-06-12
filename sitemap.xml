@@ -1,88 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
-    <loc>https://YOUR-DOMAIN.example/</loc>
+    <loc>https://www.nycluxride.com/</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://YOUR-DOMAIN.example/car1.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/car1.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://YOUR-DOMAIN.example/car2.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/car2.jpg</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://YOUR-DOMAIN.example/car3.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/car3.jpg</image:loc>
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/services</loc>
+    <loc>https://www.nycluxride.com/services</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/limousine-service-nyc</loc>
+    <loc>https://www.nycluxride.com/limousine-service-nyc</loc>
     <lastmod>2026-04-30T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/chauffeur-service-nyc</loc>
+    <loc>https://www.nycluxride.com/chauffeur-service-nyc</loc>
     <lastmod>2026-04-30T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/black-car-service-brooklyn</loc>
+    <loc>https://www.nycluxride.com/black-car-service-brooklyn</loc>
     <lastmod>2026-04-30T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/schedule</loc>
+    <loc>https://www.nycluxride.com/schedule</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/contact</loc>
+    <loc>https://www.nycluxride.com/contact</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/about</loc>
+    <loc>https://www.nycluxride.com/about</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/faq</loc>
+    <loc>https://www.nycluxride.com/faq</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog</loc>
+    <loc>https://www.nycluxride.com/blog</loc>
     <lastmod>2026-04-24T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/privacy-policy</loc>
+    <loc>https://www.nycluxride.com/privacy-policy</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/terms-of-service</loc>
+    <loc>https://www.nycluxride.com/terms-of-service</loc>
     <lastmod>2026-04-04T00:00:00.000Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/chauffeur-service-nyc-booking-guide-april-30</loc>
+    <loc>https://www.nycluxride.com/blog/chauffeur-service-nyc-booking-guide-april-30</loc>
     <lastmod>2026-04-30T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -91,7 +91,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/nyc-limo-service-comparison-guide-april-29</loc>
+    <loc>https://www.nycluxride.com/blog/nyc-limo-service-comparison-guide-april-29</loc>
     <lastmod>2026-04-29T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -100,7 +100,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/brooklyn-black-car-service-local-guide-april-28</loc>
+    <loc>https://www.nycluxride.com/blog/brooklyn-black-car-service-local-guide-april-28</loc>
     <lastmod>2026-04-28T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -109,7 +109,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/whatsapp-airport-pickup-coordination-nyc-april-24</loc>
+    <loc>https://www.nycluxride.com/blog/whatsapp-airport-pickup-coordination-nyc-april-24</loc>
     <lastmod>2026-04-24T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -118,7 +118,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/jfk-lga-ewr-airport-transfer-guide-april-17</loc>
+    <loc>https://www.nycluxride.com/blog/jfk-lga-ewr-airport-transfer-guide-april-17</loc>
     <lastmod>2026-04-17T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -127,7 +127,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/manhattan-hourly-chauffeur-service-april-10</loc>
+    <loc>https://www.nycluxride.com/blog/manhattan-hourly-chauffeur-service-april-10</loc>
     <lastmod>2026-04-10T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -136,7 +136,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/corporate-black-car-nyc-april-3</loc>
+    <loc>https://www.nycluxride.com/blog/corporate-black-car-nyc-april-3</loc>
     <lastmod>2026-04-03T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -145,7 +145,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/wedding-event-limo-nyc-march-27</loc>
+    <loc>https://www.nycluxride.com/blog/wedding-event-limo-nyc-march-27</loc>
     <lastmod>2026-03-27T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -154,7 +154,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/best-black-car-service-brooklyn-queens-march-20</loc>
+    <loc>https://www.nycluxride.com/blog/best-black-car-service-brooklyn-queens-march-20</loc>
     <lastmod>2026-03-20T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -163,7 +163,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/nyc-prom-limo-booking-guide-march-13</loc>
+    <loc>https://www.nycluxride.com/blog/nyc-prom-limo-booking-guide-march-13</loc>
     <lastmod>2026-03-13T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -172,7 +172,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/blog/nyc-cruise-terminal-black-car-service-guide-march-6</loc>
+    <loc>https://www.nycluxride.com/blog/nyc-cruise-terminal-black-car-service-guide-march-6</loc>
     <lastmod>2026-03-06T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -181,7 +181,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/manhattan</loc>
+    <loc>https://www.nycluxride.com/locations/manhattan</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -190,7 +190,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/brooklyn</loc>
+    <loc>https://www.nycluxride.com/locations/brooklyn</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -199,7 +199,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/queens</loc>
+    <loc>https://www.nycluxride.com/locations/queens</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -208,7 +208,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/bronx</loc>
+    <loc>https://www.nycluxride.com/locations/bronx</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -217,7 +217,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/staten-island</loc>
+    <loc>https://www.nycluxride.com/locations/staten-island</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -226,7 +226,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/jfk-airport</loc>
+    <loc>https://www.nycluxride.com/locations/jfk-airport</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -235,7 +235,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/laguardia-airport</loc>
+    <loc>https://www.nycluxride.com/locations/laguardia-airport</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -244,7 +244,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/long-island-city</loc>
+    <loc>https://www.nycluxride.com/locations/long-island-city</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -253,7 +253,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/soho</loc>
+    <loc>https://www.nycluxride.com/locations/soho</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -262,7 +262,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/upper-east-side</loc>
+    <loc>https://www.nycluxride.com/locations/upper-east-side</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -271,7 +271,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/upper-west-side</loc>
+    <loc>https://www.nycluxride.com/locations/upper-west-side</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -280,7 +280,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://YOUR-DOMAIN.example/locations/financial-district</loc>
+    <loc>https://www.nycluxride.com/locations/financial-district</loc>
     <lastmod>2026-04-25T00:00:00.000Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

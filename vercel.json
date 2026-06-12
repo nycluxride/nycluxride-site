@@ -1,4 +1,11 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/book",
+      "destination": "https://customer.moovs.app/nyc-lux-ride/request/new",
+      "permanent": false
+    }
+  ]
 }
