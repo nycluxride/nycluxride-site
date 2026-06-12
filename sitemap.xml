@@ -6,13 +6,13 @@
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://www.nycluxride.com/car1.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/fleet/cadillac-escalade.webp</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://www.nycluxride.com/car2.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/fleet/mercedes-s-class.webp</image:loc>
     </image:image>
     <image:image>
-      <image:loc>https://www.nycluxride.com/car3.jpg</image:loc>
+      <image:loc>https://www.nycluxride.com/fleet/lincoln-navigator.webp</image:loc>
     </image:image>
   </url>
   <url>
