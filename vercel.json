@@ -11,6 +11,11 @@
       "source": "/fleet/:name.jpg",
       "destination": "/fleet/:name.webp",
       "statusCode": 301
+    },
+    {
+      "source": "/home.webp",
+      "destination": "/hero-new.webp",
+      "statusCode": 301
     }
   ]
 }

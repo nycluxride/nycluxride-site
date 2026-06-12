@@ -42,11 +42,10 @@ window.NLR_PRICING.data = {
   quoteVehicles: ["Chevrolet Suburban", "Mercedes-Benz Sprinter", "Cadillac Lyriq", "luxury sedans"]
 };
 
-// Pure builder (unit-testable headlessly). Returns the Rates section HTML.
-window.NLR_PRICING.buildRatesHTML = function (d) {
-  if (!d) return "";
+// Flagship trio cards — reused by the Rates section AND the homepage teaser.
+window.NLR_PRICING.buildTrioCards = function (d) {
   var suf = ' <span class="text-gray-400 font-normal text-xs">+ tax &amp; tolls</span>';
-  var cards = (d.vehicles || []).map(function (v) {
+  return ((d && d.vehicles) || []).map(function (v) {
     return '<div class="lux-panel rounded-2xl overflow-hidden border border-gold/25">'
       + '<img src="' + v.image + '" alt="' + v.name + '" loading="lazy" class="h-44 w-full object-cover">'
       + '<div class="p-5">'
@@ -57,6 +56,13 @@ window.NLR_PRICING.buildRatesHTML = function (d) {
       + '<p class="text-gray-300 text-sm">$' + v.hourly + '/hr' + suf + ' &middot; ' + v.minHours + '-hour minimum</p>'
       + '</div></div>';
   }).join("");
+};
+
+// Pure builder (unit-testable headlessly). Returns the Rates section HTML.
+window.NLR_PRICING.buildRatesHTML = function (d) {
+  if (!d) return "";
+  var suf = ' <span class="text-gray-400 font-normal text-xs">+ tax &amp; tolls</span>';
+  var cards = window.NLR_PRICING.buildTrioCards(d);
   var airport = (d.airportFlat.rates || []).map(function (r) {
     return '<div class="flex items-center justify-between border-b border-gold/10 py-2">'
       + '<span class="text-gray-200">' + r.airport + '</span>'
