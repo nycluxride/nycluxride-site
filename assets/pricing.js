@@ -16,8 +16,8 @@
  * Vehicles without a published price show "Request a quote" linking to the
  * booking URL — never a made-up number.
  *
- * PENDING CLIENT (confirm, then edit here): prices for GMC Denali and Lincoln
- * Navigator (currently "Request a quote").
+ * PENDING CLIENT (confirm, then edit here): price for Lincoln Navigator
+ * (currently "Request a quote").
  */
 window.NLR_PRICING = window.NLR_PRICING || {};
 window.NLR_PRICING.data = {
@@ -38,7 +38,7 @@ window.NLR_PRICING.data = {
       heading: "Business SUV",
       vehicles: [
         { name: "Cadillac Escalade ESV", image: "/fleet/cadillac-escalade.webp", hourly: 105, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
-        { name: "GMC Denali", image: "/fleet/gmc-denali.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
+        { name: "GMC Denali", image: "/fleet/gmc-denali.webp", hourly: 100, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "Chevrolet Suburban / similar", image: "/fleet/chevrolet-suburban.webp", hourly: 95, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "Lincoln Navigator", image: "/fleet/lincoln-navigator.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" }
       ]
