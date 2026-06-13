@@ -11,12 +11,13 @@
  * MutationObserver re-applies it after client-side navigation. Idempotent.
  *
  * The fleet is organized into labeled tiers. Every vehicle renders its working
- * /fleet/ image EXCEPT GMC Denali (no photo yet) -> text-only card. No external
- * or hotlinked images. Vehicles without a published price show "Request a
- * quote" linking to the booking URL — never a made-up number.
+ * /fleet/ image (the card builder still supports an image-less text-only card
+ * if a future vehicle lacks a photo). No external or hotlinked images.
+ * Vehicles without a published price show "Request a quote" linking to the
+ * booking URL — never a made-up number.
  *
- * PENDING CLIENT (confirm, then edit here): GMC Denali photo + price;
- * Chevrolet Suburban / Lincoln Navigator prices (currently "Request a quote").
+ * PENDING CLIENT (confirm, then edit here): prices for GMC Denali, Chevrolet
+ * Suburban, and Lincoln Navigator (currently "Request a quote").
  */
 window.NLR_PRICING = window.NLR_PRICING || {};
 window.NLR_PRICING.data = {
@@ -37,7 +38,7 @@ window.NLR_PRICING.data = {
       heading: "Business SUV",
       vehicles: [
         { name: "Cadillac Escalade ESV", image: "/fleet/cadillac-escalade.webp", hourly: 105, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
-        { name: "GMC Denali", image: null, quote: true, pax: 5, luggage: "3 large + 3 small bags", note: "Photo coming soon" },
+        { name: "GMC Denali", image: "/fleet/gmc-denali.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "Chevrolet Suburban", image: "/fleet/chevrolet-suburban.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "Lincoln Navigator", image: "/fleet/lincoln-navigator.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" }
       ]
