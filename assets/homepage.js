@@ -42,7 +42,7 @@ window.NLR_HOME.buildHTML = function () {
     // a) Fleet & Rates teaser
     + '<section class="services-section" aria-label="Fleet and rates"><div class="mx-auto w-full max-w-6xl px-6 py-12">'
     + '<h2 class="fleet-section-title-services">Our Fleet &amp; Rates</h2>'
-    + '<div class="grid gap-6 md:grid-cols-3 mt-6">' + trio + '</div>'
+    + '<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-6">' + trio + '</div>'
     + '<div class="mt-8 flex justify-center"><a class="inline-block border border-gold text-gold font-inter text-sm font-semibold px-7 py-3 rounded-2xl hover:bg-gold hover:text-black transition-all duration-300" href="/services">View all rates &amp; fleet</a></div>'
     + '</div></section>'
     // b) Service Areas
