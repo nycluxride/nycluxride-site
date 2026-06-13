@@ -26,6 +26,7 @@ window.NLR_PRICING.data = {
   priceRange: "$85-$175",
   airportFlat: {
     label: "Airport Transfers — Luxury SUV",
+    note: "Flat rate from NYC to each airport.",
     rates: [
       { airport: "JFK", price: 165 },
       { airport: "Newark (EWR)", price: 165 },
@@ -120,7 +121,9 @@ window.NLR_PRICING.buildRatesHTML = function (d) {
     + '<div class="mx-auto w-full max-w-6xl px-6 py-12">'
     + '<h2 class="fleet-section-title-services">Our Rates</h2>'
     + tiers
-    + '<div class="lux-panel rounded-2xl p-6 mt-10 max-w-md mx-auto"><h3 class="lux-3d-text-soft text-lg font-bold mb-3">' + d.airportFlat.label + '</h3>' + airport + '</div>'
+    + '<div class="lux-panel rounded-2xl p-6 mt-10 max-w-md mx-auto"><h3 class="lux-3d-text-soft text-lg font-bold mb-1">' + d.airportFlat.label + '</h3>'
+    + (d.airportFlat.note ? '<p class="text-gray-400 text-xs mb-3">' + d.airportFlat.note + '</p>' : '')
+    + airport + '</div>'
     + '<p class="text-gray-400 text-xs text-center mt-6">' + d.footnote + '</p>'
     + '<div class="mt-6 flex justify-center"><a class="lux-home-button font-semibold px-7 py-3 text-sm" href="'
     + d.bookingUrl + '" aria-label="Book a ride with NYC LUX RIDE">Book Your Ride</a></div>'
