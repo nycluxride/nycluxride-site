@@ -10,23 +10,19 @@
  * Rates section before the "Our Fleet" section after hydration, and a
  * MutationObserver re-applies it after client-side navigation. Idempotent.
  *
- * Prices are the owner's PUBLISHED rates. Vehicles without a published number
- * show "Request a quote" linking to the booking URL — never a made-up price.
- * Images are existing /fleet/ assets only; no external/stock image URLs.
+ * The fleet is organized into labeled tiers. Every vehicle renders its working
+ * /fleet/ image EXCEPT GMC Denali (no photo yet) -> text-only card. No external
+ * or hotlinked images. Vehicles without a published price show "Request a
+ * quote" linking to the booking URL — never a made-up number.
  *
- * PENDING CLIENT (do not invent values — confirm, then edit here):
- *  - Chevrolet Suburban: per-transfer/hourly price (currently "Request a quote").
- *  - Mercedes-Benz S-Class: keep the $125/hr hourly line, or drop hourly?
- *  - BMW 7 Series: per-transfer is $110 today — owner deciding $165 vs none;
- *    plus the same hourly question as S-Class.
- *  - Sedans tier (Lyriq, CT5, CT6, Continental): photos PENDING from owner —
- *    rendered as text-only cards until images exist (never a broken image box).
+ * PENDING CLIENT (confirm, then edit here): GMC Denali photo + price;
+ * Chevrolet Suburban / Lincoln Navigator prices (currently "Request a quote").
  */
 window.NLR_PRICING = window.NLR_PRICING || {};
 window.NLR_PRICING.data = {
   bookingUrl: "https://customer.moovs.app/nyc-lux-ride/request/new",
   footnote: "All prices exclude taxes, tolls & gratuity. Final total confirmed at booking.",
-  priceRange: "$85-$165",
+  priceRange: "$85-$175",
   airportFlat: {
     label: "Airport Transfers — Luxury SUV",
     rates: [
@@ -36,64 +32,84 @@ window.NLR_PRICING.data = {
       { airport: "LaGuardia (LGA)", price: 130 }
     ]
   },
-  hourly: { from: 100, minHours: 3 },
-  // Order: Escalade -> Suburban -> S-Class -> BMW 7 -> (remaining). Images exist.
-  vehicles: [
-    { name: "Cadillac Escalade", image: "/fleet/cadillac-escalade.webp", hourly: 105, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
-    { name: "Chevrolet Suburban", image: "/fleet/chevrolet-suburban.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
-    { name: "Mercedes-Benz S-Class", image: "/fleet/mercedes-s-class.webp", fromTransfer: 165, hourly: 125, minHours: 3, pax: 3, luggage: "2 large + 1 small bag" },
-    { name: "BMW 7 Series", image: "/fleet/bmw-7-series.webp", fromTransfer: 110, hourly: 125, minHours: 3, pax: 3, luggage: "2 large + 1 small bag" }
-  ],
-  // Sedans tier — NO images yet; text-only cards. Photos PENDING from owner.
-  sedans: [
-    { name: "Cadillac Lyriq", hourly: 85, minHours: 3, pax: 3 },
-    { name: "Cadillac CT5", hourly: 85, minHours: 3, pax: 3 },
-    { name: "Cadillac CT6", hourly: 85, minHours: 3, pax: 3 },
-    { name: "Lincoln Continental", hourly: 85, minHours: 3, pax: 3 }
-  ],
-  quoteVehicles: ["Mercedes-Benz Sprinter"]
+  tiers: [
+    {
+      heading: "Business SUV",
+      vehicles: [
+        { name: "Cadillac Escalade ESV", image: "/fleet/cadillac-escalade.webp", hourly: 105, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
+        { name: "GMC Denali", image: null, quote: true, pax: 5, luggage: "3 large + 3 small bags", note: "Photo coming soon" },
+        { name: "Chevrolet Suburban", image: "/fleet/chevrolet-suburban.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
+        { name: "Lincoln Navigator", image: "/fleet/lincoln-navigator.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" }
+      ]
+    },
+    {
+      heading: "First Class",
+      vehicles: [
+        { name: "Mercedes-Benz S-Class", image: "/fleet/mercedes-s-class.webp", fromTransfer: 165, hourly: 125, minHours: 3, pax: 3, luggage: "2 large + 1 small bag" },
+        { name: "BMW 7 Series", image: "/fleet/bmw-7-series.webp", fromTransfer: 165, hourly: 125, minHours: 3, pax: 3, luggage: "2 large + 1 small bag" }
+      ]
+    },
+    {
+      heading: "Sedan & Electric",
+      vehicles: [
+        { name: "Cadillac Lyriq", image: "/fleet/cadillac-lyriq.webp", hourly: 85, minHours: 3, pax: 3 },
+        { name: "Cadillac CT5 / CT6", image: "/fleet/cadillac-ct5-ct6.webp", hourly: 85, minHours: 3, pax: 3 },
+        { name: "Cadillac XT6", image: "/fleet/cadillac-xt6.webp", hourly: 85, minHours: 3, pax: 3 },
+        { name: "Lincoln Continental", image: "/fleet/lincoln-continental.webp", hourly: 85, minHours: 3, pax: 3 }
+      ]
+    },
+    {
+      heading: "Luxury Sprinter",
+      vehicles: [
+        { name: "Limo Sprinter", image: "/fleet/sprinter-limo.webp", hourly: 175, hourlyFrom: true, minHours: 3, pax: 12, luggage: "10 large + 2 small" },
+        { name: "Jet Sprinter", image: "/fleet/sprinter-jet.webp", hourly: 175, hourlyFrom: true, minHours: 3, pax: 12, luggage: "10 large + 2 small" }
+      ]
+    }
+  ]
 };
 
-// Vehicle image cards — reused by the Rates section AND the homepage teaser.
-window.NLR_PRICING.buildVehicleCards = function (d) {
-  var book = (d && d.bookingUrl) || "";
-  return ((d && d.vehicles) || []).map(function (v) {
-    var price;
-    if (v.quote) {
-      price = '<p class="mt-2"><a href="' + book + '" class="text-gold font-semibold underline hover:text-white">Request a quote</a></p>';
-    } else {
-      price = "";
-      if (v.fromTransfer) price += '<p class="mt-2 text-gold font-semibold">From $' + v.fromTransfer + ' <span class="text-gray-400 font-normal text-sm">per transfer</span></p>';
-      if (v.hourly) price += '<p class="' + (v.fromTransfer ? "text-gray-300 text-sm" : "mt-2 text-gold font-semibold") + '">$' + v.hourly + '/hr &middot; ' + v.minHours + '-hour minimum</p>';
+// Single card builder — handles image vs text-only, quote vs priced, transfer
+// and/or hourly, the "From" prefix, passengers/luggage, and an optional note.
+window.NLR_PRICING.card = function (v, book) {
+  var price;
+  if (v.quote) {
+    price = '<p class="mt-2"><a href="' + (book || "") + '" class="text-gold font-semibold underline hover:text-white">Request a quote</a></p>';
+  } else {
+    price = "";
+    if (v.fromTransfer) price += '<p class="mt-2 text-gold font-semibold">From $' + v.fromTransfer + ' <span class="text-gray-400 font-normal text-sm">per transfer</span></p>';
+    if (v.hourly) {
+      var cls = v.fromTransfer ? "text-gray-300 text-sm" : "mt-2 text-gold font-semibold";
+      price += '<p class="' + cls + '">' + (v.hourlyFrom ? "From " : "") + '$' + v.hourly + '/hr <span class="text-gray-300 font-normal text-sm">&middot; ' + v.minHours + '-hour minimum</span></p>';
     }
+  }
+  var specs = v.pax ? '<p class="text-gray-400 text-xs mt-1">' + v.pax + ' passengers' + (v.luggage ? ' &middot; ' + v.luggage : "") + '</p>' : "";
+  var note = v.note ? '<p class="text-gray-500 text-xs italic mt-1">' + v.note + '</p>' : "";
+  if (v.image) {
     return '<div class="lux-panel rounded-2xl overflow-hidden border border-gold/25">'
       + '<img src="' + v.image + '" alt="' + v.name + '" loading="lazy" class="h-44 w-full object-cover">'
-      + '<div class="p-5">'
-      + '<h3 class="lux-3d-text-soft text-lg font-bold">' + v.name + '</h3>'
-      + '<p class="text-gray-400 text-xs mt-1">' + v.pax + ' passengers &middot; ' + v.luggage + '</p>'
-      + price
-      + '</div></div>';
+      + '<div class="p-5"><h3 class="lux-3d-text-soft text-lg font-bold">' + v.name + '</h3>' + specs + note + price + '</div></div>';
+  }
+  return '<div class="lux-panel rounded-2xl p-5 border border-gold/25 flex flex-col">'
+    + '<h3 class="lux-3d-text-soft text-lg font-bold">' + v.name + '</h3>' + specs + note + price + '</div>';
+};
+
+// Homepage teaser — one representative card per tier (links out to /services).
+window.NLR_PRICING.buildVehicleCards = function (d) {
+  return ((d && d.tiers) || []).map(function (t) {
+    return window.NLR_PRICING.card((t.vehicles && t.vehicles[0]) || {}, d.bookingUrl);
   }).join("");
 };
 // Backward-compatible alias (homepage teaser calls this name).
 window.NLR_PRICING.buildTrioCards = window.NLR_PRICING.buildVehicleCards;
 
-// Text-only sedan cards — no image element, so never a broken image box.
-window.NLR_PRICING.buildSedanCards = function (d) {
-  return ((d && d.sedans) || []).map(function (v) {
-    return '<div class="lux-panel rounded-2xl p-5 border border-gold/25">'
-      + '<h3 class="lux-3d-text-soft text-lg font-bold">' + v.name + '</h3>'
-      + '<p class="text-gray-400 text-xs mt-1">' + v.pax + ' passengers</p>'
-      + '<p class="mt-2 text-gold font-semibold">$' + v.hourly + '/hr <span class="text-gray-300 font-normal text-sm">&middot; ' + v.minHours + '-hour minimum</span></p>'
-      + '</div>';
-  }).join("");
-};
-
-// Pure builder (unit-testable headlessly). Returns the Rates section HTML.
+// Pure builder (unit-testable headlessly). Returns the full tiered Rates section.
 window.NLR_PRICING.buildRatesHTML = function (d) {
   if (!d) return "";
-  var cards = window.NLR_PRICING.buildVehicleCards(d);
-  var sedans = window.NLR_PRICING.buildSedanCards(d);
+  var tiers = ((d.tiers) || []).map(function (t) {
+    var cards = (t.vehicles || []).map(function (v) { return window.NLR_PRICING.card(v, d.bookingUrl); }).join("");
+    return '<h3 class="lux-3d-text-soft text-2xl font-bold mt-10 mb-4">' + t.heading + '</h3>'
+      + '<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">' + cards + '</div>';
+  }).join("");
   var airport = (d.airportFlat.rates || []).map(function (r) {
     return '<div class="flex items-center justify-between border-b border-gold/10 py-2">'
       + '<span class="text-gray-200">' + r.airport + '</span>'
@@ -102,18 +118,8 @@ window.NLR_PRICING.buildRatesHTML = function (d) {
   return '<section id="nlr-rates" class="services-section" aria-label="Rates">'
     + '<div class="mx-auto w-full max-w-6xl px-6 py-12">'
     + '<h2 class="fleet-section-title-services">Our Rates</h2>'
-    + '<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-6">' + cards + '</div>'
-    + '<h3 class="lux-3d-text-soft text-xl font-bold mt-10 mb-1">Sedans</h3>'
-    + '<p class="text-gray-400 text-xs mb-4">Photos coming soon.</p>'
-    + '<div class="grid gap-4 grid-cols-2 lg:grid-cols-4">' + sedans + '</div>'
-    + '<div class="grid gap-6 md:grid-cols-2 mt-10">'
-    + '<div class="lux-panel rounded-2xl p-6"><h3 class="lux-3d-text-soft text-lg font-bold mb-3">' + d.airportFlat.label + '</h3>' + airport + '</div>'
-    + '<div class="lux-panel rounded-2xl p-6"><h3 class="lux-3d-text-soft text-lg font-bold mb-3">Hourly Chauffeur</h3>'
-    + '<p class="text-gold font-semibold text-xl">From $' + d.hourly.from + '/hr</p>'
-    + '<p class="text-gray-300 text-sm">' + d.hourly.minHours + '-hour minimum</p>'
-    + '<p class="mt-4 text-gray-300 text-sm">Other vehicles (' + (d.quoteVehicles || []).join(", ") + '): '
-    + '<a href="' + d.bookingUrl + '" class="text-gold underline hover:text-white">Request a quote</a>.</p>'
-    + '</div></div>'
+    + tiers
+    + '<div class="lux-panel rounded-2xl p-6 mt-10 max-w-md mx-auto"><h3 class="lux-3d-text-soft text-lg font-bold mb-3">' + d.airportFlat.label + '</h3>' + airport + '</div>'
     + '<p class="text-gray-400 text-xs text-center mt-6">' + d.footnote + '</p>'
     + '<div class="mt-6 flex justify-center"><a class="lux-home-button font-semibold px-7 py-3 text-sm" href="'
     + d.bookingUrl + '" aria-label="Book a ride with NYC LUX RIDE">Book Your Ride</a></div>'
