@@ -39,7 +39,7 @@ window.NLR_PRICING.data = {
       vehicles: [
         { name: "Cadillac Escalade ESV", image: "/fleet/cadillac-escalade.webp", hourly: 105, minHours: 3, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "GMC Denali", image: "/fleet/gmc-denali.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
-        { name: "Chevrolet Suburban", image: "/fleet/chevrolet-suburban.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
+        { name: "Chevrolet Suburban / similar", image: "/fleet/chevrolet-suburban.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" },
         { name: "Lincoln Navigator", image: "/fleet/lincoln-navigator.webp", quote: true, pax: 5, luggage: "3 large + 3 small bags" }
       ]
     },
@@ -53,7 +53,7 @@ window.NLR_PRICING.data = {
     {
       heading: "Sedan & Electric",
       vehicles: [
-        { name: "Cadillac Lyriq", image: "/fleet/cadillac-lyriq.webp", hourly: 85, minHours: 3, pax: 3 },
+        { name: "Cadillac Lyriq / similar", image: "/fleet/cadillac-lyriq.webp", hourly: 85, minHours: 3, pax: 3 },
         { name: "Cadillac CT5 / CT6", image: "/fleet/cadillac-ct5-ct6.webp", hourly: 85, minHours: 3, pax: 3 },
         { name: "Cadillac XT6", image: "/fleet/cadillac-xt6.webp", hourly: 85, minHours: 3, pax: 3 },
         { name: "Lincoln Continental", image: "/fleet/lincoln-continental.webp", hourly: 85, minHours: 3, pax: 3 }
