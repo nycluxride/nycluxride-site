@@ -1,9 +1,14 @@
 /*
- * NYC LUX RIDE — footer social icon brand colors (plain DOM, no React coupling).
- * Adds an injected <style> + hidden SVG gradient defs so the footer Instagram,
- * TikTok and Facebook icons render in brand colors instead of gray, with a
- * tasteful hover lift. CSS is global (survives React footer re-renders); the
- * gradient defs live outside #root so React never touches them. Footer only.
+ * NYC LUX RIDE — social icon brand colors (plain DOM, no React coupling).
+ * Adds an injected <style> + hidden SVG gradient defs so the Instagram, TikTok
+ * and Facebook icons render in brand colors instead of gray, with a tasteful
+ * hover lift. Applies to BOTH icon sets — header (top-right) and footer — by
+ * targeting their shared aria-labels. CSS is global (survives React re-renders);
+ * the gradient defs live outside #root so React never touches them.
+ *
+ * One shared gradient def per brand (#nlr-ig, #nlr-tt) is referenced by every
+ * icon via CSS url() — not inlined per-icon — so there is no duplicate-ID
+ * collision regardless of how many icon sets are on the page.
  */
 function nlrSocial() {
   if (typeof document === "undefined" || !document.body) return;
@@ -26,11 +31,11 @@ function nlrSocial() {
   var st = document.createElement("style");
   st.id = "nlr-social-style";
   st.textContent =
-    'footer a[aria-label="Facebook"] svg{color:#1877F2;}'
-    + 'footer a[aria-label="Instagram"] svg path{fill:url(#nlr-ig);}'
-    + 'footer a[aria-label="TikTok"] svg path{fill:url(#nlr-tt);}'
-    + 'footer a[aria-label="Facebook"] svg,footer a[aria-label="Instagram"] svg,footer a[aria-label="TikTok"] svg{transition:transform .2s ease,filter .2s ease;}'
-    + 'footer a[aria-label="Facebook"]:hover svg,footer a[aria-label="Instagram"]:hover svg,footer a[aria-label="TikTok"]:hover svg{transform:translateY(-2px) scale(1.08);filter:brightness(1.12) drop-shadow(0 2px 6px rgba(0,0,0,.5));}';
+    'a[aria-label="Facebook"] svg{color:#1877F2;}'
+    + 'a[aria-label="Instagram"] svg path{fill:url(#nlr-ig);}'
+    + 'a[aria-label="TikTok"] svg path{fill:url(#nlr-tt);}'
+    + 'a[aria-label="Facebook"] svg,a[aria-label="Instagram"] svg,a[aria-label="TikTok"] svg{transition:transform .2s ease,filter .2s ease;}'
+    + 'a[aria-label="Facebook"]:hover svg,a[aria-label="Instagram"]:hover svg,a[aria-label="TikTok"]:hover svg{transform:translateY(-2px) scale(1.08);filter:brightness(1.12) drop-shadow(0 2px 6px rgba(0,0,0,.5));}';
   document.head.appendChild(st);
 }
 
