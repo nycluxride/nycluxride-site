@@ -1,40 +1,30 @@
 /*
- * NYC LUX RIDE — Google Ads conversion click tracking.
+ * NYC LUX RIDE — Google Ads conversion click tracking (isolated namespace).
  *
- * Bookings complete on customer.moovs.app (a domain we don't control), so the
- * tracked conversions are the INTENT clicks on this site: Book Now, Call, and
- * WhatsApp. A single delegated listener on document (capture phase) catches
- * clicks on any matching <a> — including links injected at runtime by
- * whatsapp.js and mobilenav.js (top bar, floating button, mobile bottom-nav).
+ * Fires via window.nlrGtag (NOT window.gtag — the compiled bundle deletes that
+ * on hydration). Bookings complete on customer.moovs.app (a domain we don't
+ * control), so the tracked conversions are the INTENT clicks on this site:
+ * Book Now, Call, WhatsApp. A single delegated, capture-phase listener on
+ * document catches clicks on any matching <a>, including links injected at
+ * runtime by whatsapp.js / mobilenav.js (top bar, floating button, bottom-nav).
  *
- * Defensive: if gtag is blocked / not yet loaded, every path degrades silently
- * and NEVER throws (same principle as policy.js / pricing.js).
- *
- * Conversion labels are created in the Google Ads UI — paste the real labels
- * into the three constants below (one place each). Until then, a generic event
- * still fires so click testing shows the conversion registering.
+ * Fully defensive: if window.nlrGtag isn't ready it silently no-ops, never
+ * throws, and never blocks the link's navigation.
  */
 (function () {
-  // <-- Swap each with the real Google Ads conversion label once available.
+  // <-- Paste the real Google Ads conversion labels once.
   var BOOK_NOW_LABEL = "BOOK_NOW_LABEL";
   var CALL_LABEL = "CALL_LABEL";
   var WHATSAPP_LABEL = "WHATSAPP_LABEL";
 
-  function isPlaceholder(v) {
-    return !v || v.indexOf("_LABEL") > -1 || v === "GOOGLE_TAG_ID";
-  }
-
-  function fire(name, label) {
+  function fire(debugEvent, label) {
     try {
-      if (typeof window.gtag !== "function") return; // tag absent/blocked -> no-op
-      // Generic event — always fires (when gtag exists) so testing sees the click.
-      window.gtag("event", name + "_click");
-      // Real Ads conversion — only once both the tag id and label are real.
-      var id = window.NLR_GTAG_ID;
-      if (id && !isPlaceholder(id) && label && !isPlaceholder(label)) {
-        window.gtag("event", "conversion", { send_to: id + "/" + label });
-      }
-    } catch (e) { /* degrade silently */ }
+      if (typeof window.nlrGtag !== "function") return; // our tag absent -> no-op
+      // Plain debug event (visible immediately for click testing).
+      window.nlrGtag("event", debugEvent);
+      // Direct Google Ads conversion.
+      window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + label });
+    } catch (e) { /* degrade silently — never block navigation */ }
   }
 
   function onClick(e) {
@@ -44,11 +34,11 @@
       if (!a) return;
       var href = a.getAttribute("href") || "";
       if (href.indexOf("https://customer.moovs.app/") === 0) {
-        fire("book_now", BOOK_NOW_LABEL);
+        fire("book_now_click", BOOK_NOW_LABEL);
       } else if (href.indexOf("tel:") === 0) {
-        fire("call", CALL_LABEL);
+        fire("call_click", CALL_LABEL);
       } else if (href.indexOf("https://wa.me/") === 0 || href.indexOf("wa.me/") === 0) {
-        fire("whatsapp", WHATSAPP_LABEL);
+        fire("whatsapp_click", WHATSAPP_LABEL);
       }
     } catch (e2) { /* degrade silently */ }
   }

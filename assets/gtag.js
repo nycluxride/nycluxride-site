@@ -1,33 +1,37 @@
 /*
- * NYC LUX RIDE — Google tag (gtag.js) loader.
+ * NYC LUX RIDE — Google Ads tag, ISOLATED namespace.
  *
- * SINGLE SOURCE for the Google Ads tag ID: swap GOOGLE_TAG_ID below once and it
- * applies site-wide (every page just includes this file in <head>). The heavy
- * remote gtag.js is injected asynchronously so it never blocks rendering.
+ * Why not the standard window.gtag / window.dataLayer? The compiled React
+ * bundle ships its own consent-gated GA4 and, while analytics consent is off,
+ * runs `delete window.gtag; delete window.dataLayer` on hydration — which would
+ * wipe our tag. So we run OUR Google Ads tag under custom globals the bundle
+ * never touches: window.nlrGtag + window.nlrDataLayer. The remote library is
+ * told to read our data layer via the &l=nlrDataLayer query param.
  *
- * No other analytics, cookies, or third-party scripts are added here.
+ * Async / non-blocking. Stays in <head> on every page. Swap ADS_TAG_ID once.
+ * Does NOT touch window.gtag or window.dataLayer.
  */
 (function () {
-  // <-- Swap this once with the real Google Ads tag ID, e.g. "AW-XXXXXXXXXX".
-  var GOOGLE_TAG_ID = "GOOGLE_TAG_ID";
+  // <-- Paste the real Google Ads tag id once (e.g. "AW-123456789").
+  var ADS_TAG_ID = "AW-XXXXXXXXX";
 
   // Expose the id so tracking.js can build conversion send_to values from it.
-  window.NLR_GTAG_ID = GOOGLE_TAG_ID;
+  window.NLR_ADS_ID = ADS_TAG_ID;
 
-  // Standard gtag bootstrap (defines window.gtag + dataLayer immediately).
-  window.dataLayer = window.dataLayer || [];
-  function gtag() { window.dataLayer.push(arguments); }
-  if (typeof window.gtag !== "function") window.gtag = gtag;
+  // Isolated data layer + push function (NOT the default gtag/dataLayer names).
+  window.nlrDataLayer = window.nlrDataLayer || [];
+  if (typeof window.nlrGtag !== "function") {
+    window.nlrGtag = function () { window.nlrDataLayer.push(arguments); };
+  }
 
   try {
-    window.gtag("js", new Date());
-    window.gtag("config", GOOGLE_TAG_ID);
+    window.nlrGtag("js", new Date());
+    window.nlrGtag("config", ADS_TAG_ID);
 
-    // Async-load the remote tag so it never blocks render. (With the placeholder
-    // id the request is harmless; events still queue until the real id is set.)
+    // Async-load the remote tag pointed at OUR data layer (&l=nlrDataLayer).
     var s = document.createElement("script");
     s.async = true;
-    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GOOGLE_TAG_ID);
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(ADS_TAG_ID) + "&l=nlrDataLayer";
     (document.head || document.documentElement).appendChild(s);
   } catch (e) { /* degrade silently — never break the page */ }
 })();
