@@ -23,7 +23,7 @@
       // Plain debug event (visible immediately for click testing).
       window.nlrGtag("event", debugEvent);
       // Direct Google Ads conversion.
-      window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + label });
+      window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + label, transport_type: "beacon" });
     } catch (e) { /* degrade silently — never block navigation */ }
   }
 
