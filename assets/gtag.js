@@ -13,7 +13,7 @@
  */
 (function () {
   // <-- Paste the real Google Ads tag id once (e.g. "AW-123456789").
-  var ADS_TAG_ID = "AW-XXXXXXXXX";
+  var ADS_TAG_ID = "AW-18190711813";
 
   // Expose the id so tracking.js can build conversion send_to values from it.
   window.NLR_ADS_ID = ADS_TAG_ID;

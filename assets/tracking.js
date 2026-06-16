@@ -13,9 +13,9 @@
  */
 (function () {
   // <-- Paste the real Google Ads conversion labels once.
-  var BOOK_NOW_LABEL = "BOOK_NOW_LABEL";
-  var CALL_LABEL = "CALL_LABEL";
-  var WHATSAPP_LABEL = "WHATSAPP_LABEL";
+  var BOOK_NOW_LABEL = "0YD2COGt8L8cEIX4gOJD";
+  var CALL_LABEL = "Sz9RCOSt8L8cEIX4gOJD";
+  var WHATSAPP_LABEL = "yIstCOet8L8cEIX4gOJD";
 
   function fire(debugEvent, label) {
     try {
