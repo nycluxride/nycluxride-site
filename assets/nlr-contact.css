@@ -78,19 +78,18 @@
    only in the top bar). Social icons in the same cluster are untouched. */
 #root .phone-sparkle-wrap { display: none !important; }
 
-/* ---------- Floating contact stack (bottom-right) ---------- */
-/* Shown from 768px up; below that the existing mobile bottom tab bar already
-   provides Call + WhatsApp, so we hide the stack there to avoid overlap/dupes. */
-#nlr-fab-stack {
-  position: fixed;
-  right: 20px;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  z-index: 80;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
+/* ---------- Floating contact buttons (side edges, vertically centered) ---------- */
+/* Two independent edge buttons — Call on the left, WhatsApp on the right — shown at
+   ALL breakpoints. They sit at the vertical middle of the viewport, so they never
+   collide with the bottom-anchored cookie banner (z-70) or mobile tab bar (z-90).
+   The wrapper only groups the markup; each button positions itself fixed. */
+#nlr-fab-stack { display: contents; }
 #nlr-fab-stack .nlr-fab {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;                 /* above page content, BELOW the nav menu (z-50) so an
+                                  open Services/Locations dropdown is never covered */
   width: 56px;
   height: 56px;
   border-radius: 9999px;
@@ -103,16 +102,13 @@
 }
 #nlr-fab-stack .nlr-fab:hover,
 #nlr-fab-stack .nlr-fab:focus-visible {
-  transform: translateY(-2px);
+  transform: translateY(-50%) scale(1.06);   /* keep vertical centering */
   filter: brightness(1.08);
 }
-#nlr-fab-stack .nlr-fab-wa { background: #25D366; }          /* WhatsApp brand green */
-#nlr-fab-stack .nlr-fab-wa svg { width: 32px; height: 32px; fill: #fff; }
-#nlr-fab-stack .nlr-fab-call { background: var(--nlr-gold); } /* gold, distinct from WhatsApp */
+#nlr-fab-stack .nlr-fab-call { left: 12px; background: var(--nlr-gold); }  /* gold, left edge */
 #nlr-fab-stack .nlr-fab-call svg { width: 26px; height: 26px; fill: #0b0b0b; }
-@media (max-width: 767px) {
-  #nlr-fab-stack { display: none; }
-}
+#nlr-fab-stack .nlr-fab-wa { right: 12px; background: #25D366; }           /* green, right edge */
+#nlr-fab-stack .nlr-fab-wa svg { width: 32px; height: 32px; fill: #fff; }
 @media (prefers-reduced-motion: reduce) {
   #nlr-fab-stack .nlr-fab { transition: none; }
 }
