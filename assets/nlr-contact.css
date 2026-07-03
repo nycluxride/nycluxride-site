@@ -126,3 +126,19 @@
 @media (prefers-reduced-motion: reduce) {
   #nlr-fab-stack .nlr-fab { transition: none; }
 }
+
+/* ---------- Desktop hero crop fix ---------- */
+/* The app sheet crops the hero to a fixed 360px on desktop (object-position 62%),
+   cutting the fleet off the bottom. Give it a bounded taller height biased low so
+   the full car band shows from laptop widths up to ultrawide, without going full
+   height:auto (which would push the Book Now CTA below the fold).
+   #root .hero-image (0,1,1,0) beats the app sheet's .hero-image (0,0,1,0), and this
+   sheet loads after app.css — no !important needed. */
+@media (min-width: 1024px) {
+  #root .hero-image {
+    height: 56vh;
+    min-height: 420px;
+    object-fit: cover;
+    object-position: center 82%;   /* biases the crop to the fleet, sacrifices sky */
+  }
+}
