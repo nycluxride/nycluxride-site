@@ -84,6 +84,14 @@
    only in the top bar). Social icons in the same cluster are untouched. */
 #root .phone-sparkle-wrap { display: none !important; }
 
+/* Hide the phone rendered under the mobile "PREMIUM LUXURY RIDES!" tagline
+   (React component with this exact aria-label; client-only, so not in the SSR HTML).
+   It duplicates the top utility bar's number. The tagline <span> is a sibling and
+   stays; the top bar, mobile bottom-bar Call tab, hamburger, and footer phone links
+   all use different aria-labels and are untouched. display:none also drops its
+   mt-1, so the tagline block leaves no awkward gap. */
+#root a[aria-label="Call +1 (646) 775-0556"] { display: none !important; }
+
 /* ---------- Floating contact buttons (side edges, vertically centered) ---------- */
 /* Two independent edge buttons — Call on the left, WhatsApp on the right — shown at
    ALL breakpoints. They sit at the vertical middle of the viewport, so they never
