@@ -60,10 +60,16 @@
   flex: none;
   fill: currentColor;
 }
-/* Below 480px: shrink, and collapse email to icon-only (mailto: still works) */
-@media (max-width: 479px) {
+/* Mobile sizing tier (<=480px): shrink just enough that BOTH full labels
+   (phone + info@nycluxride.com) fit one row with room to spare. At 390px the row
+   totals ~280px of content inside ~366px available, so no wrap/overflow. */
+@media (max-width: 480px) {
   #nlr-topbar .nlr-topbar-inner { padding: 0 0.75rem; gap: 0.5rem; }
-  #nlr-topbar .nlr-tb-link { font-size: 0.75rem; gap: 0.3rem; }
+  #nlr-topbar .nlr-tb-link { font-size: 13px; gap: 6px; }
+  #nlr-topbar .nlr-tb-link svg { width: 16px; height: 16px; }
+}
+/* Below 360px only: collapse email to icon-only (mailto: still works); phone keeps text */
+@media (max-width: 359px) {
   #nlr-topbar .nlr-tb-email .nlr-tb-email-text { display: none; }
 }
 
