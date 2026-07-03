@@ -105,10 +105,24 @@
   transform: translateY(-50%) scale(1.06);   /* keep vertical centering */
   filter: brightness(1.08);
 }
-#nlr-fab-stack .nlr-fab-call { left: 12px; background: var(--nlr-gold); }  /* gold, left edge */
-#nlr-fab-stack .nlr-fab-call svg { width: 26px; height: 26px; fill: #0b0b0b; }
-#nlr-fab-stack .nlr-fab-wa { right: 12px; background: #25D366; }           /* green, right edge */
+/* Call float removed — only the green WhatsApp float remains */
+#nlr-fab-stack .nlr-fab-call { display: none !important; }
+/* Surviving WhatsApp float: standard bottom-right single-FAB placement */
+#nlr-fab-stack .nlr-fab-wa {
+  left: auto;
+  right: 16px;
+  top: auto;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: none;                 /* drop the mid-right translateY(-50%) centering */
+  background: #25D366;             /* WhatsApp brand green */
+}
 #nlr-fab-stack .nlr-fab-wa svg { width: 32px; height: 32px; fill: #fff; }
+#nlr-fab-stack .nlr-fab-wa:hover,
+#nlr-fab-stack .nlr-fab-wa:focus-visible { transform: scale(1.06); }  /* no translateY now */
+/* On mobile, clear the bottom tab bar (~63px tall, z-90) instead of sitting behind it */
+@media (max-width: 767px) {
+  #nlr-fab-stack .nlr-fab-wa { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
 @media (prefers-reduced-motion: reduce) {
   #nlr-fab-stack .nlr-fab { transition: none; }
 }
