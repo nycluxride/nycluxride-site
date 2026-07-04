@@ -156,3 +156,14 @@
     object-position: center 82%;   /* biases the crop to the fleet, sacrifices sky */
   }
 }
+
+/* ---------- Tighten spacing around the homepage "Arrive in Style" card ---------- */
+/* Only margin/padding of the card — image, text, and button sizes are untouched.
+   #root .home-content (0,1,1,0) beats the app sheet's .home-content (0,0,1,0);
+   longhands keep the shorthand's auto horizontal centering + 1.5rem side padding. */
+#root .home-content {
+  margin-top: 1.25rem;      /* was 2.5rem — halves the hero->card gap */
+  margin-bottom: 1.5rem;    /* was 2.5rem */
+  padding-top: 1.25rem;     /* was 2rem */
+  padding-bottom: 1.25rem;  /* was 2rem */
+}
