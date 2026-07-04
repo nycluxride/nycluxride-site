@@ -167,3 +167,14 @@
   padding-top: 1.25rem;     /* was 2rem */
   padding-bottom: 1.25rem;  /* was 2rem */
 }
+
+/* ---------- Interior-page spacing (contact / faq / about, services, locations) ----------
+   The dominant dead-space driver is min-height:100vh on these section shells, not padding.
+   Drop the floor to 60vh (NOT auto — the footer is already a sticky footer via the
+   min-h-screen + flex-grow main + mt-auto footer, so it stays pinned; 60vh just keeps the
+   gradient filling most of the viewport instead of leaving flat-dark below it) and trim
+   the top/bottom padding. Horizontal padding is left intact. All are plain-class selectors
+   (0,0,1,0); #root .x (0,1,1,0) wins and this sheet loads after app.css — no !important. */
+#root .lux-page-shell        { min-height: 60vh; padding-top: 3.5rem; padding-bottom: 3.5rem; }
+#root .services-section      { min-height: 60vh; padding-top: 3.5rem; padding-bottom: 3.5rem; }
+#root .service-location-page { min-height: 60vh; padding-top: 3.5rem; }
