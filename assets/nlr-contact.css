@@ -358,4 +358,32 @@
   #nlr-partners .nlr-partner-chip { padding: 10px 14px; }
   #nlr-partners .nlr-partner-chip img { height: 36px; max-height: 36px; }
 }
+
+/* Mobile (<768px): stack the chips as a single centered column — one logo chip per row
+   (client request). This block is placed AFTER the compact-wrap block above, so at <=600px
+   it wins by source order; and it sits BELOW the min-width:768px desktop block, which it
+   never overlaps, so the 5+4 desktop layout is untouched. box-sizing:border-box keeps the
+   chip's padding+border inside its width, so min(320px, 86vw) can't cause overflow at 390px
+   (86vw + the 1rem section side padding still clears the viewport). Gaps stay a tight 14px so
+   the taller stack reads as intentional rhythm, not one-logo-per-screen dead bands. */
+@media (max-width: 767px) {
+  #nlr-partners { padding: 2.25rem 1rem 2.5rem; }
+  #nlr-partners .nlr-partners-row {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 14px;
+  }
+  #nlr-partners .nlr-partner-chip {
+    box-sizing: border-box;
+    width: min(320px, 86vw);
+    max-width: min(320px, 86vw);
+    flex: 0 0 auto;
+    padding: 12px 16px;
+  }
+  #nlr-partners .nlr-partner-chip img {
+    height: 64px;
+    max-height: 64px;
+  }
+}
 /* === NLR INJECTED SECTIONS END === */
