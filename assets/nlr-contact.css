@@ -180,31 +180,27 @@
 #root .service-location-page { min-height: 60vh; padding-top: 3.5rem; }
 
 /* === NLR INJECTED SECTIONS (services + WC band) START === */
-/* Injected by assets/homepage-sections.js immediately before the fleet section on the
-   homepage. Everything is scoped under #nlr-injected so nothing leaks to the page. */
-#nlr-injected {
-  box-sizing: border-box;
-  width: 94%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0.5rem 0 1.5rem;   /* matches the site's compacted section spacing */
-}
+/* Injected by assets/homepage-sections.js. #nlr-wc-top is the slim World Cup band placed at
+   the top of .home-content (above the "Arrive in Style" headline); #nlr-injected is the
+   services block placed before the fleet section. Everything scoped so nothing leaks. */
 
-/* (1) Slim World Cup band — one full-width strip */
-#nlr-injected .nlr-wc-band {
+/* (1) Slim World Cup band — standalone strip at the top of .home-content, above the headline */
+#nlr-wc-top {
+  margin: 0 0 1.5rem;          /* sits above the headline without crowding it */
+}
+#nlr-wc-top .nlr-wc-band {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px 16px;
   padding: 10px 16px;
-  margin-bottom: 1.5rem;
   text-align: center;
   background: rgba(9, 9, 9, 0.6);
   border: 1px solid rgba(240, 220, 159, 0.3);
   border-radius: 12px;
 }
-#nlr-injected .nlr-wc-msg {
+#nlr-wc-top .nlr-wc-msg {
   flex: 1 1 340px;
   min-width: 220px;
   margin: 0;
@@ -213,13 +209,13 @@
   line-height: 1.4;
   color: #e9e2cf;
 }
-#nlr-injected .nlr-wc-actions {
+#nlr-wc-top .nlr-wc-actions {
   flex: 0 0 auto;
   display: inline-flex;
   gap: 10px;
 }
-#nlr-injected .nlr-btn-book,
-#nlr-injected .nlr-wc-actions .nlr-btn-wa {
+#nlr-wc-top .nlr-btn-book,
+#nlr-wc-top .nlr-wc-actions .nlr-btn-wa {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -232,12 +228,19 @@
   text-decoration: none;
   transition: filter 0.2s ease;
 }
-#nlr-injected .nlr-btn-book:hover,
-#nlr-injected .nlr-wc-actions .nlr-btn-wa:hover { filter: brightness(1.08); }
-#nlr-injected .nlr-btn-book { background: #f0dc9f; color: #0b0b0b; }
-#nlr-injected .nlr-wc-actions .nlr-btn-wa { background: #25D366; color: #fff; }
+#nlr-wc-top .nlr-btn-book:hover,
+#nlr-wc-top .nlr-wc-actions .nlr-btn-wa:hover { filter: brightness(1.08); }
+#nlr-wc-top .nlr-btn-book { background: #f0dc9f; color: #0b0b0b; }
+#nlr-wc-top .nlr-wc-actions .nlr-btn-wa { background: #25D366; color: #fff; }
 
-/* (2) Services grid */
+/* (2) Services block — before the fleet section */
+#nlr-injected {
+  box-sizing: border-box;
+  width: 94%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.5rem 0 1.5rem;   /* matches the site's compacted section spacing */
+}
 #nlr-injected .nlr-services { text-align: center; }
 #nlr-injected .nlr-services-title {
   margin: 0 0 1rem;
@@ -275,6 +278,6 @@
 }
 @media (max-width: 600px) {
   #nlr-injected .nlr-services-grid { grid-template-columns: 1fr; }
-  #nlr-injected .nlr-wc-msg { flex-basis: 100%; }
+  #nlr-wc-top .nlr-wc-msg { flex-basis: 100%; }
 }
 /* === NLR INJECTED SECTIONS END === */
