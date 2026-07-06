@@ -286,7 +286,7 @@
 #nlr-partners {
   box-sizing: border-box;
   width: 100%;
-  padding: 2.5rem 1rem 3rem;
+  padding: 2.5rem 1rem 3rem;    /* compact default (mobile/tablet); desktop widens the band below */
   background: #060606;          /* consistent with the header/footer dark */
 }
 #nlr-partners .nlr-partners-title {
@@ -304,8 +304,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
+  justify-content: center;   /* keeps every wrapped row centered at all widths */
+  gap: 16px;                 /* compact multi-row wrap on mobile; desktop overrides below */
 }
 #nlr-partners .nlr-partner-chip {
   display: inline-flex;
@@ -324,6 +324,34 @@
   width: auto;
   object-fit: contain;      /* never distort aspect ratio */
 }
+
+/* Desktop (>=768px): center the chips as TWO balanced rows — 5 on top (NLA first),
+   4 below — using width math instead of nth-child hacks. Each chip takes a flex-basis
+   of one fifth of the row minus the column gap, so exactly 5 fit per row and the 6th
+   is forced to wrap, centered: 9 -> 5+4. The split re-derives automatically if the
+   logo count ever changes (10 -> 5+5, 7 -> 5+2, ...). Taller vertical band for a
+   lower-half, breathing-room feel; roomier uniform chips; logos stay height-capped so
+   aspect ratios are preserved. */
+@media (min-width: 768px) {
+  #nlr-partners { padding: 4.5rem 1.5rem 5rem; }
+  #nlr-partners .nlr-partners-row {
+    max-width: 1040px;
+    column-gap: 24px;
+    row-gap: 28px;
+  }
+  #nlr-partners .nlr-partner-chip {
+    flex: 0 0 calc(20% - 20px);   /* 5*(20%-20px) + 4*24px = 100%-4px -> 5 fit; a 6th overflows and wraps */
+    max-width: calc(20% - 20px);
+    padding: 16px 20px;
+    min-height: 84px;             /* uniform chip height across both rows */
+  }
+  #nlr-partners .nlr-partner-chip img {
+    height: 52px;
+    max-height: 52px;
+  }
+}
+
+/* Mobile (<600px): keep the current compact flex-wrap (4+4+1), centered, with tidy gaps. */
 @media (max-width: 600px) {
   #nlr-partners { padding: 2rem 0.75rem 2.5rem; }
   #nlr-partners .nlr-partners-row { gap: 14px; }
