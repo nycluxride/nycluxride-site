@@ -280,4 +280,54 @@
   #nlr-injected .nlr-services-grid { grid-template-columns: 1fr; }
   #nlr-wc-top .nlr-wc-msg { flex-basis: 100%; }
 }
+
+/* (3) Partner / affiliation strip — below the fleet section, above the footer. Self-hosted
+   logos sit on white "chips" so dark/colored-text marks stay legible on the dark section. */
+#nlr-partners {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 2.5rem 1rem 3rem;
+  background: #060606;          /* consistent with the header/footer dark */
+}
+#nlr-partners .nlr-partners-title {
+  margin: 0 0 1.5rem;
+  text-align: center;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #f0dc9f;
+}
+#nlr-partners .nlr-partners-row {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+#nlr-partners .nlr-partner-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+#nlr-partners .nlr-partner-chip img {
+  display: block;
+  height: 44px;
+  max-height: 44px;
+  width: auto;
+  object-fit: contain;      /* never distort aspect ratio */
+}
+@media (max-width: 600px) {
+  #nlr-partners { padding: 2rem 0.75rem 2.5rem; }
+  #nlr-partners .nlr-partners-row { gap: 14px; }
+  #nlr-partners .nlr-partner-chip { padding: 10px 14px; }
+  #nlr-partners .nlr-partner-chip img { height: 36px; max-height: 36px; }
+}
 /* === NLR INJECTED SECTIONS END === */

@@ -1,11 +1,13 @@
 /*
- * NYC LUX RIDE — homepage World Cup band + service sections (plain DOM, no React
- * coupling). Two inserts, each placed next to a real page node:
+ * NYC LUX RIDE — homepage World Cup band + services + partners strip (plain DOM, no React
+ * coupling). Three inserts, each placed next to a real page node:
  *   - #nlr-wc-top  : the slim World Cup band, inserted as the FIRST child of .home-content
  *                    (directly above the "Arrive in Style" headline).
  *   - #nlr-injected: the "Our Services" heading + 4 cards, inserted immediately BEFORE the
  *                    fleet section.
- * Both are gated on React's FINAL commit — a __reactFiber$ own-property on .fleet-section,
+ *   - #nlr-partners: the partner / affiliation logo strip, inserted immediately AFTER the
+ *                    fleet section (above the footer).
+ * All are gated on React's FINAL commit — a __reactFiber$ own-property on .fleet-section,
  * the last homepage section, which React only attaches in the committed client render (an
  * earlier node like .home-content gets a transient fiber during the aborted hydration and
  * is then discarded). So our nodes are never present during React's hydration pass, and the
@@ -79,8 +81,46 @@
     return wrap;
   }
 
-  // Two independently-gated units: each has its own id (idempotency), anchor + fiber gate,
-  // placement, and insert log.
+  /* --- PARTNERS STRIP --- */
+  // (C) Partner / affiliation logos -> #nlr-partners, inserted immediately AFTER
+  // .fleet-section (above the footer). Self-hosted webp logos on white "chips" so dark or
+  // colored-text logos stay legible on the dark section. NLA member badge is FIRST.
+  var HEADING = "";   // editable: empty = no heading; if set, renders in Playfair gold above the row
+  var PARTNERS = [
+    { file: "nla.webp", alt: "National Limousine Association member" },
+    { file: "beta-energy-direct.webp", alt: "Beta Energy Direct" },
+    { file: "247-business-finance.webp", alt: "24/7 Business Finance" },
+    { file: "riyadh-water-tanker-supplier.webp", alt: "Riyadh Water Tanker Supplier" },
+    { file: "fast-consultants.webp", alt: "Fast Consultants" },
+    { file: "mango-plus.webp", alt: "Mango Plus" },
+    { file: "health-online.webp", alt: "HealthOnline.pk" },
+    { file: "e8a-distribution.webp", alt: "e8a Distribution" },
+    { file: "beta-utilities.webp", alt: "Beta Utilities" }
+  ];
+
+  function buildPartners() {
+    var wrap = el("section");
+    wrap.id = "nlr-partners";
+    wrap.setAttribute("aria-label", "Affiliations and partners");
+    if (HEADING) wrap.appendChild(el("h2", "nlr-partners-title", HEADING));
+    var row = el("div", "nlr-partners-row");
+    PARTNERS.forEach(function (p) {
+      var chip = el("div", "nlr-partner-chip");
+      var img = el("img");
+      img.src = "/assets/partners/" + p.file;
+      img.alt = p.alt;
+      img.loading = "lazy";
+      img.decoding = "async";
+      chip.appendChild(img);
+      row.appendChild(chip);
+    });
+    wrap.appendChild(row);
+    return wrap;
+  }
+  /* --- END PARTNERS STRIP --- */
+
+  // Independently-placed units: each has its own id (idempotency), anchor, placement, and
+  // insert log; all are gated together on the shared .fleet-section commit signal below.
   var UNITS = [
     {
       id: "nlr-wc-top",
@@ -95,6 +135,17 @@
       place: function (anchor, node) {
         if (!anchor.parentNode) return false;
         anchor.parentNode.insertBefore(node, anchor);
+        return true;
+      }
+    },
+    {
+      // PARTNERS STRIP unit — inserted immediately AFTER .fleet-section (above the footer).
+      id: "nlr-partners",
+      anchorSel: ".fleet-section",
+      build: buildPartners,
+      place: function (anchor, node) {
+        if (!anchor.parentNode) return false;
+        anchor.parentNode.insertBefore(node, anchor.nextSibling);   // AFTER .fleet-section
         return true;
       }
     }
