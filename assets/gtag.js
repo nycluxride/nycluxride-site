@@ -28,6 +28,25 @@
     window.nlrGtag("js", new Date());
     window.nlrGtag("config", ADS_TAG_ID);
 
+    // Call-conversion (phone-swap) config for the "Calls from ads" action. Runs under the
+    // SAME isolated nlrGtag/nlrDataLayer namespace as everything else here — NOT window.gtag.
+    // Google invokes phone_conversion_callback with the forwarding number (or the ORIGINAL
+    // number when no forwarding number is allocated); tracking.js's __nlrApplyForwardNumber
+    // decides whether to swap. We only stash the result + poke the swapper if it's loaded.
+    window.__nlrForwardNumber = null;
+    window.nlrGtag("config", ADS_TAG_ID + "/s5hCCPecteMcEIX4gOJD", {
+      "phone_conversion_number": "+16467750556",
+      "phone_conversion_callback": function (formatted_number, mobile_number) {
+        window.__nlrForwardNumber = {
+          formatted: formatted_number,
+          mobile: mobile_number
+        };
+        if (typeof window.__nlrApplyForwardNumber === "function") {
+          window.__nlrApplyForwardNumber();
+        }
+      }
+    });
+
     // Async-load the remote tag pointed at OUR data layer (&l=nlrDataLayer).
     var s = document.createElement("script");
     s.async = true;
