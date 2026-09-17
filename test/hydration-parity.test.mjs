@@ -1,5 +1,7 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
@@ -35,6 +37,17 @@ function unquote(s) {
   return s.replace(/\\(.)/g, "$1");
 }
 
+const SLUG_SUFFIXES = [...BUNDLE.matchAll(/slugSuffix:"([^"]*)"/g)].map((m) => m[1]);
+
+const BLOG_POSTS = [...BUNDLE.matchAll(/\{slug:"([a-z0-9-]+)",metaTitle:"((?:[^"\\]|\\.)*)",metaDescription:"((?:[^"\\]|\\.)*)"/g)].map(
+  (m, i) => ({
+    authoredSlug: m[1],
+    effectiveSlug: `${m[1]}-${SLUG_SUFFIXES[i]}`,
+    metaTitle: unquote(m[2]),
+    metaDescription: unquote(m[3]),
+  })
+);
+
 function bundleMeta(route) {
   const at = BUNDLE.indexOf(`${JSON.stringify(route)}:{title:"`);
   if (at !== -1) {
@@ -46,13 +59,8 @@ function bundleMeta(route) {
 
   const blog = route.match(/^\/blog\/(.+)$/);
   if (blog) {
-    const at2 = BUNDLE.indexOf(`{slug:"${blog[1]}",metaTitle:"`);
-    if (at2 === -1) return null;
-    const slice = BUNDLE.slice(at2, at2 + 2000);
-    return {
-      title: unquote(slice.match(/metaTitle:"((?:[^"\\]|\\.)*)"/)[1]),
-      description: unquote(slice.match(/metaDescription:"((?:[^"\\]|\\.)*)"/)[1]),
-    };
+    const post = BLOG_POSTS.find((p) => p.effectiveSlug === blog[1]);
+    return post ? { title: post.metaTitle, description: post.metaDescription } : null;
   }
 
   const loc = route.match(/^\/locations\/(.+)$/);
@@ -122,6 +130,19 @@ for (const bad of CORRUPT) {
     assert.deepEqual(hits, []);
   });
 }
+
+test("the bundle is syntactically valid javascript", () => {
+  const tmp = join(tmpdir(), "nlr-bundle-check.mjs");
+  writeFileSync(tmp, BUNDLE);
+  execFileSync(process.execPath, ["--check", tmp]);
+});
+
+test("effective runtime blog slugs match the files on disk", () => {
+  assert.equal(BLOG_POSTS.length, 11, "expected 11 blog data objects in the bundle");
+  assert.equal(SLUG_SUFFIXES.length, 11, "expected 11 slugSuffix values in the bundle");
+  const onDisk = readdirSync(join(ROOT, "blog")).filter((f) => f.endsWith(".html")).map((f) => f.replace(/\.html$/, ""));
+  assert.deepEqual(BLOG_POSTS.map((p) => p.effectiveSlug).sort(), onDisk.sort());
+});
 
 test("no page declares aggregateRating", () => {
   const hits = files.filter((f) => readFileSync(f, "utf8").includes("aggregateRating")).map((f) => relative(ROOT, f));
