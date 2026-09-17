@@ -34,8 +34,14 @@ function decode(s) {
 }
 
 function unquote(s) {
-  return s.replace(/\\(.)/g, "$1");
+  try {
+    return JSON.parse(`"${s}"`);
+  } catch {
+    return s.replace(/\\(.)/g, "$1");
+  }
 }
+
+const LDJSON = /<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g;
 
 const SLUG_SUFFIXES = [...BUNDLE.matchAll(/slugSuffix:"([^"]*)"/g)].map((m) => m[1]);
 
@@ -107,6 +113,27 @@ for (const file of files) {
       assert.ok(meta, `no bundle metadata found for ${route}`);
     });
   }
+
+  test(`${rel}: title, og:title and twitter:title agree`, () => {
+    const t = html.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+    const og = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]*)"/);
+    const tw = html.match(/<meta[^>]*name="twitter:title"[^>]*content="([^"]*)"/);
+    assert.ok(t && og && tw, "missing one of the title trio");
+    assert.equal(decode(og[1]), decode(t[1]));
+    assert.equal(decode(tw[1]), decode(t[1]));
+    assert.ok(decode(t[1]).length > 0);
+  });
+
+  test(`${rel}: description, og:description and twitter:description agree`, () => {
+    const d = html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/);
+    const og = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]*)"/);
+    const tw = html.match(/<meta[^>]*name="twitter:description"[^>]*content="([^"]*)"/);
+    assert.ok(d && og && tw, "missing one of the description trio");
+    assert.equal(decode(og[1]), decode(d[1]));
+    assert.equal(decode(tw[1]), decode(d[1]));
+    assert.ok(decode(d[1]).length > 0);
+  });
+
   if (!meta) continue;
 
   test(`${rel}: static <title> matches the bundle route table`, () => {
@@ -156,11 +183,12 @@ test("every page carries the shared schema graph and the service-areas nav", () 
   assert.deepEqual(missingNav, [], "pages missing the service-areas nav");
 });
 
-test("every json-ld block on every page parses", () => {
+test("every json-ld block on every page parses, whatever its attribute order", () => {
   const bad = [];
+  let blocks = 0;
   for (const file of files) {
-    const html = readFileSync(file, "utf8");
-    for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    for (const m of readFileSync(file, "utf8").matchAll(LDJSON)) {
+      blocks++;
       try {
         JSON.parse(m[1]);
       } catch (err) {
@@ -169,6 +197,7 @@ test("every json-ld block on every page parses", () => {
     }
   }
   assert.deepEqual(bad, []);
+  assert.ok(blocks >= 81, `expected at least 81 json-ld blocks, found ${blocks}`);
 });
 
 test("no page loads a synchronous first-party script in head", () => {
