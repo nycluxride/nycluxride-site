@@ -188,6 +188,29 @@ for (const route of PAGES) {
     assert.ok(s.scrollW <= s.clientW + 1, `overflows by ${s.scrollW - s.clientW}px`);
   });
 
+  for (const w of [1200, 1440]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.waitForTimeout(150);
+    const clipped = await page.evaluate(() => {
+      const out = [];
+      for (const el of document.querySelectorAll("*")) {
+        const cs = getComputedStyle(el);
+        if (!/auto|hidden|paint|clip/.test(`${cs.contentVisibility} ${cs.contain} ${cs.overflowX} ${cs.overflow}`)) continue;
+        const pr = el.getBoundingClientRect();
+        for (const d of el.querySelectorAll("*")) {
+          const dr = d.getBoundingClientRect();
+          if (dr.width > 0 && dr.right > pr.right + 2) {
+            out.push(`${el.tagName.toLowerCase()}.${(el.getAttribute("class") || "").split(" ")[0]} clips ${(d.getAttribute("class") || d.tagName).slice(0, 24)} by ${Math.round(dr.right - pr.right)}px`);
+          }
+        }
+      }
+      return [...new Set(out)].slice(0, 4);
+    });
+    check(`${route}: nothing is silently clipped by paint containment at ${w}px`, () => {
+      assert.deepEqual(clipped, []);
+    });
+  }
+
   for (const w of [320, 360]) {
     await page.setViewportSize({ width: w, height: 720 });
     await page.waitForTimeout(120);

@@ -372,6 +372,7 @@ html[data-nav-open] body::after{content:"";position:fixed;inset:0;z-index:55;bac
 .acc__body{padding-block-end:var(--sp-5);max-inline-size:62ch;font-family:var(--ff-prose);color:var(--ink-mid)}
 .acc::details-content{block-size:0;overflow:clip;transition:block-size var(--d-3) var(--ease-std),content-visibility var(--d-3) var(--ease-std) allow-discrete}
 .acc[open]::details-content{block-size:auto}
+.stack{display:grid;gap:var(--sp-6);min-inline-size:0}
 .toc{display:grid;gap:var(--sp-3)}
 .toc a{display:flex;align-items:center;min-block-size:44px;font:500 var(--t-xs)/1.2 var(--ff-display);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mid);transition:color var(--d-1) var(--ease-std)}
 .toc a:hover{color:var(--gold-lit)}
