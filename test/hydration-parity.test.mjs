@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const BUNDLE = readFileSync(join(ROOT, "assets/app.6xvjthKL.js"), "utf8");
+const BUNDLE_NAME = readdirSync(join(ROOT, "assets")).find((f) => /^app\.[A-Za-z0-9_-]{6,}\.js$/.test(f));
+if (!BUNDLE_NAME) throw new Error("no content-hashed app bundle found in assets/");
+const BUNDLE = readFileSync(join(ROOT, "assets", BUNDLE_NAME), "utf8");
 
 function collectHtml(dir, out = []) {
   for (const name of readdirSync(dir)) {
