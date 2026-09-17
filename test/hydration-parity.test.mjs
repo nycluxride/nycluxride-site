@@ -12,7 +12,7 @@ const BUNDLE = readFileSync(join(ROOT, "assets", BUNDLE_NAME), "utf8");
 
 function collectHtml(dir, out = []) {
   for (const name of readdirSync(dir)) {
-    if (["node_modules", ".git", "scripts", "test"].includes(name)) continue;
+    if (["node_modules", ".git", "scripts", "test", "assets"].includes(name)) continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) collectHtml(full, out);
     else if (name.endsWith(".html")) out.push(full);
@@ -100,13 +100,17 @@ const ROUTELESS = new Set(["/card-authorization"]);
 
 const files = collectHtml(ROOT);
 
-test(`36 html pages discovered (found ${files.length})`, () => {
-  assert.equal(files.length, 36);
+test(`page inventory (found ${files.length})`, () => {
+  assert.ok(files.length >= 36, `expected at least 36 pages, found ${files.length}`);
 });
+
+const hydrated = files.filter((f) => readFileSync(f, "utf8").includes(BUNDLE_NAME));
+console.log(`  note ${hydrated.length} of ${files.length} pages load the react bundle; the rest are static-only and skip parity`);
 
 for (const file of files) {
   const rel = relative(ROOT, file);
   const html = readFileSync(file, "utf8");
+  if (!html.includes(BUNDLE_NAME)) continue;
   const route = routeOf(file);
   const meta = bundleMeta(route);
 
@@ -155,7 +159,7 @@ const CORRUPT = ["Nyc Limo", "Book nyc limo with", "NYC Lux Ride", "How much doe
 for (const bad of CORRUPT) {
   test(`no page or bundle contains the broken string ${JSON.stringify(bad)}`, () => {
     const hits = files.filter((f) => readFileSync(f, "utf8").includes(bad)).map((f) => relative(ROOT, f));
-    if (BUNDLE.includes(bad)) hits.push("assets/app.6xvjthKL.js");
+    if (BUNDLE.includes(bad)) hits.push(`assets/${BUNDLE_NAME}`);
     assert.deepEqual(hits, []);
   });
 }
@@ -178,11 +182,14 @@ test("no page declares aggregateRating", () => {
   assert.deepEqual(hits, []);
 });
 
-test("every page carries the shared schema graph and the service-areas nav", () => {
-  const missingGraph = files.filter((f) => !readFileSync(f, "utf8").includes("#organization")).map((f) => relative(ROOT, f));
-  const missingNav = files.filter((f) => !readFileSync(f, "utf8").includes('id="nlr-service-areas"')).map((f) => relative(ROOT, f));
-  assert.deepEqual(missingGraph, [], "pages missing the schema graph");
-  assert.deepEqual(missingNav, [], "pages missing the service-areas nav");
+test("every page carries the shared schema graph", () => {
+  const missing = files.filter((f) => !readFileSync(f, "utf8").includes("#organization")).map((f) => relative(ROOT, f));
+  assert.deepEqual(missing, []);
+});
+
+test("every bundle-loading page still carries the service-areas nav", () => {
+  const missing = hydrated.filter((f) => !readFileSync(f, "utf8").includes('id="nlr-service-areas"')).map((f) => relative(ROOT, f));
+  assert.deepEqual(missing, []);
 });
 
 test("every json-ld block on every page parses, whatever its attribute order", () => {

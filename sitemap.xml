@@ -222,4 +222,12 @@
       <image:loc>https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&amp;fit=crop&amp;w=3840&amp;q=80</image:loc>
     </image:image>
   </url>
+  <url>
+    <loc>https://www.nycluxride.com/fleet</loc>
+    <lastmod>2026-09-17</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations</loc>
+    <lastmod>2026-09-17</lastmod>
+  </url>
 </urlset>
