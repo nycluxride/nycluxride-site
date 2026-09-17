@@ -2,7 +2,7 @@
  * NYC LUX RIDE — single source of truth for shared policy wording.
  *
  * The cancellation text below is read by BOTH the FAQ accordion (rendered by
- * app.6xvjthKL.js) and the static /card-authorization page, so the two can
+ * app.wBzOjyaL.js) and the static /card-authorization page, so the two can
  * never drift apart. Edit the wording HERE only.
  *
  * This file is loaded (classic, non-deferred) BEFORE the app bundle on every
