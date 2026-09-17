@@ -129,6 +129,7 @@ h4{font-family:var(--ff-prose);font-size:var(--t-4);font-weight:400;line-height:
 p{max-inline-size:var(--measure-prose);text-wrap:pretty}
 :is(em,cite,i){font-style:normal;font-family:var(--ff-display);font-weight:500;letter-spacing:.04em;color:var(--ink-hi)}
 :is(strong,b){font-family:var(--ff-display);font-weight:600;letter-spacing:normal;color:var(--ink-hi)}
+sup{font-size:.75rem;line-height:0;letter-spacing:normal;vertical-align:super}
 hr{border:0;border-block-start:1px solid var(--edge-dark)}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 ::selection{background:var(--gold);color:var(--s-0)}

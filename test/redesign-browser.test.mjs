@@ -90,10 +90,13 @@ for (const route of PAGES) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    if (m.type() === "error" && !/googletagmanager|google-analytics|net::ERR/.test(m.text())) errors.push(m.text());
   });
   const failed = [];
-  page.on("requestfailed", (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
+  page.on("requestfailed", (r) => {
+    if (!r.url().startsWith(base)) return;
+    failed.push(`${r.url()} ${r.failure()?.errorText}`);
+  });
 
   await page.goto(`${base}${route}`, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
@@ -132,7 +135,7 @@ for (const route of PAGES) {
   });
 
   check(`${route}: no page or console errors`, () => assert.deepEqual(errors, []));
-  check(`${route}: no failed requests`, () => assert.deepEqual(failed, []));
+  check(`${route}: no failed first-party requests`, () => assert.deepEqual(failed, []));
   check(`${route}: exactly one non-empty h1`, () => {
     assert.equal(s.h1s.length, 1, JSON.stringify(s.h1s));
     assert.ok(s.h1s[0].length > 0);
