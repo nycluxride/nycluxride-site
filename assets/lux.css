@@ -164,8 +164,8 @@ p+p{margin-block-start:var(--sp-5)}
 .section--band{background:var(--s-1)}
 .section--close{background:var(--s-2)}
 .section--deferred{content-visibility:auto;contain-intrinsic-size:auto 720px}
-.rail{display:grid;gap:var(--sp-4);align-self:start;min-inline-size:0;max-inline-size:100%}
-.rail>*{min-inline-size:0;max-inline-size:100%}
+.rail{display:grid;gap:var(--sp-4);align-self:start;min-inline-size:0}
+.rail>*{min-inline-size:0}
 @media (min-width:900px){
 .grid12{grid-template-columns:repeat(8,minmax(0,1fr));gap:var(--sp-6)}
 }
@@ -208,7 +208,7 @@ p+p{margin-block-start:var(--sp-5)}
 .site-nav a:hover{color:var(--ink-hi)}
 .site-nav a:hover::after{transform:scaleX(1)}
 .site-nav a:focus-visible{color:var(--ink-hi);outline-offset:3px}
-.site-nav [aria-current=page]{color:var(--gold)}
+.site-nav [aria-current]{color:var(--gold)}
 .site-nav [aria-current=page]::after{block-size:2px;transform:scaleX(1)}
 .icon-btn{display:inline-grid;place-items:center;inline-size:44px;min-block-size:44px;border-radius:var(--r-2);color:var(--ink-hi);cursor:pointer;transition:color var(--d-1) var(--ease-std),background-color var(--d-1) var(--ease-std)}
 .icon-btn:hover{color:var(--gold-lit);background:var(--lift-1)}
@@ -255,7 +255,6 @@ html[data-nav-open] body::after{content:"";position:fixed;inset:0;z-index:55;bac
 .plate--card{--plate-ar:3/2}
 .plate--thumb{--plate-ar:3/2;border-radius:var(--r-2)}
 .plate--product .plate__img img{filter:grayscale(.55) contrast(1.04) brightness(.92) saturate(.9)}
-.plate--scene .plate__img img{filter:grayscale(1) contrast(1.05) brightness(.86);filter:url(#lux-grade) contrast(1.02)}
 .slate{display:flex;align-items:center;gap:var(--sp-3);min-block-size:var(--slate-h);padding-inline:var(--sp-4);background:var(--void);font:500 var(--t-xs)/1 var(--ff-display);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-low);border-block-start:1px solid var(--edge-dark)}
 .slate b{font-weight:500;letter-spacing:inherit;color:var(--gold)}
 
@@ -405,12 +404,12 @@ html[data-nav-open] body::after{content:"";position:fixed;inset:0;z-index:55;bac
 .note__thumb{inline-size:96px}
 .note:hover .note__title{color:var(--gold-lit)}
 @media (min-width:900px){
-.note{grid-template-columns:auto minmax(0,1fr) 96px;gap:var(--sp-5);align-items:start}
+.note{grid-template-columns:auto minmax(0,1fr);gap:var(--sp-5);align-items:start}
 .note__date{grid-row:span 2}
 .note__thumb{grid-row:span 2}
 }
 
-.site-footer{background:var(--s-1);border-block-start:1px solid var(--edge-lit);padding-block-start:var(--sp-section);padding-block-end:88px;content-visibility:auto;contain-intrinsic-size:auto 560px}
+.site-footer{background:var(--s-1);border-block-start:1px solid var(--edge-lit);padding-block-start:var(--sp-section);padding-block-end:calc(var(--bar-h) + var(--sp-6) + env(safe-area-inset-bottom,0px));content-visibility:auto;contain-intrinsic-size:auto 560px}
 .site-footer__grid{display:grid;gap:var(--sp-7)}
 .footer-links{display:grid;gap:var(--sp-1)}
 .footer-links a{display:inline-flex;align-items:center;min-block-size:44px;font:400 var(--t-sm)/1.5 var(--ff-display);letter-spacing:.01em;color:var(--ink-mid);text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:1px;text-underline-offset:.2em;transition:color var(--d-1) var(--ease-std),text-decoration-color var(--d-1) var(--ease-std)}
@@ -486,7 +485,7 @@ html[data-nav-open] .actionbar{display:none}
 .btn{border:1px solid ButtonText}
 .field :is(input,select,textarea){border:1px solid FieldText}
 :is(.rate-row,.ledger__row,.note,.acc,.loc-card,.fleet-card){border:1px solid CanvasText}
-.wordmark{forced-color-adjust:none}
+.wordmark,.wordmark-foot{forced-color-adjust:none}
 :focus-visible{outline:3px solid Highlight;outline-offset:2px}
 }
 
@@ -511,7 +510,7 @@ html{scroll-behavior:smooth}
 
 @media print{
 :root{--void:#FFFFFF;--s-0:#FFFFFF;--s-1:#F5F5F5;--s-2:#EBEBEB;--ink-hi:#000000;--ink-mid:#333333;--ink-low:#565656;--gold:#6B5410;--gold-lit:#6B5410;--gold-deep:#8C8C8C;--focus:#000000;--danger:#8C1A0C;--edge-lit:#8C8C8C;--edge-dark:#8C8C8C}
-:is(.site-header,.nav-panel,.actionbar,.consent,.plate--optional,.skip){display:none}
+:is(.site-header,.nav-panel,.actionbar,.skip){display:none}
 .plate__img img{filter:none}
 .plate__img::after{display:none}
 .lit::before{display:none}
