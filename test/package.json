@@ -5,9 +5,11 @@
   "type": "module",
   "description": "Dev-only regression tests for assets/tracking.js and for static-HTML/bundle parity. NOT deployed (excluded via /.vercelignore); no root package.json, so Vercel still treats the repo as a static site.",
   "scripts": {
-    "test": "node swap-resilience.test.mjs && node hydration-parity.test.mjs"
+    "test": "node swap-resilience.test.mjs && node hydration-parity.test.mjs && node vercel-config.test.mjs"
   },
   "devDependencies": {
-    "jsdom": "^24.1.3"
+    "@vercel/routing-utils": "^6.6.0",
+    "jsdom": "^24.1.3",
+    "path-to-regexp": "^6.1.0"
   }
 }

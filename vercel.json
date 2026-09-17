@@ -20,7 +20,7 @@
   ],
   "headers": [
     {
-      "source": "/assets/(.+\\.[A-Za-z0-9_-]{6,}\\.(js|css|webp|webmanifest))",
+      "source": "/assets/(.+\\.[A-Za-z0-9_-]{6,}\\.(?:js|css|webp|webmanifest))",
       "headers": [
         {
           "key": "Cache-Control",
