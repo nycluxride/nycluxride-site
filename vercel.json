@@ -3,9 +3,14 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/book",
-      "destination": "https://customer.moovs.app/nyc-lux-ride/request/new",
-      "permanent": false
+      "source": "/fleet/cadillac-escalade-v.webp",
+      "destination": "/fleet/cadillac-xt6-showroom.webp",
+      "statusCode": 301
+    },
+    {
+      "source": "/fleet/cadillac-escalade-v-:file(\\d{3,4}\\.(?:avif|webp))",
+      "destination": "/fleet/cadillac-xt6-showroom-:file",
+      "statusCode": 301
     },
     {
       "source": "/fleet/:name.jpg",
@@ -16,6 +21,93 @@
       "source": "/home.webp",
       "destination": "/hero-new.webp",
       "statusCode": 301
+    },
+    {
+      "source": "/blog/brooklyn-black-car-service-local-guide-april-28",
+      "destination": "/black-car-service-brooklyn",
+      "statusCode": 301
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.+\\.[A-Za-z0-9]{8}\\.(?:js|css|webp|webmanifest))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/fleet/(.+\\.(?:avif|webp))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/assets/fonts/(.+\\.woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000"
+        }
+      ]
+    },
+    {
+      "source": "/([^/]+\\.(?:png|ico|webp|svg))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/book",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net https://www.gstatic.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/booking-confirmed",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net https://www.gstatic.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
+      ]
     }
   ]
 }

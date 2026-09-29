@@ -1,30 +1,19 @@
-/*
- * NYC LUX RIDE — Google Ads conversion click tracking (isolated namespace).
- *
- * Fires via window.nlrGtag (NOT window.gtag — the compiled bundle deletes that
- * on hydration). Bookings complete on customer.moovs.app (a domain we don't
- * control), so the tracked conversions are the INTENT clicks on this site:
- * Book Now, Call, WhatsApp. A single delegated, capture-phase listener on
- * document catches clicks on any matching <a>, including links injected at
- * runtime by whatsapp.js / mobilenav.js (top bar, floating button, bottom-nav).
- *
- * Fully defensive: if window.nlrGtag isn't ready it silently no-ops, never
- * throws, and never blocks the link's navigation.
- */
 (function () {
-  // <-- Paste the real Google Ads conversion labels once.
   var BOOK_NOW_LABEL = "0YD2COGt8L8cEIX4gOJD";
   var CALL_LABEL = "Sz9RCOSt8L8cEIX4gOJD";
   var WHATSAPP_LABEL = "yIstCOet8L8cEIX4gOJD";
+  var PURCHASE_LABEL = "";
 
   function fire(debugEvent, label) {
     try {
-      if (typeof window.nlrGtag !== "function") return; // our tag absent -> no-op
-      // Plain debug event (visible immediately for click testing).
+      if (typeof window.nlrGtag !== "function") return;
       window.nlrGtag("event", debugEvent);
-      // Direct Google Ads conversion.
       window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + label, transport_type: "beacon" });
-    } catch (e) { /* degrade silently — never block navigation */ }
+    } catch (e) {}
+  }
+
+  function isBookHref(href) {
+    return href === "/book" || href.indexOf("/book?") === 0 || href.indexOf("/book#") === 0;
   }
 
   function onClick(e) {
@@ -33,42 +22,51 @@
       var a = t && t.closest ? t.closest("a[href]") : null;
       if (!a) return;
       var href = a.getAttribute("href") || "";
-      if (href.indexOf("https://customer.moovs.app/") === 0) {
-        fire("book_now_click", BOOK_NOW_LABEL);
+      var path = location.pathname;
+      if (isBookHref(href)) {
+        if (path.indexOf("/book") !== 0) fire("book_now_click", BOOK_NOW_LABEL);
+      } else if (path === "/booking-confirmed") {
+        return;
       } else if (href.indexOf("tel:") === 0) {
         fire("call_click", CALL_LABEL);
       } else if (href.indexOf("https://wa.me/") === 0 || href.indexOf("wa.me/") === 0) {
         fire("whatsapp_click", WHATSAPP_LABEL);
       }
-    } catch (e2) { /* degrade silently */ }
+    } catch (e2) {}
   }
 
-  // Capture phase + delegation on document => also catches runtime-injected links.
+  function onSubmit(e) {
+    try {
+      var f = e.target;
+      if (f && f.matches && f.matches("form.trip")) fire("book_now_click", BOOK_NOW_LABEL);
+    } catch (e2) {}
+  }
+
+  window.nlrPurchase = function (sessionId, ref, valueCents) {
+    try {
+      if (!PURCHASE_LABEL || typeof window.nlrGtag !== "function") return false;
+      if (String(sessionId).indexOf("cs_live_") !== 0 || location.hostname !== "www.nycluxride.com") return false;
+      window.nlrGtag("event", "conversion", {
+        send_to: window.NLR_ADS_ID + "/" + PURCHASE_LABEL,
+        value: valueCents / 100,
+        currency: "USD",
+        transaction_id: ref
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   if (typeof document !== "undefined" && document.addEventListener) {
     document.addEventListener("click", onClick, true);
+    document.addEventListener("submit", onSubmit, true);
   }
 })();
 
-/*
- * NYC LUX RIDE — Google Ads call-conversion number swap (phone-swap).
- *
- * gtag.js registers the phone_conversion_callback under the isolated nlrGtag namespace and
- * stashes the result on window.__nlrForwardNumber = { formatted, mobile }. Google hands us a
- * Google forwarding number for real Ads traffic; for non-Ads traffic (or an exhausted pool)
- * it returns the ORIGINAL number instead — so we no-op whenever the returned digits equal the
- * original. This runs on all 36 pages (tracking.js is in every <head>) and re-applies forever
- * via a permanent MutationObserver, because the header/footer numbers live inside #root and
- * React re-renders revert them.
- *
- * WhatsApp is never touched: any anchor whose href contains wa.me/whatsapp is skipped, and
- * text inside such an anchor is skipped. Scripts (incl. the JSON-LD telephone field), styles,
- * noscript, textarea and title text are never walked.
- */
 (function () {
   var ORIGINAL_DIGITS = "16467750556";
 
-  // Literal visible forms, longest/most-specific FIRST so a broader form never partially
-  // rewrites a more specific one within the same text node.
   var FORMS = [
     "+1 (646) 775-0556",
     "(646) 775-0556",
@@ -80,15 +78,12 @@
 
   var WA_RE = /wa\.me|whatsapp/i;
 
-  // Strip to digits; left-pad the US country code so 10-digit forms normalize to 11 digits.
   function digits(str) {
     var d = String(str || "").replace(/\D/g, "");
     if (d.length === 10) d = "1" + d;
     return d;
   }
 
-  // True if this node sits under a script/style/etc. container we must never rewrite,
-  // or inside a wa.me / whatsapp anchor.
   function inForbiddenContext(node) {
     var BAD = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TITLE: 1 };
     var p = node.parentNode;
@@ -118,7 +113,6 @@
     return val;
   }
 
-  // Does any attribute value on this anchor mention wa.me / whatsapp?
   function anchorMentionsWa(a) {
     var attrs = a.attributes;
     for (var i = 0; i < attrs.length; i++) {
@@ -132,10 +126,10 @@
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
       var href = a.getAttribute("href") || "";
-      if (WA_RE.test(href) || anchorMentionsWa(a)) continue;   // never touch WhatsApp
+      if (WA_RE.test(href) || anchorMentionsWa(a)) continue;
       var hd = digits(href);
-      if (hd === fwdDigits) continue;                          // already at the forwarding number
-      if (hd !== ORIGINAL_DIGITS) continue;                    // some other number — leave it
+      if (hd === fwdDigits) continue;
+      if (hd !== ORIGINAL_DIGITS) continue;
       if (!a.dataset.nlrOrigHref) a.dataset.nlrOrigHref = href;
       a.setAttribute("href", "tel:" + fwd.mobile);
       a.dataset.nlrSwapped = fwdDigits;
@@ -151,7 +145,6 @@
         return NodeFilter.FILTER_ACCEPT;
       }
     });
-    // Collect first, then mutate (mutating nodeValue mid-walk is safe, but this is tidier).
     var pending = [];
     var n;
     while ((n = walker.nextNode())) pending.push(n);
@@ -166,25 +159,18 @@
     }
   }
 
-  // Idempotent, re-render-resilient. The swap decision is content-based (an element already
-  // showing the forwarding number contains no original form, and a tel: href already at the
-  // forwarding digits is skipped), so calling this repeatedly — and re-firing on our own
-  // MutationObserver writes — converges without looping. A React restore of the original
-  // text/href is naturally re-swapped on the next pass.
   function apply() {
     var fwd = window.__nlrForwardNumber;
-    if (!fwd) return;                                          // callback hasn't fired yet
+    if (!fwd) return;
     if (typeof document === "undefined" || !document.body) return;
     var fwdDigits = digits(fwd.mobile);
-    if (fwdDigits === ORIGINAL_DIGITS) return;                 // no forwarding number allocated
+    if (fwdDigits === ORIGINAL_DIGITS) return;
     swapTelLinks(fwd, fwdDigits);
     swapTextNodes(fwd, fwdDigits);
   }
 
-  // Expose globally so gtag.js's phone_conversion_callback can poke us the moment it fires.
   window.__nlrApplyForwardNumber = apply;
 
-  // Debounced scheduler so React render storms don't thrash the DOM walk.
   var scheduled = false;
   function schedule() {
     if (scheduled) return;
@@ -196,7 +182,6 @@
   function startObserver() {
     if (observerStarted || typeof MutationObserver === "undefined" || !document.body) return;
     observerStarted = true;
-    // Permanent — never disconnected. Its own writes are guarded by the content checks above.
     new MutationObserver(schedule).observe(document.body, {
       childList: true,
       subtree: true,
@@ -208,11 +193,10 @@
   function startInterval() {
     if (intervalStarted) return;
     intervalStarted = true;
-    // Belt-and-braces for late injection from homepage.js / homepage-sections.js / mobilenav.js.
     var ticks = 0;
     var iv = setInterval(function () {
       apply();
-      if (++ticks >= 8) clearInterval(iv);                    // ~8s then stop
+      if (++ticks >= 8) clearInterval(iv);
     }, 1000);
   }
 
@@ -226,10 +210,10 @@
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", start);
     } else {
-      start();                                                // body already parsed
+      start();
     }
     if (typeof window !== "undefined" && window.addEventListener) {
-      window.addEventListener("load", apply);                 // one more pass after full load
+      window.addEventListener("load", apply);
     }
   }
 })();
