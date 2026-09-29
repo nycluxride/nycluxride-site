@@ -8,6 +8,16 @@
       "permanent": false
     },
     {
+      "source": "/fleet/cadillac-escalade-v.webp",
+      "destination": "/fleet/cadillac-xt6-showroom.webp",
+      "statusCode": 301
+    },
+    {
+      "source": "/fleet/cadillac-escalade-v-:file(\\d{3,4}\\.(?:avif|webp))",
+      "destination": "/fleet/cadillac-xt6-showroom-:file",
+      "statusCode": 301
+    },
+    {
       "source": "/fleet/:name.jpg",
       "destination": "/fleet/:name.webp",
       "statusCode": 301
@@ -16,6 +26,66 @@
       "source": "/home.webp",
       "destination": "/hero-new.webp",
       "statusCode": 301
+    },
+    {
+      "source": "/blog/brooklyn-black-car-service-local-guide-april-28",
+      "destination": "/black-car-service-brooklyn",
+      "statusCode": 301
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.+\\.[A-Za-z0-9]{8}\\.(?:js|css|webp|webmanifest))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/fleet/(.+\\.(?:avif|webp))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/assets/fonts/(.+\\.woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000"
+        }
+      ]
+    },
+    {
+      "source": "/([^/]+\\.(?:png|ico|webp|svg))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
+      ]
     }
   ]
 }

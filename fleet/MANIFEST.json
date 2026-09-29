@@ -1,0 +1,1607 @@
+{
+  "generatedAt": "2026-09-29T07:32:50.396Z",
+  "generator": "scripts/images.mjs",
+  "targetWidths": [
+    300,
+    400,
+    600,
+    900,
+    1100,
+    1400
+  ],
+  "encoders": {
+    "resize": "magick {master} -filter Lanczos -resize {width}x -strip {tmp.png}",
+    "avif": "avifenc -j all -q 58 -s 4 -y 444 -d 10 {tmp.png} {out.avif}",
+    "webp": "cwebp -q 80 -m 6 -sharp_yuv -af -pass 10 -quiet {tmp.png} -o {out.webp}"
+  },
+  "totals": {
+    "masters": 14,
+    "masterBytes": 2034274,
+    "variantCount": 168,
+    "variantBytes": 6970512
+  },
+  "images": [
+    {
+      "slug": "bmw-7-series",
+      "master": {
+        "path": "fleet/bmw-7-series.webp",
+        "url": "/fleet/bmw-7-series.webp",
+        "width": 1607,
+        "height": 979,
+        "bytes": 126300,
+        "aspectRatio": 1.6415
+      },
+      "variants": [
+        {
+          "path": "fleet/bmw-7-series-300.avif",
+          "url": "/fleet/bmw-7-series-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 183,
+          "bytes": 6536
+        },
+        {
+          "path": "fleet/bmw-7-series-300.webp",
+          "url": "/fleet/bmw-7-series-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 183,
+          "bytes": 9424
+        },
+        {
+          "path": "fleet/bmw-7-series-400.avif",
+          "url": "/fleet/bmw-7-series-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 244,
+          "bytes": 10128
+        },
+        {
+          "path": "fleet/bmw-7-series-400.webp",
+          "url": "/fleet/bmw-7-series-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 244,
+          "bytes": 14740
+        },
+        {
+          "path": "fleet/bmw-7-series-600.avif",
+          "url": "/fleet/bmw-7-series-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 366,
+          "bytes": 18413
+        },
+        {
+          "path": "fleet/bmw-7-series-600.webp",
+          "url": "/fleet/bmw-7-series-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 366,
+          "bytes": 27418
+        },
+        {
+          "path": "fleet/bmw-7-series-900.avif",
+          "url": "/fleet/bmw-7-series-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 548,
+          "bytes": 33750
+        },
+        {
+          "path": "fleet/bmw-7-series-900.webp",
+          "url": "/fleet/bmw-7-series-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 548,
+          "bytes": 48970
+        },
+        {
+          "path": "fleet/bmw-7-series-1100.avif",
+          "url": "/fleet/bmw-7-series-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 670,
+          "bytes": 45476
+        },
+        {
+          "path": "fleet/bmw-7-series-1100.webp",
+          "url": "/fleet/bmw-7-series-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 670,
+          "bytes": 64608
+        },
+        {
+          "path": "fleet/bmw-7-series-1400.avif",
+          "url": "/fleet/bmw-7-series-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 853,
+          "bytes": 61765
+        },
+        {
+          "path": "fleet/bmw-7-series-1400.webp",
+          "url": "/fleet/bmw-7-series-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 853,
+          "bytes": 89210
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/bmw-7-series-300.avif 300w, /fleet/bmw-7-series-400.avif 400w, /fleet/bmw-7-series-600.avif 600w, /fleet/bmw-7-series-900.avif 900w, /fleet/bmw-7-series-1100.avif 1100w, /fleet/bmw-7-series-1400.avif 1400w",
+        "webp": "/fleet/bmw-7-series-300.webp 300w, /fleet/bmw-7-series-400.webp 400w, /fleet/bmw-7-series-600.webp 600w, /fleet/bmw-7-series-900.webp 900w, /fleet/bmw-7-series-1100.webp 1100w, /fleet/bmw-7-series-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-ct5-ct6",
+      "master": {
+        "path": "fleet/cadillac-ct5-ct6.webp",
+        "url": "/fleet/cadillac-ct5-ct6.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 131264,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-ct5-ct6-300.avif",
+          "url": "/fleet/cadillac-ct5-ct6-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 8814
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-300.webp",
+          "url": "/fleet/cadillac-ct5-ct6-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 13334
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-400.avif",
+          "url": "/fleet/cadillac-ct5-ct6-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 13488
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-400.webp",
+          "url": "/fleet/cadillac-ct5-ct6-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 20584
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-600.avif",
+          "url": "/fleet/cadillac-ct5-ct6-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 24405
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-600.webp",
+          "url": "/fleet/cadillac-ct5-ct6-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 36662
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-900.avif",
+          "url": "/fleet/cadillac-ct5-ct6-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 43066
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-900.webp",
+          "url": "/fleet/cadillac-ct5-ct6-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 62982
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-1100.avif",
+          "url": "/fleet/cadillac-ct5-ct6-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 56030
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-1100.webp",
+          "url": "/fleet/cadillac-ct5-ct6-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 80178
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-1400.avif",
+          "url": "/fleet/cadillac-ct5-ct6-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 74764
+        },
+        {
+          "path": "fleet/cadillac-ct5-ct6-1400.webp",
+          "url": "/fleet/cadillac-ct5-ct6-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 108538
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-ct5-ct6-300.avif 300w, /fleet/cadillac-ct5-ct6-400.avif 400w, /fleet/cadillac-ct5-ct6-600.avif 600w, /fleet/cadillac-ct5-ct6-900.avif 900w, /fleet/cadillac-ct5-ct6-1100.avif 1100w, /fleet/cadillac-ct5-ct6-1400.avif 1400w",
+        "webp": "/fleet/cadillac-ct5-ct6-300.webp 300w, /fleet/cadillac-ct5-ct6-400.webp 400w, /fleet/cadillac-ct5-ct6-600.webp 600w, /fleet/cadillac-ct5-ct6-900.webp 900w, /fleet/cadillac-ct5-ct6-1100.webp 1100w, /fleet/cadillac-ct5-ct6-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-escalade-esv",
+      "master": {
+        "path": "fleet/cadillac-escalade-esv.webp",
+        "url": "/fleet/cadillac-escalade-esv.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 137320,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-escalade-esv-300.avif",
+          "url": "/fleet/cadillac-escalade-esv-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 5466
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-300.webp",
+          "url": "/fleet/cadillac-escalade-esv-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 7030
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-400.avif",
+          "url": "/fleet/cadillac-escalade-esv-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 8475
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-400.webp",
+          "url": "/fleet/cadillac-escalade-esv-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 11050
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-600.avif",
+          "url": "/fleet/cadillac-escalade-esv-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 15894
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-600.webp",
+          "url": "/fleet/cadillac-escalade-esv-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 21162
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-900.avif",
+          "url": "/fleet/cadillac-escalade-esv-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 600,
+          "bytes": 29904
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-900.webp",
+          "url": "/fleet/cadillac-escalade-esv-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 600,
+          "bytes": 41024
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-1100.avif",
+          "url": "/fleet/cadillac-escalade-esv-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 733,
+          "bytes": 41226
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-1100.webp",
+          "url": "/fleet/cadillac-escalade-esv-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 733,
+          "bytes": 55494
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-1400.avif",
+          "url": "/fleet/cadillac-escalade-esv-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 933,
+          "bytes": 58681
+        },
+        {
+          "path": "fleet/cadillac-escalade-esv-1400.webp",
+          "url": "/fleet/cadillac-escalade-esv-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 933,
+          "bytes": 80384
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-escalade-esv-300.avif 300w, /fleet/cadillac-escalade-esv-400.avif 400w, /fleet/cadillac-escalade-esv-600.avif 600w, /fleet/cadillac-escalade-esv-900.avif 900w, /fleet/cadillac-escalade-esv-1100.avif 1100w, /fleet/cadillac-escalade-esv-1400.avif 1400w",
+        "webp": "/fleet/cadillac-escalade-esv-300.webp 300w, /fleet/cadillac-escalade-esv-400.webp 400w, /fleet/cadillac-escalade-esv-600.webp 600w, /fleet/cadillac-escalade-esv-900.webp 900w, /fleet/cadillac-escalade-esv-1100.webp 1100w, /fleet/cadillac-escalade-esv-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-escalade",
+      "master": {
+        "path": "fleet/cadillac-escalade.webp",
+        "url": "/fleet/cadillac-escalade.webp",
+        "width": 1644,
+        "height": 957,
+        "bytes": 106030,
+        "aspectRatio": 1.7179
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-escalade-300.avif",
+          "url": "/fleet/cadillac-escalade-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 175,
+          "bytes": 4911
+        },
+        {
+          "path": "fleet/cadillac-escalade-300.webp",
+          "url": "/fleet/cadillac-escalade-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 175,
+          "bytes": 6444
+        },
+        {
+          "path": "fleet/cadillac-escalade-400.avif",
+          "url": "/fleet/cadillac-escalade-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 233,
+          "bytes": 7284
+        },
+        {
+          "path": "fleet/cadillac-escalade-400.webp",
+          "url": "/fleet/cadillac-escalade-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 233,
+          "bytes": 9976
+        },
+        {
+          "path": "fleet/cadillac-escalade-600.avif",
+          "url": "/fleet/cadillac-escalade-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 349,
+          "bytes": 13307
+        },
+        {
+          "path": "fleet/cadillac-escalade-600.webp",
+          "url": "/fleet/cadillac-escalade-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 349,
+          "bytes": 18208
+        },
+        {
+          "path": "fleet/cadillac-escalade-900.avif",
+          "url": "/fleet/cadillac-escalade-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 524,
+          "bytes": 23930
+        },
+        {
+          "path": "fleet/cadillac-escalade-900.webp",
+          "url": "/fleet/cadillac-escalade-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 524,
+          "bytes": 32492
+        },
+        {
+          "path": "fleet/cadillac-escalade-1100.avif",
+          "url": "/fleet/cadillac-escalade-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 640,
+          "bytes": 31247
+        },
+        {
+          "path": "fleet/cadillac-escalade-1100.webp",
+          "url": "/fleet/cadillac-escalade-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 640,
+          "bytes": 42596
+        },
+        {
+          "path": "fleet/cadillac-escalade-1400.avif",
+          "url": "/fleet/cadillac-escalade-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 815,
+          "bytes": 42509
+        },
+        {
+          "path": "fleet/cadillac-escalade-1400.webp",
+          "url": "/fleet/cadillac-escalade-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 815,
+          "bytes": 58660
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-escalade-300.avif 300w, /fleet/cadillac-escalade-400.avif 400w, /fleet/cadillac-escalade-600.avif 600w, /fleet/cadillac-escalade-900.avif 900w, /fleet/cadillac-escalade-1100.avif 1100w, /fleet/cadillac-escalade-1400.avif 1400w",
+        "webp": "/fleet/cadillac-escalade-300.webp 300w, /fleet/cadillac-escalade-400.webp 400w, /fleet/cadillac-escalade-600.webp 600w, /fleet/cadillac-escalade-900.webp 900w, /fleet/cadillac-escalade-1100.webp 1100w, /fleet/cadillac-escalade-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-lyriq",
+      "master": {
+        "path": "fleet/cadillac-lyriq.webp",
+        "url": "/fleet/cadillac-lyriq.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 141064,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-lyriq-300.avif",
+          "url": "/fleet/cadillac-lyriq-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 8377
+        },
+        {
+          "path": "fleet/cadillac-lyriq-300.webp",
+          "url": "/fleet/cadillac-lyriq-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 12240
+        },
+        {
+          "path": "fleet/cadillac-lyriq-400.avif",
+          "url": "/fleet/cadillac-lyriq-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 12997
+        },
+        {
+          "path": "fleet/cadillac-lyriq-400.webp",
+          "url": "/fleet/cadillac-lyriq-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 19444
+        },
+        {
+          "path": "fleet/cadillac-lyriq-600.avif",
+          "url": "/fleet/cadillac-lyriq-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 24056
+        },
+        {
+          "path": "fleet/cadillac-lyriq-600.webp",
+          "url": "/fleet/cadillac-lyriq-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 35678
+        },
+        {
+          "path": "fleet/cadillac-lyriq-900.avif",
+          "url": "/fleet/cadillac-lyriq-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 45140
+        },
+        {
+          "path": "fleet/cadillac-lyriq-900.webp",
+          "url": "/fleet/cadillac-lyriq-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 65014
+        },
+        {
+          "path": "fleet/cadillac-lyriq-1100.avif",
+          "url": "/fleet/cadillac-lyriq-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 59560
+        },
+        {
+          "path": "fleet/cadillac-lyriq-1100.webp",
+          "url": "/fleet/cadillac-lyriq-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 84796
+        },
+        {
+          "path": "fleet/cadillac-lyriq-1400.avif",
+          "url": "/fleet/cadillac-lyriq-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 80194
+        },
+        {
+          "path": "fleet/cadillac-lyriq-1400.webp",
+          "url": "/fleet/cadillac-lyriq-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 113962
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-lyriq-300.avif 300w, /fleet/cadillac-lyriq-400.avif 400w, /fleet/cadillac-lyriq-600.avif 600w, /fleet/cadillac-lyriq-900.avif 900w, /fleet/cadillac-lyriq-1100.avif 1100w, /fleet/cadillac-lyriq-1400.avif 1400w",
+        "webp": "/fleet/cadillac-lyriq-300.webp 300w, /fleet/cadillac-lyriq-400.webp 400w, /fleet/cadillac-lyriq-600.webp 600w, /fleet/cadillac-lyriq-900.webp 900w, /fleet/cadillac-lyriq-1100.webp 1100w, /fleet/cadillac-lyriq-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-xt6-showroom",
+      "master": {
+        "path": "fleet/cadillac-xt6-showroom.webp",
+        "url": "/fleet/cadillac-xt6-showroom.webp",
+        "width": 1741,
+        "height": 903,
+        "bytes": 153358,
+        "aspectRatio": 1.928
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-xt6-showroom-300.avif",
+          "url": "/fleet/cadillac-xt6-showroom-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 156,
+          "bytes": 5290
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-300.webp",
+          "url": "/fleet/cadillac-xt6-showroom-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 156,
+          "bytes": 7344
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-400.avif",
+          "url": "/fleet/cadillac-xt6-showroom-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 207,
+          "bytes": 8386
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-400.webp",
+          "url": "/fleet/cadillac-xt6-showroom-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 207,
+          "bytes": 11658
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-600.avif",
+          "url": "/fleet/cadillac-xt6-showroom-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 311,
+          "bytes": 16003
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-600.webp",
+          "url": "/fleet/cadillac-xt6-showroom-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 311,
+          "bytes": 22900
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-900.avif",
+          "url": "/fleet/cadillac-xt6-showroom-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 467,
+          "bytes": 30161
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-900.webp",
+          "url": "/fleet/cadillac-xt6-showroom-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 467,
+          "bytes": 42562
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-1100.avif",
+          "url": "/fleet/cadillac-xt6-showroom-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 571,
+          "bytes": 40462
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-1100.webp",
+          "url": "/fleet/cadillac-xt6-showroom-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 571,
+          "bytes": 56830
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-1400.avif",
+          "url": "/fleet/cadillac-xt6-showroom-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 726,
+          "bytes": 56648
+        },
+        {
+          "path": "fleet/cadillac-xt6-showroom-1400.webp",
+          "url": "/fleet/cadillac-xt6-showroom-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 726,
+          "bytes": 79244
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-xt6-showroom-300.avif 300w, /fleet/cadillac-xt6-showroom-400.avif 400w, /fleet/cadillac-xt6-showroom-600.avif 600w, /fleet/cadillac-xt6-showroom-900.avif 900w, /fleet/cadillac-xt6-showroom-1100.avif 1100w, /fleet/cadillac-xt6-showroom-1400.avif 1400w",
+        "webp": "/fleet/cadillac-xt6-showroom-300.webp 300w, /fleet/cadillac-xt6-showroom-400.webp 400w, /fleet/cadillac-xt6-showroom-600.webp 600w, /fleet/cadillac-xt6-showroom-900.webp 900w, /fleet/cadillac-xt6-showroom-1100.webp 1100w, /fleet/cadillac-xt6-showroom-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "cadillac-xt6",
+      "master": {
+        "path": "fleet/cadillac-xt6.webp",
+        "url": "/fleet/cadillac-xt6.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 157870,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/cadillac-xt6-300.avif",
+          "url": "/fleet/cadillac-xt6-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 9235
+        },
+        {
+          "path": "fleet/cadillac-xt6-300.webp",
+          "url": "/fleet/cadillac-xt6-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 13876
+        },
+        {
+          "path": "fleet/cadillac-xt6-400.avif",
+          "url": "/fleet/cadillac-xt6-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 14998
+        },
+        {
+          "path": "fleet/cadillac-xt6-400.webp",
+          "url": "/fleet/cadillac-xt6-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 22010
+        },
+        {
+          "path": "fleet/cadillac-xt6-600.avif",
+          "url": "/fleet/cadillac-xt6-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 28847
+        },
+        {
+          "path": "fleet/cadillac-xt6-600.webp",
+          "url": "/fleet/cadillac-xt6-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 41490
+        },
+        {
+          "path": "fleet/cadillac-xt6-900.avif",
+          "url": "/fleet/cadillac-xt6-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 52328
+        },
+        {
+          "path": "fleet/cadillac-xt6-900.webp",
+          "url": "/fleet/cadillac-xt6-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 74418
+        },
+        {
+          "path": "fleet/cadillac-xt6-1100.avif",
+          "url": "/fleet/cadillac-xt6-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 68030
+        },
+        {
+          "path": "fleet/cadillac-xt6-1100.webp",
+          "url": "/fleet/cadillac-xt6-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 93820
+        },
+        {
+          "path": "fleet/cadillac-xt6-1400.avif",
+          "url": "/fleet/cadillac-xt6-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 90067
+        },
+        {
+          "path": "fleet/cadillac-xt6-1400.webp",
+          "url": "/fleet/cadillac-xt6-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 125222
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/cadillac-xt6-300.avif 300w, /fleet/cadillac-xt6-400.avif 400w, /fleet/cadillac-xt6-600.avif 600w, /fleet/cadillac-xt6-900.avif 900w, /fleet/cadillac-xt6-1100.avif 1100w, /fleet/cadillac-xt6-1400.avif 1400w",
+        "webp": "/fleet/cadillac-xt6-300.webp 300w, /fleet/cadillac-xt6-400.webp 400w, /fleet/cadillac-xt6-600.webp 600w, /fleet/cadillac-xt6-900.webp 900w, /fleet/cadillac-xt6-1100.webp 1100w, /fleet/cadillac-xt6-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "chevrolet-suburban",
+      "master": {
+        "path": "fleet/chevrolet-suburban.webp",
+        "url": "/fleet/chevrolet-suburban.webp",
+        "width": 1635,
+        "height": 962,
+        "bytes": 112738,
+        "aspectRatio": 1.6996
+      },
+      "variants": [
+        {
+          "path": "fleet/chevrolet-suburban-300.avif",
+          "url": "/fleet/chevrolet-suburban-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 177,
+          "bytes": 5276
+        },
+        {
+          "path": "fleet/chevrolet-suburban-300.webp",
+          "url": "/fleet/chevrolet-suburban-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 177,
+          "bytes": 6918
+        },
+        {
+          "path": "fleet/chevrolet-suburban-400.avif",
+          "url": "/fleet/chevrolet-suburban-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 235,
+          "bytes": 7603
+        },
+        {
+          "path": "fleet/chevrolet-suburban-400.webp",
+          "url": "/fleet/chevrolet-suburban-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 235,
+          "bytes": 10380
+        },
+        {
+          "path": "fleet/chevrolet-suburban-600.avif",
+          "url": "/fleet/chevrolet-suburban-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 353,
+          "bytes": 13630
+        },
+        {
+          "path": "fleet/chevrolet-suburban-600.webp",
+          "url": "/fleet/chevrolet-suburban-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 353,
+          "bytes": 18922
+        },
+        {
+          "path": "fleet/chevrolet-suburban-900.avif",
+          "url": "/fleet/chevrolet-suburban-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 530,
+          "bytes": 24852
+        },
+        {
+          "path": "fleet/chevrolet-suburban-900.webp",
+          "url": "/fleet/chevrolet-suburban-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 530,
+          "bytes": 34274
+        },
+        {
+          "path": "fleet/chevrolet-suburban-1100.avif",
+          "url": "/fleet/chevrolet-suburban-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 647,
+          "bytes": 32848
+        },
+        {
+          "path": "fleet/chevrolet-suburban-1100.webp",
+          "url": "/fleet/chevrolet-suburban-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 647,
+          "bytes": 45204
+        },
+        {
+          "path": "fleet/chevrolet-suburban-1400.avif",
+          "url": "/fleet/chevrolet-suburban-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 824,
+          "bytes": 45639
+        },
+        {
+          "path": "fleet/chevrolet-suburban-1400.webp",
+          "url": "/fleet/chevrolet-suburban-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 824,
+          "bytes": 62784
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/chevrolet-suburban-300.avif 300w, /fleet/chevrolet-suburban-400.avif 400w, /fleet/chevrolet-suburban-600.avif 600w, /fleet/chevrolet-suburban-900.avif 900w, /fleet/chevrolet-suburban-1100.avif 1100w, /fleet/chevrolet-suburban-1400.avif 1400w",
+        "webp": "/fleet/chevrolet-suburban-300.webp 300w, /fleet/chevrolet-suburban-400.webp 400w, /fleet/chevrolet-suburban-600.webp 600w, /fleet/chevrolet-suburban-900.webp 900w, /fleet/chevrolet-suburban-1100.webp 1100w, /fleet/chevrolet-suburban-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "gmc-denali",
+      "master": {
+        "path": "fleet/gmc-denali.webp",
+        "url": "/fleet/gmc-denali.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 163464,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/gmc-denali-300.avif",
+          "url": "/fleet/gmc-denali-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 8959
+        },
+        {
+          "path": "fleet/gmc-denali-300.webp",
+          "url": "/fleet/gmc-denali-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 13946
+        },
+        {
+          "path": "fleet/gmc-denali-400.avif",
+          "url": "/fleet/gmc-denali-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 14252
+        },
+        {
+          "path": "fleet/gmc-denali-400.webp",
+          "url": "/fleet/gmc-denali-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 22216
+        },
+        {
+          "path": "fleet/gmc-denali-600.avif",
+          "url": "/fleet/gmc-denali-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 27791
+        },
+        {
+          "path": "fleet/gmc-denali-600.webp",
+          "url": "/fleet/gmc-denali-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 42478
+        },
+        {
+          "path": "fleet/gmc-denali-900.avif",
+          "url": "/fleet/gmc-denali-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 52059
+        },
+        {
+          "path": "fleet/gmc-denali-900.webp",
+          "url": "/fleet/gmc-denali-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 75962
+        },
+        {
+          "path": "fleet/gmc-denali-1100.avif",
+          "url": "/fleet/gmc-denali-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 68213
+        },
+        {
+          "path": "fleet/gmc-denali-1100.webp",
+          "url": "/fleet/gmc-denali-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 99952
+        },
+        {
+          "path": "fleet/gmc-denali-1400.avif",
+          "url": "/fleet/gmc-denali-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 93274
+        },
+        {
+          "path": "fleet/gmc-denali-1400.webp",
+          "url": "/fleet/gmc-denali-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 136178
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/gmc-denali-300.avif 300w, /fleet/gmc-denali-400.avif 400w, /fleet/gmc-denali-600.avif 600w, /fleet/gmc-denali-900.avif 900w, /fleet/gmc-denali-1100.avif 1100w, /fleet/gmc-denali-1400.avif 1400w",
+        "webp": "/fleet/gmc-denali-300.webp 300w, /fleet/gmc-denali-400.webp 400w, /fleet/gmc-denali-600.webp 600w, /fleet/gmc-denali-900.webp 900w, /fleet/gmc-denali-1100.webp 1100w, /fleet/gmc-denali-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "lincoln-continental",
+      "master": {
+        "path": "fleet/lincoln-continental.webp",
+        "url": "/fleet/lincoln-continental.webp",
+        "width": 1448,
+        "height": 1086,
+        "bytes": 185946,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/lincoln-continental-300.avif",
+          "url": "/fleet/lincoln-continental-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 9968
+        },
+        {
+          "path": "fleet/lincoln-continental-300.webp",
+          "url": "/fleet/lincoln-continental-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 15858
+        },
+        {
+          "path": "fleet/lincoln-continental-400.avif",
+          "url": "/fleet/lincoln-continental-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 16436
+        },
+        {
+          "path": "fleet/lincoln-continental-400.webp",
+          "url": "/fleet/lincoln-continental-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 25242
+        },
+        {
+          "path": "fleet/lincoln-continental-600.avif",
+          "url": "/fleet/lincoln-continental-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 32477
+        },
+        {
+          "path": "fleet/lincoln-continental-600.webp",
+          "url": "/fleet/lincoln-continental-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 50154
+        },
+        {
+          "path": "fleet/lincoln-continental-900.avif",
+          "url": "/fleet/lincoln-continental-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 60301
+        },
+        {
+          "path": "fleet/lincoln-continental-900.webp",
+          "url": "/fleet/lincoln-continental-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 88882
+        },
+        {
+          "path": "fleet/lincoln-continental-1100.avif",
+          "url": "/fleet/lincoln-continental-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 79524
+        },
+        {
+          "path": "fleet/lincoln-continental-1100.webp",
+          "url": "/fleet/lincoln-continental-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 115574
+        },
+        {
+          "path": "fleet/lincoln-continental-1400.avif",
+          "url": "/fleet/lincoln-continental-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 107795
+        },
+        {
+          "path": "fleet/lincoln-continental-1400.webp",
+          "url": "/fleet/lincoln-continental-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 157212
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/lincoln-continental-300.avif 300w, /fleet/lincoln-continental-400.avif 400w, /fleet/lincoln-continental-600.avif 600w, /fleet/lincoln-continental-900.avif 900w, /fleet/lincoln-continental-1100.avif 1100w, /fleet/lincoln-continental-1400.avif 1400w",
+        "webp": "/fleet/lincoln-continental-300.webp 300w, /fleet/lincoln-continental-400.webp 400w, /fleet/lincoln-continental-600.webp 600w, /fleet/lincoln-continental-900.webp 900w, /fleet/lincoln-continental-1100.webp 1100w, /fleet/lincoln-continental-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "lincoln-navigator",
+      "master": {
+        "path": "fleet/lincoln-navigator.webp",
+        "url": "/fleet/lincoln-navigator.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 304300,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/lincoln-navigator-300.avif",
+          "url": "/fleet/lincoln-navigator-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 9937
+        },
+        {
+          "path": "fleet/lincoln-navigator-300.webp",
+          "url": "/fleet/lincoln-navigator-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 15630
+        },
+        {
+          "path": "fleet/lincoln-navigator-400.avif",
+          "url": "/fleet/lincoln-navigator-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 16869
+        },
+        {
+          "path": "fleet/lincoln-navigator-400.webp",
+          "url": "/fleet/lincoln-navigator-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 26484
+        },
+        {
+          "path": "fleet/lincoln-navigator-600.avif",
+          "url": "/fleet/lincoln-navigator-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 33565
+        },
+        {
+          "path": "fleet/lincoln-navigator-600.webp",
+          "url": "/fleet/lincoln-navigator-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 53352
+        },
+        {
+          "path": "fleet/lincoln-navigator-900.avif",
+          "url": "/fleet/lincoln-navigator-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 600,
+          "bytes": 67352
+        },
+        {
+          "path": "fleet/lincoln-navigator-900.webp",
+          "url": "/fleet/lincoln-navigator-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 600,
+          "bytes": 104390
+        },
+        {
+          "path": "fleet/lincoln-navigator-1100.avif",
+          "url": "/fleet/lincoln-navigator-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 733,
+          "bytes": 92678
+        },
+        {
+          "path": "fleet/lincoln-navigator-1100.webp",
+          "url": "/fleet/lincoln-navigator-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 733,
+          "bytes": 142146
+        },
+        {
+          "path": "fleet/lincoln-navigator-1400.avif",
+          "url": "/fleet/lincoln-navigator-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 933,
+          "bytes": 131190
+        },
+        {
+          "path": "fleet/lincoln-navigator-1400.webp",
+          "url": "/fleet/lincoln-navigator-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 933,
+          "bytes": 199274
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/lincoln-navigator-300.avif 300w, /fleet/lincoln-navigator-400.avif 400w, /fleet/lincoln-navigator-600.avif 600w, /fleet/lincoln-navigator-900.avif 900w, /fleet/lincoln-navigator-1100.avif 1100w, /fleet/lincoln-navigator-1400.avif 1400w",
+        "webp": "/fleet/lincoln-navigator-300.webp 300w, /fleet/lincoln-navigator-400.webp 400w, /fleet/lincoln-navigator-600.webp 600w, /fleet/lincoln-navigator-900.webp 900w, /fleet/lincoln-navigator-1100.webp 1100w, /fleet/lincoln-navigator-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "mercedes-s-class",
+      "master": {
+        "path": "fleet/mercedes-s-class.webp",
+        "url": "/fleet/mercedes-s-class.webp",
+        "width": 1620,
+        "height": 971,
+        "bytes": 101600,
+        "aspectRatio": 1.6684
+      },
+      "variants": [
+        {
+          "path": "fleet/mercedes-s-class-300.avif",
+          "url": "/fleet/mercedes-s-class-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 180,
+          "bytes": 6448
+        },
+        {
+          "path": "fleet/mercedes-s-class-300.webp",
+          "url": "/fleet/mercedes-s-class-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 180,
+          "bytes": 9880
+        },
+        {
+          "path": "fleet/mercedes-s-class-400.avif",
+          "url": "/fleet/mercedes-s-class-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 240,
+          "bytes": 9330
+        },
+        {
+          "path": "fleet/mercedes-s-class-400.webp",
+          "url": "/fleet/mercedes-s-class-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 240,
+          "bytes": 14548
+        },
+        {
+          "path": "fleet/mercedes-s-class-600.avif",
+          "url": "/fleet/mercedes-s-class-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 360,
+          "bytes": 16650
+        },
+        {
+          "path": "fleet/mercedes-s-class-600.webp",
+          "url": "/fleet/mercedes-s-class-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 360,
+          "bytes": 25158
+        },
+        {
+          "path": "fleet/mercedes-s-class-900.avif",
+          "url": "/fleet/mercedes-s-class-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 539,
+          "bytes": 29291
+        },
+        {
+          "path": "fleet/mercedes-s-class-900.webp",
+          "url": "/fleet/mercedes-s-class-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 539,
+          "bytes": 42420
+        },
+        {
+          "path": "fleet/mercedes-s-class-1100.avif",
+          "url": "/fleet/mercedes-s-class-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 659,
+          "bytes": 37685
+        },
+        {
+          "path": "fleet/mercedes-s-class-1100.webp",
+          "url": "/fleet/mercedes-s-class-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 659,
+          "bytes": 55308
+        },
+        {
+          "path": "fleet/mercedes-s-class-1400.avif",
+          "url": "/fleet/mercedes-s-class-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 839,
+          "bytes": 51207
+        },
+        {
+          "path": "fleet/mercedes-s-class-1400.webp",
+          "url": "/fleet/mercedes-s-class-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 839,
+          "bytes": 74342
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/mercedes-s-class-300.avif 300w, /fleet/mercedes-s-class-400.avif 400w, /fleet/mercedes-s-class-600.avif 600w, /fleet/mercedes-s-class-900.avif 900w, /fleet/mercedes-s-class-1100.avif 1100w, /fleet/mercedes-s-class-1400.avif 1400w",
+        "webp": "/fleet/mercedes-s-class-300.webp 300w, /fleet/mercedes-s-class-400.webp 400w, /fleet/mercedes-s-class-600.webp 600w, /fleet/mercedes-s-class-900.webp 900w, /fleet/mercedes-s-class-1100.webp 1100w, /fleet/mercedes-s-class-1400.webp 1400w"
+      }
+    },
+    {
+      "slug": "sprinter-jet",
+      "master": {
+        "path": "fleet/sprinter-jet.webp",
+        "url": "/fleet/sprinter-jet.webp",
+        "width": 1236,
+        "height": 650,
+        "bytes": 94830,
+        "aspectRatio": 1.9015
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-jet-300.avif",
+          "url": "/fleet/sprinter-jet-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 158,
+          "bytes": 5103
+        },
+        {
+          "path": "fleet/sprinter-jet-300.webp",
+          "url": "/fleet/sprinter-jet-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 158,
+          "bytes": 7370
+        },
+        {
+          "path": "fleet/sprinter-jet-400.avif",
+          "url": "/fleet/sprinter-jet-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 210,
+          "bytes": 8022
+        },
+        {
+          "path": "fleet/sprinter-jet-400.webp",
+          "url": "/fleet/sprinter-jet-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 210,
+          "bytes": 11570
+        },
+        {
+          "path": "fleet/sprinter-jet-600.avif",
+          "url": "/fleet/sprinter-jet-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 316,
+          "bytes": 14838
+        },
+        {
+          "path": "fleet/sprinter-jet-600.webp",
+          "url": "/fleet/sprinter-jet-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 316,
+          "bytes": 21984
+        },
+        {
+          "path": "fleet/sprinter-jet-900.avif",
+          "url": "/fleet/sprinter-jet-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 473,
+          "bytes": 28223
+        },
+        {
+          "path": "fleet/sprinter-jet-900.webp",
+          "url": "/fleet/sprinter-jet-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 473,
+          "bytes": 40256
+        },
+        {
+          "path": "fleet/sprinter-jet-1100.avif",
+          "url": "/fleet/sprinter-jet-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 578,
+          "bytes": 37430
+        },
+        {
+          "path": "fleet/sprinter-jet-1100.webp",
+          "url": "/fleet/sprinter-jet-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 578,
+          "bytes": 51314
+        },
+        {
+          "path": "fleet/sprinter-jet-1236.avif",
+          "url": "/fleet/sprinter-jet-1236.avif",
+          "format": "avif",
+          "width": 1236,
+          "height": 650,
+          "bytes": 45357
+        },
+        {
+          "path": "fleet/sprinter-jet-1236.webp",
+          "url": "/fleet/sprinter-jet-1236.webp",
+          "format": "webp",
+          "width": 1236,
+          "height": 650,
+          "bytes": 63482
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-jet-300.avif 300w, /fleet/sprinter-jet-400.avif 400w, /fleet/sprinter-jet-600.avif 600w, /fleet/sprinter-jet-900.avif 900w, /fleet/sprinter-jet-1100.avif 1100w, /fleet/sprinter-jet-1236.avif 1236w",
+        "webp": "/fleet/sprinter-jet-300.webp 300w, /fleet/sprinter-jet-400.webp 400w, /fleet/sprinter-jet-600.webp 600w, /fleet/sprinter-jet-900.webp 900w, /fleet/sprinter-jet-1100.webp 1100w, /fleet/sprinter-jet-1236.webp 1236w"
+      }
+    },
+    {
+      "slug": "sprinter-limo",
+      "master": {
+        "path": "fleet/sprinter-limo.webp",
+        "url": "/fleet/sprinter-limo.webp",
+        "width": 1236,
+        "height": 650,
+        "bytes": 118190,
+        "aspectRatio": 1.9015
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-limo-300.avif",
+          "url": "/fleet/sprinter-limo-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 158,
+          "bytes": 6612
+        },
+        {
+          "path": "fleet/sprinter-limo-300.webp",
+          "url": "/fleet/sprinter-limo-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 158,
+          "bytes": 11162
+        },
+        {
+          "path": "fleet/sprinter-limo-400.avif",
+          "url": "/fleet/sprinter-limo-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 210,
+          "bytes": 10045
+        },
+        {
+          "path": "fleet/sprinter-limo-400.webp",
+          "url": "/fleet/sprinter-limo-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 210,
+          "bytes": 17046
+        },
+        {
+          "path": "fleet/sprinter-limo-600.avif",
+          "url": "/fleet/sprinter-limo-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 316,
+          "bytes": 18666
+        },
+        {
+          "path": "fleet/sprinter-limo-600.webp",
+          "url": "/fleet/sprinter-limo-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 316,
+          "bytes": 30674
+        },
+        {
+          "path": "fleet/sprinter-limo-900.avif",
+          "url": "/fleet/sprinter-limo-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 473,
+          "bytes": 34713
+        },
+        {
+          "path": "fleet/sprinter-limo-900.webp",
+          "url": "/fleet/sprinter-limo-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 473,
+          "bytes": 53536
+        },
+        {
+          "path": "fleet/sprinter-limo-1100.avif",
+          "url": "/fleet/sprinter-limo-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 578,
+          "bytes": 45512
+        },
+        {
+          "path": "fleet/sprinter-limo-1100.webp",
+          "url": "/fleet/sprinter-limo-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 578,
+          "bytes": 68980
+        },
+        {
+          "path": "fleet/sprinter-limo-1236.avif",
+          "url": "/fleet/sprinter-limo-1236.avif",
+          "format": "avif",
+          "width": 1236,
+          "height": 650,
+          "bytes": 54764
+        },
+        {
+          "path": "fleet/sprinter-limo-1236.webp",
+          "url": "/fleet/sprinter-limo-1236.webp",
+          "format": "webp",
+          "width": 1236,
+          "height": 650,
+          "bytes": 81762
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-limo-300.avif 300w, /fleet/sprinter-limo-400.avif 400w, /fleet/sprinter-limo-600.avif 600w, /fleet/sprinter-limo-900.avif 900w, /fleet/sprinter-limo-1100.avif 1100w, /fleet/sprinter-limo-1236.avif 1236w",
+        "webp": "/fleet/sprinter-limo-300.webp 300w, /fleet/sprinter-limo-400.webp 400w, /fleet/sprinter-limo-600.webp 600w, /fleet/sprinter-limo-900.webp 900w, /fleet/sprinter-limo-1100.webp 1100w, /fleet/sprinter-limo-1236.webp 1236w"
+      }
+    }
+  ]
+}
