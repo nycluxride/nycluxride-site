@@ -1,0 +1,380 @@
+{
+ "404.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "about.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "black-car-service-brooklyn.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 1,
+  "places": 2,
+  "triads": 1,
+  "colons": 1,
+  "questions": 0
+ },
+ "blog/best-black-car-service-brooklyn-queens-march-20.html": {
+  "so": 0,
+  "sostart": 5,
+  "which": 1,
+  "places": 3,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/chauffeur-service-nyc-booking-guide-april-30.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 1,
+  "places": 1,
+  "triads": 0,
+  "colons": 0,
+  "questions": 9
+ },
+ "blog/corporate-black-car-nyc-april-3.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 1,
+  "triads": 0,
+  "colons": 1,
+  "questions": 0
+ },
+ "blog/jfk-lga-ewr-airport-transfer-guide-april-17.html": {
+  "so": 0,
+  "sostart": 2,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/manhattan-hourly-chauffeur-service-april-10.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 2,
+  "triads": 0,
+  "colons": 1,
+  "questions": 0
+ },
+ "blog/nyc-cruise-terminal-black-car-service-guide-march-6.html": {
+  "so": 0,
+  "sostart": 2,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/nyc-limo-service-comparison-guide-april-29.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 1,
+  "colons": 0,
+  "questions": 8
+ },
+ "blog/nyc-prom-limo-booking-guide-march-13.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 1,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/wedding-event-limo-nyc-march-27.html": {
+  "so": 0,
+  "sostart": 2,
+  "which": 0,
+  "places": 1,
+  "triads": 1,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/whatsapp-airport-pickup-coordination-nyc-april-24.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "book.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 1,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "booking-confirmed.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "card-authorization.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "chauffeur-service-nyc.html": {
+  "so": 0,
+  "sostart": 2,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "contact.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "faq.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 1,
+  "colons": 1,
+  "questions": 0
+ },
+ "fleet.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "index.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 1,
+  "triads": 2,
+  "colons": 0,
+  "questions": 0
+ },
+ "limousine-service-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 2,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/bronx.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/brooklyn.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/financial-district.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/jfk-airport.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 1,
+  "triads": 0,
+  "colons": 6,
+  "questions": 0
+ },
+ "locations/laguardia-airport.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 1,
+  "triads": 0,
+  "colons": 3,
+  "questions": 0
+ },
+ "locations/long-island-city.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/manhattan.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/queens.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/soho.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/staten-island.html": {
+  "so": 0,
+  "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/upper-east-side.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/upper-west-side.html": {
+  "so": 0,
+  "sostart": 3,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "privacy-policy.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "rates.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 1,
+  "colons": 2,
+  "questions": 0
+ },
+ "schedule.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "scripts": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "services.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 1,
+  "places": 0,
+  "triads": 1,
+  "colons": 0,
+  "questions": 0
+ },
+ "terms-of-service.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "recorded": "2026-10-18T22:09:07.184Z",
+ "throttle": {
+  "latency": 150,
+  "downKbps": 1638.4,
+  "upKbps": 750,
+  "cpu": 4
+ },
+ "encoding": "gzip",
+ "median": {
+  "/": {
+   "390": 1696,
+   "1440": 980
+  },
+  "/locations/manhattan": {
+   "390": 988,
+   "1440": 980
+  },
+  "/rates": {
+   "390": 1044,
+   "1440": 896
+  },
+  "/locations/bronx": {
+   "390": 1228,
+   "1440": 984
+  },
+  "/locations/jfk-airport": {
+   "390": 1128,
+   "1440": 996
+  },
+  "/book": {
+   "390": 976,
+   "1440": 980
+  },
+  "/blog/jfk-lga-ewr-airport-transfer-guide-april-17": {
+   "390": 1040,
+   "1440": 896
+  }
+ }
+}
