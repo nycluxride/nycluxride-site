@@ -1,0 +1,128 @@
+{
+  "bmw-7-series-card.webp": {
+    "sha256": "ca58b17f3a69e8afe37cd2ad8cdc9ba09d9bf0789e29a5e9a9f875db64bb2eb4",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRhABAABXRUJQVlA4IAQBAADQCwCdASpAAFAAPrlOnkunKCKqN/iMyUAXCWcAxrtT2e7P/l4IBUC+lld26iKhT5GQviKfre45FKf3pYeNAKSv8LMjFRtNOwV4QJ84vkt1pqoVo3b5UhPWXvXwAZo9MhkyOSIJt/GgAP7xVmu0WNq726Fr6xwQ7a6GrVT1h2Dz32eEB3SLd76gEbhpxxBxCLN+Fr0+c1HqU2nNNnK2dYu2lt9OsSROG9p0SJmfvqj10mmZVxQ+E8LEq2KdNz6BralZ/vGqXC7cZpwzbWaJmyyaajt3cUkROWpKwAEHSq6PxNT1hRVqV62M8fBJk7fvtTDTWEIxo/AjXoVx0Y/yMpPbZoAAAA=="
+  },
+  "bmw-7-series.webp": {
+    "sha256": "712550bc9d04b70ae017407f4ae315d38819ac91d506b7be9a6e73dc8fb08ac3",
+    "width": 64,
+    "height": 39,
+    "src": "data:image/webp;base64,UklGRsQAAABXRUJQVlA4ILgAAADQCACdASpAACcAPq1CnEumI6Mhur5sAMAViWcAx+dT27nKhh93hZh6Y1vExJwQns6+lsNzAtN9lddxt+3WyjNcjwfLSO1nJqA2+O8H338AAP7x9r6t6yzAm1rUp78KPRKmZcN/PBLmCTvVCnvusISpS72WTTwDPtasAGbBD4+nZ3LzJ/kJ73I2r422KXylQcJegX/+gsJqnyEiXciHgpYC/siMEKKT8e0nQSMYLViyh2mm3pLTAAAA"
+  },
+  "cadillac-ct5-ct6.webp": {
+    "sha256": "97f135e5f6e8dd1a4c355a6966f37d1ef65955cd0c9d1d816998c6726b752ec0",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRtQAAABXRUJQVlA4IMgAAACwCQCdASpAADAAPs1WoEunpKMhsrJOYPAZiWUAwVdT2iD0r20bC/PWPjPiK0ENJH+fbLLRpjAgnNIKwXvY3JK/e1AVMaE7vLc+IBdb6MsLbthtxlrfAAD+3GoF6DYdqfuxOxiIM3lannsBFoPiDRLZeHub69EjGyHW+984adugGbhya2879fbfuDhmUc1nyGAQxEzcDkV6/531gCT+D5Q7MGgWzJEYpNMLOZmnlUQE7SKCy0GW0M/TzF8+nDIzfTBD024C9k2wAA=="
+  },
+  "cadillac-escalade-card.webp": {
+    "sha256": "50c446b6465928db55d170a455e0a77cef0926211a2e53f719a362e30e01088d",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRgoBAABXRUJQVlA4IP4AAADQCwCdASpAAFAAPr1ImUuupCIhtn28AdAXiWcAyU9T2r2/J2imEmni8Z+FcXiMSXjPfu1TyIwef7ghSq4IwrxcYWb6p2zlFWz9ijm8uJ/A2n1brF25FLVPlRDq+WZCJcc05dis3GZAAP7tZQgNe6+eV4BoLFpFVTMBigIkKp39ZAyKM7jt3QRcKqvlvMz1f1sNn2eLwQ1BpKjtawiZEzvh4Tc7JIWU8nXRoRwrtHszZr3D2WxsszGcs8hvDq7NfVLvjQuHFIUAx5STCfd2xRLbGru4NEzBRHRxXutX1L94JBbePzKg8F/XUDehC/h1FLwLlJGjvEBEGWotfNkAAA=="
+  },
+  "cadillac-escalade-esv.webp": {
+    "sha256": "9356b8a7fc9f66194ae216bacb6034d2097bd9571b4a1727f85e2c31116eba31",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRrwAAABXRUJQVlA4ILAAAABwBwCdASpAACsAPrVImkuuJCIhurzIAcAWiWcAxrtT20rS5lGUeVKestl4DzX3QyB07Y/wJPwKQOQnz4Y9d+Yv4kRPcAD+7n4T33mSrfc3ZcvhGi5ZGzxsaM9pJMM8Yg208nq1AjlnrUp97/kBQLmFLhxZNKjMtLpqZbfUVAYOyhTUxPW4QjuYQEn6HwkTBcBx45JAGXz3v0A3QtMoYU7v2hfFOcwzyHZXHQy4MHgAAA=="
+  },
+  "cadillac-escalade-hero.webp": {
+    "sha256": "9279e747340fb1c42727e277fadbcbe19a385e8e2de0515ec36a2f9675cef4df",
+    "width": 64,
+    "height": 38,
+    "src": "data:image/webp;base64,UklGRqIAAABXRUJQVlA4IJYAAADwBgCdASpAACYAPsFInUunpCKht/qoAPAYCWcAxCQpt3GH91fCeZPypQ3UiBO2pmOP/jTgiGIq4Z3YKpbB/aMAAP7uHEhGKtSSs5bAh/SByjKH8MFChFS5p2S/Mom6W2oEQHIRe8PN/PhWRc+8BzDh/eGtVn361yHACondHNWc/HWYVJ+e87oBX10MV/7uk8GWrVqAAAA="
+  },
+  "cadillac-escalade.webp": {
+    "sha256": "396ecce086546667e7833222ee39bb6faf72da1412089c1f71d168112963a7d6",
+    "width": 64,
+    "height": 37,
+    "src": "data:image/webp;base64,UklGRqoAAABXRUJQVlA4IJ4AAABQBgCdASpAACUAPsFMnEunpCKhtVv8APAYCWcAx6gpgG3mUq4MNAdX2I8UVoMRKXG1sMA1SOvck9kLAAD+7hxIO49t1KBy78wpPy7G6h3dfJxjT1qdeOGpH3diliatOCVx3AhaOgzDjZmbXS6tgyeQwkj2wevloGuk9oap6wMFitBSETHtYYmLTIb5RB9E2im2Ms2Axo3pprPBaQAAAA=="
+  },
+  "cadillac-lyriq-card.webp": {
+    "sha256": "c861dd396b28ee5b2d3ea5a619f64af1c7dbdc9b1791444608b06972c2d603b6",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAABwCwCdASpAAFAAPsFMnEu0JCKht/iMyoAYCWcAyU9T2fsLP539s3FBre6fs2834lgEsSgOe7oJvL1yuphtpYrWgtblogVTOStDqBoZF2Ke/m9gv2y1dODHMtFnhj0qH/H64+EAAP7x5Zei+S7Q4hj9/dehcM+GluLrhoo+vdhOSWljZFv1jJ4fo0Rf8jijGtCYJhmS/cWJX0OoyK07Lt6hbIFMBZUyS91CnzdmQQbDw7xIn1XTy4vPcw1f4p8RwO6/BLlWDZ/H+5zMRVJb1nr9IrQp+r5kjXYizpfKQN5HC76WWzPADdK5k4Ik89YLxK8OD9RX9zbkFi6jGmdoYdv7Dl/PajI41AyAgAAA"
+  },
+  "cadillac-lyriq.webp": {
+    "sha256": "7e47fa69a80be482369102d9c69684dce267f7af3772ad643c30c5d732276bb7",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRsgAAABXRUJQVlA4ILwAAACwCACdASpAADAAPslYoEunpaMhsrbbMPAZCWcAxzNT23jY37DRGfKz1+19rzutoBzbP3qG+WgMJTMplolHE8mVTvn/z8zPQsmqhqvTagAA/vL/pvJidHtLGALri1TLS2ZVp4BaR+GsheO0q1tVYVEUZnO/8h3ULKEtrQqFyQLiBoD8bNwoizX14IN/kkVsSl2VTATmgSbMCFAuWRf3ysvVIUMJde0+c6kg561vaYiSVaSV48flsgcjAUoAAA=="
+  },
+  "cadillac-xt6-showroom.webp": {
+    "sha256": "44b6c3ef32cc3633c53feb3b433152ec4512623321fac70b7bf8acee46211800",
+    "width": 64,
+    "height": 33,
+    "src": "data:image/webp;base64,UklGRq4AAABXRUJQVlA4IKIAAACwBgCdASpAACEAPsVQm0uqJKIhtVgN+UAYiWcAzygftWZ91sRvQkucyva+QzbfCQ5OwWQQp7Zi1DTOwj8BoAD+8HCT85tM/YpmoJuw1KJdBN52nFDkCeM14dJ9idXeM82XGBumJAiqYu9JIj8GEmAFzr5u0GlHPhkh1UWsmZjEt1e0Sg1x8/jOMhnFmA/U5hB4Le+0Tt1TOqAw2vkuHoUpIAA="
+  },
+  "cadillac-xt6.webp": {
+    "sha256": "a36a7da090aa567a890a9d0af48829a8b273bbc0525564154a81c171d59c91d7",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRrgAAABXRUJQVlA4IKwAAACQBwCdASpAADAAPrFMm0unJKKhur5oAOAWCWUAxgdT26B/uaBr5l7nRrd4Ada2+HWIw0ybfPmtuUSRhlWVPiVHuufyigAA/vOuVq+wDoO9HwMcBsfoaAvUzfn8YvUZtv4+sDlZ+9k7SyQZKZSSZm2ovYebNVehTfkpwul/Tk25sf8G+4LQb7gPJJr8LsDLUYnXW+Q53ZDNegNSNLcEKgy/N6DK2uXh5yV4AAAA"
+  },
+  "chevrolet-suburban-card.webp": {
+    "sha256": "845900aef551d19634ff6d1f5729a9c2eb634410a010be37523e38a343fae52d",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAADwDACdASpAAFAAPsVInEuvK6Khsz1cAeAYiWkAzYdT2m8qFnU/BLnkC3hMmLaEwCsJDrp55/nfCwTo04qmh77Ocr693pSns8oxBtqJmrXgeyfmvZ+akmfYUTwFoRnwFf28MN2MUWQVy1AqgH1LOdgAAP7uTDo7PL8y6EpZcIOPMu2XKk67G7+nXJp0QOwRtVt38vZggDgx7kERL/LBZbTnQnvyU4uG/uq+xV7Dv+rRXj1iLMEtJ/FlpnVqWv8iBICtunYtKJo+/FolSGls9QFnwqSlLMYK0UwwSRPeWONGbOqcOFfbTxFmGaAAAA=="
+  },
+  "chevrolet-suburban.webp": {
+    "sha256": "07c2c6e59d8c277458d927b6f9aa7d92c1e8b6cdf40614c5dfcf88a9ada6f5d3",
+    "width": 64,
+    "height": 38,
+    "src": "data:image/webp;base64,UklGRqoAAABXRUJQVlA4IJ4AAADwBgCdASpAACYAPslQn0uqJKKhsB1cAUAZCWcAzNApvDBXMDaecrVHh4hEuqlkw5LM3QuF5ZgiHXIR8USbL2jAAP7urdL8E1h73KK659j+uiSiI+0zHt1UyIDhrGr43S87b0LfhYxxii4EpHO9DCLjcdeicueWGewKOpcHUQ4GEbQSFzESKoi1w9f6Nvf95VEFI09JVdB5aGBPJwAAAA=="
+  },
+  "gmc-denali.webp": {
+    "sha256": "e11dc0e0b3bd4592373f27e461c740d1ecafe1c8d7fde65ffb27a0fb02fc9053",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRtQAAABXRUJQVlA4IMgAAABwCQCdASpAADAAPslankunpaKhsrbbMPAZCWcAyCAPSH9PArB7lIXx9rweqzqugFl+22QDZLUzgXZjB2L0EAGOKYIg8Z4rNFfJyA945EGsvHiTBAAA/tlZxYl124qEwb2UCXzW6ZKFWw3EECUnwEFg1hRn+989ItvuxQmCIPUmTFlVeJqBreNxs1DP54t/ghOjOc8dUfDhdjeKAirIcTlturftOZpw2c4Q0PSPxl59Vh4Lh0aEQVx+emmPkf1C6Qg3exkLjiAAAA=="
+  },
+  "lincoln-continental.webp": {
+    "sha256": "c0aac6658d7d2f963c3d17c3a6974ee50e749717ea23430053f58565dbb6d108",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRtwAAABXRUJQVlA4INAAAAAwCACdASpAADAAPq1GnEumJCMhurzMAMAViWUAwkx77nJTd0tMaHF2MgjM0NsDbJW6rwqhUPR2YQ5yBU3NBDtgQ8k/Ro/nhv5AAAD+3MfkcOiEeZjjLpexhvbtt7IviInabM75Dpw9e/pDzgLwi6WjaHg3jVrIcUXEeIfmoj6SQOFWcw8U6yCxf8YqYMK1HVANL9o9i5cUF+FMi/J87GGAc0V9CTd0Q+GtOWPFAgASM+HYKM7MesR3Yy8BdYKDi+u0amhazQM9OIJ7btVNoAAA"
+  },
+  "lincoln-navigator.webp": {
+    "sha256": "63914b6b87fbc048694aa1cb4fe7b2b2a7c7c26684c8d90131fa6676bc7d8fd5",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAACwCACdASpAACsAPsVWnkunpSKhtVgKAPAYiWUAxNtT2SKZGWwhW+pc4zZanYUJwD8XUFUSGzqJX478KLUwoZsMXggWU80E9t/ZorUX+gAA/vQpHaZ0m/yu5297N+8JosVytIirBjdfPD6Bzs8dWViQJ3jGgWDvGPW85uDyqIU/BOsOY41B2wARzZ0Ha2XymabglctRxP0k7wj93cPQTqto972De3qJ9fkRHSwmdNkCCV0nFcTCHmVppUbsuWg20gRl1vwyAAA="
+  },
+  "mercedes-s-class-card.webp": {
+    "sha256": "295e293e4329e56873447ac9a87b6d4984c7a46cd1915192ecd2dd324fa42be1",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRiIBAABXRUJQVlA4IBYBAACQDACdASpAAFAAPrVQnEunJaKhuZn4AOAWiWcAzRHd5r5TSOApKbnzfTQiIjM0ghE1/YVFU7hQ/hQgRMU5hGkug989aNYjb5GTYqpOIrBaGLY9ZY5zumH0AG59d7rtbBjN32FpjlXR40Xl6vwAAP71eCSICCJP4OhFbstYq1BS2+WhE4aB/a5hL8I0x5bu+cb8BwfpoQ6vPOAZrUpLlc9rUxjUcMK6uN4zkSTI0W5FGLwQmarSlkAfe01YjotULFznhBG/uOPAZJBVh096JCbTi5kHLUuAv3A4dPbFKTrbivee5ga5eDFcldRXHtvk3DRY5dTd+Id9IqRHrS4wmjn4YBTCeFCG39bfL3A1wU64WZPZIoYAAA=="
+  },
+  "mercedes-s-class.webp": {
+    "sha256": "9b42feadd15bf075813f78199a0a5eb8c940a4d45679e839b6286f2e62e3ae39",
+    "width": 64,
+    "height": 38,
+    "src": "data:image/webp;base64,UklGRsIAAABXRUJQVlA4ILYAAACQBwCdASpAACYAPr1Qn0unLKKht/cdUZAXiWcAyNdT3C7BrY8n5dIgyB5FMZ2m2Hv3JMmlbGEzUG4KFUuUG1Z+Ez1R6gAA/vN36lUfNzr/F1m/SP6apMX0sbkImM9P3iv/PboQ62w9Rl6kV+rLDbgfkGottXTIVe8j1ace3AEirUQA1aaKczA25YhMChnEhYxd+4ZdqgPBSOzY8qjL101h8Lz+pRxqoOtvynZdv1/gcPao8XQAAA=="
+  },
+  "sprinter-jet.webp": {
+    "sha256": "cd8a1f01685974b2ce164f593a8bd64b1f352e9b32187c6e4b2b080714a74410",
+    "width": 64,
+    "height": 34,
+    "src": "data:image/webp;base64,UklGRsQAAABXRUJQVlA4ILgAAABwCACdASpAACIAPsVSoEunpKMhtVv4APAYiWUAx+QbHggsWRUqPPSJwFLg3NBKzmNc09w32Ask0O6cMTMqW1tK8AV3QTVC+cGIvPaAAP67CV+buwW3ambzzWr6gWvxcducTEvZJIvRX2/IjUcrymUKXc48Uo3tnPo/w7GijnlktIoP+N0g8SJL2ORVyCx981KQqWUvy8Cpgr1NRSH87M4cnNqH15mTymbYt8GuCh1hJ8SnF+RcgAAA"
+  },
+  "sprinter-limo-card.webp": {
+    "sha256": "eeae8e752907a75005e1f412169c2c06578c9555f2a979aebf600fb8ec1251e1",
+    "width": 64,
+    "height": 80,
+    "src": "data:image/webp;base64,UklGRk4BAABXRUJQVlA4IEIBAACwDwCdASpAAFAAPrVMnkunJKMhuZn8AOAWiWUAzYdT2YWwk+H6p00SROgSLhM4ut9cIMe8u/xOko4xp2S/UfRhrYNQipnojHjCJCCUQg1KLuwG2GBY+BeYeo2gJ3PwBF1Y3kihtd9XUyVA1zkanviYOvty/wN+mw5+2Yi5lU7VifvNcJ1d8AD+pn8VYC2g6H+WlBpcjT6sS1k4FujNeWBxjS0AYmcnhAme3HA9VZYQJQfr6BZYjwIQvr3qJeGs97kmqDx4Ujr1t+vdm2x/xOOemHKa63sH9SGsETIm0RLbymWDMUH2C4SaXOh6Yt+iNyBE6JeJl+rD/Lm2+uDnb87Ndqrw/6htp/5fA2Vm2F6EzKlZwX3O3qB5bD0fkfhSxcCjpLqVZ89XeggrgXr7GcXNpwpR1nlkJBqVrjTICmGsZIAA"
+  },
+  "sprinter-limo.webp": {
+    "sha256": "715df6105c7e4b3d62b32e06fc3dcb27a9e26452b607825a6bdec41cc9cd5dc8",
+    "width": 64,
+    "height": 34,
+    "src": "data:image/webp;base64,UklGRtAAAABXRUJQVlA4IMQAAABwCACdASpAACIAPqVEmEumJCKhvV6IAMAUiWcACG+mcrmMnY0RdLwEJiNyoKNlgNBbc/xIKlooNcNSphSVhF00P8p60qW3M/C42sgAAP7kWSYvgrVw0ekdasvU0v9WjwYfeFUO31nG9PloatbClA83I9XgDT21IVE8608P0r+9l1yO1zAiwk6gzzaoS7vhR73+/tdOb+1NXTjKQoJtBR5YpcL14AQGEm4qxKMDzzss9o+0hErdq7ACv6ZWn0jlcUhAGYAA"
+  }
+}
