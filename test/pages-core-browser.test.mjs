@@ -67,6 +67,7 @@ const CARDS = () => {
   });
 };
 
+const TABLES = ["/rates", "/fleet", "/locations/jfk-airport", "/locations/laguardia-airport", "/black-car-service-brooklyn"];
 async function sweep(engine, browser) {
   for (const width of [320, 360, 600]) {
     for (const spaced of [false, true]) {
@@ -78,11 +79,20 @@ async function sweep(engine, browser) {
       await p.evaluate(() => document.fonts.ready);
       await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const cards = await p.evaluate(CARDS);
+      const wide = [];
+      for (const path of TABLES) {
+        await p.goto(base + path, { waitUntil: "load" });
+        if (spaced) await p.addStyleTag({ content: SPACING });
+        await p.evaluate(() => document.fonts.ready);
+        const [over, bar] = await p.evaluate(() => [document.documentElement.scrollWidth - document.documentElement.clientWidth, Math.round(document.querySelector(".actionbar").getBoundingClientRect().width)]);
+        if (over > 0 || bar > width) wide.push(`${path}: the page scrolls ${over}px sideways and the action bar is ${bar}px wide`);
+      }
       await ctx.close();
       const at = `${engine} ${width}px${spaced ? " with the WCAG 1.4.12 text spacing" : ""}`;
       await check(`${at}: each of the ${Object.keys(CLASSES).length} class cards shows "Up to" before its seat count`, () => assert.deepEqual(cards.map((c) => c.upTo && c.upTo[0]), Object.keys(CLASSES).map(() => "Up to")));
       await check(`${at}: "Up to" sits on one line in every class card`, () => assert.deepEqual(cards.filter((c) => c.upTo && c.upTo[1] !== 1).map((c) => [c.id, c.upTo[1]]), []));
       await check(`${at}: no text in the class cards runs past the card edge`, () => assert.deepEqual(cards.filter((c) => c.cut.length).map((c) => [c.id, ...c.cut]), []));
+      await check(`${at}: the rate tables scroll inside their frames, so ${TABLES.join(", ")} never scroll sideways and the action bar keeps the window width`, () => assert.deepEqual(wide, []));
     }
   }
 }
@@ -122,9 +132,44 @@ async function maps(engine, browser) {
   }
 }
 
+const MAP_PAGES = ["/locations", "/contact", "/locations/manhattan"];
+async function mapFocus(engine, browser) {
+  for (const [width, height] of [[640, 400], [1440, 900]]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+    await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const p = await ctx.newPage();
+    const hidden = [];
+    for (const path of MAP_PAGES) {
+      await p.goto(base + path, { waitUntil: "load" });
+      const n = await p.evaluate(() => {
+        const links = [...document.querySelectorAll(".citymap svg a[href]")];
+        const before = [...document.querySelectorAll("a[href],button,input,select,textarea,summary,[tabindex]")].filter((e) => e.tabIndex >= 0 && e.compareDocumentPosition(links[0]) & Node.DOCUMENT_POSITION_FOLLOWING);
+        before.reverse().find((e) => (e.focus({ preventScroll: true }), document.activeElement === e));
+        scrollTo(0, 0);
+        return links.length;
+      });
+      for (let i = 0; i < n; i++) {
+        await p.keyboard.press(engine === "webkit" ? "Alt+Tab" : "Tab");
+        const miss = await p.evaluate((i) => new Promise((done) => requestAnimationFrame(() => {
+          const a = document.querySelectorAll(".citymap svg a[href]")[i], e = document.activeElement;
+          if (a !== e) return done(`Tab ${i + 1} went to ${e.getAttribute("aria-label") || e.textContent.trim().slice(0, 40) || e.tagName}`);
+          const r = a.getBoundingClientRect(), bar = document.querySelector(".actionbar"), b = bar.getBoundingClientRect();
+          const name = a.getAttribute("aria-label") || a.textContent.trim();
+          const under = getComputedStyle(bar).visibility !== "hidden" && b.height > 0 && b.top < innerHeight && r.top >= b.top;
+          done(r.top >= innerHeight ? `${name} is below the window` : r.bottom <= 0 ? `${name} is above the window` : under ? `${name} is under the action bar` : null);
+        })), i);
+        if (miss) hidden.push(`${path}: ${miss}`);
+      }
+    }
+    await ctx.close();
+    await check(`${engine} ${width}x${height}: Tab scrolls each city map link on ${MAP_PAGES.join(", ")} into view, clear of the action bar`, () => assert.deepEqual(hidden, []));
+  }
+}
+
 const chrome = await chromium.launch();
 await sweep("chromium", chrome);
 await maps("chromium", chrome);
+await mapFocus("chromium", chrome);
 await chrome.close();
 for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
   const b = await type.launch().catch(() => null);
@@ -134,6 +179,7 @@ for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
   }
   await sweep(engine, b);
   await maps(engine, b);
+  await mapFocus(engine, b);
   await b.close();
 }
 

@@ -111,6 +111,13 @@ check("the header logo is exported at 64, 96, 128 and 192 px in AVIF and WebP, e
 check("assets/icons.svg.html ends its defs with i-building, i-plus, i-user, i-users, i-sign, i-child, i-lock, i-edit, i-swap and i-minus", () =>
   assert.ok(SPRITE.endsWith(`${NEW_SYMBOLS}\n</defs>\n</svg>`), "the ten symbols are not the last ones in the sprite, byte exact"));
 
+const MANIFEST = readdirSync(join(ROOT, "assets")).filter((name) => /^site\.[A-Za-z0-9_-]{6,}\.webmanifest$/.test(name));
+check("assets/site.webmanifest sets id, start_url and scope to the site root, so the app installed from any page opens the homepage and keeps every page in the app", () => {
+  assert.equal(MANIFEST.length, 1, MANIFEST.join(", "));
+  const app = JSON.parse(readFileSync(join(ROOT, "assets", MANIFEST[0]), "utf8"));
+  assert.deepEqual([app.id, app.start_url, app.scope, app.display], ["/", "/", "/", "standalone"]);
+});
+
 const shared = { header: new Map(), footer: new Map(), actionbar: new Map(), sprite: new Map() };
 for (const file of FILES) {
   const html = readFileSync(join(ROOT, file), "utf8");
@@ -255,6 +262,8 @@ for (const file of FILES) {
     assert.deepEqual(fonts, FONT_PRELOADS);
     assert.ok(head.includes(tags.join("")), "the font preloads are not one line in this order");
   });
+
+  check(`${file}: the head links the one web app manifest`, () => assert.deepEqual(hrefs('link[rel="manifest"]'), MANIFEST.map((name) => `/assets/${name}`)));
 
   check(`${file}: footer columns are Book, Services, Service areas and Company`, () => {
     const cols = [...document.querySelectorAll(".site-footer nav")].map((n) => n.querySelector("h2").textContent.trim());

@@ -1702,6 +1702,29 @@ for (const [path, width] of [["/", 1440], ["/locations/manhattan", 390]]) {
   });
   await ctx.close();
 }
+for (const width of [1366, 1440]) {
+  const ctx = await context(P, { viewport: { width, height: 900 } });
+  await check(`B26 at ${width} with the WCAG text spacing each sticky pill shows its whole class name, wrapped where it needs to be, inside the pill and the bar (WCAG 1.4.12)`, async () => {
+    const p = await open(ctx, P, "/book");
+    await p.addStyleTag({ content: "*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}" });
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await p.evaluate(() => scrollTo(0, document.getElementById("bk-cards").getBoundingClientRect().bottom + scrollY + 20));
+    await p.waitForFunction(() => document.getElementById("bk-pills").classList.contains("is-on"));
+    const cut = await p.$$eval(".bk-pill", (s) => {
+      const bar = document.getElementById("bk-pills").getBoundingClientRect();
+      return s.flatMap((x) => {
+        const n = x.firstElementChild, r = x.getBoundingClientRect();
+        return n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1 || r.top < bar.top - 0.5 || r.bottom > bar.bottom + 0.5 ? [n.textContent] : [];
+      });
+    });
+    assert.deepEqual(cut, []);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
 {
   const ctx = await context(P, { viewport: { width: 390, height: 844 } });
   await check("B26 at 390 the bottom bar shows the class and the total, its Book and pay online opens step 3, and the site action bar is display none on /book in every step", async () => {
@@ -5339,7 +5362,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 {
   const ctx = await context(P);
-  const rows = [["US", "2125550100"], ["US", "(212) 555-0100"], ["US", "1 212 555 0100"], ["US", "+1 1 212 555 0100"], ["US", "+1242 555 0100"], ["US", "555-0100"], ["US", "123 456 7890"], ["US", "212 155 0100"], ["US", "0207 946 0958"], ["US", "+44 7700 900123"], ["US", "0044 7700 900123"], ["US", "011 44 7700 900123"], ["GB", "7700 900123"], ["GB", "07700 900123"], ["GB", "+44 07700 900123"], ["GB", "+44 (0)20 7946 0958"], ["DE", "+49 171/1234567"], ["DE", "0171 1234567"], ["FR", "06 12 34 56 78"], ["AU", "0412 345 678"], ["IT", "06 1234 5678"], ["IT", "347 123 4567"], ["BJ", "01 97 12 34 56"], ["RU", "8 912 345 67 89"], ["RU", "812 123 45 67"], ["BY", "8 029 123 45 67"], ["BY", "029 123 45 67"], ["HU", "06 30 123 4567"], ["JP", "090-1234-5678"], ["JP", "＋８１ ９０１２３４５６７８"], ["AE", "+٩٧١٥٠١٢٣٤٥٦٧"], ["NU", "+683 1234"], ["CA", "+7 495 123 45 67"], [undefined, "2125550100"], ["ZZ", "7700 900123"], ["ZZ", "+44 7700 900123"], ["US", "+888 1234 5678"], ["US", "+1 212 555 0100 x2"], ["US", "call me"], ["BF", "07 12 34 56"], ["TJ", "01 123 4567"], ["US", "+226 07 12 34 56"], ["GB", "0"], ["US", ""], ["GB", "+888 1234 5678"], ["DE", "00888 1234 5678"], ["IT", "00888 1234 5678"], ["RU", "+0 1234 5678"], ["FR", "+999 123 456"]];
+  const rows = [["GB", "44 7911 123456"], ["GB", "447911123456"], ["GB", "44 07911 123456"], ["FR", "33 6 12 34 56 78"], ["RU", "7 912 345 67 89"], ["BR", "55 11 91234 5678"], ["BR", "55 99123 4567"], ["IN", "9123456789"], ["KZ", "7011234567"], ["IT", "3931234567"], ["FR", "3 33 12 34 56"], ["US", "2125550100"], ["US", "(212) 555-0100"], ["US", "1 212 555 0100"], ["US", "+1 1 212 555 0100"], ["US", "+1242 555 0100"], ["US", "555-0100"], ["US", "123 456 7890"], ["US", "212 155 0100"], ["US", "0207 946 0958"], ["US", "+44 7700 900123"], ["US", "0044 7700 900123"], ["US", "011 44 7700 900123"], ["GB", "7700 900123"], ["GB", "07700 900123"], ["GB", "+44 07700 900123"], ["GB", "+44 (0)20 7946 0958"], ["DE", "+49 171/1234567"], ["DE", "0171 1234567"], ["FR", "06 12 34 56 78"], ["AU", "0412 345 678"], ["IT", "06 1234 5678"], ["IT", "347 123 4567"], ["BJ", "01 97 12 34 56"], ["RU", "8 912 345 67 89"], ["RU", "812 123 45 67"], ["BY", "8 029 123 45 67"], ["BY", "029 123 45 67"], ["HU", "06 30 123 4567"], ["JP", "090-1234-5678"], ["JP", "＋８１ ９０１２３４５６７８"], ["AE", "+٩٧١٥٠١٢٣٤٥٦٧"], ["NU", "+683 1234"], ["CA", "+7 495 123 45 67"], [undefined, "2125550100"], ["ZZ", "7700 900123"], ["ZZ", "+44 7700 900123"], ["US", "+888 1234 5678"], ["US", "+1 212 555 0100 x2"], ["US", "call me"], ["BF", "07 12 34 56"], ["TJ", "01 123 4567"], ["US", "+226 07 12 34 56"], ["GB", "0"], ["US", ""], ["GB", "+888 1234 5678"], ["DE", "00888 1234 5678"], ["IT", "00888 1234 5678"], ["RU", "+0 1234 5678"], ["FR", "+999 123 456"]];
   await check("B111 the browser reads a mobile number exactly as the server does (owner request 3): the readPhone table of the spec plus the edge cases give the same ok and the same text", async () => {
     const p = await open(ctx, P, "/book");
     await p.evaluate(() => cf());
@@ -5417,6 +5440,31 @@ for (const [width, height] of [[390, 844], [768, 1024]]) {
     await p.waitForSelector("#q-error", { state: "visible", timeout: 8000 });
     assert.match(await waText(p, "#q-wa"), new RegExp(`^Hi NYC LUX RIDE, I would like to book this trip\\.\\nReference: ${ref}\\nTrip: One way\\n`));
     assert.match(decodeURIComponent(await p.getAttribute("#q-mail", "href")), new RegExp(`^mailto:info@nycluxride\\.com\\?subject=Booking request ${ref}&body=`));
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const width of [1440, 390]) {
+  const ctx = await context(P, { viewport: { width, height: width > 1000 ? 900 : 844 } });
+  await check(`B113 at ${width}, when Book and pay online fails the price stays on screen and the bar says Payment didn't open beside Email to reserve, never Prices didn't load${width > 1000 ? "" : ", also after Back to vehicles"}`, async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await p.route("**/api/book", (r) => (JSON.parse(r.request().postData() || "{}").action === "pay" ? r.abort() : r.continue()));
+    await p.click(await payBtn(p));
+    await p.waitForSelector("#q-error", { state: "visible", timeout: 9000 });
+    assert.match(await p.textContent("#q-error"), /Online payment isn't available right now/);
+    if (width < 1000) {
+      await p.click("#bk-back");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    }
+    await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+    await p.waitForFunction(() => [document.getElementById("bk-bar"), document.getElementById("bk-bar-mail")].every((e) => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden"));
+    assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-bar-q").textContent, document.getElementById("price").hidden, (document.getElementById("price-total").firstChild || {}).textContent]), ["Payment didn't open", false, cash(TOTAL)]);
+    assert.deepEqual(p.errors, []);
     await p.close();
   });
   await ctx.close();
@@ -6160,6 +6208,30 @@ for (const [name, b] of ENGINES) {
             await p.waitForTimeout(800);
             assert.deepEqual(await at(), c, `${path}: tabbing through the empty field leaves no room`);
           }
+          assert.deepEqual(p.errors, []);
+          await p.close();
+        }
+      });
+      await ctx.close();
+    }
+  }
+}
+for (const [name, b] of ENGINES) {
+  for (const [width, height] of [[320, 256], [360, 225]]) {
+    for (const motion of ["reduce", "no-preference"]) {
+      const ctx = await engineContext(b, G, { viewport: { width, height }, reducedMotion: motion });
+      await check(`B133 ${name} at ${width} by ${height}, a laptop at 400% zoom, with ${motion} motion, on /book and /: Tab from Flight number to Pickup time leaves Pickup time whole in view under the sticky header once the flight room has closed (WCAG 2.4.11)`, async () => {
+        for (const path of ["/book", "/"]) {
+          const p = await open(ctx, G, path);
+          await place(p, "from", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
+          await p.evaluate(() => { document.activeElement.blur(); scrollTo({ top: 0, behavior: "instant" }); });
+          await p.focus("#bk-flight");
+          await p.waitForTimeout(500);
+          await p.keyboard.press(name === "webkit" ? "Alt+Tab" : "Tab");
+          await p.waitForFunction(() => document.activeElement.id === "bk-time-btn" && document.getElementById("bk-flight-status").getAnimations().every((a) => a.playState !== "running"));
+          await scrollIdle(p);
+          const at = await p.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return [Math.round(r.top - document.querySelector(".site-header").getBoundingClientRect().bottom), Math.round(innerHeight - r.bottom)]; });
+          assert.ok(at[0] >= 0 && at[1] >= 0, `${path}: Pickup time is ${at[0]}px under the header bottom and ${at[1]}px over the window bottom`);
           assert.deepEqual(p.errors, []);
           await p.close();
         }

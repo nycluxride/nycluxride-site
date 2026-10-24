@@ -279,10 +279,11 @@ export function readPhone(text, cc) {
   const iso = String(cc || "US").toUpperCase();
   const home = DIALS.get(iso);
   const prefix = typed.startsWith("+") ? 1 : typed.startsWith("00") ? 2 : home === "1" && typed.startsWith("011") ? 3 : 0;
+  const bare = !prefix && home !== "1" && digitsOf(typed).startsWith(home) && digitsOf(typed).length - home.length >= (home === "7" || home === "55" ? 10 : 9);
   let dial = home;
   let country = iso;
   let rest = typed;
-  if (prefix) {
+  if (prefix || bare) {
     const after = typed.slice(prefix);
     const digits = digitsOf(after);
     dial = [1, 2, 3].map((n) => digits.slice(0, n)).find((code) => COUNTRY_BY_DIAL.has(code));

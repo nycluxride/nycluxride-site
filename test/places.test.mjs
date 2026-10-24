@@ -242,6 +242,13 @@ await test("classifyPlace on synthetic Place Details objects", () => {
     [details({ state: "NJ", county: "Bergen County", zip: "07608", types: ["street_address"], address: "485 Industrial Ave, Teterboro, NJ 07608, USA" }), "485 Industrial Ave, Teterboro, NJ", "teb"],
     [details({ state: "NJ", county: "Bergen County", zip: "07608", types: ["shopping_mall"], address: "1 Teterboro Landing Dr, Teterboro, NJ 07608, USA" }), "Teterboro Landing, Industrial Avenue, Teterboro, NJ", "outside"],
     [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise", "geocode"], address: "Terminal C, Newark, NJ 07114, USA" }), "Terminal C, Newark Liberty International Airport (EWR), Brewster Road, Newark, NJ", "ewr"],
+    [details({ state: "NY", types: ["locality", "political"] }), "New York, NY", "manhattan"],
+    [details({ state: "NY", types: ["locality", "political"] }), "New York City, NY", "manhattan"],
+    [details({ state: "NY", types: ["locality", "political"] }), "New York, NY, USA", "manhattan"],
+    [details({ state: "NY", types: ["administrative_area_level_1", "political"] }), "New York, USA", "outside"],
+    [details({ state: "NY", county: "Westchester County", types: ["locality", "political"] }), "Yonkers, NY", "outside"],
+    [details({ state: "NY", types: ["locality", "political"] }), "New York Mills, NY", "outside"],
+    [details({ state: "NJ", types: ["locality", "political"] }), "New York, NY", "outside"],
     [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise"], address: "123 Frelinghuysen Ave, Newark, NJ 07114, USA" }), "123 Frelinghuysen Avenue, Newark, NJ, USA", "outside"],
     [{}, "", "outside"],
     [null, "", "outside"],
@@ -447,6 +454,19 @@ await test("pick with a key: Place Details with the Essentials mask, the zone, a
   assert.equal((await call(pick("ChIJjfkt4", "JFK Terminal 4, Queens, NY, USA"))).body.map, true);
   delete process.env.GOOGLE_MAPS_BROWSER_KEY;
   assert.equal((await call(pick("ChIJjfkt4", "JFK Terminal 4, Queens, NY, USA"))).body.map, false);
+});
+
+await test("pick: the New York City entry of Google has no county, borough or ZIP and still prices as Manhattan, the New York State entry stays outside", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  const city = { id: "ChIJOwg_06VPwokRYv534QaPC8g", formattedAddress: "New York, NY, USA", shortFormattedAddress: "New York", addressComponents: [component(["locality", "political"], "New York"), component(["administrative_area_level_1", "political"], "New York", "NY"), component(["country", "political"], "United States", "US")], types: ["locality", "political", "geocode"] };
+  reply = answer(200, city);
+  for (const label of ["New York, NY", "New York City, NY"]) {
+    const res = await call(pick(city.id, label));
+    assert.deepEqual([res.body.kind, res.body.zone, res.body.area, res.body.airport], ["ok", "manhattan", "Manhattan", false], label);
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: city.id, zone: "manhattan", expired: false });
+  }
+  reply = answer(200, { ...city, id: "ChIJstate", formattedAddress: "New York, USA", addressComponents: city.addressComponents.slice(1), types: ["administrative_area_level_1", "political", "geocode"] });
+  assert.equal((await call(pick("ChIJstate", "New York, USA"))).body.zone, "outside");
 });
 
 await test("pick: no key answers off without a call, a Details failure answers error and logs places-pick with the status", async () => {

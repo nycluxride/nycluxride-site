@@ -158,6 +158,7 @@ export function classifyPlace(details, label) {
     if (Object.prototype.hasOwnProperty.call(SUB_ZONES, sub)) return SUB_ZONES[sub];
     const borough = zipBorough(zip);
     if (borough && borough !== "outside") return borough;
+    if (!county && !sub && !zip && /^New York(?: City)?, NY(?:, USA)?$/.test(name)) return "manhattan";
   }
   return "outside";
 }
