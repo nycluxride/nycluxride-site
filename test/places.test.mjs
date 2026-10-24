@@ -234,6 +234,8 @@ await test("classifyPlace on synthetic Place Details objects", () => {
     [details({ state: "NY", zip: "11201" }), "Brooklyn Heights", "brooklyn"],
     [details({ state: "NJ", zip: "07608", types: ["point_of_interest"] }), "Some office, Teterboro, NJ", "outside"],
     [details({ state: "NJ", zip: "07114", types: ["airport"], address: "Somewhere, NJ 07114" }), "Cargo airport", "airport-other"],
+    [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise", "geocode"], address: "Terminal C, Newark, NJ 07114, USA" }), "Terminal C, Newark Liberty International Airport (EWR), Brewster Road, Newark, NJ", "ewr"],
+    [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise"], address: "123 Frelinghuysen Ave, Newark, NJ 07114, USA" }), "123 Frelinghuysen Avenue, Newark, NJ, USA", "outside"],
     [{}, "", "outside"],
     [null, "", "outside"],
   ];

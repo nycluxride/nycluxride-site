@@ -34,7 +34,8 @@ globalThis.fetch = async (url, init = {}) => {
 const bodies = [];
 
 const realNow = Date.now;
-let skew = 0;
+const nyMinute = (t) => { const [h, m] = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(t)).split(":").map(Number); return h * 60 + m; };
+let skew = nyMinute(realNow()) >= 22 * 60 ? (24 * 60 + 5 - nyMinute(realNow())) * 60000 : 0;
 Date.now = () => realNow() + skew;
 
 let failures = 0;
