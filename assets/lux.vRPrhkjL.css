@@ -488,13 +488,15 @@ main .plate>.slate b{color:var(--ink)}
 .facts .tel--display{font-size:inherit;line-height:inherit;letter-spacing:inherit}
 .facts dd>a:not(.tel){display:inline-flex;align-items:center;min-block-size:24px}
 .rate-table{inline-size:100%;border-collapse:separate;border-spacing:0}
-.rate-table caption{padding-block-end:16px;text-align:start;font:500 var(--type-body-lg) var(--font-sans);letter-spacing:var(--tracking-lg);color:var(--ink);text-wrap:pretty}
+.rate-table caption{padding:0 12px 16px;text-align:start;font:500 var(--type-body-lg) var(--font-sans);letter-spacing:var(--tracking-lg);color:var(--ink);text-wrap:pretty}
 .rate-table th[scope=col]{padding-block:12px;text-align:start;font:500 var(--type-body-sm) var(--font-sans);color:var(--muted);border-block-end:1px solid var(--line)}
 .rate-table th[scope=row]{position:sticky;inset-inline-start:0;padding:12px 16px 12px 0;text-align:start;background:var(--white);font:500 var(--type-body-md) var(--font-sans);color:var(--ink);border-block-end:1px solid var(--line)}
 .rate-table th small{display:block;margin-block-start:4px;font:400 var(--type-body-sm) var(--font-sans);color:var(--ink-2)}
 .rate-table td{padding-block:12px;color:var(--ink);border-block-end:1px solid var(--line)}
 .rate-table td small,.ledger__note{font:400 var(--type-body-sm) var(--font-sans);color:var(--ink-2)}
 .rate-table :is(th,td)+:is(th,td){padding-inline-start:16px}
+.rate-table tr>:first-child{padding-inline-start:12px}
+.rate-table tr>:last-child{padding-inline-end:12px}
 @media (max-width:359px){.rate-table :is(th,td)+:is(th,td){padding-inline-start:12px}#compare .rate-table :is(th[scope=row],td){font-size:14px;line-height:20px}}
 .rate-table :is(th,td):last-child:not([colspan]){text-align:end;font-variant-numeric:tabular-nums}
 .rate-table--text :is(th,td):last-child:not([colspan]){text-align:start}
@@ -508,9 +510,9 @@ main .plate>.slate b{color:var(--ink)}
 #airport-rates tr>:nth-child(n+2){text-align:end;font-variant-numeric:tabular-nums}
 }
 @media (max-width:599px){
-#compare .table-scroll{padding-inline:12px}
+#compare .table-scroll{padding-inline:0}
 #compare .rate-table :is(th,td):not(:first-child){padding-inline-start:8px}
-#hourly .rate-table :is(thead,tbody) tr{display:grid;grid-template-columns:minmax(0,.5fr) minmax(0,1.2fr) minmax(0,1.3fr);border-block-end:1px solid var(--line)}
+#hourly .rate-table :is(thead,tbody) tr{display:grid;grid-template-columns:minmax(0,.5fr) minmax(0,1.2fr) minmax(0,1.3fr);padding:0 12px;border-block-end:1px solid var(--line)}
 #hourly .rate-table :is(thead,tbody) tr>*{padding-inline:0 12px;border-block-end:0}
 #hourly .rate-table tbody tr{padding-block:4px 12px}
 #hourly .rate-table thead th:first-child,#hourly .rate-table tbody th[scope=row]{grid-column:1/-1;position:static}
@@ -520,8 +522,8 @@ main .plate>.slate b{color:var(--ink)}
 }
 .rate-table tfoot :is(td,th){font-size:14px;line-height:20px;color:var(--muted);border-block-end:0}
 .rate-table tfoot th[scope=row],.rate-table tbody:last-child>tr:last-child>*{border-block-end:0}
-@media (hover:hover){.rate-table tbody tr:hover>th{box-shadow:-12px 0 var(--gold-50)}.rate-table tbody tr:hover>:last-child{box-shadow:12px 0 var(--gold-50)}.rate-table tbody tr:hover :is(td,th[scope=row]),html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):hover{background:var(--gold-50)}}
-.table-scroll{overflow-x:auto;overscroll-behavior-x:contain;container-type:scroll-state;padding:20px 24px 8px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--white)}
+@media (hover:hover){.rate-table tbody tr:hover :is(td,th[scope=row]),#hourly tbody tr:hover,html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):hover{background:var(--gold-50)}#arrival tbody tr:hover{--pk:var(--gold-50)}}
+.table-scroll{position:relative;overflow-x:auto;overscroll-behavior-x:contain;container-type:scroll-state;padding:20px 12px 8px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--white)}
 @container not scroll-state(scrollable:inline){.rate-table th[scope=row]{background:none}}
 .accordion{display:grid}
 .frame>.accordion,.grid12>.rail{max-inline-size:45.084em}
@@ -635,7 +637,7 @@ main .plate>.slate b{color:var(--ink)}
 }
 @media (min-width:600px) and (max-width:899px){ul.grid12>li[class]{grid-column:span 2}}
 @media (max-width:37.4375em){.facts{grid-template-columns:minmax(0,1fr)}.facts dt{padding-block:12px 0;border:0}.facts dd{padding:4px 0 12px}}
-@media (max-width:599px){.table-scroll{margin-inline:calc(var(--gutter)*-1);padding-inline:var(--gutter);border-inline:0;border-radius:0}}
+@media (max-width:599px){.table-scroll{margin-inline:calc(var(--gutter)*-1);padding-inline:calc(var(--gutter) - 12px);border-inline:0;border-radius:0}}
 @media (min-width:1024px){
 .cta-panel{grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:48px;align-items:center}
 .cta-panel .plate{order:2;align-self:center}
@@ -905,7 +907,6 @@ html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):active{backgroun
 :is(.tpick,.fits) label:has(:focus-visible){outline:2px solid var(--focus-outer);outline-offset:2px;box-shadow:0 0 0 2px var(--focus-inner)}
 #arrival tbody tr>*{background-color:var(--pk,#0000);transition:background-color .15s,box-shadow .15s}
 #arrival tbody tr>th{background-color:var(--pk,var(--white));box-shadow:inset 2px 0 var(--pb,#0000)}
-#arrival .rate-table :is(thead,tbody) :is(th,td):first-child{padding-inline-start:12px}
 #arrival:has([value="1"]:checked) tr[data-t~="1"],#arrival:has([value="4"]:checked) tr[data-t~="4"],#arrival:has([value="5"]:checked) tr[data-t~="5"],#arrival:has([value="7"]:checked) tr[data-t~="7"],#arrival:has([value="8"]:checked) tr[data-t~="8"],#arrival:has([value=B]:checked) tr[data-t~=B],#arrival:has([value=C]:checked) tr[data-t~=C]{--pk:var(--gold-100);--pb:var(--gold-650);--po:2px}
 .pick-say{font:400 var(--type-body-md) var(--font-sans);color:var(--ink)}
 @supports selector(:has(*)){.pick-say{display:none}#arrival:has([value="1"]:checked) .pick-say:is([data-t="1"],[data-t=all]),#arrival:has([value="4"]:checked) .pick-say:is([data-t="4"],[data-t=all]),#arrival:has([value="5"]:checked) .pick-say:is([data-t="5"],[data-t=all]),#arrival:has([value="7"]:checked) .pick-say:is([data-t="7"],[data-t=all]),#arrival:has([value="8"]:checked) .pick-say:is([data-t="8"],[data-t=all]),#arrival:has([value=B]:checked) .pick-say:is([data-t=B],[data-t=all]),#arrival:has([value=C]:checked) .pick-say:is([data-t=C],[data-t=all]){display:block}}
