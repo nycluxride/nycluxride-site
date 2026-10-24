@@ -12,7 +12,7 @@ const CROP_DIR = join(FLEET, 'crop');
 const MANIFEST = join(FLEET, 'MANIFEST.json');
 const TWIN_FILE = join(FLEET, 'twins.json');
 const WIDTHS = [300, 400, 600, 900, 1100, 1400];
-const EXTRA_WIDTHS = { 'cadillac-escalade-hero': [1620] };
+const EXTRA_WIDTHS = { 'cadillac-escalade-hero': [1620], 'page-about': [1450], 'page-black-car-service-brooklyn': [1650], 'page-contact': [1650], 'page-manhattan': [1500], 'page-queens': [1600], 'page-rates': [1750] };
 const HERO_WIDTHS = { 'home-hero-phone-v3': [1200], 'home-hero-v3': [2528] };
 const SIZED = { logo: [64, 96, 128, 192] };
 const LEAD_WIDTHS = [1800, 2400];
@@ -23,7 +23,7 @@ const FORCE = process.argv.includes('--force');
 const PRUNE = process.argv.includes('--prune');
 
 const AVIF_ARGS = ['-j', 'all', '-q', '58', '-s', '4', '-y', '444', '-d', '10'];
-const AVIF_SET = { 'home-hero-phone': { '-q': '50' }, 'home-hero-phone-v3': { '-q': '52', '-s': '2', '-y': '420' }, 'page-404': { '-q': '40' }, 'page-about': { '-q': '40' }, 'page-black-car-service-brooklyn': { '-q': '40' }, 'page-bronx': { '-q': '40' }, 'page-brooklyn': { '-q': '40' }, 'page-chauffeur-service-nyc': { '-q': '40' }, 'page-contact': { '-q': '40' }, 'page-faq': { '-q': '40' }, 'page-financial-district': { '-q': '40' }, 'page-fleet': { '-q': '40' }, 'page-jfk-airport': { '-q': '40' }, 'page-laguardia-airport': { '-q': '40' }, 'page-limousine-service-nyc': { '-q': '40' }, 'page-locations': { '-q': '40' }, 'page-long-island-city': { '-q': '40' }, 'page-manhattan': { '-q': '40' }, 'page-queens': { '-q': '40' }, 'page-rates': { '-q': '40' }, 'page-schedule': { '-q': '40' }, 'page-services': { '-q': '40' }, 'page-soho': { '-q': '40' }, 'page-staten-island': { '-q': '40' }, 'page-upper-east-side': { '-q': '40' }, 'page-upper-west-side': { '-q': '40' } };
+const AVIF_SET = { 'home-hero-phone': { '-q': '50' }, 'home-hero-phone-v3': { '-q': '52', '-s': '2', '-y': '420' }, 'page-404': { '-q': '40' }, 'page-about': { '-q': '40' }, 'page-about-1450': { '-q': '34', '-s': '2', '-y': '420' }, 'page-black-car-service-brooklyn': { '-q': '40' }, 'page-black-car-service-brooklyn-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-bronx': { '-q': '40' }, 'page-brooklyn': { '-q': '40' }, 'page-chauffeur-service-nyc': { '-q': '40' }, 'page-contact': { '-q': '40' }, 'page-contact-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-faq': { '-q': '40' }, 'page-financial-district': { '-q': '40' }, 'page-fleet': { '-q': '40' }, 'page-jfk-airport': { '-q': '40' }, 'page-laguardia-airport': { '-q': '40' }, 'page-limousine-service-nyc': { '-q': '40' }, 'page-locations': { '-q': '40' }, 'page-long-island-city': { '-q': '40' }, 'page-manhattan': { '-q': '40' }, 'page-manhattan-1500': { '-q': '34', '-s': '2', '-y': '420' }, 'page-queens': { '-q': '40' }, 'page-queens-1600': { '-q': '34', '-s': '2', '-y': '420' }, 'page-rates': { '-q': '40' }, 'page-rates-1750': { '-q': '34', '-s': '2', '-y': '420' }, 'page-schedule': { '-q': '40' }, 'page-services': { '-q': '40' }, 'page-soho': { '-q': '40' }, 'page-staten-island': { '-q': '40' }, 'page-upper-east-side': { '-q': '40' }, 'page-upper-west-side': { '-q': '40' } };
 const WEBP_ARGS = ['-q', '80', '-m', '6', '-sharp_yuv', '-af', '-pass', '10', '-quiet'];
 const RESIZE_FILTER = 'Lanczos';
 
@@ -74,11 +74,11 @@ const LEADS = new Set();
 const BANNERS = new Set();
 for (const page of htmlPages(ROOT)) {
   const html = readFileSync(page, 'utf8');
-  const figures = [...html.matchAll(/<figure class="(?:hero__photo|banner__photo)">[\s\S]*?<\/figure>/g)].map((m) => m[0]);
+  const figures = [...html.matchAll(/<figure class="(?:hero__photo|banner__photo)[ "][\s\S]*?<\/figure>/g)].map((m) => m[0]);
   if (relative(ROOT, page).startsWith('blog/')) figures.push((html.slice(html.indexOf('<main')).match(/<figure[\s\S]*?<\/figure>/) || [''])[0]);
   for (const f of figures) for (const m of f.matchAll(/\/fleet\/([a-z0-9-]+?)-\d+\.(?:avif|webp)/g)) {
     LEADS.add(m[1]);
-    if (f.startsWith('<figure class="banner__photo">')) BANNERS.add(m[1]);
+    if (f.startsWith('<figure class="banner__photo')) BANNERS.add(m[1]);
   }
 }
 const webps = readdirSync(FLEET).filter((f) => f.endsWith('.webp'));
@@ -112,7 +112,7 @@ function encode(source, width, out, masterMtime, label, extra = [], webp = true)
   if (needAvif || needWebp) {
     const png = join(tmp, `${basename(out)}.png`);
     sh('magick', [source(), '-filter', RESIZE_FILTER, '-resize', `${width}x`, '-strip', ...extra, png]);
-    if (needAvif) sh('avifenc', [...AVIF_ARGS.map((a, i) => (AVIF_SET[label] || {})[AVIF_ARGS[i - 1]] || a), png, avifOut]);
+    if (needAvif) sh('avifenc', [...AVIF_ARGS.map((a, i) => (AVIF_SET[basename(out)] || AVIF_SET[label] || {})[AVIF_ARGS[i - 1]] || a), png, avifOut]);
     if (needWebp) sh('cwebp', [...WEBP_ARGS, png, '-o', webpOut]);
     rmSync(png, { force: true });
     built += (needAvif ? 1 : 0) + (needWebp ? 1 : 0);

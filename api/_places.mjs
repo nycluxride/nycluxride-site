@@ -6,21 +6,21 @@ const EWR = "Newark Liberty International Airport, Newark, NJ 07114";
 const HPN = "240 Airport Road, White Plains, NY 10604";
 const HPN_ADDR = "Westchester County Airport, 240 Airport Road, White Plains, NY 10604";
 const ROWS = [
-  ["jfk", "John F. Kennedy (JFK)", JFK, "jfk", "JFK", "airport", "", "jfk|jfk airport|kennedy airport|jfk international airport|john f. kennedy international airport|john f kennedy international airport|john f. kennedy airport", "jfk|kennedy|john f kennedy|john f. kennedy|jfk airport|kennedy airport", JFK],
-  ["jfk-t1", "John F. Kennedy (JFK), Terminal 1", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 1|terminal 1 jfk|jfk t1", "terminal 1|t1", "John F. Kennedy International Airport Terminal 1, Queens, NY 11430"],
-  ["jfk-t4", "John F. Kennedy (JFK), Terminal 4", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 4|terminal 4 jfk|jfk t4", "terminal 4|t4", "John F. Kennedy International Airport Terminal 4, Queens, NY 11430"],
-  ["jfk-t5", "John F. Kennedy (JFK), Terminal 5", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 5|terminal 5 jfk|jfk t5", "terminal 5|t5", "John F. Kennedy International Airport Terminal 5, Queens, NY 11430"],
-  ["jfk-t7", "John F. Kennedy (JFK), Terminal 7", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 7|terminal 7 jfk|jfk t7", "terminal 7|t7", "John F. Kennedy International Airport Terminal 7, Queens, NY 11430"],
-  ["jfk-t8", "John F. Kennedy (JFK), Terminal 8", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 8|terminal 8 jfk|jfk t8", "terminal 8|t8", "John F. Kennedy International Airport Terminal 8, Queens, NY 11430"],
-  ["lga", "LaGuardia (LGA)", LGA, "lga", "LGA", "airport", "", "lga|laguardia|la guardia|laguardia airport|la guardia airport", "lga|laguardia|la guardia|laguardia airport", LGA],
-  ["lga-ta", "LaGuardia (LGA), Terminal A", LGA, "lga", "LGA", "terminal", "lga", "lga terminal a|laguardia terminal a|terminal a lga", "terminal a", "LaGuardia Airport Terminal A, East Elmhurst, NY 11371"],
-  ["lga-tb", "LaGuardia (LGA), Terminal B", LGA, "lga", "LGA", "terminal", "lga", "lga terminal b|laguardia terminal b|terminal b lga", "terminal b", "LaGuardia Airport Terminal B, East Elmhurst, NY 11371"],
-  ["lga-tc", "LaGuardia (LGA), Terminal C", LGA, "lga", "LGA", "terminal", "lga", "lga terminal c|laguardia terminal c|terminal c lga", "terminal c", "LaGuardia Airport Terminal C, East Elmhurst, NY 11371"],
-  ["ewr", "Newark Liberty (EWR)", EWR, "ewr", "EWR", "airport", "", "ewr|newark airport|newark liberty|newark liberty airport|newark international airport|newark liberty international airport", "ewr|newark|newark liberty|newark airport|newark liberty international", EWR],
-  ["ewr-ta", "Newark Liberty (EWR), Terminal A", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal a|newark terminal a|newark airport terminal a|terminal a ewr", "terminal a", "Newark Liberty International Airport Terminal A, Newark, NJ 07114"],
-  ["ewr-tb", "Newark Liberty (EWR), Terminal B", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal b|newark terminal b|newark airport terminal b|terminal b ewr", "terminal b", "Newark Liberty International Airport Terminal B, Newark, NJ 07114"],
-  ["ewr-tc", "Newark Liberty (EWR), Terminal C", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal c|newark terminal c|newark airport terminal c|terminal c ewr", "terminal c", "Newark Liberty International Airport Terminal C, Newark, NJ 07114"],
-  ["teb", "Teterboro (TEB)", "Teterboro Airport, Teterboro, NJ 07608", "teb", "TEB", "airport", "", "teb|teterboro|teterboro airport", "teb|teterboro|teterboro airport", "Teterboro Airport, Teterboro, NJ 07608"],
+  ["jfk", "John F. Kennedy (JFK)", JFK, "jfk", "JFK", "airport", "", "jfk|jfk airport|kennedy airport|jfk international airport|john f. kennedy international airport|john f kennedy international airport|john f. kennedy airport|jfk international|jfk intl|jfk intl airport|kennedy international airport", "jfk|kennedy|john f kennedy|john f. kennedy|jfk airport|kennedy airport", JFK],
+  ["jfk-t1", "John F. Kennedy (JFK), Terminal 1", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 1|terminal 1 jfk|jfk t1|jfk airport terminal 1|kennedy airport terminal 1", "terminal 1|t1", "John F. Kennedy International Airport Terminal 1, Queens, NY 11430"],
+  ["jfk-t4", "John F. Kennedy (JFK), Terminal 4", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 4|terminal 4 jfk|jfk t4|jfk airport terminal 4|kennedy airport terminal 4", "terminal 4|t4", "John F. Kennedy International Airport Terminal 4, Queens, NY 11430"],
+  ["jfk-t5", "John F. Kennedy (JFK), Terminal 5", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 5|terminal 5 jfk|jfk t5|jfk airport terminal 5|kennedy airport terminal 5", "terminal 5|t5", "John F. Kennedy International Airport Terminal 5, Queens, NY 11430"],
+  ["jfk-t7", "John F. Kennedy (JFK), Terminal 7", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 7|terminal 7 jfk|jfk t7|jfk airport terminal 7|kennedy airport terminal 7", "terminal 7|t7", "John F. Kennedy International Airport Terminal 7, Queens, NY 11430"],
+  ["jfk-t8", "John F. Kennedy (JFK), Terminal 8", JFK, "jfk", "JFK", "terminal", "jfk", "jfk terminal 8|terminal 8 jfk|jfk t8|jfk airport terminal 8|kennedy airport terminal 8", "terminal 8|t8", "John F. Kennedy International Airport Terminal 8, Queens, NY 11430"],
+  ["lga", "LaGuardia (LGA)", LGA, "lga", "LGA", "airport", "", "lga|laguardia|la guardia|laguardia airport|la guardia airport|lga airport", "lga|laguardia|la guardia|laguardia airport", LGA],
+  ["lga-ta", "LaGuardia (LGA), Terminal A", LGA, "lga", "LGA", "terminal", "lga", "lga terminal a|laguardia terminal a|terminal a lga|laguardia airport terminal a|lga airport terminal a", "terminal a", "LaGuardia Airport Terminal A, East Elmhurst, NY 11371"],
+  ["lga-tb", "LaGuardia (LGA), Terminal B", LGA, "lga", "LGA", "terminal", "lga", "lga terminal b|laguardia terminal b|terminal b lga|laguardia airport terminal b|lga airport terminal b", "terminal b", "LaGuardia Airport Terminal B, East Elmhurst, NY 11371"],
+  ["lga-tc", "LaGuardia (LGA), Terminal C", LGA, "lga", "LGA", "terminal", "lga", "lga terminal c|laguardia terminal c|terminal c lga|laguardia airport terminal c|lga airport terminal c", "terminal c", "LaGuardia Airport Terminal C, East Elmhurst, NY 11371"],
+  ["ewr", "Newark Liberty (EWR)", EWR, "ewr", "EWR", "airport", "", "ewr|newark airport|newark liberty|newark liberty airport|newark international airport|newark liberty international airport|ewr airport|newark liberty international|newark international", "ewr|newark|newark liberty|newark airport|newark liberty international", EWR],
+  ["ewr-ta", "Newark Liberty (EWR), Terminal A", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal a|newark terminal a|newark airport terminal a|terminal a ewr|ewr airport terminal a|newark liberty terminal a|newark liberty airport terminal a", "terminal a", "Newark Liberty International Airport Terminal A, Newark, NJ 07114"],
+  ["ewr-tb", "Newark Liberty (EWR), Terminal B", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal b|newark terminal b|newark airport terminal b|terminal b ewr|ewr airport terminal b|newark liberty terminal b|newark liberty airport terminal b", "terminal b", "Newark Liberty International Airport Terminal B, Newark, NJ 07114"],
+  ["ewr-tc", "Newark Liberty (EWR), Terminal C", EWR, "ewr", "EWR", "terminal", "ewr", "ewr terminal c|newark terminal c|newark airport terminal c|terminal c ewr|ewr airport terminal c|newark liberty terminal c|newark liberty airport terminal c", "terminal c", "Newark Liberty International Airport Terminal C, Newark, NJ 07114"],
+  ["teb", "Teterboro (TEB)", "Teterboro Airport, Teterboro, NJ 07608", "teb", "TEB", "airport", "", "teb|teterboro|teterboro airport|teb airport", "teb|teterboro|teterboro airport", "Teterboro Airport, Teterboro, NJ 07608"],
   ["teb-atlantic", "Teterboro (TEB), Atlantic Aviation", "233 Industrial Ave, Teterboro, NJ 07608", "teb", "TEB", "fbo", "teb", "atlantic aviation teterboro", "atlantic aviation", "233 Industrial Ave, Teterboro, NJ 07608"],
   ["teb-jet", "Teterboro (TEB), Jet Aviation", "112 Charles A. Lindbergh Dr, Teterboro, NJ 07608", "teb", "TEB", "fbo", "teb", "jet aviation teterboro", "jet aviation", "112 Charles A. Lindbergh Dr, Teterboro, NJ 07608"],
   ["teb-sig-east", "Teterboro (TEB), Signature Aviation East", "200 Fred Wehran Dr, Teterboro, NJ 07608", "teb", "TEB", "fbo", "teb", "", "signature|signature aviation|signature east", "200 Fred Wehran Dr, Teterboro, NJ 07608"],
@@ -64,7 +64,9 @@ const CITY_STATE = /(?:^|,)\s*new york,?\s+(?:ny|new york)(?![a-z0-9'])/;
 const NYC_CONFIRM = /,\s*ny(?:\s+\d{5}(?:-\d{4})?)?$|,\s*new york(?![a-z0-9'])|(?:^|[^a-z0-9'])nyc(?![a-z0-9'])|new york city/;
 const COUNTY_ZONES = { "New York": "manhattan", Kings: "brooklyn", Queens: "queens", Bronx: "bronx", Richmond: "staten-island" };
 const SUB_ZONES = { Manhattan: "manhattan", Brooklyn: "brooklyn", Queens: "queens", Bronx: "bronx", "The Bronx": "bronx", "Staten Island": "staten-island" };
-const TEB_NAMES = ["teterboro airport", "(teb)", "atlantic aviation", "jet aviation", "signature aviation"];
+const TEB_NAMES = ["teterboro airport", "(teb)", "atlantic aviation", "jet aviation", "signature aviation", "flexjet"];
+const EWR_GROUNDS = /Newark Liberty|\bEWR\b|\bBrewster R(?:oa)?d\b/i;
+const TEB_GROUNDS = /\bFred Wehran\b|\bLindbergh Dr(?:ive)?\b|^(?:233|485) Industrial Ave/i;
 
 export const norm = (text) =>
   String(text ?? "")
@@ -147,8 +149,9 @@ export function classifyPlace(details, label) {
   const airport = types.includes("airport") || types.includes("international_airport");
   if (state === "NY" && zip === "11430") return "jfk";
   if (state === "NY" && zip === "11371") return "lga";
-  if (state === "NJ" && (zip === "07114" || !zip) && /Newark Liberty|\(EWR\)/.test(`${name} ${address}`)) return "ewr";
-  if (zip === "07608" && (types.includes("airport") || TEB_NAMES.some((fbo) => name.toLowerCase().includes(fbo)))) return "teb";
+  if (state === "NJ" && zip === "07114" && EWR_GROUNDS.test(`${name} ${address}`)) return "ewr";
+  if (state === "NJ" && !zip && /Newark Liberty|\(EWR\)/.test(`${name} ${address}`)) return "ewr";
+  if (zip === "07608" && (types.includes("airport") || TEB_NAMES.some((fbo) => name.toLowerCase().includes(fbo)) || TEB_GROUNDS.test(name) || TEB_GROUNDS.test(address))) return "teb";
   if (airport || types.includes("airstrip")) return "airport-other";
   if (state === "NY") {
     if (Object.prototype.hasOwnProperty.call(COUNTY_ZONES, county)) return COUNTY_ZONES[county];

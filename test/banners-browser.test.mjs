@@ -6,7 +6,6 @@ import assert from "node:assert/strict";
 import { chromium, webkit, firefox } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const SIZES = "(max-width: 1023px) calc(100vw - 48px), (max-width: 1234px) calc(54vw - 35px), 632px";
 const CARS = {
   "page-404": [0.55, 0.93, 0.01, 0.99],
   "page-about": [0.52, 0.94, 0.4, 0.95],
@@ -56,6 +55,13 @@ const route = (f) => "/" + f.replace(/\.html$/, "");
 const MANIFEST = JSON.parse(readFileSync(join(ROOT, "fleet/MANIFEST.json"), "utf8"));
 const MASTER = Object.fromEntries(MANIFEST.images.map((i) => [i.slug, i.master]));
 const CSS = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
+const ZOOM = (slug) => {
+  const k = +(/\.banner\{--z:calc\(([.\d]+) \/ min\(var\(--cx\),1 - var\(--cx\)\)\)\}/.exec(CSS) || [])[1];
+  const [, cl, cw] = new RegExp(`\\[data-photo=${slug}\\]\\{[^}]*--cl:([.\\d]+);--cw:([.\\d]+)\\}`).exec(CSS) || [];
+  const cx = +cl + cw / 2;
+  return Math.ceil(Math.max(1, k / Math.min(cx, 1 - cx)) * 100) / 100;
+};
+const SIZES = (slug) => `(max-width: 1023px) ${ZOOM(slug) > 1 ? `calc((100vw - 48px) * ${ZOOM(slug)})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 
 await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 23, BANNERS.join(", ")));
 
@@ -63,18 +69,18 @@ for (const f of BANNERS) {
   const html = readFileSync(join(ROOT, f), "utf8");
   const fig = html.slice(html.indexOf('<figure class="banner__photo">'), html.indexOf("</figure>", html.indexOf('<figure class="banner__photo">')));
   const slug = (/src="\/fleet\/([a-z0-9-]+?)-900\.webp"/.exec(fig) || [])[1];
-  await check(`${f}: the banner photo is the framed picture, sized ${SIZES}, and its largest candidate is the master at ${slug && MASTER[slug] && MASTER[slug].width}w`, () => {
+  await check(`${f}: the banner photo is the framed picture, sized ${SIZES(slug)}, and its largest candidate is the master at ${slug && MASTER[slug] && MASTER[slug].width}w`, () => {
     assert.ok(slug && CARS[slug] && MASTER[slug], `no car data or master for ${slug}`);
     const sources = [...fig.matchAll(/<source type="image\/(avif|webp)" srcset="([^"]+)" sizes="([^"]+)">/g)];
     assert.deepEqual(sources.map((m) => m[1]), ["avif", "webp"]);
     for (const [, ext, set, sizes] of sources) {
-      assert.equal(sizes, SIZES, ext);
+      assert.equal(sizes, SIZES(slug), ext);
       const widths = set.split(", ").map((c) => +c.split(" ")[1].slice(0, -1));
       assert.equal(Math.max(...widths), MASTER[slug].width, `${ext} srcset tops out at ${Math.max(...widths)}w`);
       assert.ok(set.split(", ").every((c) => existsSync(join(ROOT, c.split(" ")[0]))), `${ext} candidate missing on disk`);
     }
     const pre = /<link rel="preload" as="image" type="image\/avif" href="[^"]+" imagesrcset="([^"]+)" imagesizes="([^"]+)"/.exec(html);
-    if (pre) assert.deepEqual([pre[1], pre[2]], [sources[0][2], SIZES]);
+    if (pre) assert.deepEqual([pre[1], pre[2]], [sources[0][2], SIZES(slug)]);
   });
   await check(`${f}: the banner names its photo ${slug} and lux.css carries that car geometry`, () => {
     assert.equal((/<section class="banner[^"]*" data-photo="([a-z0-9-]+)"/.exec(html) || [])[1], slug);
@@ -172,6 +178,7 @@ const MEASURE = (cars) => {
     })(),
 
     sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    drawn: ib.width * devicePixelRatio,
   };
 };
 
@@ -265,6 +272,22 @@ async function sweep(engine, browser, pages, viewports) {
   }
 }
 
+async function pixels(engine, browser, pages, [width, height, dpr]) {
+  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, reducedMotion: "reduce", ...(engine !== "firefox" ? { isMobile: true, hasTouch: true } : {}) });
+  await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+  const rows = [];
+  for (const f of pages) {
+    const p = await ctx.newPage();
+    await p.goto(base + route(f), { waitUntil: "load" });
+    await p.waitForFunction(() => { const i = document.querySelector(".banner__photo picture img"); return i && i.complete && i.naturalWidth > 0; });
+    rows.push([f, await p.evaluate(MEASURE, CARS)]);
+    await p.close();
+  }
+  await ctx.close();
+  await check(`${engine} ${width}x${height} at ${dpr}x: every banner fetches a file with at least as many pixels across as the photo is drawn, its zoom included`, () =>
+    assert.deepEqual(rows.filter(([, r]) => !(r.fetched.got >= r.drawn)).map(([f, r]) => [f, r.fetched.got, Math.ceil(r.drawn)]), []));
+}
+
 async function fold(engine, browser, pages, viewports, fits = true) {
   for (const [width, height] of viewports) {
     const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", ...(width < 600 && engine !== "firefox" ? { isMobile: true, hasTouch: true } : {}) });
@@ -318,6 +341,7 @@ const chrome = await chromium.launch();
 await sweep("chromium", chrome, BANNERS, VIEWPORTS);
 await fold("chromium", chrome, WIDGET, FOLD);
 await fold("chromium", chrome, WIDGET, [[375, 548], [320, 568], [360, 600], [360, 640], [375, 600], [375, 620], [414, 622]], false);
+await pixels("chromium", chrome, BANNERS, [390, 844, 3]);
 for (const [width, height] of [[1440, 900], [1366, 768], [1024, 768], [375, 667]]) {
   const ctx = await chrome.newContext({ viewport: { width, height } });
   await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
@@ -350,6 +374,7 @@ for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
   await fold(engine, b, ["locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/manhattan.html", "black-car-service-brooklyn.html"], [[320, 568], [360, 640], [375, 600]], false);
   await readable(engine, b, ["services.html", "locations/jfk-airport.html", "about.html"], [[1440, 900]]);
   await readable(engine, b, ["services.html", "locations/jfk-airport.html"], [[1366, 768], [375, 667]]);
+  await pixels(engine, b, BANNERS, [390, 844, 3]);
   await b.close();
 }
 

@@ -36,7 +36,17 @@ const CARDS = [
   ["/limousine-service-nyc", "Weddings, prom and groups", "Luxury Sprinters for up to 12 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside the Jet Sprinter: two leather captain's chairs facing a screen"],
   ["/services#corporate", "Corporate accounts", "Monthly billing and priority scheduling for your company.", "lincoln-navigator", 1536, 1024, "Black Lincoln Navigator in a showroom"],
 ];
-const BANNER_SIZES = () => "(max-width: 1023px) calc(100vw - 48px), (max-width: 1234px) calc(54vw - 35px), 632px";
+const LUX = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
+const ZOOM = (slug) => {
+  const [, k] = /\.banner\{--z:calc\(([.\d]+) \/ min\(var\(--cx\),1 - var\(--cx\)\)\)\}/.exec(LUX);
+  const [, cl, cw] = new RegExp(`\\[data-photo=${slug}\\]\\{[^}]*--cl:([.\\d]+);--cw:([.\\d]+)\\}`).exec(LUX);
+  const cx = +cl + cw / 2;
+  return Math.ceil(Math.max(1, k / Math.min(cx, 1 - cx)) * 100) / 100;
+};
+const BANNER_SIZES = (img) => {
+  const z = ZOOM(/^\/fleet\/([a-z0-9-]+?)-900\.webp$/.exec(img.getAttribute("src"))[1]);
+  return `(max-width: 1023px) ${z > 1 ? `calc((100vw - 48px) * ${z})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
+};
 const SLIDE_SIZES = (i) => `(min-width: 1280px) 202px, (min-width: 600px) ${i < 2 ? "calc(50vw - 48px)" : "calc((100vw - 128px) / 3)"}, 120px`;
 const CARD_SIZES = (w, h) => {
   const f = Math.max(1, w / h / 1.5);
