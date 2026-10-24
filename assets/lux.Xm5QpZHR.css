@@ -520,7 +520,7 @@ main .plate>.slate b{color:var(--ink)}
 }
 .rate-table tfoot :is(td,th){font-size:14px;line-height:20px;color:var(--muted);border-block-end:0}
 .rate-table tfoot th[scope=row],.rate-table tbody:last-child>tr:last-child>*{border-block-end:0}
-@media (hover:hover){.rate-table tbody tr:hover :is(td,th[scope=row]),html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):hover{background:var(--gold-50)}}
+@media (hover:hover){.rate-table tbody tr:hover>th{box-shadow:-12px 0 var(--gold-50)}.rate-table tbody tr:hover>:last-child{box-shadow:12px 0 var(--gold-50)}.rate-table tbody tr:hover :is(td,th[scope=row]),html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):hover{background:var(--gold-50)}}
 .table-scroll{overflow-x:auto;overscroll-behavior-x:contain;container-type:scroll-state;padding:20px 24px 8px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--white)}
 @container not scroll-state(scrollable:inline){.rate-table th[scope=row]{background:none}}
 .accordion{display:grid}
@@ -583,7 +583,7 @@ main .plate>.slate b{color:var(--ink)}
 @media (hover:hover){.crumbs a:hover{color:var(--ink)}}
 .crumbs [aria-current=page]{color:var(--muted)}
 .crumbs li:not(:last-child)::after{content:"";display:inline-block;inline-size:16px;block-size:16px;margin-inline-start:16px;vertical-align:-2px;background:var(--muted);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 12h16.5M13.8 5.8 20 12l-6.2 6.2'/%3E%3C/svg%3E") center/16px no-repeat}
-.banner+.frame>nav{padding-block:32px}
+.banner+.frame>nav{padding-block:32px}.banner+.frame+.section:not(.section--band){padding-block-start:16px}
 .band .crumbs{margin-block-end:16px}
 .citymap{container-type:inline-size;align-self:start;max-inline-size:44rem;min-inline-size:0}
 .citymap svg{inline-size:100%;block-size:auto;border-radius:var(--radius-lg);background:var(--line);font:500 clamp(20px,52px - 5.5cqi,35px)/1 var(--font-sans)}
