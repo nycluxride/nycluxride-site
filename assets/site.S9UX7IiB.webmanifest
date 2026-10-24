@@ -1,6 +1,9 @@
 {
+    "id": "/",
     "name": "NYC LUX RIDE",
     "short_name": "NYC LUX RIDE",
+    "start_url": "/",
+    "scope": "/",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",

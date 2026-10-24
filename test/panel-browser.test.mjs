@@ -391,6 +391,70 @@ for (const [name, b] of ENGINES) {
   await ctx.close();
 }
 
+for (const [name, b] of ENGINES) {
+  const ctx = await b.newContext({ viewport: { width: 863, height: 360 }, reducedMotion: "reduce" });
+  await ctx.route((url) => !url.href.startsWith(S.base), (route) => route.fulfill({ status: 204, body: "" }));
+  await check(`${name}: on /book and / at 863 by 360, a phone held sideways, the open calendar stays open while the page scrolls down to its last row, so every bookable day of this month and the next can be tapped, and it closes once it has scrolled whole under the sticky header`, async () => {
+    const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const state = (page) => page.evaluate(() => {
+      const c = document.getElementById("bk-cal"), h = document.querySelector(".site-header").getBoundingClientRect().bottom;
+      if (c.hidden) return null;
+      const tap = [...c.querySelectorAll(".bk-cal__day:not([disabled])")].map((x) => [x, x.getBoundingClientRect()]).filter(([x, r]) => { const y = r.top + r.height / 2, e = document.elementFromPoint(r.left + r.width / 2, y); return y > h && y < innerHeight && !!e && x.contains(e); });
+      return { tap: tap.map(([x, r]) => [x.dataset.day, r.left + r.width / 2, r.top + r.height / 2]), below: c.getBoundingClientRect().bottom - h };
+    });
+    for (const path of ["/book", "/"]) {
+      const page = await ctx.newPage();
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(e.message));
+      await page.goto(`${S.base}${path}`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("book-form").classList.contains("is-js"));
+      let first = [];
+      for (const month of [0, 1]) {
+        await fresh(page);
+        await page.click("#bk-date-btn");
+        await page.waitForFunction(() => !document.getElementById("bk-cal").hidden);
+        if (month) await page.click('#bk-cal .bk-cal__nav[data-dir="1"]');
+        await idle(page);
+        const days = await page.$$eval("#bk-cal .bk-cal__day:not([disabled])", (o) => o.map((x) => x.dataset.day));
+        if (!month) first = days;
+        const seen = new Set();
+        let s = await state(page), last = s;
+        for (let i = 0; s && i < 60; i++) {
+          s.tap.forEach(([day]) => seen.add(day));
+          last = s;
+          await page.evaluate(() => scrollBy({ top: 20, behavior: "instant" }));
+          await frames(page);
+          s = await state(page);
+        }
+        assert.deepEqual(days.filter((day) => !seen.has(day)), [], `${path}, month +${month}: these bookable days never came into view under the header while the calendar was open`);
+        assert.ok(!s && last.below <= 20, `${path}, month +${month}: ${s ? "the calendar stayed open" : `the calendar closed with ${Math.round(last.below)}px of it still below the header`}`);
+      }
+      const day = first.at(-1);
+      await fresh(page);
+      await page.click("#bk-date-btn");
+      await page.waitForFunction(() => !document.getElementById("bk-cal").hidden);
+      await idle(page);
+      let at = null;
+      for (let i = 0; !at && i < 60; i++) {
+        const s = await state(page);
+        if (!s) break;
+        at = s.tap.find(([d]) => d === day);
+        if (!at) {
+          await page.evaluate(() => scrollBy({ top: 20, behavior: "instant" }));
+          await frames(page);
+        }
+      }
+      assert.ok(at, `${path}: ${day} could not be reached`);
+      await page.mouse.click(at[1], at[2]);
+      await page.waitForFunction(() => document.getElementById("bk-cal").hidden);
+      assert.equal(await page.inputValue("#bk-date"), day, `${path}: the last bookable day is picked`);
+      assert.deepEqual(errors, []);
+      await page.close();
+    }
+  });
+  await ctx.close();
+}
+
 for (const [, b] of ENGINES) await b.close();
 S.child.kill();
 if (failures) {

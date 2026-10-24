@@ -399,6 +399,15 @@ check("privacy-policy.html: Last Updated October 13, 2026 and WebPage dateModifi
   const lines = [...doc.querySelectorAll("main p")].map((p) => norm(p.textContent)).filter((t) => t.startsWith("Last Updated:"));
   assert.deepEqual(lines, ["Last Updated: October 13, 2026"]);
 });
+check("privacy-policy.html: section 2 lists the fields the schedule and contact forms ask for, and no others", () => {
+  const fields = (file) => [...load(file).querySelectorAll("main form label")].map((l) => norm(l.textContent));
+  assert.deepEqual(fields("schedule.html"), ["Full name", "Email", "Mobile number", "Pickup address", "Destination", "Pickup date", "Pickup time", "Flight or train number (optional)", "Passengers (optional)", "Vehicle class (optional)", "Notes (optional)"]);
+  assert.deepEqual(fields("contact.html"), ["Full name", "Email or mobile number", "Booking reference (optional)", "Message"]);
+  const doc = load("privacy-policy.html");
+  const ps = [];
+  for (let n = doc.getElementById("information-we-collect").nextElementSibling; n && n.tagName !== "H2"; n = n.nextElementSibling) if (/\b(schedule|contact) forms?\b/.test(n.textContent)) ps.push(norm(n.textContent));
+  assert.deepEqual(ps, ["The schedule form asks for your name, email, mobile, pickup address, destination, date and time. You can also add a flight or train number, the number of passengers, a vehicle class and notes. The contact form asks for your name, an email or mobile number and your message, and you can add a booking reference. These forms open your email app with the details filled in, and nothing is sent until you send that email."]);
+});
 check("sitemap.xml: lastmod 2026-10-13 for /privacy-policy and /card-authorization, the URL list unchanged", () => {
   const xml = readFileSync(join(ROOT, "sitemap.xml"), "utf8");
   const mods = Object.fromEntries([...xml.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)].map((m) => [m[1], m[2]]));
