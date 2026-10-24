@@ -623,7 +623,7 @@ main .plate>.slate b{color:var(--ink)}
 .citymap figcaption{margin-block-start:12px;max-inline-size:37.128em;font:400 var(--type-body-sm) var(--font-sans);color:var(--muted)}
 @container (max-width:34rem){.cm-pin:not([aria-current]){display:none}}
 .cm-pair>ul{display:grid;gap:16px;align-content:start}
-@media (min-width:700px) and (max-width:899px){.cm-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}.cm-pair>*{grid-column:auto}}
+@media (min-width:700px) and (max-width:899px){.cm-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}.cm-pair>*{grid-column:auto}.cm-pair--air>.prose{grid-column:1/-1}}
 @media (min-width:600px){
 .fleet-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .note{grid-template-columns:12rem minmax(0,40rem);grid-template-rows:auto 1fr;align-items:start;gap:8px 24px}
@@ -690,6 +690,9 @@ main>.band+.frame:has(>article){padding-block-start:32px}
 .svc>.svc__plate{align-self:center}
 .grid12>.svc+.svc{margin-block-start:48px}
 .cm-pair>ul{align-content:center}
+.cm-pair--air>.citymap{grid-row:1/3}
+.cm-pair--air>.prose{grid-row:1;align-self:end}
+.cm-pair--air>ul{grid-row:2;align-self:start}
 main>.band+.frame:has(>article){padding-block-start:48px}
 .frame:has(>article)+.section--tight{padding-block-start:var(--space-6xl)}
 .notes{row-gap:0;margin-block-end:-48px}
@@ -698,8 +701,8 @@ main>.band+.frame:has(>article){padding-block-start:48px}
 .notes .note__lede{margin-block-start:4px}
 }
 @media (min-width:900px) and (max-width:1199px){
-.cm-pair>.citymap,.grid12>.c1-6.prose:has(+.citymap--hero){grid-column:1/span 4}
-.cm-pair>ul,.grid12>.citymap--hero{grid-column:5/span 4}
+.cm-pair>.citymap{grid-column:1/span 4}
+.cm-pair>ul,.cm-pair--air>.prose{grid-column:5/span 4}
 .frame>article>.grid12>.plate{grid-column:1/span 5}
 .frame>article>.grid12>.c7-12{grid-column:6/span 3;align-self:end}
 ul.grid12>li[class]{grid-column:span 4}
@@ -1205,7 +1208,6 @@ html.hdr-away .site-header{transition:background-color var(--tb),color var(--tb)
 @starting-style{.fleet-sets:has(.fleet-set:target)>.fleet-set:target{opacity:0}}
 .notice.is-new{animation:nt-in .2s ease-out}
 .cm-arc{stroke-dasharray:1}
-.citymap--hero .cm-arc{animation:trace 1.8s var(--ease-settle) .5s backwards}
 @media screen{
 [data-rv="0"] img{opacity:0;animation:rv-show 0s 3s forwards}
 [data-rv="1"] img{animation:rv-fade .4s ease-out backwards}

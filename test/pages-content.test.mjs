@@ -175,7 +175,7 @@ for (const file of BANNERS) {
 
 {
   const { document } = read("locations.html");
-  check("locations.html: main starts with section.band holding the eyebrow, h1, lede and the eager header photo, and the borough map follows in the next section", () => {
+  check("locations.html: main starts with section.band holding the eyebrow, h1, lede and the eager header photo, and the next section pairs the borough map with the airport text and cards", () => {
     const band = document.querySelector("main").firstElementChild;
     assert.equal(tagOf(band), "section.band");
     assert.deepEqual(kids(band).map(tagOf), ["div.frame"]);
@@ -186,7 +186,13 @@ for (const file of BANNERS) {
     assert.deepEqual([...document.querySelectorAll("h1")].map((h) => norm(h.textContent)), BASELINE["locations.html"].h1);
     assert.ok(grid.querySelector(":scope>figure.banner__photo.c7-12>img.plate__twin+picture>img[loading=eager][fetchpriority=high]"), "no header photo");
     assert.equal(band.getAttribute("data-photo"), "page-locations");
-    assert.ok(band.nextElementSibling.querySelector(":scope>div.frame>figure.citymap svg"), "no borough map after the band");
+    const pair = band.nextElementSibling.querySelector(":scope>div.frame>div.grid12.cm-pair.cm-pair--air");
+    assert.ok(pair, "no map pairing after the band");
+    assert.deepEqual(kids(pair).map(tagOf), ["div.prose.c7-12", "figure.citymap.c1-6", "ul.c7-12"]);
+    assert.deepEqual(kids(kids(pair)[0]).slice(0, 2).map((n) => norm(n.textContent)), ["Airports", "Both New York City airports"]);
+    assert.ok(pair.querySelector(":scope>figure.citymap>svg"), "no borough map after the band");
+    assert.deepEqual([...pair.querySelectorAll(":scope>ul>li>a.loc-card")].map((a) => a.getAttribute("href")), ["/locations/jfk-airport", "/locations/laguardia-airport"]);
+    assert.equal(document.querySelectorAll("main figure.citymap").length, 1);
   });
   check("locations.html: the H1 sets its key words, New York City, in one span.h-gold and holds no other markup", () => {
     assert.deepEqual([...document.querySelector("main h1").children].map((c) => [c.tagName, c.className, norm(c.textContent), c.children.length]), [["SPAN", "h-gold", "New York City", 0]]);

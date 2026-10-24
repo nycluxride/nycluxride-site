@@ -458,7 +458,8 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 :is(.bk-later,#cf-notes)>li{display:grid;grid-template-columns:16px minmax(0,1fr);gap:8px;font:400 14px/20px var(--font-sans);color:var(--ink-2)}
 :is(.bk-later,#cf-notes) .icon{width:16px;height:16px;margin-top:2px;color:var(--gold-700)}
 :is(.bk-consent,.bk-drive,.bk-policy,.bk-nopay,.bk-under,.bk-helpline){font:400 14px/20px var(--font-sans);color:var(--ink-2)}
-.bk-consent a,.bk-policy .lnk{font:var(--t5);white-space:nowrap}
+.bk-consent a{font:var(--t5)}
+.bk-policy .lnk{font:var(--t5);white-space:nowrap}
 .bk-policy .lnk{display:inline;min-height:0}
 :is(.bk-consent,.bk-policy) .icon{width:14px;height:14px;margin-inline-start:4px;vertical-align:-2px}
 .bk-nopay{text-align:center}
