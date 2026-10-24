@@ -239,6 +239,7 @@ for (const file of FILES) {
     const bottom = document.querySelector(".site-footer__bottom");
     assert.ok(bottom, "no .site-footer__bottom");
     assert.equal(bottom.querySelector("p").textContent.trim(), "Copyright 2026 NYC LUX RIDE, New York, NY.");
+    assert.deepEqual([...bottom.querySelectorAll("p>.nowrap")].map((s) => s.textContent), ["NYC LUX RIDE,", "New York, NY."]);
     const reviews = [...bottom.querySelectorAll("a")].find((a) => a.getAttribute("href") === REVIEWS);
     assert.ok(reviews, "no reviews link in the bottom row");
     assert.deepEqual([reviews.textContent.trim(), reviews.getAttribute("target"), !!reviews.querySelector('svg[aria-hidden="true"] use[href="#i-external"]')], ["Read the reviews on Google Maps (opens in a new tab)", "_blank", true]);
