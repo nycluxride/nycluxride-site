@@ -237,7 +237,7 @@ article>.frame>.rail>p{margin-block-start:0}
 .site-header__desk>.tel{translate:var(--hdr-x,0px) 0;transition:translate var(--tb),background-color var(--tb),box-shadow var(--tb)}
 }
 @media (min-width:1280px){.site-header{--bs:clamp(18px,(100vw - 1083px) / 10.75,24px)}}
-@media (min-width:1440px) and (min-aspect-ratio:4/3) and (scripting:enabled){.home:not(.is-scrolled) .site-header__brand{scale:1.25}}
+@media (min-width:1440px) and (min-aspect-ratio:4/3) and (scripting:enabled){.home .site-header__brand{scale:1}.home:not(.is-scrolled) .site-header__brand{scale:1.25}}
 @media (min-width:1024px) and (max-width:1279px){
 .site-nav a{padding-inline:12px}
 .site-nav [aria-current]::after{inset-inline:12px}

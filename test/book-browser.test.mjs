@@ -6276,6 +6276,27 @@ for (const [name, b] of ENGINES) {
   await ctx.close();
 }
 
+for (const [name, b] of ENGINES) {
+  const ctx = await engineContext(b, P, { viewport: { width: 320, height: 800 }, javaScriptEnabled: false });
+  await check(`B137 ${name} without javascript at 320: a line that cannot break and is wider than the card, added at the end of the actions, overflows on its own and leaves every field inside the booking card`, async () => {
+    for (const path of ["/book", "/", "/locations/jfk-airport"]) {
+      const p = await open(ctx, P, path);
+      const out = await p.evaluate(() => {
+        const f = document.getElementById("book-form"), x = document.createElement("p");
+        x.textContent = "W".repeat(40);
+        document.getElementById("bk-act").append(x);
+        const edge = f.getBoundingClientRect().right - parseFloat(getComputedStyle(f).paddingRight) + 0.5;
+        const r = document.createRange();
+        r.selectNodeContents(x);
+        return [r.getBoundingClientRect().right > edge, [...f.querySelectorAll(".field input:not([type=hidden]), .field select, .field textarea")].filter((e) => e.getClientRects().length && e.getBoundingClientRect().right > edge).map((e) => e.id)];
+      });
+      assert.deepEqual(out, [true, []], path);
+      await p.close();
+    }
+  });
+  await ctx.close();
+}
+
 for (const [name, b] of ENGINES.slice(1)) await b.close();
 
 await browser.close();

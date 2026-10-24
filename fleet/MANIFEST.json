@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T04:00:47.710Z",
+  "generatedAt": "2026-10-24T05:30:04.781Z",
   "generator": "scripts/images.mjs",
   "targetWidths": [
     300,
@@ -38,6 +38,7 @@
       "page-jfk-airport",
       "page-laguardia-airport",
       "page-limousine-service-nyc",
+      "page-locations",
       "page-long-island-city",
       "page-manhattan",
       "page-queens",
@@ -54,6 +55,24 @@
   "extraWidths": {
     "cadillac-escalade-hero": [
       1620
+    ],
+    "page-about": [
+      1450
+    ],
+    "page-black-car-service-brooklyn": [
+      1650
+    ],
+    "page-contact": [
+      1650
+    ],
+    "page-manhattan": [
+      1500
+    ],
+    "page-queens": [
+      1600
+    ],
+    "page-rates": [
+      1750
     ]
   },
   "heroWidths": {
@@ -87,8 +106,18 @@
     "page-about": {
       "-q": "40"
     },
+    "page-about-1450": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
+    },
     "page-black-car-service-brooklyn": {
       "-q": "40"
+    },
+    "page-black-car-service-brooklyn-1650": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
     },
     "page-bronx": {
       "-q": "40"
@@ -101,6 +130,11 @@
     },
     "page-contact": {
       "-q": "40"
+    },
+    "page-contact-1650": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
     },
     "page-faq": {
       "-q": "40"
@@ -129,11 +163,26 @@
     "page-manhattan": {
       "-q": "40"
     },
+    "page-manhattan-1500": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
+    },
     "page-queens": {
       "-q": "40"
     },
+    "page-queens-1600": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
+    },
     "page-rates": {
       "-q": "40"
+    },
+    "page-rates-1750": {
+      "-q": "34",
+      "-s": "2",
+      "-y": "420"
     },
     "page-schedule": {
       "-q": "40"
@@ -161,9 +210,9 @@
   },
   "totals": {
     "masters": 50,
-    "masterBytes": 16805998,
-    "variantCount": 631,
-    "variantBytes": 35369289,
+    "masterBytes": 20815082,
+    "variantCount": 669,
+    "variantBytes": 47569052,
     "cropCount": 8,
     "cropBytes": 271325
   },
@@ -2932,10 +2981,10 @@
       "master": {
         "path": "fleet/page-about.webp",
         "url": "/fleet/page-about.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 673876,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 1371508,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -2944,7 +2993,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 5324
+          "bytes": 5286
         },
         {
           "path": "fleet/page-about-300.webp",
@@ -2952,7 +3001,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 17262
+          "bytes": 17168
         },
         {
           "path": "fleet/page-about-400.avif",
@@ -2960,7 +3009,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 8450
+          "bytes": 8498
         },
         {
           "path": "fleet/page-about-400.webp",
@@ -2968,7 +3017,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 28074
+          "bytes": 27816
         },
         {
           "path": "fleet/page-about-600.avif",
@@ -2976,7 +3025,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 16182
+          "bytes": 16295
         },
         {
           "path": "fleet/page-about-600.webp",
@@ -2984,7 +3033,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 53938
+          "bytes": 53778
         },
         {
           "path": "fleet/page-about-900.avif",
@@ -2992,7 +3041,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 31273
+          "bytes": 31381
         },
         {
           "path": "fleet/page-about-900.webp",
@@ -3000,7 +3049,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 107600
+          "bytes": 107292
         },
         {
           "path": "fleet/page-about-1100.avif",
@@ -3008,7 +3057,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 43979
+          "bytes": 44016
         },
         {
           "path": "fleet/page-about-1100.webp",
@@ -3016,7 +3065,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 153732
+          "bytes": 153248
         },
         {
           "path": "fleet/page-about-1400.avif",
@@ -3024,7 +3073,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 65474
+          "bytes": 65677
         },
         {
           "path": "fleet/page-about-1400.webp",
@@ -3032,7 +3081,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 239010
+          "bytes": 242586
         },
         {
           "path": "fleet/page-about-1800.avif",
@@ -3040,7 +3089,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 102783
+          "bytes": 102291
         },
         {
           "path": "fleet/page-about-1800.webp",
@@ -3048,12 +3097,52 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 393006
+          "bytes": 398664
+        },
+        {
+          "path": "fleet/page-about-2400.avif",
+          "url": "/fleet/page-about-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 175285
+        },
+        {
+          "path": "fleet/page-about-2400.webp",
+          "url": "/fleet/page-about-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 704186
+        },
+        {
+          "path": "fleet/page-about-2528.avif",
+          "url": "/fleet/page-about-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 198312
+        },
+        {
+          "path": "fleet/page-about-2528.webp",
+          "url": "/fleet/page-about-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 807438
+        },
+        {
+          "path": "fleet/page-about-1450.avif",
+          "url": "/fleet/page-about-1450.avif",
+          "format": "avif",
+          "width": 1450,
+          "height": 966,
+          "bytes": 48933
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-about-300.avif 300w, /fleet/page-about-400.avif 400w, /fleet/page-about-600.avif 600w, /fleet/page-about-900.avif 900w, /fleet/page-about-1100.avif 1100w, /fleet/page-about-1400.avif 1400w, /fleet/page-about-1800.avif 1800w",
-        "webp": "/fleet/page-about-300.webp 300w, /fleet/page-about-400.webp 400w, /fleet/page-about-600.webp 600w, /fleet/page-about-900.webp 900w, /fleet/page-about-1100.webp 1100w, /fleet/page-about-1400.webp 1400w, /fleet/page-about-1800.webp 1800w"
+        "avif": "/fleet/page-about-300.avif 300w, /fleet/page-about-400.avif 400w, /fleet/page-about-600.avif 600w, /fleet/page-about-900.avif 900w, /fleet/page-about-1100.avif 1100w, /fleet/page-about-1400.avif 1400w, /fleet/page-about-1450.avif 1450w, /fleet/page-about-1800.avif 1800w, /fleet/page-about-2400.avif 2400w, /fleet/page-about-2528.avif 2528w",
+        "webp": "/fleet/page-about-300.webp 300w, /fleet/page-about-400.webp 400w, /fleet/page-about-600.webp 600w, /fleet/page-about-900.webp 900w, /fleet/page-about-1100.webp 1100w, /fleet/page-about-1400.webp 1400w, /fleet/page-about-1800.webp 1800w, /fleet/page-about-2400.webp 2400w, /fleet/page-about-2528.webp 2528w"
       }
     },
     {
@@ -3178,10 +3267,18 @@
           "width": 1800,
           "height": 1200,
           "bytes": 451076
+        },
+        {
+          "path": "fleet/page-black-car-service-brooklyn-1650.avif",
+          "url": "/fleet/page-black-car-service-brooklyn-1650.avif",
+          "format": "avif",
+          "width": 1650,
+          "height": 1100,
+          "bytes": 78566
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-black-car-service-brooklyn-300.avif 300w, /fleet/page-black-car-service-brooklyn-400.avif 400w, /fleet/page-black-car-service-brooklyn-600.avif 600w, /fleet/page-black-car-service-brooklyn-900.avif 900w, /fleet/page-black-car-service-brooklyn-1100.avif 1100w, /fleet/page-black-car-service-brooklyn-1400.avif 1400w, /fleet/page-black-car-service-brooklyn-1800.avif 1800w",
+        "avif": "/fleet/page-black-car-service-brooklyn-300.avif 300w, /fleet/page-black-car-service-brooklyn-400.avif 400w, /fleet/page-black-car-service-brooklyn-600.avif 600w, /fleet/page-black-car-service-brooklyn-900.avif 900w, /fleet/page-black-car-service-brooklyn-1100.avif 1100w, /fleet/page-black-car-service-brooklyn-1400.avif 1400w, /fleet/page-black-car-service-brooklyn-1650.avif 1650w, /fleet/page-black-car-service-brooklyn-1800.avif 1800w",
         "webp": "/fleet/page-black-car-service-brooklyn-300.webp 300w, /fleet/page-black-car-service-brooklyn-400.webp 400w, /fleet/page-black-car-service-brooklyn-600.webp 600w, /fleet/page-black-car-service-brooklyn-900.webp 900w, /fleet/page-black-car-service-brooklyn-1100.webp 1100w, /fleet/page-black-car-service-brooklyn-1400.webp 1400w, /fleet/page-black-car-service-brooklyn-1800.webp 1800w"
       }
     },
@@ -3190,10 +3287,10 @@
       "master": {
         "path": "fleet/page-bronx.webp",
         "url": "/fleet/page-bronx.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 669968,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 1338032,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -3202,7 +3299,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 4835
+          "bytes": 4852
         },
         {
           "path": "fleet/page-bronx-300.webp",
@@ -3210,7 +3307,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 15758
+          "bytes": 15608
         },
         {
           "path": "fleet/page-bronx-400.avif",
@@ -3218,7 +3315,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 7877
+          "bytes": 7778
         },
         {
           "path": "fleet/page-bronx-400.webp",
@@ -3226,7 +3323,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 25322
+          "bytes": 25418
         },
         {
           "path": "fleet/page-bronx-600.avif",
@@ -3234,7 +3331,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 14904
+          "bytes": 14790
         },
         {
           "path": "fleet/page-bronx-600.webp",
@@ -3242,7 +3339,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 50070
+          "bytes": 49760
         },
         {
           "path": "fleet/page-bronx-900.avif",
@@ -3250,7 +3347,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 29317
+          "bytes": 29291
         },
         {
           "path": "fleet/page-bronx-900.webp",
@@ -3258,7 +3355,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 104902
+          "bytes": 104954
         },
         {
           "path": "fleet/page-bronx-1100.avif",
@@ -3266,7 +3363,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 41199
+          "bytes": 41124
         },
         {
           "path": "fleet/page-bronx-1100.webp",
@@ -3274,7 +3371,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 152974
+          "bytes": 153580
         },
         {
           "path": "fleet/page-bronx-1400.avif",
@@ -3282,7 +3379,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 62501
+          "bytes": 61852
         },
         {
           "path": "fleet/page-bronx-1400.webp",
@@ -3290,7 +3387,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 241950
+          "bytes": 244444
         },
         {
           "path": "fleet/page-bronx-1800.avif",
@@ -3298,7 +3395,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 99541
+          "bytes": 98458
         },
         {
           "path": "fleet/page-bronx-1800.webp",
@@ -3306,12 +3403,44 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 405446
+          "bytes": 411320
+        },
+        {
+          "path": "fleet/page-bronx-2400.avif",
+          "url": "/fleet/page-bronx-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 174085
+        },
+        {
+          "path": "fleet/page-bronx-2400.webp",
+          "url": "/fleet/page-bronx-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 713456
+        },
+        {
+          "path": "fleet/page-bronx-2528.avif",
+          "url": "/fleet/page-bronx-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 198678
+        },
+        {
+          "path": "fleet/page-bronx-2528.webp",
+          "url": "/fleet/page-bronx-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 830708
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-bronx-300.avif 300w, /fleet/page-bronx-400.avif 400w, /fleet/page-bronx-600.avif 600w, /fleet/page-bronx-900.avif 900w, /fleet/page-bronx-1100.avif 1100w, /fleet/page-bronx-1400.avif 1400w, /fleet/page-bronx-1800.avif 1800w",
-        "webp": "/fleet/page-bronx-300.webp 300w, /fleet/page-bronx-400.webp 400w, /fleet/page-bronx-600.webp 600w, /fleet/page-bronx-900.webp 900w, /fleet/page-bronx-1100.webp 1100w, /fleet/page-bronx-1400.webp 1400w, /fleet/page-bronx-1800.webp 1800w"
+        "avif": "/fleet/page-bronx-300.avif 300w, /fleet/page-bronx-400.avif 400w, /fleet/page-bronx-600.avif 600w, /fleet/page-bronx-900.avif 900w, /fleet/page-bronx-1100.avif 1100w, /fleet/page-bronx-1400.avif 1400w, /fleet/page-bronx-1800.avif 1800w, /fleet/page-bronx-2400.avif 2400w, /fleet/page-bronx-2528.avif 2528w",
+        "webp": "/fleet/page-bronx-300.webp 300w, /fleet/page-bronx-400.webp 400w, /fleet/page-bronx-600.webp 600w, /fleet/page-bronx-900.webp 900w, /fleet/page-bronx-1100.webp 1100w, /fleet/page-bronx-1400.webp 1400w, /fleet/page-bronx-1800.webp 1800w, /fleet/page-bronx-2400.webp 2400w, /fleet/page-bronx-2528.webp 2528w"
       }
     },
     {
@@ -3319,10 +3448,10 @@
       "master": {
         "path": "fleet/page-brooklyn.webp",
         "url": "/fleet/page-brooklyn.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 708084,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 1407522,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -3331,7 +3460,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 5021
+          "bytes": 5113
         },
         {
           "path": "fleet/page-brooklyn-300.webp",
@@ -3339,7 +3468,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 17800
+          "bytes": 17852
         },
         {
           "path": "fleet/page-brooklyn-400.avif",
@@ -3347,7 +3476,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 8361
+          "bytes": 8418
         },
         {
           "path": "fleet/page-brooklyn-400.webp",
@@ -3355,7 +3484,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 29796
+          "bytes": 29544
         },
         {
           "path": "fleet/page-brooklyn-600.avif",
@@ -3363,7 +3492,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 16868
+          "bytes": 16830
         },
         {
           "path": "fleet/page-brooklyn-600.webp",
@@ -3371,7 +3500,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 58802
+          "bytes": 58874
         },
         {
           "path": "fleet/page-brooklyn-900.avif",
@@ -3379,7 +3508,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 34328
+          "bytes": 34165
         },
         {
           "path": "fleet/page-brooklyn-900.webp",
@@ -3387,7 +3516,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 118678
+          "bytes": 118266
         },
         {
           "path": "fleet/page-brooklyn-1100.avif",
@@ -3395,7 +3524,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 47190
+          "bytes": 47163
         },
         {
           "path": "fleet/page-brooklyn-1100.webp",
@@ -3403,7 +3532,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 168774
+          "bytes": 167218
         },
         {
           "path": "fleet/page-brooklyn-1400.avif",
@@ -3411,7 +3540,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 70024
+          "bytes": 69746
         },
         {
           "path": "fleet/page-brooklyn-1400.webp",
@@ -3419,7 +3548,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 259860
+          "bytes": 264536
         },
         {
           "path": "fleet/page-brooklyn-1800.avif",
@@ -3427,7 +3556,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 106410
+          "bytes": 105727
         },
         {
           "path": "fleet/page-brooklyn-1800.webp",
@@ -3435,12 +3564,44 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 417574
+          "bytes": 428610
+        },
+        {
+          "path": "fleet/page-brooklyn-2400.avif",
+          "url": "/fleet/page-brooklyn-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 176215
+        },
+        {
+          "path": "fleet/page-brooklyn-2400.webp",
+          "url": "/fleet/page-brooklyn-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 741860
+        },
+        {
+          "path": "fleet/page-brooklyn-2528.avif",
+          "url": "/fleet/page-brooklyn-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 197821
+        },
+        {
+          "path": "fleet/page-brooklyn-2528.webp",
+          "url": "/fleet/page-brooklyn-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 875006
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-brooklyn-300.avif 300w, /fleet/page-brooklyn-400.avif 400w, /fleet/page-brooklyn-600.avif 600w, /fleet/page-brooklyn-900.avif 900w, /fleet/page-brooklyn-1100.avif 1100w, /fleet/page-brooklyn-1400.avif 1400w, /fleet/page-brooklyn-1800.avif 1800w",
-        "webp": "/fleet/page-brooklyn-300.webp 300w, /fleet/page-brooklyn-400.webp 400w, /fleet/page-brooklyn-600.webp 600w, /fleet/page-brooklyn-900.webp 900w, /fleet/page-brooklyn-1100.webp 1100w, /fleet/page-brooklyn-1400.webp 1400w, /fleet/page-brooklyn-1800.webp 1800w"
+        "avif": "/fleet/page-brooklyn-300.avif 300w, /fleet/page-brooklyn-400.avif 400w, /fleet/page-brooklyn-600.avif 600w, /fleet/page-brooklyn-900.avif 900w, /fleet/page-brooklyn-1100.avif 1100w, /fleet/page-brooklyn-1400.avif 1400w, /fleet/page-brooklyn-1800.avif 1800w, /fleet/page-brooklyn-2400.avif 2400w, /fleet/page-brooklyn-2528.avif 2528w",
+        "webp": "/fleet/page-brooklyn-300.webp 300w, /fleet/page-brooklyn-400.webp 400w, /fleet/page-brooklyn-600.webp 600w, /fleet/page-brooklyn-900.webp 900w, /fleet/page-brooklyn-1100.webp 1100w, /fleet/page-brooklyn-1400.webp 1400w, /fleet/page-brooklyn-1800.webp 1800w, /fleet/page-brooklyn-2400.webp 2400w, /fleet/page-brooklyn-2528.webp 2528w"
       }
     },
     {
@@ -3577,10 +3738,10 @@
       "master": {
         "path": "fleet/page-contact.webp",
         "url": "/fleet/page-contact.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 492862,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 946490,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -3589,7 +3750,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 4924
+          "bytes": 4952
         },
         {
           "path": "fleet/page-contact-300.webp",
@@ -3597,7 +3758,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 16592
+          "bytes": 16566
         },
         {
           "path": "fleet/page-contact-400.avif",
@@ -3605,7 +3766,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 8053
+          "bytes": 8057
         },
         {
           "path": "fleet/page-contact-400.webp",
@@ -3613,7 +3774,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 27016
+          "bytes": 27022
         },
         {
           "path": "fleet/page-contact-600.avif",
@@ -3621,7 +3782,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 15338
+          "bytes": 15345
         },
         {
           "path": "fleet/page-contact-600.webp",
@@ -3629,7 +3790,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 52198
+          "bytes": 52412
         },
         {
           "path": "fleet/page-contact-900.avif",
@@ -3637,7 +3798,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 29428
+          "bytes": 29345
         },
         {
           "path": "fleet/page-contact-900.webp",
@@ -3645,7 +3806,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 100640
+          "bytes": 99828
         },
         {
           "path": "fleet/page-contact-1100.avif",
@@ -3653,7 +3814,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 41381
+          "bytes": 41464
         },
         {
           "path": "fleet/page-contact-1100.webp",
@@ -3661,7 +3822,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 136354
+          "bytes": 137384
         },
         {
           "path": "fleet/page-contact-1400.avif",
@@ -3669,7 +3830,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 58978
+          "bytes": 58936
         },
         {
           "path": "fleet/page-contact-1400.webp",
@@ -3677,7 +3838,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 196102
+          "bytes": 200162
         },
         {
           "path": "fleet/page-contact-1800.avif",
@@ -3685,7 +3846,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 87967
+          "bytes": 87333
         },
         {
           "path": "fleet/page-contact-1800.webp",
@@ -3693,12 +3854,52 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 290568
+          "bytes": 294230
+        },
+        {
+          "path": "fleet/page-contact-2400.avif",
+          "url": "/fleet/page-contact-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 136657
+        },
+        {
+          "path": "fleet/page-contact-2400.webp",
+          "url": "/fleet/page-contact-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 454086
+        },
+        {
+          "path": "fleet/page-contact-2528.avif",
+          "url": "/fleet/page-contact-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 150677
+        },
+        {
+          "path": "fleet/page-contact-2528.webp",
+          "url": "/fleet/page-contact-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 513696
+        },
+        {
+          "path": "fleet/page-contact-1650.avif",
+          "url": "/fleet/page-contact-1650.avif",
+          "format": "avif",
+          "width": 1650,
+          "height": 1100,
+          "bytes": 56018
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-contact-300.avif 300w, /fleet/page-contact-400.avif 400w, /fleet/page-contact-600.avif 600w, /fleet/page-contact-900.avif 900w, /fleet/page-contact-1100.avif 1100w, /fleet/page-contact-1400.avif 1400w, /fleet/page-contact-1800.avif 1800w",
-        "webp": "/fleet/page-contact-300.webp 300w, /fleet/page-contact-400.webp 400w, /fleet/page-contact-600.webp 600w, /fleet/page-contact-900.webp 900w, /fleet/page-contact-1100.webp 1100w, /fleet/page-contact-1400.webp 1400w, /fleet/page-contact-1800.webp 1800w"
+        "avif": "/fleet/page-contact-300.avif 300w, /fleet/page-contact-400.avif 400w, /fleet/page-contact-600.avif 600w, /fleet/page-contact-900.avif 900w, /fleet/page-contact-1100.avif 1100w, /fleet/page-contact-1400.avif 1400w, /fleet/page-contact-1650.avif 1650w, /fleet/page-contact-1800.avif 1800w, /fleet/page-contact-2400.avif 2400w, /fleet/page-contact-2528.avif 2528w",
+        "webp": "/fleet/page-contact-300.webp 300w, /fleet/page-contact-400.webp 400w, /fleet/page-contact-600.webp 600w, /fleet/page-contact-900.webp 900w, /fleet/page-contact-1100.webp 1100w, /fleet/page-contact-1400.webp 1400w, /fleet/page-contact-1800.webp 1800w, /fleet/page-contact-2400.webp 2400w, /fleet/page-contact-2528.webp 2528w"
       }
     },
     {
@@ -3964,10 +4165,10 @@
       "master": {
         "path": "fleet/page-fleet.webp",
         "url": "/fleet/page-fleet.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 322670,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 683386,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -3976,7 +4177,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 3234
+          "bytes": 3228
         },
         {
           "path": "fleet/page-fleet-300.webp",
@@ -3984,7 +4185,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 9032
+          "bytes": 8980
         },
         {
           "path": "fleet/page-fleet-400.avif",
@@ -3992,7 +4193,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 5294
+          "bytes": 5324
         },
         {
           "path": "fleet/page-fleet-400.webp",
@@ -4000,7 +4201,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 14036
+          "bytes": 14318
         },
         {
           "path": "fleet/page-fleet-600.avif",
@@ -4008,7 +4209,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 9736
+          "bytes": 9714
         },
         {
           "path": "fleet/page-fleet-600.webp",
@@ -4016,7 +4217,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 26708
+          "bytes": 26778
         },
         {
           "path": "fleet/page-fleet-900.avif",
@@ -4024,7 +4225,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 18696
+          "bytes": 18667
         },
         {
           "path": "fleet/page-fleet-900.webp",
@@ -4032,7 +4233,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 51928
+          "bytes": 52230
         },
         {
           "path": "fleet/page-fleet-1100.avif",
@@ -4040,7 +4241,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 25604
+          "bytes": 25527
         },
         {
           "path": "fleet/page-fleet-1100.webp",
@@ -4048,7 +4249,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 72498
+          "bytes": 72182
         },
         {
           "path": "fleet/page-fleet-1400.avif",
@@ -4056,7 +4257,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 37975
+          "bytes": 38093
         },
         {
           "path": "fleet/page-fleet-1400.webp",
@@ -4064,7 +4265,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 106388
+          "bytes": 108716
         },
         {
           "path": "fleet/page-fleet-1800.avif",
@@ -4072,7 +4273,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 56918
+          "bytes": 57081
         },
         {
           "path": "fleet/page-fleet-1800.webp",
@@ -4080,12 +4281,44 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 162920
+          "bytes": 167160
+        },
+        {
+          "path": "fleet/page-fleet-2400.avif",
+          "url": "/fleet/page-fleet-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 90283
+        },
+        {
+          "path": "fleet/page-fleet-2400.webp",
+          "url": "/fleet/page-fleet-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 276466
+        },
+        {
+          "path": "fleet/page-fleet-2528.avif",
+          "url": "/fleet/page-fleet-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 100676
+        },
+        {
+          "path": "fleet/page-fleet-2528.webp",
+          "url": "/fleet/page-fleet-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 310774
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-fleet-300.avif 300w, /fleet/page-fleet-400.avif 400w, /fleet/page-fleet-600.avif 600w, /fleet/page-fleet-900.avif 900w, /fleet/page-fleet-1100.avif 1100w, /fleet/page-fleet-1400.avif 1400w, /fleet/page-fleet-1800.avif 1800w",
-        "webp": "/fleet/page-fleet-300.webp 300w, /fleet/page-fleet-400.webp 400w, /fleet/page-fleet-600.webp 600w, /fleet/page-fleet-900.webp 900w, /fleet/page-fleet-1100.webp 1100w, /fleet/page-fleet-1400.webp 1400w, /fleet/page-fleet-1800.webp 1800w"
+        "avif": "/fleet/page-fleet-300.avif 300w, /fleet/page-fleet-400.avif 400w, /fleet/page-fleet-600.avif 600w, /fleet/page-fleet-900.avif 900w, /fleet/page-fleet-1100.avif 1100w, /fleet/page-fleet-1400.avif 1400w, /fleet/page-fleet-1800.avif 1800w, /fleet/page-fleet-2400.avif 2400w, /fleet/page-fleet-2528.avif 2528w",
+        "webp": "/fleet/page-fleet-300.webp 300w, /fleet/page-fleet-400.webp 400w, /fleet/page-fleet-600.webp 600w, /fleet/page-fleet-900.webp 900w, /fleet/page-fleet-1100.webp 1100w, /fleet/page-fleet-1400.webp 1400w, /fleet/page-fleet-1800.webp 1800w, /fleet/page-fleet-2400.webp 2400w, /fleet/page-fleet-2528.webp 2528w"
       }
     },
     {
@@ -4565,11 +4798,27 @@
           "width": 1400,
           "height": 933,
           "bytes": 119364
+        },
+        {
+          "path": "fleet/page-locations-1800.avif",
+          "url": "/fleet/page-locations-1800.avif",
+          "format": "avif",
+          "width": 1800,
+          "height": 1200,
+          "bytes": 56208
+        },
+        {
+          "path": "fleet/page-locations-1800.webp",
+          "url": "/fleet/page-locations-1800.webp",
+          "format": "webp",
+          "width": 1800,
+          "height": 1200,
+          "bytes": 179746
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-locations-300.avif 300w, /fleet/page-locations-400.avif 400w, /fleet/page-locations-600.avif 600w, /fleet/page-locations-900.avif 900w, /fleet/page-locations-1100.avif 1100w, /fleet/page-locations-1400.avif 1400w",
-        "webp": "/fleet/page-locations-300.webp 300w, /fleet/page-locations-400.webp 400w, /fleet/page-locations-600.webp 600w, /fleet/page-locations-900.webp 900w, /fleet/page-locations-1100.webp 1100w, /fleet/page-locations-1400.webp 1400w"
+        "avif": "/fleet/page-locations-300.avif 300w, /fleet/page-locations-400.avif 400w, /fleet/page-locations-600.avif 600w, /fleet/page-locations-900.avif 900w, /fleet/page-locations-1100.avif 1100w, /fleet/page-locations-1400.avif 1400w, /fleet/page-locations-1800.avif 1800w",
+        "webp": "/fleet/page-locations-300.webp 300w, /fleet/page-locations-400.webp 400w, /fleet/page-locations-600.webp 600w, /fleet/page-locations-900.webp 900w, /fleet/page-locations-1100.webp 1100w, /fleet/page-locations-1400.webp 1400w, /fleet/page-locations-1800.webp 1800w"
       }
     },
     {
@@ -4807,10 +5056,18 @@
           "width": 1800,
           "height": 1200,
           "bytes": 352344
+        },
+        {
+          "path": "fleet/page-manhattan-1500.avif",
+          "url": "/fleet/page-manhattan-1500.avif",
+          "format": "avif",
+          "width": 1500,
+          "height": 1000,
+          "bytes": 48244
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-manhattan-300.avif 300w, /fleet/page-manhattan-400.avif 400w, /fleet/page-manhattan-600.avif 600w, /fleet/page-manhattan-900.avif 900w, /fleet/page-manhattan-1100.avif 1100w, /fleet/page-manhattan-1400.avif 1400w, /fleet/page-manhattan-1800.avif 1800w",
+        "avif": "/fleet/page-manhattan-300.avif 300w, /fleet/page-manhattan-400.avif 400w, /fleet/page-manhattan-600.avif 600w, /fleet/page-manhattan-900.avif 900w, /fleet/page-manhattan-1100.avif 1100w, /fleet/page-manhattan-1400.avif 1400w, /fleet/page-manhattan-1500.avif 1500w, /fleet/page-manhattan-1800.avif 1800w",
         "webp": "/fleet/page-manhattan-300.webp 300w, /fleet/page-manhattan-400.webp 400w, /fleet/page-manhattan-600.webp 600w, /fleet/page-manhattan-900.webp 900w, /fleet/page-manhattan-1100.webp 1100w, /fleet/page-manhattan-1400.webp 1400w, /fleet/page-manhattan-1800.webp 1800w"
       }
     },
@@ -4819,10 +5076,10 @@
       "master": {
         "path": "fleet/page-queens.webp",
         "url": "/fleet/page-queens.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 734286,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 1357610,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -4831,7 +5088,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 5053
+          "bytes": 5109
         },
         {
           "path": "fleet/page-queens-300.webp",
@@ -4839,7 +5096,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 16864
+          "bytes": 16998
         },
         {
           "path": "fleet/page-queens-400.avif",
@@ -4847,7 +5104,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 8345
+          "bytes": 8392
         },
         {
           "path": "fleet/page-queens-400.webp",
@@ -4855,7 +5112,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 28478
+          "bytes": 28436
         },
         {
           "path": "fleet/page-queens-600.avif",
@@ -4863,7 +5120,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 17144
+          "bytes": 17011
         },
         {
           "path": "fleet/page-queens-600.webp",
@@ -4871,7 +5128,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 59842
+          "bytes": 59406
         },
         {
           "path": "fleet/page-queens-900.avif",
@@ -4879,7 +5136,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 36025
+          "bytes": 35936
         },
         {
           "path": "fleet/page-queens-900.webp",
@@ -4887,7 +5144,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 126792
+          "bytes": 126054
         },
         {
           "path": "fleet/page-queens-1100.avif",
@@ -4895,7 +5152,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 50990
+          "bytes": 50749
         },
         {
           "path": "fleet/page-queens-1100.webp",
@@ -4903,7 +5160,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 182938
+          "bytes": 182920
         },
         {
           "path": "fleet/page-queens-1400.avif",
@@ -4911,7 +5168,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 79012
+          "bytes": 78385
         },
         {
           "path": "fleet/page-queens-1400.webp",
@@ -4919,7 +5176,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 284642
+          "bytes": 286254
         },
         {
           "path": "fleet/page-queens-1800.avif",
@@ -4927,7 +5184,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 126015
+          "bytes": 125082
         },
         {
           "path": "fleet/page-queens-1800.webp",
@@ -4935,12 +5192,52 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 457454
+          "bytes": 457540
+        },
+        {
+          "path": "fleet/page-queens-2400.avif",
+          "url": "/fleet/page-queens-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 218636
+        },
+        {
+          "path": "fleet/page-queens-2400.webp",
+          "url": "/fleet/page-queens-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 765034
+        },
+        {
+          "path": "fleet/page-queens-2528.avif",
+          "url": "/fleet/page-queens-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 244575
+        },
+        {
+          "path": "fleet/page-queens-2528.webp",
+          "url": "/fleet/page-queens-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 850318
+        },
+        {
+          "path": "fleet/page-queens-1600.avif",
+          "url": "/fleet/page-queens-1600.avif",
+          "format": "avif",
+          "width": 1600,
+          "height": 1066,
+          "bytes": 68995
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-queens-300.avif 300w, /fleet/page-queens-400.avif 400w, /fleet/page-queens-600.avif 600w, /fleet/page-queens-900.avif 900w, /fleet/page-queens-1100.avif 1100w, /fleet/page-queens-1400.avif 1400w, /fleet/page-queens-1800.avif 1800w",
-        "webp": "/fleet/page-queens-300.webp 300w, /fleet/page-queens-400.webp 400w, /fleet/page-queens-600.webp 600w, /fleet/page-queens-900.webp 900w, /fleet/page-queens-1100.webp 1100w, /fleet/page-queens-1400.webp 1400w, /fleet/page-queens-1800.webp 1800w"
+        "avif": "/fleet/page-queens-300.avif 300w, /fleet/page-queens-400.avif 400w, /fleet/page-queens-600.avif 600w, /fleet/page-queens-900.avif 900w, /fleet/page-queens-1100.avif 1100w, /fleet/page-queens-1400.avif 1400w, /fleet/page-queens-1600.avif 1600w, /fleet/page-queens-1800.avif 1800w, /fleet/page-queens-2400.avif 2400w, /fleet/page-queens-2528.avif 2528w",
+        "webp": "/fleet/page-queens-300.webp 300w, /fleet/page-queens-400.webp 400w, /fleet/page-queens-600.webp 600w, /fleet/page-queens-900.webp 900w, /fleet/page-queens-1100.webp 1100w, /fleet/page-queens-1400.webp 1400w, /fleet/page-queens-1800.webp 1800w, /fleet/page-queens-2400.webp 2400w, /fleet/page-queens-2528.webp 2528w"
       }
     },
     {
@@ -4948,10 +5245,10 @@
       "master": {
         "path": "fleet/page-rates.webp",
         "url": "/fleet/page-rates.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 493488,
-        "aspectRatio": 1.5
+        "width": 2528,
+        "height": 1685,
+        "bytes": 934596,
+        "aspectRatio": 1.5003
       },
       "variants": [
         {
@@ -4960,7 +5257,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 4328
+          "bytes": 4392
         },
         {
           "path": "fleet/page-rates-300.webp",
@@ -4968,7 +5265,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 13762
+          "bytes": 13802
         },
         {
           "path": "fleet/page-rates-400.avif",
@@ -4976,7 +5273,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 7129
+          "bytes": 7132
         },
         {
           "path": "fleet/page-rates-400.webp",
@@ -4992,7 +5289,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 13583
+          "bytes": 13521
         },
         {
           "path": "fleet/page-rates-600.webp",
@@ -5000,7 +5297,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 43880
+          "bytes": 44046
         },
         {
           "path": "fleet/page-rates-900.avif",
@@ -5008,7 +5305,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 26424
+          "bytes": 26345
         },
         {
           "path": "fleet/page-rates-900.webp",
@@ -5016,7 +5313,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 88286
+          "bytes": 88242
         },
         {
           "path": "fleet/page-rates-1100.avif",
@@ -5024,7 +5321,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 36192
+          "bytes": 36074
         },
         {
           "path": "fleet/page-rates-1100.webp",
@@ -5032,7 +5329,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 122546
+          "bytes": 122606
         },
         {
           "path": "fleet/page-rates-1400.avif",
@@ -5040,7 +5337,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 52460
+          "bytes": 51995
         },
         {
           "path": "fleet/page-rates-1400.webp",
@@ -5048,7 +5345,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 186220
+          "bytes": 188066
         },
         {
           "path": "fleet/page-rates-1800.avif",
@@ -5056,7 +5353,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 77553
+          "bytes": 76856
         },
         {
           "path": "fleet/page-rates-1800.webp",
@@ -5064,12 +5361,52 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 287388
+          "bytes": 291114
+        },
+        {
+          "path": "fleet/page-rates-2400.avif",
+          "url": "/fleet/page-rates-2400.avif",
+          "format": "avif",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 126601
+        },
+        {
+          "path": "fleet/page-rates-2400.webp",
+          "url": "/fleet/page-rates-2400.webp",
+          "format": "webp",
+          "width": 2400,
+          "height": 1600,
+          "bytes": 475690
+        },
+        {
+          "path": "fleet/page-rates-2528.avif",
+          "url": "/fleet/page-rates-2528.avif",
+          "format": "avif",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 142645
+        },
+        {
+          "path": "fleet/page-rates-2528.webp",
+          "url": "/fleet/page-rates-2528.webp",
+          "format": "webp",
+          "width": 2528,
+          "height": 1685,
+          "bytes": 527596
+        },
+        {
+          "path": "fleet/page-rates-1750.avif",
+          "url": "/fleet/page-rates-1750.avif",
+          "format": "avif",
+          "width": 1750,
+          "height": 1166,
+          "bytes": 53083
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-rates-300.avif 300w, /fleet/page-rates-400.avif 400w, /fleet/page-rates-600.avif 600w, /fleet/page-rates-900.avif 900w, /fleet/page-rates-1100.avif 1100w, /fleet/page-rates-1400.avif 1400w, /fleet/page-rates-1800.avif 1800w",
-        "webp": "/fleet/page-rates-300.webp 300w, /fleet/page-rates-400.webp 400w, /fleet/page-rates-600.webp 600w, /fleet/page-rates-900.webp 900w, /fleet/page-rates-1100.webp 1100w, /fleet/page-rates-1400.webp 1400w, /fleet/page-rates-1800.webp 1800w"
+        "avif": "/fleet/page-rates-300.avif 300w, /fleet/page-rates-400.avif 400w, /fleet/page-rates-600.avif 600w, /fleet/page-rates-900.avif 900w, /fleet/page-rates-1100.avif 1100w, /fleet/page-rates-1400.avif 1400w, /fleet/page-rates-1750.avif 1750w, /fleet/page-rates-1800.avif 1800w, /fleet/page-rates-2400.avif 2400w, /fleet/page-rates-2528.avif 2528w",
+        "webp": "/fleet/page-rates-300.webp 300w, /fleet/page-rates-400.webp 400w, /fleet/page-rates-600.webp 600w, /fleet/page-rates-900.webp 900w, /fleet/page-rates-1100.webp 1100w, /fleet/page-rates-1400.webp 1400w, /fleet/page-rates-1800.webp 1800w, /fleet/page-rates-2400.webp 2400w, /fleet/page-rates-2528.webp 2528w"
       }
     },
     {
@@ -5706,9 +6043,9 @@
       "master": {
         "path": "fleet/page-upper-west-side.webp",
         "url": "/fleet/page-upper-west-side.webp",
-        "width": 1800,
-        "height": 1200,
-        "bytes": 456436,
+        "width": 1896,
+        "height": 1264,
+        "bytes": 521610,
         "aspectRatio": 1.5
       },
       "variants": [
@@ -5718,7 +6055,7 @@
           "format": "avif",
           "width": 300,
           "height": 200,
-          "bytes": 4488
+          "bytes": 4432
         },
         {
           "path": "fleet/page-upper-west-side-300.webp",
@@ -5726,7 +6063,7 @@
           "format": "webp",
           "width": 300,
           "height": 200,
-          "bytes": 13786
+          "bytes": 13958
         },
         {
           "path": "fleet/page-upper-west-side-400.avif",
@@ -5734,7 +6071,7 @@
           "format": "avif",
           "width": 400,
           "height": 267,
-          "bytes": 7196
+          "bytes": 7118
         },
         {
           "path": "fleet/page-upper-west-side-400.webp",
@@ -5742,7 +6079,7 @@
           "format": "webp",
           "width": 400,
           "height": 267,
-          "bytes": 22228
+          "bytes": 22292
         },
         {
           "path": "fleet/page-upper-west-side-600.avif",
@@ -5750,7 +6087,7 @@
           "format": "avif",
           "width": 600,
           "height": 400,
-          "bytes": 13233
+          "bytes": 13310
         },
         {
           "path": "fleet/page-upper-west-side-600.webp",
@@ -5758,7 +6095,7 @@
           "format": "webp",
           "width": 600,
           "height": 400,
-          "bytes": 43010
+          "bytes": 43528
         },
         {
           "path": "fleet/page-upper-west-side-900.avif",
@@ -5766,7 +6103,7 @@
           "format": "avif",
           "width": 900,
           "height": 600,
-          "bytes": 25614
+          "bytes": 25615
         },
         {
           "path": "fleet/page-upper-west-side-900.webp",
@@ -5774,7 +6111,7 @@
           "format": "webp",
           "width": 900,
           "height": 600,
-          "bytes": 84614
+          "bytes": 84800
         },
         {
           "path": "fleet/page-upper-west-side-1100.avif",
@@ -5782,7 +6119,7 @@
           "format": "avif",
           "width": 1100,
           "height": 733,
-          "bytes": 34564
+          "bytes": 34468
         },
         {
           "path": "fleet/page-upper-west-side-1100.webp",
@@ -5790,7 +6127,7 @@
           "format": "webp",
           "width": 1100,
           "height": 733,
-          "bytes": 119352
+          "bytes": 116812
         },
         {
           "path": "fleet/page-upper-west-side-1400.avif",
@@ -5798,7 +6135,7 @@
           "format": "avif",
           "width": 1400,
           "height": 933,
-          "bytes": 50746
+          "bytes": 49478
         },
         {
           "path": "fleet/page-upper-west-side-1400.webp",
@@ -5806,7 +6143,7 @@
           "format": "webp",
           "width": 1400,
           "height": 933,
-          "bytes": 174654
+          "bytes": 176448
         },
         {
           "path": "fleet/page-upper-west-side-1800.avif",
@@ -5814,7 +6151,7 @@
           "format": "avif",
           "width": 1800,
           "height": 1200,
-          "bytes": 77899
+          "bytes": 77771
         },
         {
           "path": "fleet/page-upper-west-side-1800.webp",
@@ -5822,12 +6159,28 @@
           "format": "webp",
           "width": 1800,
           "height": 1200,
-          "bytes": 261192
+          "bytes": 264778
+        },
+        {
+          "path": "fleet/page-upper-west-side-1896.avif",
+          "url": "/fleet/page-upper-west-side-1896.avif",
+          "format": "avif",
+          "width": 1896,
+          "height": 1264,
+          "bytes": 82024
+        },
+        {
+          "path": "fleet/page-upper-west-side-1896.webp",
+          "url": "/fleet/page-upper-west-side-1896.webp",
+          "format": "webp",
+          "width": 1896,
+          "height": 1264,
+          "bytes": 303490
         }
       ],
       "srcset": {
-        "avif": "/fleet/page-upper-west-side-300.avif 300w, /fleet/page-upper-west-side-400.avif 400w, /fleet/page-upper-west-side-600.avif 600w, /fleet/page-upper-west-side-900.avif 900w, /fleet/page-upper-west-side-1100.avif 1100w, /fleet/page-upper-west-side-1400.avif 1400w, /fleet/page-upper-west-side-1800.avif 1800w",
-        "webp": "/fleet/page-upper-west-side-300.webp 300w, /fleet/page-upper-west-side-400.webp 400w, /fleet/page-upper-west-side-600.webp 600w, /fleet/page-upper-west-side-900.webp 900w, /fleet/page-upper-west-side-1100.webp 1100w, /fleet/page-upper-west-side-1400.webp 1400w, /fleet/page-upper-west-side-1800.webp 1800w"
+        "avif": "/fleet/page-upper-west-side-300.avif 300w, /fleet/page-upper-west-side-400.avif 400w, /fleet/page-upper-west-side-600.avif 600w, /fleet/page-upper-west-side-900.avif 900w, /fleet/page-upper-west-side-1100.avif 1100w, /fleet/page-upper-west-side-1400.avif 1400w, /fleet/page-upper-west-side-1800.avif 1800w, /fleet/page-upper-west-side-1896.avif 1896w",
+        "webp": "/fleet/page-upper-west-side-300.webp 300w, /fleet/page-upper-west-side-400.webp 400w, /fleet/page-upper-west-side-600.webp 600w, /fleet/page-upper-west-side-900.webp 900w, /fleet/page-upper-west-side-1100.webp 1100w, /fleet/page-upper-west-side-1400.webp 1400w, /fleet/page-upper-west-side-1800.webp 1800w, /fleet/page-upper-west-side-1896.webp 1896w"
       }
     },
     {

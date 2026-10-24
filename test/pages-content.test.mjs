@@ -48,7 +48,17 @@ const GOLD = {
   "locations/jfk-airport.html": "JFK Airport",
   "locations/laguardia-airport.html": "LaGuardia Airport",
 };
-const BANNER_SIZES = "(max-width: 1023px) calc(100vw - 48px), (max-width: 1234px) calc(54vw - 35px), 632px";
+const LUX = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
+const ZOOM = (slug) => {
+  const [, k] = /\.banner\{--z:calc\(([.\d]+) \/ min\(var\(--cx\),1 - var\(--cx\)\)\)\}/.exec(LUX);
+  const [, cl, cw] = new RegExp(`\\[data-photo=${slug}\\]\\{[^}]*--cl:([.\\d]+);--cw:([.\\d]+)\\}`).exec(LUX);
+  const cx = +cl + cw / 2;
+  return Math.ceil(Math.max(1, k / Math.min(cx, 1 - cx)) * 100) / 100;
+};
+const BANNER_SIZES = (src) => {
+  const z = ZOOM(/^\/fleet\/([a-z0-9-]+?)-900\.webp$/.exec(src)[1]);
+  return `(max-width: 1023px) ${z > 1 ? `calc((100vw - 48px) * ${z})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
+};
 const SERVICES_JUMPS = [["#airport-transfers", "Airport transfers"], ["#hourly", "Hourly and as directed"], ["#corporate", "Corporate accounts"], ["#weddings", "Events"], ["#prom", "Prom"], ["#cruise", "Cruise terminals"]];
 const POSTS = readdirSync(join(ROOT, "blog")).filter((f) => f.endsWith(".html")).sort().map((f) => `blog/${f}`);
 
@@ -101,7 +111,7 @@ for (const file of BANNERS) {
     for (const k of ["width", "height", "alt"]) assert.ok(img.getAttribute(k), `img has no ${k}`);
     const sources = [...fig.querySelectorAll("picture>source")];
     assert.deepEqual(sources.map((s) => s.getAttribute("type")), ["image/avif", "image/webp"]);
-    for (const s of sources) assert.equal(s.getAttribute("sizes"), BANNER_SIZES);
+    for (const s of sources) assert.equal(s.getAttribute("sizes"), BANNER_SIZES(PHOTO[file]));
     assert.equal(document.querySelectorAll('img[loading="eager"]').length, 1, "more than one eager image");
   });
   check(`${file}: banner body order is h1#page-h, div.banner__book, the lede, with no eyebrow on any Hero B banner`, () => {
@@ -166,7 +176,7 @@ for (const file of BANNERS) {
     const avif = banner.querySelector('figure.banner__photo source[type="image/avif"]').getAttribute("srcset");
     assert.equal(pre[0].getAttribute("type"), "image/avif");
     assert.equal(pre[0].getAttribute("imagesrcset"), avif);
-    assert.equal(pre[0].getAttribute("imagesizes"), BANNER_SIZES);
+    assert.equal(pre[0].getAttribute("imagesizes"), BANNER_SIZES(PHOTO[file]));
     assert.equal(pre[0].getAttribute("fetchpriority"), "high");
     assert.equal(pre[0].hasAttribute("media"), false, "preload has a media attribute");
     assert.ok(avif.split(",").map((c) => c.trim().split(/\s+/)[0]).includes(pre[0].getAttribute("href")), "href is not a candidate");

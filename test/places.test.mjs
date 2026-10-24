@@ -173,6 +173,8 @@ const EXAMPLES = [
   ["JFK Airport, Queens", "jfk", "jfk"], ["LaGuardia Airport, Queens, NY", "lga", "lga"], ["Newark Liberty International Airport, Newark, NJ 07114", "ewr", "ewr"],
   ["Teterboro Airport, Teterboro, NJ 07608", "teb", "teb"], ["123 Frelinghuysen Ave, Newark, NJ 07114", "outside", ""], ["100 Main St, Teterboro, NJ 07608", "outside", ""],
   ["123 Main St, Flushing, NY 11354 USA", "queens", ""], ["123 Main St, Flushing, NY 11354, USA", "queens", ""],
+  ["LGA Airport", "lga", "lga"], ["EWR Airport", "ewr", "ewr"], ["TEB Airport", "teb", "teb"], ["JFK International", "jfk", "jfk"], ["JFK airport terminal 4", "jfk", "jfk-t4"],
+  ["LGA Airport, Queens, NY", "lga", "lga"], ["EWR Airport, Newark, NJ", "ewr", "ewr"], ["Newark Liberty Terminal C", "ewr", "ewr-tc"],
 ];
 
 await test(`classifyText gives every example of 4.3 (${EXAMPLES.length})`, () => {
@@ -234,6 +236,11 @@ await test("classifyPlace on synthetic Place Details objects", () => {
     [details({ state: "NY", zip: "11201" }), "Brooklyn Heights", "brooklyn"],
     [details({ state: "NJ", zip: "07608", types: ["point_of_interest"] }), "Some office, Teterboro, NJ", "outside"],
     [details({ state: "NJ", zip: "07114", types: ["airport"], address: "Somewhere, NJ 07114" }), "Cargo airport", "airport-other"],
+    [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise"], address: "Terminal B, Newark, NJ 07114, USA" }), "Terminal B, Brewster Road, Newark, NJ", "ewr"],
+    [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["lodging"], address: "1 Hotel Rd, Newark, NJ 07114, USA" }), "Newark Liberty International Airport Marriott, Hotel Road, Newark, NJ", "ewr"],
+    [details({ state: "NJ", county: "Bergen County", zip: "07608", types: ["point_of_interest"], address: "111 Fred Wehran Dr, Teterboro, NJ 07608, USA" }), "Flexjet Teterboro Private Terminal, Fred Wehran Drive, Teterboro, NJ", "teb"],
+    [details({ state: "NJ", county: "Bergen County", zip: "07608", types: ["street_address"], address: "485 Industrial Ave, Teterboro, NJ 07608, USA" }), "485 Industrial Ave, Teterboro, NJ", "teb"],
+    [details({ state: "NJ", county: "Bergen County", zip: "07608", types: ["shopping_mall"], address: "1 Teterboro Landing Dr, Teterboro, NJ 07608, USA" }), "Teterboro Landing, Industrial Avenue, Teterboro, NJ", "outside"],
     [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise", "geocode"], address: "Terminal C, Newark, NJ 07114, USA" }), "Terminal C, Newark Liberty International Airport (EWR), Brewster Road, Newark, NJ", "ewr"],
     [details({ state: "NJ", county: "Essex County", zip: "07114", types: ["premise"], address: "123 Frelinghuysen Ave, Newark, NJ 07114, USA" }), "123 Frelinghuysen Avenue, Newark, NJ, USA", "outside"],
     [{}, "", "outside"],

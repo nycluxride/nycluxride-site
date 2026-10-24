@@ -1261,6 +1261,46 @@ async function engineChecks(engine, b) {
   check(`${engine}: JavaScript on, before pay.js runs, the trust row reads ink-2 with gold-700 icons on the homepage floor and on the cream banner under the ink card`, () =>
     assert.deepEqual(glass, [[false, "rgb(80, 80, 85)", "rgb(133, 104, 35)"], [false, "rgb(80, 80, 85)", "rgb(133, 104, 35)"]]));
   await done(p);
+
+  const menu = [];
+  for (const path of ["/", "/book", "/about"]) {
+    const c = await b.newContext({ viewport: { width: 390, height: 844 } });
+    await c.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    await c.route(/\/assets\/(?:lux|book)\.[\w-]+\.css$/, async (r) => { await new Promise((x) => setTimeout(x, 400)); await r.continue(); });
+    await c.addInitScript(() => {
+      window.__menu = 0;
+      const f = () => {
+        const n = document.getElementById("nav-panel"), s = n && document.styleSheets.length && getComputedStyle(n);
+        if (s && s.display !== "none" && s.visibility !== "hidden" && +s.opacity > 0.02) window.__menu++;
+        if (performance.now() < 3000) requestAnimationFrame(f);
+      };
+      requestAnimationFrame(f);
+    });
+    const q = await c.newPage();
+    await q.goto(base + path, { waitUntil: "load" });
+    await q.waitForTimeout(800);
+    menu.push([path, await q.evaluate(() => window.__menu)]);
+    await c.close();
+  }
+  check(`${engine}: with the stylesheets held back 400 ms, the site menu never shows while /, /book or /about load`, () => assert.deepEqual(menu, [["/", 0], ["/book", 0], ["/about", 0]]));
+
+  const brand = [];
+  for (let i = 0; i < 6; i++) {
+    const c = await b.newContext({ viewport: { width: 1440, height: 900 } });
+    await c.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const q = await c.newPage();
+    await q.goto(`${base}/`, { waitUntil: "load" });
+    await q.waitForTimeout(500);
+    brand.push(await q.evaluate(async () => {
+      const n = document.querySelector(".site-header__bar .site-header__brand"), was = getComputedStyle(n).scale;
+      document.documentElement.classList.add("is-scrolled");
+      const moving = n.getAnimations().some((a) => a.transitionProperty === "scale");
+      await Promise.all(n.getAnimations().map((a) => a.finished));
+      return [was, moving, getComputedStyle(n).scale];
+    }));
+    await c.close();
+  }
+  check(`${engine}: at 1440x900 the homepage brand goes from 1.25 to 1 with a transition on the first scroll, 6 times out of 6`, () => assert.deepEqual(brand, Array(6).fill(["1.25", true, "1"])));
 }
 
 await engineChecks("chromium", browser);
