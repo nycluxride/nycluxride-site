@@ -147,7 +147,7 @@ export function classifyPlace(details, label) {
   const airport = types.includes("airport") || types.includes("international_airport");
   if (state === "NY" && zip === "11430") return "jfk";
   if (state === "NY" && zip === "11371") return "lga";
-  if (airport && zip === "07114" && /Newark Liberty|\(EWR\)/.test(`${name} ${address}`)) return "ewr";
+  if (state === "NJ" && (zip === "07114" || !zip) && /Newark Liberty|\(EWR\)/.test(`${name} ${address}`)) return "ewr";
   if (zip === "07608" && (types.includes("airport") || TEB_NAMES.some((fbo) => name.toLowerCase().includes(fbo)))) return "teb";
   if (airport || types.includes("airstrip")) return "airport-other";
   if (state === "NY") {
