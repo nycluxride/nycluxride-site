@@ -89,11 +89,12 @@ const KEYS = Object.keys(CLASSES);
     assert.deepEqual(links(doc.getElementById("amen-h").closest("main > .section").lastElementChild), [["/rates#add-ons", "See all add-ons and terms"], ["/faq", "Read the FAQ"]]);
     assert.equal(doc.querySelectorAll("main .sec-head a").length, 0);
   });
-  check("index.html: the coverage section says where we pick up (H-13), the 12 area pills stay", () => {
+  check("index.html: the coverage section says where we pick up (H-13), the 13 area pills include the three airport guides", () => {
     const sec = doc.querySelector('main section[aria-labelledby="areas-h"]');
     assert.equal(norm(sec.querySelector("h2#areas-h").textContent), "Where we pick up");
-    assert.equal(norm(sec.querySelector(".sec-head .prose > p:not(.eyebrow)").textContent), "We pick up anywhere in the five boroughs and at JFK, LaGuardia, Newark and Teterboro. These guides cover the five boroughs, five neighborhoods and both city airports.");
-    assert.equal(sec.querySelectorAll(":scope > ul.jumps > li > a[href^='/locations/']").length, 12);
+    assert.equal(norm(sec.querySelector(".sec-head .prose > p:not(.eyebrow)").textContent), "We pick up anywhere in the five boroughs and at JFK, LaGuardia, Newark and Teterboro. These guides cover the five boroughs, five neighborhoods and three airports.");
+    assert.equal(sec.querySelectorAll(":scope > ul.jumps > li > a[href^='/locations/']").length, 13);
+    assert.deepEqual([...sec.querySelectorAll(":scope > ul.jumps > li > a")].slice(0, 3).map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/locations/jfk-airport", "JFK Airport"], ["/locations/laguardia-airport", "LaGuardia Airport"], ["/locations/newark-airport", "Newark Airport"]]);
     assert.ok(!sec.textContent.includes("book the most rides"));
   });
   CARDS.forEach(([href, title, text, photo, w, h, alt], i) => {
@@ -158,7 +159,7 @@ const KEYS = Object.keys(CLASSES);
 
 const HERO_C = {
   "rates.html": { img: "/fleet/page-rates-900.webp", gold: "rates", eyebrow: "Rates", btns: ["Book a car", "Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Rates</li></ol></nav>', preload: false },
-  "fleet.html": { img: "/fleet/page-fleet-900.webp", gold: "five classes", eyebrow: "Fleet", btns: null, after: "You book a class. We confirm your car in writing before your ride.", crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Fleet</li></ol></nav>', preload: true },
+  "fleet.html": { img: "/fleet/page-fleet-900.webp", gold: "five classes", eyebrow: "Fleet", btns: null, after: ["You book a class. We confirm your car in writing before your ride.", "Infant, toddler and booster seats are free on request. Count children and infants as passengers when you choose a class."], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Fleet</li></ol></nav>', preload: true },
   "about.html": { img: "/fleet/page-about-900.webp", gold: "NYC\u00a0LUX\u00a0RIDE", eyebrow: "Chauffeur and black car service in New York City", btns: null, crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">About</li></ol></nav>', preload: true },
   "contact.html": { img: "/fleet/page-contact-900.webp", gold: "NYC\u00a0LUX\u00a0RIDE", eyebrow: "Reservations and inquiries", btns: ["Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Contact</li></ol></nav>', preload: true },
   "faq.html": { img: "/fleet/page-faq-900.webp", gold: "questions", eyebrow: "Support", btns: null, crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">FAQ</li></ol></nav>', preload: true },
@@ -196,9 +197,9 @@ for (const [file, want] of Object.entries(HERO_C)) {
   });
   check(`${file}: banner body is eyebrow, H1, lede and buttons in today's order`, () => {
     const body = banner.querySelector(":scope > div.banner__body");
-    const expect = [...(want.eyebrow ? ["p.eyebrow.eyebrow--lead"] : []), "h1", "p.lede", ...(want.after ? ["p"] : []), ...(want.btns ? ["p.btn-row"] : [])];
+    const expect = [...(want.eyebrow ? ["p.eyebrow.eyebrow--lead"] : []), "h1", "p.lede", ...(want.after || []).map(() => "p"), ...(want.btns ? ["p.btn-row"] : [])];
     assert.deepEqual(tags(body), expect);
-    if (want.after) assert.equal(norm(body.querySelector(".lede + p").textContent), want.after);
+    if (want.after) assert.deepEqual([...body.querySelectorAll(".lede ~ p:not(.btn-row)")].map((p) => norm(p.textContent)), want.after);
     if (want.eyebrow) assert.equal(norm(body.querySelector(".eyebrow").textContent), want.eyebrow);
     if (want.btns) assert.deepEqual([...body.querySelectorAll(".btn-row a")].map((a) => norm(a.textContent)), want.btns);
   });
@@ -372,7 +373,7 @@ for (const file of ["privacy-policy.html", "terms-of-service.html"]) {
 
 const COPY = [
   ["card-authorization.html", "When the booking page can price the trip, it opens the Stripe payment page straight away.", "When the booking page can price the trip, it asks for your details and then opens the Stripe payment page."],
-  ["privacy-policy.html", "In the booking form, on the booking page, the homepage and the JFK and LaGuardia pages, you enter the trip type, the pickup and drop-off locations and any stops, the date and time, an optional return trip, the number of passengers, the hours for a trip by the hour, the vehicle class or vehicle, meet and greet, an optional gratuity and an optional flight number. On Stripe's payment page you enter your name, email, phone and card, which is saved for the charges after the ride, and optionally the passenger's name and mobile, a name for the sign and notes for your chauffeur.", "In the booking form, on the booking page, the homepage, the service and area pages and the JFK and LaGuardia pages, you enter the trip type, the pickup and drop-off locations and any stops, the date and time, an optional return trip, the number of passengers, the hours for a trip by the hour, the vehicle class or vehicle, meet and greet, an optional gratuity and an optional flight number. Before payment the booking page asks for your name, email and mobile number, whether dispatch should contact you by phone or WhatsApp, and optionally the passenger's name and mobile, a name for the sign and notes for your chauffeur. On Stripe's payment page you enter your card, which is saved for the charges after the ride, and also your name, email and mobile number if the booking page did not send them."],
+  ["privacy-policy.html", "In the booking form, on the booking page, the homepage and the JFK and LaGuardia pages, you enter the trip type, the pickup and drop-off locations and any stops, the date and time, an optional return trip, the number of passengers, the hours for a trip by the hour, the vehicle class or vehicle, meet and greet, an optional gratuity and an optional flight number. On Stripe's payment page you enter your name, email, phone and card, which is saved for the charges after the ride, and optionally the passenger's name and mobile, a name for the sign and notes for your chauffeur.", "In the booking form, on the booking page, the homepage, the service and area pages and the JFK, LaGuardia and Newark pages, you enter the trip type, the pickup and drop-off locations and any stops, the date and time, an optional return trip, the number of passengers, the hours for a trip by the hour, the vehicle class or vehicle, meet and greet, an optional gratuity and an optional flight number. Before payment the booking page asks for your name, email and mobile number, whether dispatch should contact you by phone or WhatsApp, and optionally the passenger's name and mobile, a name for the sign and notes for your chauffeur. On Stripe's payment page you enter your card, which is saved for the charges after the ride, and also your name, email and mobile number if the booking page did not send them."],
   ["privacy-policy.html", "The booking form keeps the trip you enter, and the confirmation page keeps your payment reference, in your browser's session storage until the tab closes.", "The booking form keeps the trip and the details you enter, and the confirmation page keeps your payment reference, in your browser's session storage until the tab closes."],
   ["privacy-policy.html", "Trip details entered in the booking form are sent to NYC LUX RIDE to prepare the booking.", "Trip details and contact details entered in the booking form are sent to NYC LUX RIDE to prepare the booking."],
 ];
@@ -408,19 +409,18 @@ check("privacy-policy.html: section 2 lists the fields the schedule and contact 
   for (let n = doc.getElementById("information-we-collect").nextElementSibling; n && n.tagName !== "H2"; n = n.nextElementSibling) if (/\b(schedule|contact) forms?\b/.test(n.textContent)) ps.push(norm(n.textContent));
   assert.deepEqual(ps, ["The schedule form asks for your name, email, mobile, pickup address, destination, date and time. You can also add a flight or train number, the number of passengers, a vehicle class and notes. The contact form asks for your name, an email or mobile number and your message, and you can add a booking reference. These forms open your email app with the details filled in, and nothing is sent until you send that email."]);
 });
-check("sitemap.xml: lastmod 2026-10-13 for /privacy-policy and /card-authorization, the URL list unchanged", () => {
+check("sitemap.xml: every URL carries lastmod 2026-10-24, the release that added the car seat and Newark pages to the menu and footer of every page, and the URL list equals the baseline", () => {
   const xml = readFileSync(join(ROOT, "sitemap.xml"), "utf8");
-  const mods = Object.fromEntries([...xml.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)].map((m) => [m[1], m[2]]));
-  assert.equal(mods["https://www.nycluxride.com/privacy-policy"], "2026-10-13");
-  assert.equal(mods["https://www.nycluxride.com/card-authorization"], "2026-10-13");
-  assert.equal(mods["https://www.nycluxride.com/terms-of-service"], "2026-10-12");
-  assert.deepEqual([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]), BASELINE.sitemap);
+  const mods = [...xml.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>\s*<\/url>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(mods.map(([loc]) => loc), BASELINE.sitemap);
+  assert.deepEqual(mods.filter(([, mod]) => mod !== "2026-10-24"), []);
+  assert.equal(xml.split("<url>").length - 1, BASELINE.sitemap.length, "a URL without its lastmod");
 });
-check("sitemap.xml: lastmod 2026-10-14 exactly for the pages the five class prices changed", () => {
-  const xml = readFileSync(join(ROOT, "sitemap.xml"), "utf8");
-  const changed = [...xml.matchAll(/<loc>https:\/\/www\.nycluxride\.com\/([^<]*)<\/loc>\s*<lastmod>2026-10-14<\/lastmod>/g)].map((m) => m[1]).sort();
-  const want = ["", "about", "black-car-service-brooklyn", "blog", "blog/best-black-car-service-brooklyn-queens-march-20", "blog/corporate-black-car-nyc-april-3", "blog/nyc-cruise-terminal-black-car-service-guide-march-6", "blog/nyc-limo-service-comparison-guide-april-29", "book", "chauffeur-service-nyc", "contact", "faq", "fleet", "limousine-service-nyc", "locations", "locations/jfk-airport", "locations/laguardia-airport", "locations/manhattan", "locations/queens", "locations/staten-island", "locations/upper-east-side", "rates", "schedule", "services"];
-  assert.deepEqual(changed, want);
+check("the three posts that gained links keep their dateModified, so a new lastmod never rewrites a post date", () => {
+  const dates = (f) => { const d = load(f); return [...d.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => { const j = JSON.parse(s.textContent); return j["@graph"] || [j]; }).map((n) => n.dateModified).filter(Boolean); };
+  assert.deepEqual(dates("blog/whatsapp-airport-pickup-coordination-nyc-april-24.html"), ["2026-10-12T12:00:00.000Z"]);
+  assert.deepEqual(dates("blog/jfk-lga-ewr-airport-transfer-guide-april-17.html"), ["2026-10-12T12:00:00.000Z"]);
+  assert.deepEqual(dates("blog/best-black-car-service-brooklyn-queens-march-20.html"), ["2026-10-14T12:00:00.000Z"]);
 });
 
 {
@@ -462,7 +462,7 @@ check("sitemap.xml: lastmod 2026-10-14 exactly for the pages the five class pric
     assert.equal(stack.firstElementChild.outerHTML, '<p class="nf-guess" id="nf-guess"></p>');
     assert.equal(norm(stack.querySelector("h2").textContent), "Where to go next");
     const areas = stack.querySelector('a.ledger__row[href="/locations"] .ledger__note');
-    assert.equal(norm(areas.textContent), "Guides to the five boroughs, five neighborhoods and both city airports.");
+    assert.equal(norm(areas.textContent), "Guides to the five boroughs, five neighborhoods and three airports.");
     assert.ok(!doc.querySelector("main").textContent.includes("book the most rides"));
     const rail = stack.lastElementChild;
     assert.equal(norm(rail.querySelector(".eyebrow").textContent), "Reservations");

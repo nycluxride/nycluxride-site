@@ -11,8 +11,8 @@ const FIXTURE = join(ROOT, "test/fixtures/lcp-baseline.json");
 const TIMING = process.env.LCP_TIMING === "1";
 const RECORD = process.env.LCP_RECORD === "1";
 const POST = "/blog/jfk-lga-ewr-airport-transfer-guide-april-17";
-const ROUTES = ["/", "/locations/manhattan", "/rates", "/locations/bronx", "/locations/jfk-airport", "/book", POST];
-const PRELOADED = new Set(["/", "/locations/manhattan", "/locations/bronx", "/locations/jfk-airport", POST]);
+const ROUTES = ["/", "/locations/manhattan", "/rates", "/locations/bronx", "/locations/jfk-airport", "/book", POST, "/car-service-with-car-seat-nyc", "/locations/newark-airport"];
+const PRELOADED = new Set(["/", "/locations/manhattan", "/locations/bronx", "/locations/jfk-airport", POST, "/car-service-with-car-seat-nyc", "/locations/newark-airport"]);
 const FONTS = ["geist-latin", "castoro-latin", "archivo-wordmark"];
 const VIEWPORTS = {
   390: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },

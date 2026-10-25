@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const { POLICY, NOTES, CHECKOUT } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
-const FULL = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html"];
+const FULL = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"];
 const nt = (s) => s.replace(/\s+/g, " ").trim();
 const doc = (f) => new JSDOM(readFileSync(join(ROOT, f), "utf8")).window.document;
 const jsonld = (d) => [...d.querySelectorAll('script[type="application/ld+json"]')].map((s) => JSON.parse(s.textContent));

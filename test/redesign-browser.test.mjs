@@ -330,8 +330,8 @@ for (const route of ["/faq", "/fleet", "/"]) {
     assert.ok(r.text > 800, `only ${r.text} chars of text`);
   });
   if (route === "/faq") {
-    check(`/faq: 19 native details elements render in main without javascript`, () => {
-      assert.equal(r.details, 19);
+    check(`/faq: 22 native details elements render in main without javascript`, () => {
+      assert.equal(r.details, 22);
     });
     const answers = await p.evaluate(() => document.body.textContent);
     check(`/faq: answers are in the static html, not javascript`, () => {

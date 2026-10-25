@@ -10,7 +10,8 @@ const WHATSAPP = /^https:\/\/wa\.me\/16467750556/;
 const CLOSES = [
   "services.html", "fleet.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html",
   "about.html", "faq.html", "locations.html", "blog.html", "schedule.html", "rates.html",
-  ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport"].map((a) => `locations/${a}.html`),
+  ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"].map((a) => `locations/${a}.html`),
+  "car-service-with-car-seat-nyc.html",
 ];
 
 function htmlFiles(dir) {
@@ -60,8 +61,8 @@ const pages = new Map(files.map((f) => [f, read(f)]));
 const locations = files.filter((f) => f.startsWith("locations/"));
 const posts = files.filter((f) => f.startsWith("blog/"));
 
-check("there are 12 location pages and 10 blog posts", () => {
-  assert.equal(locations.length, 12);
+check("there are 13 location pages and 10 blog posts", () => {
+  assert.equal(locations.length, 13);
   assert.equal(posts.length, 10);
 });
 
@@ -82,7 +83,7 @@ check("no page uses the retired rate board component", () => {
   assert.deepEqual(hits, []);
 });
 
-const AIRPORT_HOME = { "locations/jfk-airport.html": "jfk", "locations/laguardia-airport.html": "lga" };
+const AIRPORT_HOME = { "locations/jfk-airport.html": "jfk", "locations/laguardia-airport.html": "lga", "locations/newark-airport.html": "ewr" };
 const AIRPORT_OF = (name) => (/\bJFK\b/.test(name) ? "jfk" : /LaGuardia/.test(name) ? "lga" : /Newark/.test(name) ? "ewr" : /Teterboro/.test(name) ? "teb" : null);
 const T1_LABELS = ["Airport price", "Free waiting", "By the hour", "Child seats", "Booking ahead"];
 const T1_AIRPORT = ["Where we meet you", "Flight tracking", "Airport price", "Free waiting", "Child seats", "Booking ahead"];
@@ -90,8 +91,8 @@ const T1_AIRPORT = ["Where we meet you", "Flight tracking", "Airport price", "Fr
 for (const file of locations) {
   const { document } = pages.get(file);
   const home = AIRPORT_HOME[file];
-  check(`${file}: ${home ? "one routes list of six trips from this airport, each to its rates row" : "airport routes cover the four airports, each row to its rates row"}, with no figures`, () => {
-    const h = [...document.querySelectorAll("main h2")].find((n) => /^(Airport routes from|Routes into the city|Routes from LaGuardia)/.test(n.textContent.trim()));
+  check(`${file}: ${home === "ewr" ? "one routes list of six trips from the city to this airport" : home ? "one routes list of six trips from this airport" : "airport routes cover the four airports"}, each row to its rates row, with no figures`, () => {
+    const h = [...document.querySelectorAll("main h2")].find((n) => /^(Airport routes from|Routes into the city|Routes from LaGuardia|Routes to Newark from the city)/.test(n.textContent.trim()));
     assert.ok(h, "no airport routes heading");
     let n = h.nextElementSibling;
     while (n && !n.matches("ul.ledger")) n = n.nextElementSibling;
@@ -105,7 +106,8 @@ for (const file of locations) {
     }
     if (home) {
       assert.equal(rows.length, 6);
-      for (const r of rows) assert.ok(norm(r.querySelector(".ledger__name").textContent).startsWith(home === "jfk" ? "JFK to " : "LaGuardia to "), "a row starts at another airport");
+      if (home === "ewr") for (const r of rows) assert.match(norm(r.querySelector(".ledger__name").textContent), /^\S.* to Newark Liberty rates$/, "a row does not run from the city to Newark Liberty");
+      else for (const r of rows) assert.ok(norm(r.querySelector(".ledger__name").textContent).startsWith(home === "jfk" ? "JFK to " : "LaGuardia to "), "a row starts at another airport");
       assert.equal(document.querySelectorAll("main ul.ledger").length, 1, "more than one routes list");
     } else {
       assert.ok(rows.length >= 4 && rows.length <= 5, `${rows.length} rows`);

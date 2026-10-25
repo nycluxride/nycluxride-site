@@ -143,6 +143,15 @@
   "colons": 0,
   "questions": 0
  },
+ "car-service-with-car-seat-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "card-authorization.html": {
   "so": 0,
   "sostart": 0,
@@ -274,6 +283,15 @@
   "sostart": 0,
   "which": 0,
   "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/newark-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 1,
   "triads": 0,
   "colons": 0,
   "questions": 0

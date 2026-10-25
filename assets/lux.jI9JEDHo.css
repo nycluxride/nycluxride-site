@@ -301,7 +301,7 @@ html[data-nav-open] .actionbar{display:none}
 .site-footer h2.eyebrow{margin-block-end:16px;font:600 var(--type-body-md) var(--font-sans);color:var(--ink)}
 .footer-links{display:grid}
 .footer-links--cols{display:grid;grid-template-columns:var(--fc,repeat(2,minmax(0,1fr)));grid-template-rows:repeat(7,auto);grid-auto-flow:column;align-content:start;gap:0 24px}
-.footer-links--cols li:nth-child(7){grid-row-start:1}
+.footer-links--cols li:nth-child(8){grid-row-start:1}
 :is(.footer-links,.site-footer__bottom) a:not(.social a){display:inline-flex;align-items:center;min-block-size:40px;font:500 var(--type-body-md) var(--font-sans);color:var(--muted);text-decoration:underline #0000 1px;text-underline-offset:4px;transition:color var(--tb),text-decoration-color var(--tb)}
 @media (hover:hover){.footer-links a:not(.social a):hover{color:var(--muted-hover);text-decoration-color:currentColor}}
 .site-footer__bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 24px;margin-block-start:40px;padding-block:24px;border-block-start:1px solid var(--line)}

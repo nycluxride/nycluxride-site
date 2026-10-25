@@ -121,7 +121,7 @@ test("phone and WhatsApp clicks fire nothing on /booking-confirmed", () => {
 
 const FORM = '<form id="book-form" class="bk" method="post" action="/api/book"><button class="btn" id="bk-view" type="submit" name="action" value="options">View options</button><button class="btn" id="bk-submit" type="submit" name="action" value="pay">Continue to payment</button></form>';
 
-for (const path of ["/", "/locations/jfk-airport", "/locations/laguardia-airport"]) {
+for (const path of ["/", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport"]) {
   test(`View options on the booking form fires book_now_click once per page view on ${path}`, () => {
     const { window, calls, conversions } = boot(`https://www.nycluxride.com${path}`, FORM);
     submit(window, "#bk-view");
@@ -133,7 +133,7 @@ for (const path of ["/", "/locations/jfk-airport", "/locations/laguardia-airport
 }
 
 const SEARCH_FORM = '<form id="book-form" class="bk bk--go" method="get" action="/book#from-search"><button class="btn" id="bk-view" type="submit" name="action" value="options">View options</button></form>';
-for (const path of ["/services", "/chauffeur-service-nyc", "/locations/manhattan"]) {
+for (const path of ["/services", "/chauffeur-service-nyc", "/car-service-with-car-seat-nyc", "/locations/manhattan"]) {
   test(`View options on the SEARCH form fires book_now_click once per page view on ${path}`, () => {
     const { window, calls, conversions } = boot(`https://www.nycluxride.com${path}`, SEARCH_FORM);
     submit(window, "#bk-view");

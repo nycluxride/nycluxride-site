@@ -113,7 +113,7 @@ const MAP = () => {
   const gm = glyphs(man), gl = glyphs(label);
   return [gm.some((a) => gl.some((b) => meet(a, b))), gm.some((a) => near(a, ctr, r)), gl.some((a) => near(a, ctr, r))];
 };
-const AREA_MAPS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "soho", "financial-district", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport"];
+const AREA_MAPS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "soho", "financial-district", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"];
 async function maps(engine, browser) {
   for (const width of [320, 390, 768, 1024, 1440, 1920]) {
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
