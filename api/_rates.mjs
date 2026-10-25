@@ -44,6 +44,15 @@ export const AIRPORT_TOTALS = {
   sedan: { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 },
   sprinter: { jfk: 40000, lga: 35000, ewr: 40000, teb: 40000 },
 };
+export const DISTANCE_RATES = {
+  suv: { base: 3500, mile: 400, minute: 65, minimum: 11000 },
+  premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
+  first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
+  sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
+};
+export const DISTANCE_AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
+export const DISTANCE_LIMITS = { miles: 60, minutes: 180 };
+export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
 export const NYC_TAX_PERCENT = "8.875";
 export const BCF_PERCENT = "2.25";
 export const TIP_PERCENTS = [0, 10, 15, 20];
@@ -57,7 +66,7 @@ export const MIN_NOTICE_HOURS = 1;
 export const AUTO_LEAD_MINUTES = 5;
 export const AUTO_GUARD_MINUTES = 2;
 export const MAX_ADVANCE_DAYS = 365;
-export const DESCRIPTOR_CODES = { jfk: "JFK", lga: "LGA", ewr: "EWR", teb: "TEB", hourly: "HOUR" };
+export const DESCRIPTOR_CODES = { jfk: "JFK", lga: "LGA", ewr: "EWR", teb: "TEB", hourly: "HOUR", distance: "RIDE" };
 export const TLC_BASE_LICENSE = "";
 export const CONTACT = { phone: "+1 (646) 775-0556", tel: "tel:+16467750556", whatsapp: "https://wa.me/16467750556", email: "info@nycluxride.com" };
 export const SITE_ORIGIN = "https://www.nycluxride.com";

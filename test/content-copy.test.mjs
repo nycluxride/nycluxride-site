@@ -36,9 +36,9 @@ const A = {
   A2: "A gratuity for your chauffeur is optional and chosen when you book.",
   A3: "After an airport transfer, only true extras are charged to the card saved at booking: waiting beyond the free window, extra stops and parking, each with an itemized receipt.",
   A4: "Hourly bookings are charged the hourly fare with NYC sales tax and the Black Car Fund at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  A5: "Airport transfers are one total price with tolls, airport fees and taxes included, and the gratuity for your chauffeur is optional. On hourly bookings, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
+  A5: "Airport transfers are one total price with tolls, airport fees and taxes included, and the gratuity for your chauffeur is optional. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
   A6: "Airport transfer prices include tolls, airport fees and taxes, and the gratuity is optional.",
-  A7: "Airport transfer prices include tolls, airport fees and taxes. Hourly rates are before NYC sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
+  A7: "Airport transfer prices include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before NYC sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
   A8: "Airport prices from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
   A9: "Chauffeured luxury black cars across New York City, with flat rates to JFK, LaGuardia, Newark and Teterboro.",
 };
@@ -75,8 +75,9 @@ const USED = {
   A8: ["blog/best-black-car-service-brooklyn-queens-march-20.html", "locations/staten-island.html"],
 };
 
-const FAQ_TOLLS = "Tolls are included on airport transfers: the price covers tolls and airport fees, NYC sales tax and the Black Car Fund. The gratuity for your chauffeur is optional and chosen when you book. On hourly bookings, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.";
-const TERMS_PAYMENTS = "Online bookings are paid on a Stripe payment page. The total shown at checkout is charged at booking: the fare with NYC sales tax and the Black Car Fund, on airport transfers also tolls and airport fees, and meet and greet and a gratuity for the chauffeur if chosen. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, extra stops and parking, and on hourly bookings tolls and parking. These are charged to that card after the ride, each with an itemized receipt.";
+const FAQ_TOLLS = "Tolls are included on airport transfers: the price covers tolls and airport fees, NYC sales tax and the Black Car Fund. The gratuity for your chauffeur is optional and chosen when you book. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.";
+const TERMS_PAYMENTS = "Online bookings are paid on a Stripe payment page. The total shown at checkout is charged at booking: the fare with NYC sales tax and the Black Car Fund, on airport transfers also tolls and airport fees, and meet and greet and a gratuity for the chauffeur if chosen. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, extra stops and parking, and on hourly bookings and trips priced by distance and time tolls and parking. These are charged to that card after the ride, each with an itemized receipt.";
+const FAQ_OUTSIDE = "Yes. A one-way trip to or from a New York City address is priced on the booking page by distance and time, unless it starts or ends at an airport. The flat airport rate is for New York City addresses. For long trips and other places, our dispatch team prices the trip.";
 
 const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
 const RATES_DESCRIPTION = "Airport transfers to or from JFK, Newark and Teterboro from $170 and LaGuardia from $145, with tolls, airport fees and taxes included. Hourly from $85 by vehicle class, 3-hour minimum.";
@@ -85,12 +86,12 @@ const RATES_HOURLY_CAPTION = "Prices are before NYC sales tax (8.875%) and the B
 const RATES_FACTS = {
   "Meet and greet": "Inside the terminal with a name sign, $25 charged at booking, plus any airport parking charged after the ride",
   Gratuity: "Optional, none, a dollar amount you choose, or 10%, 15% or 20% of the fare, chosen before you pay",
-  "Tolls and airport fees": "Included on airport transfers. On hourly bookings, billed at cost after the ride to the card saved at booking",
+  "Tolls and airport fees": "Included on airport transfers. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking",
   Taxes: "NYC sales tax (8.875%) and the Black Car Fund (2.25%) are charged at booking on every fare",
   "Extra stops": "On airport transfers, charged after the ride to the card saved at booking",
 };
-const RATES_FOOTNOTE = "All prices in USD. Airport totals include tolls, airport fees and taxes. Hourly rates are before tax, tolls and parking. A gratuity is optional.";
-const RATES_CANCELLATION = "At booking you pay the total shown at checkout: on airport transfers the fare, NYC sales tax, the Black Car Fund and tolls and airport fees, on hourly bookings the hourly fare with NYC sales tax and the Black Car Fund, plus meet and greet and a gratuity if you choose them. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, extra stops and parking, and on hourly bookings tolls and parking. Each is charged with an itemized receipt.";
+const RATES_FOOTNOTE = "All prices in USD. Airport totals include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before tax, tolls and parking. A gratuity is optional.";
+const RATES_CANCELLATION = "At booking you pay the total shown at checkout: on airport transfers the fare, NYC sales tax, the Black Car Fund and tolls and airport fees, on hourly bookings and trips priced by distance and time the fare with NYC sales tax and the Black Car Fund, plus meet and greet and a gratuity if you choose them. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, extra stops and parking, and on hourly bookings and trips priced by distance and time tolls and parking. Each is charged with an itemized receipt.";
 const RATES_FAQ = [
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV, from any New York City address. That total includes the $155 fare, NYC sales tax, the Black Car Fund, and tolls and airport fees. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $400. A gratuity for your chauffeur is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV, from any New York City address. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $350. Each class costs less to LaGuardia than to JFK, Newark or Teterboro."],
@@ -257,6 +258,13 @@ check("faq.html: the tolls and gratuity answer is exact, visible and in json-ld"
   assert.equal(faqAnswer(p, question), FAQ_TOLLS);
 });
 
+check("faq.html: the outside New York City answer prices one-way trips by distance and time, exact, visible and in json-ld", () => {
+  const p = pages.get("faq.html");
+  const question = "Do you drive outside New York City?";
+  assert.equal(visibleAnswer(p, question), FAQ_OUTSIDE);
+  assert.equal(faqAnswer(p, question), FAQ_OUTSIDE);
+});
+
 check("faq.html: the airport rates answer names every airport and every class, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "What are the airport rates?";
@@ -274,8 +282,8 @@ check("terms-of-service.html: the #payments section is exact and dated", () => {
   const text = parts.join(" ");
   assert.ok(text.includes(TERMS_PAYMENTS), text);
   const page = p.graph.find((n) => n["@type"] === "WebPage");
-  assert.equal(page.dateModified, "2026-10-12");
-  assert.ok(p.text.includes("Last Updated: October 12, 2026"));
+  assert.equal(page.dateModified, "2026-10-24");
+  assert.ok(p.text.includes("Last Updated: October 24, 2026"));
 });
 
 const rates = pages.get("rates.html");

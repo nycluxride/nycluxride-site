@@ -10,6 +10,7 @@ import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY } from "../api/_copy.mjs";
 import { DESCRIPTOR_CODES, AIRPORT_PLACES, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS } from "../api/_rates.mjs";
+import { ROUTE } from "../api/_ticket.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const NOW = new Date("2026-10-01T16:00:00.000Z");
@@ -24,11 +25,13 @@ const DESCRIPTOR_PREFIX = "NYCLUXRIDE";
 const ENV_KEYS = ["BOOKING_REF_SECRET", "PLACE_TICKET_SECRET", "STRIPE_SECRET_KEY", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT", "BOOK_MOCK", "VERCEL_ENV", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MOCK", "FLIGHT_MOCK", "FLIGHT_API_KEY"];
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
 const TERMS =
-  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, extra stops, parking and, on hourly bookings, tolls, as the terms describe.";
+  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, extra stops, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.";
 const SUBMIT =
   "Today you pay the total shown: the fare, NYC sales tax, the Black Car Fund, tolls and airport fees, meet and greet if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, extra stops and parking are charged to this card, with an itemized receipt.";
 const SUBMIT_HOURLY =
   "Today you pay the hourly fare, NYC sales tax, the Black Car Fund, meet and greet if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
+const SUBMIT_DISTANCE =
+  "Today you pay the fare, NYC sales tax, the Black Car Fund and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
 const AIRPORT_NOTE = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included. After the ride, only waiting beyond the free window, extra stops and parking are charged to your card, each on an itemized receipt.";
 const HOURLY_NOTE = "After the ride, tolls and parking are charged to your card, each on an itemized receipt.";
 const AIRPORT_NOTES = [NOTES.included, POLICY.later.airport];
@@ -99,6 +102,8 @@ const MEET_TEXT = "Inside the terminal with a name sign. Airport parking is char
 const TIP_TEXT = "Paid in full to your chauffeur.";
 
 const ROUND_REF = bookingRef("nonce-round-trip-000001");
+const DISTANCE = { trip_type: "one", from_text: MANHATTAN, to_text: "Greenwich, CT 06830", date: "2026-10-14", time: "07:30", passengers: "2", class: "sedan", return: "1", return_date: "2026-10-18", return_time: "18:00", tip: "15", rider: "me", ...ME, reach: "phone" };
+const DISTANCE_REF = bookingRef("nonce-distance-trip-00001");
 const CUSTOM_REF = bookingRef("nonce-custom-tip-0000001");
 const EXPECTED = {
   "an airport pickup with meet and greet and a 15% gratuity": [
@@ -409,7 +414,9 @@ await test("builder: NYCLUXRIDE* plus the suffix is at most 22 characters for ev
     const date = `2027-${String(month).padStart(2, "0")}-28`;
     for (const airport of AIRPORT_PLACES) cases.push([{ ...DROPOFF, to_text: labels[airport], to_id: airport, date }, DESCRIPTOR_CODES[airport]]);
     cases.push([{ ...HOURLY, date }, DESCRIPTOR_CODES.hourly]);
+    cases.push([{ ...DISTANCE, return: "", date }, DESCRIPTOR_CODES.distance]);
   }
+  process.env.GOOGLE_MOCK = "true";
   for (const [fields, code] of cases) {
     const { params } = await build(fields, ON, "nonce-descriptor-0000");
     const suffix = params.get("payment_intent_data[statement_descriptor_suffix]");
@@ -417,6 +424,7 @@ await test("builder: NYCLUXRIDE* plus the suffix is at most 22 characters for ev
     assert.ok(`${DESCRIPTOR_PREFIX}* ${suffix}`.length <= 22, `${DESCRIPTOR_PREFIX}* ${suffix}`);
     assert.ok(/[A-Z]/.test(suffix) && !/[<>\\'"*]/.test(suffix), suffix);
   }
+  delete process.env.GOOGLE_MOCK;
   const { params } = await build({ ...PICKUP, from_text: "LaGuardia (LGA), Terminal B", from_id: "lga-tb" }, ON, "nonce-descriptor-0001");
   assert.equal(params.get("payment_intent_data[statement_descriptor_suffix]"), "LGA OCT14");
 });
@@ -1795,6 +1803,119 @@ await test("receipt: a round trip summary names the return pickup, a one way tri
   const one = await build({ ...ROUND, return: "" }, ON, "nonce-round-trip-000001");
   assert.equal(receipt(metadataFor(round.trip, round.price, round.ref), ON).summary, "Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. First Class, 2 airport transfers.");
   assert.equal(receipt(metadataFor(one.trip, one.price, one.ref), ON).summary, "Wed, Oct 14, 2026, 7:30 AM. To JFK, First Class.");
+});
+
+await test("builder: a return trip priced by distance and time equals the complete expected map", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const built = await build(DISTANCE, ON, "nonce-distance-trip-00001");
+    const service = "Sedan & Electric, 2 rides, 63.0 miles and 110 min";
+    const expected = {
+      ...common(DISTANCE_REF, { email: ME.email }),
+      "custom_text[submit][message]": SUBMIT_DISTANCE,
+      ...lines([
+        ["Fare", 29400, `${service}. Reference ${DISTANCE_REF}. Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers.`],
+        [TAX, 2610],
+        [BCF, 662],
+        ["Gratuity for your chauffeur (15%)", 4410, TIP_TEXT],
+      ]),
+      "payment_intent_data[description]": `2026-10-14 07:30 Reference ${DISTANCE_REF}. ${service}. Pickup "${MANHATTAN}". Drop-off "Greenwich, CT 06830". Return 2026-10-18 18:00. 2 passengers.`,
+      "payment_intent_data[statement_descriptor_suffix]": "RIDE OCT14",
+      ...bothMetadata({
+        ref: DISTANCE_REF,
+        service: "distance",
+        class: "sedan",
+        from_text: MANHATTAN,
+        from_zone: "manhattan",
+        to_text: "Greenwich, CT 06830",
+        to_zone: "outside",
+        date: "2026-10-14",
+        time: "07:30",
+        pickup_at: "2026-10-14T11:30:00.000Z",
+        return_date: "2026-10-18",
+        return_time: "18:00",
+        return_at: "2026-10-18T22:00:00.000Z",
+        passengers: "2",
+        meet: "0",
+        tip_percent: "15",
+        legs: "2",
+        miles: "63.0",
+        minutes: "110",
+        fare_cents: "29400",
+        tax_cents: "2610",
+        bcf_cents: "662",
+        tolls_cents: "0",
+        meet_cents: "0",
+        tip_cents: "4410",
+        total_cents: "37082",
+        rider: "me",
+        ...ME,
+        reach: "phone",
+      }),
+    };
+    const entries = [...built.params];
+    assert.equal(new Set(entries.map(([key]) => key)).size, entries.length, "a parameter is sent twice");
+    assert.deepEqual(Object.fromEntries(entries), expected);
+    assert.equal(stripeTotal(built.params.toString()), 37082);
+    assert.deepEqual(receipt(metadataFor(built.trip, built.price, built.ref), ON), {
+      summary: `Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. ${service}.`,
+      lines: [{ label: "Fare", cents: 29400 }, { label: TAX, cents: 2610 }, { label: BCF, cents: 662 }, { label: "Gratuity for your chauffeur (15%)", cents: 4410 }],
+      value: 29400,
+      notes: [HOURLY_NOTE],
+    });
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+await test("handler: a one-way trip with no airport end gets distance prices on the cards, pays the same total with its route token, and without JavaScript", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
+  const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-distance-options-1" }), 200);
+  assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason], ["options", "distance", 1, true, "", ""]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 12224, ""], ["premium", 13890, ""], ["first", 18892, ""], ["sedan", 9668, ""], ["sprinter", null, "sprinter-distance"]]);
+  assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 11000 }, { label: TAX, cents: 976 }, { label: BCF, cents: 248 }], total_cents: 12224, currency: "usd", notes: [HOURLY_NOTE] });
+  assert.match(options.route, ROUTE);
+  assert.ok(decodeURIComponent(options.whatsapp.split("?text=")[1]).endsWith("\nTotal shown: $122.24"));
+  assert.equal(calls.length, 0);
+  const paid = await readJson(await post({ ...fields, route: options.route, nonce: "nonce-distance-pay-00001" }), 200);
+  assert.deepEqual([paid.kind, paid.url], ["pay", CHECKOUT_URL]);
+  const form = Object.fromEntries(formOf(calls[0]));
+  assert.deepEqual([form["line_items[0][price_data][unit_amount]"], form["line_items[1][price_data][unit_amount]"], form["line_items[2][price_data][unit_amount]"], form["line_items[3][quantity]"]], ["11000", "976", "248", undefined]);
+  assert.deepEqual([form["custom_text[submit][message]"], form["custom_text[terms_of_service_acceptance][message]"], form["metadata[service]"], form["metadata[miles]"], form["metadata[minutes]"], form["metadata[total_cents]"]], [SUBMIT_DISTANCE, TERMS, "distance", "4.6", "27", "12224"]);
+  assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^RIDE [A-Z]{3}\d\d$/);
+  assert.equal(form["line_items[0][price_data][product_data][description]"].split(". ")[0], "Business SUV, 4.6 miles and 27 min");
+  assertRedirect(await formPost(fields), CHECKOUT_URL);
+  assert.equal(Object.fromEntries(formOf(calls[1]))["metadata[total_cents]"], "12224");
+  const sprinter = await readJson(await post({ ...fields, class: "sprinter" }), 200);
+  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.group, sprinter.text], ["quote", "sprinter-distance", "price", REASONS["sprinter-distance"].text]);
+  assert.equal(calls.length, 2);
+});
+
+await test("handler: the distance requests and their redirects, outside-trip, long-trip and sprinter-distance, and no-airport when there is no route", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
+  for (const [change, reason] of [[{ from_text: "Hoboken, NJ 07030", to_text: "Greenwich, CT 06830" }, "outside-trip"], [{ to_text: "1 Ocean Rd, Montauk, NY 11954" }, "long-trip"], [{ class: "sprinter" }, "sprinter-distance"]]) {
+    assertRedirect(await formPost({ ...fields, ...change }), `/book#q-${reason}`);
+    const body = await readJson(await post({ ...fields, ...change, action: "quote" }), 200);
+    if (reason === "sprinter-distance") assert.deepEqual([body.kind, body.reason, body.pay, body.price], ["options", reason, false, null], reason);
+    else assert.deepEqual([body.kind, body.reason, body.heading, body.text, body.classes.every((c) => c.total_cents === null && c.reason === reason)], ["quote", reason, HEADINGS.price, REASONS[reason].text, true], reason);
+  }
+  setEnv(LIVE);
+  assertRedirect(await formPost(fields), "/book#q-no-airport");
+  assert.equal(calls.length, 0);
+});
+
+await test("handler: BOOK_MOCK pays a distance trip and GET rebuilds its receipt with the miles, the minutes and the hourly after the ride note", async () => {
+  setEnv({ BOOK_MOCK: "true", PAYMENTS_ENABLED: "true", GOOGLE_MOCK: "true" });
+  const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "sedan", tip: "20", ...ME, reach: "phone", nonce: "nonce-distance-mock-0001" });
+  const body = await readJson(await post(fields), 200);
+  const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
+  assert.deepEqual(session.lines, [{ label: "Fare", cents: 8700 }, { label: TAX, cents: 772 }, { label: BCF, cents: 196 }, { label: "Gratuity for your chauffeur (20%)", cents: 1740 }]);
+  assert.deepEqual([session.total_cents, session.value_cents, session.notes], [11408, 8700, [HOURLY_NOTE]]);
+  assert.equal(session.summary, `${formatDate(SOON)}, 10:00 AM. Sedan & Electric, 4.6 miles and 27 min.`);
+  assert.equal(calls.length, 0);
+  assert.deepEqual(logged, []);
 });
 
 await test("budgets: IPv6 clients share one key per /64 and mapped IPv4 reads as IPv4", () => {

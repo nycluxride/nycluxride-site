@@ -9,7 +9,7 @@ import { chromium, webkit, firefox } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const api = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, NYC_TAX_PERCENT, BCF_PERCENT, percentCents } = await api("_rates.mjs");
+const { AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, DISTANCE_RATES } = await api("_rates.mjs");
 const { readPhone } = await api("_phone.mjs");
 const { HEADINGS, NOTES, REASONS, POLICY } = await api("_copy.mjs");
 
@@ -6363,6 +6363,77 @@ for (const [name, b] of ENGINES) {
         return [r.getBoundingClientRect().right > edge, [...f.querySelectorAll(".field input:not([type=hidden]), .field select, .field textarea")].filter((e) => e.getClientRects().length && e.getBoundingClientRect().right > edge).map((e) => e.id)];
       });
       assert.deepEqual(out, [true, []], path);
+      await p.close();
+    }
+  });
+  await ctx.close();
+}
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  const ride = (cls) => {
+    const r = DISTANCE_RATES[cls];
+    const fare = Math.max(r.minimum, r.base + Math.round((46 * r.mile) / 10) + 27 * r.minute);
+    return { fare, tax: percentCents(fare, NYC_TAX_PERCENT), bcf: percentCents(fare, BCF_PERCENT) };
+  };
+  const total = (cls) => { const x = ride(cls); return x.fare + x.tax + x.bcf; };
+  await check(`B138 at ${width} a one-way trip with no airport end shows distance and time prices on the cards, the panel with no tolls line and the after the ride note, keeps CLS 0, and pays the same total with its route token`, async () => {
+    const p = await open(ctx, G, "/book");
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await view(p);
+    await priced(p);
+    await settle(p, 600);
+    assert.deepEqual(await cards(p), [...CLASS_KEYS.slice(0, 4).map((cls) => cash(total(cls))), "Price on request"]);
+    const suv = ride("suv");
+    assert.deepEqual(await panel(p), { lines: [["Fare", cash(suv.fare)], [L_TAX, cash(suv.tax)], [L_BCF, cash(suv.bcf)]], total: cash(total("suv")), notes: POLICY.later.hourly });
+    let [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    await p.click('label[for="bk-c-sprinter"]');
+    await settle(p, 500);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id), document.getElementById("price").hidden]), [["q-sprinter-distance"], true]);
+    assert.equal(await p.textContent("#q-sprinter-distance p"), REASONS["sprinter-distance"].text);
+    await p.click('label[for="bk-c-sedan"]');
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    const sedan = ride("sedan");
+    const want = [["Fare", cash(sedan.fare)], [L_TAX, cash(sedan.tax)], [L_BCF, cash(sedan.bcf)]];
+    assert.deepEqual((await panel(p)).lines, want);
+    assert.ok((await waText(p, "#q-wa")).endsWith(`\nTotal shown: ${cash(total("sedan"))}\nName: Ana Lopez\nEmail: ana.lopez@example.com\nMobile: +1 212 555 0100\nContact: Phone`));
+    const bodies = [];
+    p.on("request", (r) => r.method() === "POST" && r.url().endsWith("/api/book") && bodies.push(JSON.parse(r.postData() || "{}")));
+    await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    assert.match(bodies.find((b) => b.action === "pay").route, /^r1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => tr.cells[0].textContent), document.getElementById("cf-notes").textContent]), [["Fare", "NYC sales tax", "Black Car Fund"], POLICY.later.hourly]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual(await p.$$eval("#cf-lines tr", (r) => r.map((x) => [x.cells[0].textContent, x.cells[1].textContent])), want);
+    assert.deepEqual([await p.textContent("#cf-total"), await p.textContent("#cf-notes")], [cash(total("sedan")), POLICY.later.hourly]);
+    await p.waitForTimeout(300);
+    [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check(`B138 at ${width} Book your ride on /locations/manhattan hands a one-way trip with no airport end to /book, and on /book a price that takes over 500 ms, show the distance and time prices with the Luxury Sprinter on Price on request from the first frame and CLS 0`, async () => {
+    for (const host of ["/locations/manhattan", "/book"]) {
+      const p = await open(ctx, G, host);
+      await place(p, "from", "edition", "The New York EDITION");
+      await place(p, "to", "bedford", "277 Bedford Avenue");
+      await pickDate(p, "#bk-date-btn", DATE);
+      await setTime(p, "14:00");
+      if (host === "/book") await p.route("**/api/book", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+      if (host === "/book") await p.click("#bk-view");
+      else await Promise.all([p.waitForURL(/\/book/), p.click("#bk-view")]);
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.equal(await p.textContent("#bk-p-sprinter"), "Price on request", host);
+      await priced(p);
+      await settle(p, 600);
+      assert.deepEqual(await cards(p), [...CLASS_KEYS.slice(0, 4).map((cls) => cash(total(cls))), "Price on request"], host);
+      const [value, shifts] = await cls(p);
+      assert.equal(value, 0, `${host}: ${shifts.join(" | ")}`);
+      assert.deepEqual([p.errors, p.failed], [[], []], host);
       await p.close();
     }
   });

@@ -232,8 +232,8 @@ for (const [file, want] of Object.entries(HERO_C)) {
 check("rates.html: the On this page links follow the crumbs block, exact", () => {
   const doc = load("rates.html");
   const nav = doc.querySelector("main > section.banner").nextElementSibling.nextElementSibling;
-  assert.equal(nav.outerHTML, '<nav class="frame" aria-label="On this page"><ul class="jumps" role="list"><li><a href="#airport">Airport transfers</a></li><li><a href="#hourly">Hourly</a></li><li><a href="#add-ons">Add-ons and terms</a></li><li><a href="#cancellation">Cancellation</a></li></ul></nav>');
-  for (const id of ["airport", "hourly", "add-ons", "cancellation"]) assert.ok(doc.getElementById(id), `no #${id}`);
+  assert.equal(nav.outerHTML, '<nav class="frame" aria-label="On this page"><ul class="jumps" role="list"><li><a href="#airport">Airport transfers</a></li><li><a href="#hourly">Hourly</a></li><li><a href="#distance">Distance and time</a></li><li><a href="#add-ons">Add-ons and terms</a></li><li><a href="#cancellation">Cancellation</a></li></ul></nav>');
+  for (const id of ["airport", "hourly", "distance", "add-ons", "cancellation"]) assert.ok(doc.getElementById(id), `no #${id}`);
 });
 
 check("fleet.html: the class jump list of #fleet-all is tabs, one per class in class order, each with its set", () => {
@@ -552,7 +552,7 @@ check("the three posts that gained links keep their dateModified, so a new lastm
     assert.ok([...sec.previousElementSibling.querySelectorAll("h2")].some((x) => norm(x.textContent) === "At a glance"));
     assert.ok(sec.nextElementSibling.matches(".section--close"));
     assert.deepEqual([...sec.querySelectorAll("dl.facts dt")].map((dt) => [norm(dt.textContent), norm(dt.nextElementSibling.textContent)]), [
-      ["Surge pricing", "None. Busy times don't change the price."],
+      ["Surge pricing", "None. Busy times don't change our rates."],
       ["Gratuity", "Optional, chosen when you book. None is the default."],
       ["Card details", "Only on a stripe.com payment page. We never ask for card numbers by phone, email, text or WhatsApp."],
       ["Account", "Not needed. You book as a guest."],

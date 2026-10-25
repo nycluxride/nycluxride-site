@@ -65,10 +65,32 @@ export function mockDetails(id) {
   };
 }
 
-export function mockRoute(size) {
-  if (!size) return { minutes: 43, miles: 16.8 };
+const MANHATTAN = "350 5th Ave, New York, NY 10118";
+const ROUTES = [
+  ["mock-edition", "mock-bedford", 27, 4.6],
+  ["mock-bedford", "mock-edition", 31, 4.8],
+  ["mock-edition", "mock-hoboken", 21, 3.9],
+  [MANHATTAN, "277 Bedford Ave, Brooklyn, NY 11211", 27, 4.6],
+  ["277 Bedford Ave, Brooklyn, NY 11211", MANHATTAN, 31, 4.8],
+  [MANHATTAN, "200 Park Ave, New York, NY 10166", 8, 0.9],
+  [MANHATTAN, "Greenwich, CT 06830", 52, 31.4],
+  ["Greenwich, CT 06830", MANHATTAN, 58, 31.6],
+  [MANHATTAN, "1 Ocean Rd, Montauk, NY 11954", 165, 118.3],
+];
+const key = (text) => (text.startsWith("mock-") ? text : norm(text));
+const point = (waypoint) => (waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : norm(waypoint && waypoint.address));
+
+function mockDrive(waypoints) {
+  const ends = Array.isArray(waypoints) && waypoints.length === 2 ? waypoints.map(point) : [];
+  const row = ends.length ? ROUTES.find(([from, to]) => key(from) === ends[0] && key(to) === ends[1]) : null;
+  return row ? { minutes: row[2], miles: row[3] } : { minutes: 43, miles: 16.8 };
+}
+
+export function mockRoute(size, waypoints) {
+  const drive = mockDrive(waypoints);
+  if (!size) return drive;
   const src = `data:image/svg+xml,${encodeURIComponent(mapSvg(size.width, size.height))}`;
-  return { minutes: 43, miles: 16.8, map: { src, src2x: src, ...size } };
+  return { ...drive, map: { src, src2x: src, ...size } };
 }
 
 const NEW_YORK_OFFSET = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "longOffset" });

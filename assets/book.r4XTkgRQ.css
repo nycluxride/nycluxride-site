@@ -334,6 +334,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 :is(.bk-card__cap,.bk-card__bags) .icon{width:16px;height:16px;stroke-width:1.5}
 .bk-card__price{grid-area:1/5/4/6;display:grid;grid-template-rows:subgrid;justify-items:end;min-width:5.5em;font:600 18px/26px var(--font-sans);color:var(--ink);text-align:end;font-variant-numeric:tabular-nums lining-nums}
 .bk-card__price .bk-sk{width:4.6em;height:22px;margin-top:2px}
+.bk-q0,.bk-q0~*{visibility:hidden}
 .bk-scope{font:var(--t4);color:var(--ink-2)}
 .bk-card__price:is(.is-q,.is-fit){font:var(--t5);color:var(--ink-2)}
 .bk-card.is-small picture{opacity:.6}
