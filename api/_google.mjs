@@ -97,7 +97,7 @@ const point = (location) => {
 };
 
 export async function computeRoute(waypoints, departure, size) {
-  if (googleMock()) return { ok: true, mock: true, ...mockRoute(size) };
+  if (googleMock()) return { ok: true, mock: true, ...mockRoute(size, waypoints) };
   const key = serverKey();
   if (!key || waypoints.length < 2) return { ok: false, status: 0 };
   const body = {

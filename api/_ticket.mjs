@@ -3,6 +3,7 @@ import { norm, ZONES } from "./_places.mjs";
 import { googleMock } from "./_http.mjs";
 
 export const TICKET = /^v1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
+export const ROUTE = /^r1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
 export const TICKET_TTL = 21600;
 const INFO = "nlr place ticket v1";
 const SKEW_S = 300;
@@ -60,4 +61,39 @@ export function verifyTicket(ticket, label, now) {
   if (label !== null && data.h !== labelHash(label)) return null;
   const age = Math.floor(Number(now) / 1000) - data.t;
   return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S };
+}
+
+const routeMac = (key, payload) => createHmac("sha256", key).update(`r1.${payload}`).digest("base64url");
+
+export function routeKey(from, to, departure) {
+  return createHash("sha256").update(JSON.stringify([from, to, departure])).digest("base64url").slice(0, 22);
+}
+
+export function signRoute(rides, now) {
+  const key = ticketKey();
+  if (!key || !rides.length) return "";
+  const payload = Buffer.from(JSON.stringify({ t: Math.floor(Number(now) / 1000), l: rides })).toString("base64url");
+  const token = `r1.${payload}.${routeMac(key, payload)}`;
+  return ROUTE.test(token) ? token : "";
+}
+
+export function readRoute(token, now) {
+  const rides = new Map();
+  const key = ticketKey();
+  if (!key || typeof token !== "string" || !ROUTE.test(token)) return rides;
+  const [, payload, given] = token.split(".");
+  if (!timingSafeEqual(Buffer.from(given), Buffer.from(routeMac(key, payload)))) return rides;
+  let data;
+  try {
+    data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
+    return rides;
+  }
+  if (!data || !Number.isInteger(data.t) || !Array.isArray(data.l)) return rides;
+  const age = Math.floor(Number(now) / 1000) - data.t;
+  if (age > TICKET_TTL || age < -SKEW_S) return rides;
+  for (const ride of data.l) {
+    if (Array.isArray(ride) && typeof ride[0] === "string" && [ride[1], ride[2]].every((n) => Number.isInteger(n) && n >= 0)) rides.set(ride[0], { tenths: ride[1], minutes: ride[2], at: data.t * 1000 });
+  }
+  return rides;
 }

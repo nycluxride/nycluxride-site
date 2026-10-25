@@ -1,6 +1,6 @@
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, emailOk } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, rideTotals, emailOk } from "./_trip.mjs";
 
 const SESSIONS = "https://api.stripe.com/v1/checkout/sessions";
 const TIMEOUT_MS = 10000;
@@ -54,7 +54,7 @@ function intentDescription(trip, ref) {
 
 function descriptorSuffix(trip) {
   const first = legsFor(trip)[0];
-  const code = trip.trip_type === "hour" || !first ? DESCRIPTOR_CODES.hourly : DESCRIPTOR_CODES[first.airport];
+  const code = trip.trip_type === "hour" || !first ? DESCRIPTOR_CODES.hourly : first.ride ? DESCRIPTOR_CODES.distance : DESCRIPTOR_CODES[first.airport];
   const [, month, day] = trip.date.split("-");
   return `${code} ${MONTHS[Number(month) - 1]}${day}`;
 }
@@ -66,9 +66,10 @@ export function metadataFor(trip, price, ref) {
   const end = (name, key) => (trip.ends && trip.ends[name] ? trip.ends[name][key] : "");
   const d = trip.details || {};
   const other = d.rider === "other";
+  const ride = rideTotals(trip);
   const values = {
     ref,
-    service: hourly ? "hourly" : "airport",
+    service: serviceOf(trip),
     direction: hourly ? "" : first.direction,
     airport: hourly ? "" : first.airport,
     class: trip.class,
@@ -96,6 +97,8 @@ export function metadataFor(trip, price, ref) {
     meet: trip.meet ? "1" : "0",
     tip_percent: price.tipPercent,
     legs: hourly ? 0 : legs.length,
+    miles: ride ? (ride.tenths / 10).toFixed(1) : "",
+    minutes: ride ? ride.minutes : "",
     fare_cents: price.fare,
     tax_cents: price.tax,
     bcf_cents: price.bcf,
@@ -152,7 +155,7 @@ export function sessionParams(trip, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: hourly ? CHECKOUT.submitHourly : CHECKOUT.submit },
+      submit: { message: hourly ? CHECKOUT.submitHourly : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,

@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, HOURLY_START } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, classReason, classTotal, firstSlot } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession } from "./_stripe.mjs";
 import { googleUp } from "./_google.mjs";
 
@@ -82,6 +82,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total }
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
     earliest: firstSlot(now),
+    ...(trip.route && { route: trip.route }),
     ...contactLinks(trip, ref, total),
   };
 }
@@ -92,7 +93,7 @@ function optionsBody(trip, ref, check, now) {
   return {
     kind: "options",
     ref,
-    service: hourly ? "hourly" : "airport",
+    service: serviceOf(trip),
     legs: hourly ? 0 : trip.legs.length,
     classes: classList(trip, ""),
     vehicles: vehicleList(trip),
@@ -106,6 +107,7 @@ function optionsBody(trip, ref, check, now) {
     pay: Boolean(price) && !check.hold,
     hold: check.hold,
     earliest: firstSlot(now),
+    ...(trip.route && { route: trip.route }),
     ...contactLinks(trip, ref, price ? price.total : undefined),
   };
 }

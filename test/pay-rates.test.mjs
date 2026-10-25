@@ -19,6 +19,7 @@ import {
   MAX_ADVANCE_DAYS,
   ADDRESS_PLACES,
   CONSENT_TERMS_LIVE,
+  DISTANCE_RATES,
 } from "../api/_rates.mjs";
 import * as copy from "../api/_copy.mjs";
 import * as trip from "../api/_trip.mjs";
@@ -30,6 +31,7 @@ const CLASS_KEYS = Object.keys(CLASSES);
 
 const load = (file) => new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document;
 const squash = (node) => node.textContent.replace(/\s+/g, " ").trim();
+const cash = (c) => "$" + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const cents = (text) => [...text.matchAll(/\$\s*(\d[\d,]*(?:\.\d\d)?)/g)].map((m) => Math.round(Number(m[1].replace(/,/g, "")) * 100));
 const own = (node) => [...node.childNodes].filter((n) => n.nodeType === 3).map((n) => n.nodeValue).join("").trim();
 
@@ -214,8 +216,8 @@ test("the taxes line and the hourly caption show both percents of api/_rates.mjs
   assert.deepEqual(percents.filter((p) => !allowed.has(p)), []);
 });
 
-test("tolls and airport fees are included on airport transfers and billed after hourly rides", () => {
-  assert.equal(facts["Tolls and airport fees"], "Included on airport transfers. On hourly bookings, billed at cost after the ride to the card saved at booking");
+test("tolls and airport fees are included on airport transfers and billed after hourly rides and trips priced by distance and time", () => {
+  assert.equal(facts["Tolls and airport fees"], "Included on airport transfers. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking");
   assert.equal(facts["Extra stops"], "On airport transfers, charged after the ride to the card saved at booking");
   assert.equal(facts.Tolls, undefined);
 });
@@ -242,9 +244,57 @@ test("the worked hourly example is three hours of Sedan & Electric with the tax 
   assert.deepEqual([example.fare, example.tax, example.bcf, example.total], [25500, 2263, 574, 28337]);
 });
 
-test("every $ figure in the three rate tables is reproducible from the config", () => {
+const DISTANCE_KEYS = CLASS_KEYS.filter((cls) => DISTANCE_RATES[cls]);
+const dollars = (cents) => (cents % 100 ? `$${(cents / 100).toFixed(2)}` : `$${cents / 100}`);
+const distanceExample = (() => {
+  const m = /^For example, (\d+) miles and (\d+) minutes in a (.+?) is /.exec(squash(row("distance-rates").querySelector("tfoot td")));
+  assert.ok(m, "no worked example in #distance-rates");
+  const cls = CLASS_KEYS.find((k) => CLASSES[k].name === m[3]);
+  const tenths = Number(m[1]) * 10;
+  const minutes = Number(m[2]);
+  const rate = DISTANCE_RATES[cls];
+  const fare = trip.distanceFare(cls, tenths, minutes);
+  return { cls, tenths, minutes, base: rate.base, miles: Math.round((tenths * rate.mile) / 10), time: minutes * rate.minute, fare, tax: percentCents(fare, NYC_TAX_PERCENT), bcf: percentCents(fare, BCF_PERCENT) };
+})();
+
+test("the distance and time table has one row per class with a rate, in CLASSES order, with the base, per mile, per minute and minimum of DISTANCE_RATES", () => {
+  assert.deepEqual(DISTANCE_KEYS, ["suv", "premium", "first", "sedan"]);
+  const rows = [...page.querySelectorAll("#distance-rates tbody tr")];
+  assert.deepEqual(rows.map((tr) => tr.id), DISTANCE_KEYS.map((k) => `distance-${k}`));
+  assert.deepEqual([...page.querySelectorAll("#distance-rates thead th")].map(squash), ["Class", "Rates"]);
+  for (const [i, cls] of DISTANCE_KEYS.entries()) {
+    const { base, mile, minute, minimum } = DISTANCE_RATES[cls];
+    assert.equal(own(rows[i].querySelector("th")), CLASSES[cls].name, cls);
+    const cell = rows[i].querySelector("td");
+    assert.equal(squash(cell), `${dollars(base)} base, $${(mile / 100).toFixed(2)} per mile, $${(minute / 100).toFixed(2)} per minute, ${dollars(minimum)} minimum`, cls);
+    assert.equal(cell.querySelectorAll("span.nowrap").length, 4, cls);
+  }
+  assert.equal(squash(page.querySelector("#distance-rates tfoot tr:last-child td")), copy.REASONS["sprinter-distance"].text);
+});
+
+test("the distance worked example is base plus miles plus minutes from api/_trip.mjs distanceFare, with the tax and Black Car Fund of api/_rates.mjs", () => {
+  const e = distanceExample;
+  assert.deepEqual([e.cls, e.tenths, e.minutes], ["suv", 150, 45]);
+  assert.equal(e.fare, e.base + e.miles + e.time);
+  assert.ok(e.fare > DISTANCE_RATES[e.cls].minimum);
+  const text = squash(row("distance-rates").querySelector("tfoot td"));
+  assert.equal(text, `For example, 15 miles and 45 minutes in a ${CLASSES[e.cls].name} is the ${dollars(e.base)} base, ${cash(e.miles)} for the miles and ${cash(e.time)} for the minutes, a ${cash(e.fare)} fare. With ${cash(e.tax)} NYC sales tax and ${cash(e.bcf)} Black Car Fund, that is ${cash(e.fare + e.tax + e.bcf)} at booking.`);
+  assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808]);
+});
+
+test("the distance section says how the price is built and that tolls and parking are charged after the ride, as on hourly bookings", () => {
+  const prose = squash(page.querySelector("#distance .prose"));
+  assert.ok(prose.includes("One-way trips that don't start or end at an airport are priced by distance and time, to or from any address in the five boroughs."), prose);
+  assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
+  assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
+  const note = squash(page.querySelector("#distance-caption .rate-table__note"));
+  assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));
+  assert.ok(note.includes(`NYC sales tax (${NYC_TAX_PERCENT}%)`) && note.includes(`Black Car Fund (${BCF_PERCENT}%)`) && note.endsWith("Tolls and parking are charged after the ride."), note);
+});
+
+test("every $ figure in the four rate tables is reproducible from the config", () => {
   const tables = [...page.querySelectorAll("table.rate-table")];
-  assert.equal(tables.length, 3);
+  assert.equal(tables.length, 4);
   const legs = CLASS_KEYS.flatMap((cls) => AIRPORT_PLACES.map((airport) => leg(cls, airport)));
   const known = new Set([
     ...legs.flatMap((l) => [l.fare, l.tax, l.bcf, l.tolls, l.total]),
@@ -254,6 +304,9 @@ test("every $ figure in the three rate tables is reproducible from the config", 
     example.tax,
     example.bcf,
     example.total,
+    ...DISTANCE_KEYS.flatMap((cls) => Object.values(DISTANCE_RATES[cls])),
+    ...["base", "miles", "time", "fare", "tax", "bcf"].map((k) => distanceExample[k]),
+    distanceExample.fare + distanceExample.tax + distanceExample.bcf,
   ]);
   const unknown = [];
   for (const cell of tables.flatMap((t) => [...t.querySelectorAll("td, th")])) {

@@ -3,6 +3,7 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
+import { DISTANCE_RATES } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RATES = "rates.html";
@@ -131,8 +132,12 @@ if (rates) {
     for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$400", "$350", "$155.00", "$13.76", "$3.49", "$12.75", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
     assert.match(rates.title, /\$145(?!\d)/);
   });
-  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total and the old First Class $125 an hour and $375 for three hours`, () => {
-    const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
+  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total and the old First Class $125 an hour and $375 for three hours, apart from the Business Premium SUV distance minimum of api/_rates.mjs`, () => {
+    const minimum = [...rates.document.querySelectorAll("#distance-premium td span")].map((s) => s.textContent).find((t) => t.endsWith(" minimum"));
+    assert.equal(minimum, `$${DISTANCE_RATES.premium.minimum / 100} minimum`);
+    const text = rates.text.split(` ${minimum}`);
+    assert.equal(text.length, 2, "the distance minimum is the one $125 on the page");
+    const all = [rates.title, text.join(" "), ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
     assert.doesNotMatch(all, /\$\s*(?:130|125|375)(?!\d)|"price":"(?:130|125|375)"/);
   });
   check(`${RATES}: every anchor other pages link to exists`, () => {
