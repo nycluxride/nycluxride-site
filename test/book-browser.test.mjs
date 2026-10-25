@@ -1689,7 +1689,7 @@ for (const [path, width] of [["/", 1440], ["/locations/manhattan", 390]]) {
     await p.evaluate(() => scrollTo(0, document.getElementById("bk-cards").getBoundingClientRect().bottom + scrollY + 20));
     await p.waitForFunction(() => document.getElementById("bk-pills").classList.contains("is-on"));
     const box = await p.evaluate(() => { const r = document.getElementById("bk-pills").getBoundingClientRect(), c = document.getElementById("bk-cards").getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height), Math.round(r.left - c.left), Math.round(r.width - c.width), getComputedStyle(document.getElementById("bk-pills")).visibility]; });
-    assert.deepEqual(box, [88, 64, 0, 0, "visible"]);
+    assert.deepEqual(box, [76, 64, 0, 0, "visible"]);
     const pills = await p.$$eval(".bk-pill", (s) => s.map((x) => { const [n, v] = x.children; return [Math.round(x.getBoundingClientRect().height), Math.round(n.getBoundingClientRect().height), getComputedStyle(v).display !== "none" && v.getBoundingClientRect().top >= n.getBoundingClientRect().bottom - 1]; }));
     assert.deepEqual(pills, CLASS_KEYS.map(() => [40, 16, true]), "each pill shows its name on one line and its price below");
     await p.click(".bk-pill[data-c=sedan]");
@@ -1958,7 +1958,7 @@ for (const [width, height] of [[1440, 900], [1280, 720]]) {
   await check("B34 at 390 on a touch screen, focusing the pickup in the lower half scrolls the trip type switch to just under the header", async () => {
     for (const path of ["/", "/book"]) {
       const p = await open(ctx, P, path);
-      if (path === "/book") await p.setViewportSize({ width: 390, height: 700 });
+      await p.setViewportSize({ width: 390, height: path === "/book" ? 640 : 800 });
       await p.evaluate(() => document.getElementById("bk-from-f").getBoundingClientRect().top > visualViewport.height / 2 || scrollTo(0, document.getElementById("bk-from").getBoundingClientRect().top + scrollY - visualViewport.height * 0.7));
       await p.waitForTimeout(100);
       await p.tap("#bk-from");
@@ -2275,7 +2275,7 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     assert.deepEqual([rows, cols], wide ? [2, 3] : [3, 2], wide ? "the six tiles of an airport pickup take two rows of three" : "on a phone the six tiles take three rows of two");
     assert.ok(most <= 3, `a tile runs to ${most} lines`);
     assert.ok(tall <= (wide ? 140 : 240), `the list is ${tall}px tall`);
-    await p.evaluate(() => scrollTo(0, document.getElementById("bk-incl").getBoundingClientRect().top + scrollY - 60));
+    await p.evaluate(() => scrollTo(0, document.getElementById("bk-incl").getBoundingClientRect().top + scrollY - 44));
     if (wide) await p.waitForFunction(() => document.getElementById("bk-pills").classList.contains("is-on"));
     const [under, shows] = await p.evaluate(() => {
       const bar = Math.max(...[document.querySelector(".site-header"), document.getElementById("bk-pills")].filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden").map((e) => e.getBoundingClientRect().bottom));

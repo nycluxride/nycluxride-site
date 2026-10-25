@@ -25,8 +25,8 @@ const DESKTOP = {
   "--tracking-caption": ".5px", "--space-4xs": "2px", "--space-3xs": "4px", "--space-2xs": "8px", "--space-xs": "12px", "--space-sm": "16px",
   "--space-md": "20px", "--space-lg": "24px", "--space-xl": "32px", "--space-2xl": "40px", "--space-3xl": "48px", "--space-4xl": "64px",
   "--space-5xl": "72px", "--space-6xl": "80px", "--space-7xl": "96px", "--icon-xs": "16px", "--icon-sm": "20px", "--icon-md": "24px",
-  "--icon-lg": "32px", "--container": "1170px", "--container-wide": "1344px", "--gutter": "48px", "--header-h": "88px",
-  "--bar-h": "68px", "--section-y": "80px", "--section-y-home": "96px", "--dur-fast": ".15s", "--dur-base": ".2s", "--dur-slow": ".3s",
+  "--icon-lg": "32px", "--container": "1170px", "--container-wide": "1344px", "--gutter": "48px", "--header-h": "76px",
+  "--bar-h": "60px", "--section-y": "80px", "--section-y-home": "96px", "--dur-fast": ".15s", "--dur-base": ".2s", "--dur-slow": ".3s",
   "--dur-settle": ".54s", "--dur-quick": ".33s", "--dur-exit": ".15s", "--ease-standard": "ease-in-out", "--ease-enter": "ease-out", "--ease-slide": "cubic-bezier(.4,0,.2,1)",
   "--ease-settle": "cubic-bezier(.16,1,.3,1)", "--ease-quick": "cubic-bezier(.2,.8,.2,1)", "--ease-exit": "cubic-bezier(.4,0,1,1)",
   "--i-pin": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8'%3E%3Cpath d='M12 21.5S18.5 14.9 18.5 10.5a6.5 6.5 0 1 0-13 0c0 4.4 6.5 11 6.5 11zM12 13a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'/%3E%3C/svg%3E\")",
@@ -38,9 +38,9 @@ const PHONE = {
   "--type-subhead-lg": "24px/32px", "--type-subhead-md": "20px/28px", "--type-subhead-sm": "18px/26px", "--space-3xs": "2px", "--space-2xs": "4px", "--space-xs": "8px",
   "--space-sm": "12px", "--space-md": "16px", "--space-lg": "20px", "--space-xl": "24px", "--space-2xl": "32px", "--space-3xl": "40px",
   "--space-4xl": "48px", "--space-5xl": "56px", "--space-6xl": "64px", "--space-7xl": "72px", "--icon-xs": "12px", "--icon-sm": "16px",
-  "--icon-md": "20px", "--icon-lg": "24px", "--gutter": "24px", "--header-h": "72px", "--section-y": "48px", "--section-y-home": "56px",
+  "--icon-md": "20px", "--icon-lg": "24px", "--gutter": "24px", "--header-h": "56px", "--section-y": "48px", "--section-y-home": "56px",
 };
-const TABLET = { "--type-display-sm": "40px/48px", "--type-headline-lg": "36px/44px" };
+const TABLET = { "--type-display-sm": "40px/48px", "--type-headline-lg": "36px/44px", "--header-h": "64px" };
 const NO_GLASS = {
   "--glass-dark": "linear-gradient(#2B2723,#2B2723)", "--glass-light": "linear-gradient(#FFFFFF,#FFFFFF)", "--header-glass": "#FBF8F2",
   "--overlay-menu": "#0F1319", "--blur-glass": "none", "--blur-header": "none", "--blur-pop": "none", "--blur-menu": "none",
