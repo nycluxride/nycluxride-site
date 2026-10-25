@@ -11,12 +11,12 @@ const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS } = await 
 const { PLACE_LIST, norm } = await load("_places.mjs");
 const { COUNTRIES, MAIN_BY_DIAL, TRUNK } = await load("_phone.mjs");
 
-const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html"];
+const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const SEARCH_HOSTS = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", ...AREAS.map((a) => `locations/${a}.html`)];
+const SEARCH_HOSTS = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`)];
 const WIDGET = [...HOSTS, ...SEARCH_HOSTS];
-const BANNER_PAGES = [...SEARCH_HOSTS, "locations/jfk-airport.html", "locations/laguardia-airport.html"];
-const AIRPORT_PAGES = { "locations/jfk-airport.html": ["John F. Kennedy (JFK)", "jfk"], "locations/laguardia-airport.html": ["LaGuardia (LGA)", "lga"] };
+const BANNER_PAGES = [...SEARCH_HOSTS, "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"];
+const AIRPORT_PAGES = { "locations/jfk-airport.html": ["John F. Kennedy (JFK)", "jfk"], "locations/laguardia-airport.html": ["LaGuardia (LGA)", "lga"], "locations/newark-airport.html": ["Newark Liberty (EWR)", "ewr"] };
 const START = '<form id="book-form" class="bk" method="post" action="/api/book" data-step="search" aria-label="Book a car">';
 const SEARCH_START = '<form id="book-form" class="bk bk--go" method="get" action="/book#from-search" data-step="search" aria-label="Book a car">';
 const VIEW = '<button class="btn bk-js-only" id="bk-view" type="submit" name="action" value="options">Book your ride<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></button>';
@@ -32,7 +32,7 @@ const ENDS = { from: "Pickup location", stop1: "Stop 1", stop2: "Stop 2", to: "D
 const NOJS = ["(one way)", "(by the hour)", " for airport pickups", " (airport pickups)", "(return trip)", "(return trip, optional)", "(by the hour, Business SUV)", "(airport pickups)", "(one way, optional)", "(if someone else is riding)", "(meet and greet)", "By email or WhatsApp. Put the pickup, drop-off, date and time in the message.", "If someone else is riding, your chauffeur contacts them on the day of the ride."];
 const STEP1_IDS = ["bk-search", "bk-mode", "bk-one", "bk-hour", "e-trip_type", "bk-adds", "bk-addstop", "bk-addret", "bk-hours-f", "bk-hours", "bk-date-f", "bk-date-l", "bk-date", "bk-date-btn", "bk-cal", "bk-flight-f", "bk-flight", "bk-flight-status", "bk-time-f", "bk-time-l", "bk-time", "bk-time-btn", "bk-tm", "bk-time-h", "bk-ret-c", "bk-ret", "bk-ret-f", "bk-ret-sum", "bk-rdate-f", "bk-rdate-l", "bk-rdate", "bk-rdate-btn", "bk-rtime-f", "bk-rtime", "bk-rflight-f", "bk-rflight", "bk-rflight-status", "bk-rmret", "bk-view", "bk-status", "bk-assure", "bk-stop1-h", "bk-stop2-h"];
 const END_IDS = Object.keys(ENDS).flatMap((e) => ["-f", "", "-id", "-ticket", "-area", "-x", "-pop", "-list"].map((s) => `bk-${e}${s}`)).concat(["bk-stop1-rm", "bk-stop2-rm"]);
-const STEP2_IDS = ["bk-opts", "bk-sum", "bk-edit", "bk-opt-h", "bk-wait", "bk-map", "bk-drive", "bk-pax-f", "bk-pax", "bk-cards", ...Object.keys(CLASSES).flatMap((c) => [`bk-c-${c}`, `bk-p-${c}`]), ...Object.keys(CLASSES).flatMap((c) => [`bk-n-${c}`, `bk-m-${c}`, `bk-s-${c}`]), "bk-qline", "bk-arrive", "bk-vehicle-f", "bk-vehicle", "bk-meet-f", "bk-meet-no", "bk-meet", "bk-meet-p", "bk-meet-h", "bk-meet-t57", "bk-tip", "bk-tip-opts", "bk-tipamt-f", "bk-tipamt", "bk-tipamt-h", "e-tip_amount", "bk-tip-h", "bk-result", "price", "price-h", "price-lines", "price-total", "price-notes", "bk-act", "bk-tot", "bk-tot-l", "bk-tot-v", "quote", "q-body", "q-wa", "q-mail", "q-fix", "q-retry", "q-sent", "bk-route", "bk-route-n", "bk-policy", "bk-go", "bk-nopay", "bk-under", "bk-submit", "e-form", "bk-hp", "bk-nonce", "bk-places", "bk-more", "bk-incl-h", "bk-incl", "bk-pills", ...Object.keys(CLASSES).map((c) => `bk-pp-${c}`), "bk-side", "bk-choice", "bk-consent", "bk-next", "bk-bar", "bk-bar-name", "bk-bar-total", "bk-bar-q", "bk-bar-go", "bk-bar-mail"];
+const STEP2_IDS = ["bk-opts", "bk-sum", "bk-edit", "bk-opt-h", "bk-wait", "bk-map", "bk-drive", "bk-pax-f", "bk-pax", "bk-pax-h", "bk-cards", ...Object.keys(CLASSES).flatMap((c) => [`bk-c-${c}`, `bk-p-${c}`]), ...Object.keys(CLASSES).flatMap((c) => [`bk-n-${c}`, `bk-m-${c}`, `bk-s-${c}`]), "bk-qline", "bk-arrive", "bk-vehicle-f", "bk-vehicle", "bk-meet-f", "bk-meet-no", "bk-meet", "bk-meet-p", "bk-meet-h", "bk-meet-t57", "bk-tip", "bk-tip-opts", "bk-tipamt-f", "bk-tipamt", "bk-tipamt-h", "e-tip_amount", "bk-tip-h", "bk-result", "price", "price-h", "price-lines", "price-total", "price-notes", "bk-act", "bk-tot", "bk-tot-l", "bk-tot-v", "quote", "bk-qnotes-f", "bk-qnotes", "bk-qnotes-h", "q-body", "q-wa", "q-mail", "q-fix", "q-retry", "q-sent", "bk-route", "bk-route-n", "bk-policy", "bk-go", "bk-nopay", "bk-under", "bk-submit", "e-form", "bk-hp", "bk-nonce", "bk-places", "bk-more", "bk-incl-h", "bk-incl", "bk-pills", ...Object.keys(CLASSES).map((c) => `bk-pp-${c}`), "bk-side", "bk-choice", "bk-consent", "bk-next", "bk-bar", "bk-bar-name", "bk-bar-total", "bk-bar-q", "bk-bar-go", "bk-bar-mail"];
 const STEP3_IDS = ["bk-det", "bk-back", "bk-det-h", "bk-who", "bk-r-other", "e-rider", "bk-name-f", "bk-name", "e-name", "bk-email-f", "bk-email", "e-email", "bk-phone-f", "bk-phone-cc", "bk-phone-face", "bk-phone", "bk-phone-h", "e-phone", "bk-reach", "bk-reach-phone", "bk-reach-wa", "e-reach", "bk-pname-f", "bk-pname", "e-pname", "bk-pphone-f", "bk-pphone-cc", "bk-pphone-face", "bk-pphone", "e-pphone", "bk-dflight-f", "bk-dflight", "bk-sign-f", "bk-sign", "bk-sign-h", "bk-notes-f", "bk-notes", "bk-notes-h", "bk-check", "bk-check-h", "bk-check-edit", "bk-check-route", "bk-check-rows", "bk-errs", "bk-email-s", "bk-phone-s", "bk-pphone-s", "bk-signcard", "bk-signname", "bk-notes-add", "bk-next3"];
 const REMOVED_IDS = ["bk-help", "bk-wa", "bk-helpline", "bk-hl-wa", "bk-hl-h", "bk-noflight", "bk-addflight", "bk-from-address", "bk-to-address", "e-from_address", "e-to_address", "bk-class", "bk-estimate", "q-switch", "q-switch-fare", "q-class-airport", "q-first-lga", "q-call", "bk-bar-wa", "bk-bar-tel", "bk-msg", "bk-steps", "bk-r-me", "bk-email-h", "bk-notes-add-h"];
 const ICON = (id) => `<svg class="icon" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
@@ -99,7 +99,7 @@ function check(name, fn) {
 }
 
 const all = pages();
-check("exactly one form#book-form on the 18 widget pages and on no other page, and no old trip form anywhere", () => {
+check("exactly one form#book-form on the 20 widget pages and on no other page, and no old trip form anywhere", () => {
   const withForm = all.filter((f) => read(f).includes('id="book-form"'));
   assert.deepEqual(withForm, [...WIDGET].sort());
   for (const f of WIDGET) assert.equal(read(f).split('<form id="book-form"').length - 1, 1, f);
@@ -113,7 +113,7 @@ check("the start tags are exact and carry no novalidate", () => {
   for (const f of WIDGET) assert.doesNotMatch(parts[f], /novalidate/i, f);
 });
 
-check("the four FULL copies are byte identical after reverting the allowed airport page differences", () => {
+check("the five FULL copies are byte identical after reverting the allowed airport page differences", () => {
   for (const f of HOSTS) assert.equal(revert(f, parts[f]), parts["book.html"], f);
   for (const [f, [label, id]] of Object.entries(AIRPORT_PAGES)) {
     assert.ok(parts[f].includes(`enterkeyhint="next" required value="${label}">`), `${f} pickup value`);
@@ -123,14 +123,14 @@ check("the four FULL copies are byte identical after reverting the allowed airpo
   assert.doesNotMatch(parts["book.html"], /id="bk-from"[^>]* value=/);
 });
 
-check("the 14 SEARCH copies equal the markup derived from book.html, after reverting the hourly start of chauffeur-service-nyc.html", () => {
+check("the 15 SEARCH copies equal the markup derived from book.html, after reverting the hourly start of chauffeur-service-nyc.html", () => {
   const want = derive(parts["book.html"]);
   assert.ok(!want.includes('id="bk-sum"') && !want.includes('id="bk-nonce"') && !want.includes("bk-hp") && want.includes('<datalist id="bk-places">') && want.includes('id="bk-assure"') && !want.includes('id="bk-help"'));
   for (const f of SEARCH_HOSTS) assert.equal(revertSearch(f, parts[f]), want, f);
   assert.ok(HOURLY_HOSTS.every((f) => parts[f] !== want && parts[f].includes('<input type="radio" id="bk-hour" name="trip_type" value="hour" checked>')) && parts["services.html"] === want);
 });
 
-check("index.html keeps the component directly inside the hero slot, the 16 banner pages inside div.banner__book", () => {
+check("index.html keeps the component directly inside the hero slot, the 18 banner pages inside div.banner__book", () => {
   const slot = (f, open) => {
     const html = read(f), a = html.indexOf('<form id="book-form"');
     assert.ok(html.slice(0, a).endsWith(`${open}\n`), `${f}: wrapper start tag on the line before the form`);
@@ -156,7 +156,7 @@ check("document order of the form, step 1, step 2, step 3, the three ways to fin
   const ids = (el) => [...el.children].map((e) => e.id || e.className);
   assert.deepEqual(ids(form), ["bk-search", "bk-assure", "bk-sum", "bk-edit", "bk-opts", "bk-det", "bk-act", "bk-more", "bk-next3", "bk-side", "bk-map", "bk-drive", "bk-hp", "bk-nonce", "bk-places"]);
   assert.deepEqual(ids($("bk-search")), ["bk-mode", "e-trip_type", "bk-from-f", "bk-stop1-f", "bk-stop2-f", "bk-to-f", "bk-adds", "bk-hours-f", "bk-date-f", "bk-flight-f", "bk-time-f", "bk-ret-c", "bk-ret-f", "bk-view", "bk-status"]);
-  assert.deepEqual(ids($("bk-opts")), ["bk-opt-h", "bk-pax-f", "bk-cards", "bk-vehicle-f", "bk-pills"]);
+  assert.deepEqual(ids($("bk-opts")), ["bk-opt-h", "bk-pax-f", "bk-pax-h", "bk-cards", "bk-vehicle-f", "bk-pills"]);
   assert.deepEqual(ids($("bk-act")), ["bk-tip", "bk-meet-f", "bk-sign-f", "bk-check", "bk-tot", "quote", "bk-go", "q-body"]);
   assert.deepEqual(ids($("bk-more")), ["bk-arrive", "bk-incl-h", "bk-incl"]);
   assert.deepEqual(ids($("bk-det")), ["bk-back", "bk-det-h", "bk-errs", "bk-who", "e-rider", "bk-pname-f", "bk-pphone-f", "bk-other-h", "bk-name-f", "bk-email-f", "bk-phone-f", "bk-reach", "e-reach", "bk-dflight-f", "bk-notes-add", "bk-notes-f"]);
@@ -165,7 +165,7 @@ check("document order of the form, step 1, step 2, step 3, the three ways to fin
   assert.deepEqual(ids(pay), ["bk-wait", "bk-choice", "bk-route", "bk-route-n", "bk-qline", "bk-result", "bk-policy", "bk-bar"]);
   assert.deepEqual(ids($("bk-result")), ["price"]);
   assert.deepEqual(ids($("bk-go")), ["bk-next", "bk-submit", "q-mail", "q-wa", "bk-nopay", "bk-consent", "bk-under", "q-sent", "e-form"]);
-  assert.deepEqual(ids($("quote")).slice(-2), ["q-error", "q-fix"]);
+  assert.deepEqual(ids($("quote")).slice(-3), ["q-error", "q-fix", "bk-qnotes-f"]);
   assert.deepEqual([$("bk-sum").dataset.show, $("bk-edit").dataset.show, $("bk-side").dataset.show, $("bk-det").dataset.show, $("bk-tip").dataset.show, $("bk-submit").dataset.show, $("bk-next").dataset.show, $("bk-bar").dataset.show, $("bk-policy").dataset.show, $("bk-nopay").dataset.show, $("bk-under").dataset.show, $("bk-act").dataset.show, $("bk-more").dataset.show, $("bk-next3").dataset.show, $("bk-meet-f").dataset.show, $("bk-check").dataset.show], ["side", "side", "side", "details", "details", "details", "options", "side", "side", "options", "details", "side", "options", "details", "from-priced", "details"]);
   assert.deepEqual([...$("bk-incl").children].map((li) => li.dataset.show || ""), ["from-airport", "", "from-airport", "", "", ""]);
   assert.deepEqual([...$("bk-incl").children].map((li) => nt(li.textContent)), INCL_FACTS, "each tile still reads as the fact it stated as a list line");
@@ -296,6 +296,27 @@ check("step 2: trip chips, Edit trip, heading, passengers, the request line, row
   assert.equal($("bk-tipamt-f").outerHTML, '<div class="field bk-tipamt" id="bk-tipamt-f" hidden=""><label for="bk-tipamt">Amount in dollars</label><span class="bk-row bk-tipamt__in"><input id="bk-tipamt" name="tip_amount" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="off" enterkeyhint="done" aria-describedby="bk-tipamt-h"></span><p class="field__hint bk-js-only" id="bk-tipamt-h"></p><p class="bk-e field__hint" id="e-tip_amount">Type the gratuity in whole dollars, or choose None.</p></div>', "Other opens a whole dollar amount with a number keypad, its hint built at run time and its own message");
 });
 
+
+check("step 2: the Passengers hint, its own row between the passengers and the cars so the heading keeps its width, asks to count children and infants, describes the select and, with scripting, joins the stepper's name", () => {
+  assert.equal($("bk-pax").getAttribute("aria-describedby"), "bk-pax-h");
+  assert.ok($("bk-pax-h").matches("p.field__hint:not(.bk-e,.bk-js-only)") && $("bk-pax-h").previousElementSibling === $("bk-pax-f") && $("bk-pax-h").nextElementSibling === $("bk-cards"));
+  assert.equal(nt($("bk-pax-h").textContent), "Count children and infants as passengers.");
+  const pay = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^pay\.[A-Za-z0-9_-]+\.js$/.test(n))}`);
+  assert.ok(pay.includes('SX.setAttribute("aria-labelledby","bk-pax-l bk-pax-h");'), "the stepper does not read the hint with its name");
+});
+
+check("step 2: trips our dispatch team prices show the notes field before Email to reserve and WhatsApp to reserve, it mirrors the details notes and adds a Notes line to both messages", () => {
+  const f = $("bk-qnotes-f");
+  assert.ok(f.matches('div.field.bk-js-only[data-show="options"]') && f.parentElement === $("quote") && f.previousElementSibling === $("q-fix") && $("quote").nextElementSibling === $("bk-go"));
+  assert.deepEqual([nt(f.querySelector('label[for="bk-qnotes"]').textContent), $("bk-qnotes").tagName, $("bk-qnotes").getAttribute("maxlength"), $("bk-qnotes").getAttribute("rows"), $("bk-qnotes").getAttribute("aria-describedby"), $("bk-qnotes").hasAttribute("name")], [nt(form.querySelector('label[for="bk-notes"]').textContent), "TEXTAREA", "500", "3", "bk-qnotes-h", false]);
+  assert.equal(nt($("bk-qnotes-h").textContent), nt($("bk-notes-h").textContent));
+  const css = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^book\.[A-Za-z0-9_-]+\.css$/.test(n))}`);
+  assert.ok(css.includes(".bk-quote:not(:has(.bk-q:target,.bk-q.is-on)){display:none}"), "the request block, and the notes field in it, show without a dispatch quote");
+  const pay = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^pay\.[A-Za-z0-9_-]+\.js$/.test(n))}`);
+  assert.ok(pay.includes('let q=$("bk-qnotes"),a='), "the message builder does not read the step 2 notes");
+  assert.ok(pay.includes('a.concat(P2>0&&ab()<"e"?dw():(x=(d.activeElement==q?E.notes.value=q.value:q.value=E.notes.value).trim())?"Notes: "+x:[])'), "the step 2 messages carry no Notes line, or the two notes fields do not mirror each other");
+});
+
 check("five class rows and five pills, in the order Business SUV, Business Premium SUV, First Class, Sedan & Electric, Luxury Sprinter", () => {
   const order = ["suv", "premium", "first", "sedan", "sprinter"];
   const names = ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"];
@@ -370,7 +391,7 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.equal(nt($("q-error").querySelector("h3").textContent), HEADINGS[ERROR_BLOCK.group]);
   assert.equal(nt($("q-error").querySelector("p").textContent), ERROR_BLOCK.text);
   assert.ok($("q-retry").matches("button.btn.btn--sm.bk-js-only[type=button]") && $("q-retry").parentElement === $("q-error") && nt($("q-retry").textContent) === "Try again");
-  assert.ok($("q-fix").matches("button.btn.btn--sm.btn--ghost.bk-js-only[type=button][hidden]") && $("q-fix").nextElementSibling === null && $("q-fix").textContent === "");
+  assert.ok($("q-fix").matches("button.btn.btn--sm.btn--ghost.bk-js-only[type=button][hidden]") && $("q-fix").nextElementSibling === $("bk-qnotes-f") && $("bk-qnotes-f").nextElementSibling === null && $("q-fix").textContent === "");
   assert.ok($("quote").nextElementSibling === $("bk-go") && $("bk-go").nextElementSibling === $("q-body"), "the request steps follow the buttons");
   assert.ok($("q-body").matches('ol.next[role="list"]'));
   assert.deepEqual([...$("q-body").children].map((li) => [nt(li.querySelector("b").textContent), nt([...li.querySelector("span").childNodes].filter((n) => !(n.classList && n.classList.contains("bk-nojs"))).map((n) => n.textContent).join(""))]), [["Send us the trip", "By email or WhatsApp, with everything you entered."], ["We reply with the fare and a payment link", "We answer 24 hours a day, every day."], ["Pay when you're ready", "Nothing is booked until you pay."]]);

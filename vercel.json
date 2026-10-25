@@ -89,7 +89,7 @@
     },
     {
       "source": "/newark",
-      "destination": "/rates#ewr",
+      "destination": "/locations/newark-airport",
       "statusCode": 301
     },
     {
@@ -191,6 +191,15 @@
       ]
     },
     {
+      "source": "/locations/newark-airport",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net https://www.gstatic.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
       "source": "/services",
       "headers": [
         {
@@ -219,6 +228,15 @@
     },
     {
       "source": "/black-car-service-brooklyn",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "script-src 'self' https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net https://www.gstatic.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/car-service-with-car-seat-nyc",
       "headers": [
         {
           "key": "Content-Security-Policy",

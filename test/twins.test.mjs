@@ -8,7 +8,7 @@ import { JSDOM } from "jsdom";
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const TWINS = JSON.parse(readFileSync(join(ROOT, "fleet/twins.json"), "utf8"));
 const HERO_C = ["404.html", "about.html", "contact.html", "faq.html", "fleet.html", "rates.html", "schedule.html", "locations.html"];
-const HERO_B = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport"].map((a) => `locations/${a}.html`)];
+const HERO_B = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"].map((a) => `locations/${a}.html`)];
 
 let failures = 0;
 function check(name, fn) {
@@ -84,7 +84,7 @@ for (const file of pages) {
 check("the Hero A photo has its twin", () => assert.ok(withTwins.has("index.html")));
 for (const file of HERO_B) check(`${file}: the Hero B banner photo has its twin`, () => assert.ok(withTwins.has(file)));
 for (const file of HERO_C) check(`${file}: the header photo has its twin`, () => assert.ok(withTwins.has(file)));
-check("no page outside Hero A, the 23 banners and the Service areas header carries a twin", () => assert.deepEqual([...withTwins].filter((f) => f !== "index.html" && !HERO_B.includes(f) && !HERO_C.includes(f)), []));
+check("no page outside Hero A, the 25 banners and the Service areas header carries a twin", () => assert.deepEqual([...withTwins].filter((f) => f !== "index.html" && !HERO_B.includes(f) && !HERO_C.includes(f)), []));
 
 if (failures) {
   console.error(`\n${failures} twin assertion(s) failed`);

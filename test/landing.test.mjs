@@ -99,6 +99,12 @@ check("index.html: the child seats card sits in the hero right after the booking
   assert.ok(answer("Are child safety seats available?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
 
+check("index.html: the child seats card ends with one link, How to ask for a car seat, to the car seat page", () => {
+  const seats = hero.querySelector(":scope > section.seats");
+  assert.equal(seats.lastElementChild.outerHTML, '<p class="seats__more"><a class="lnk" href="/car-service-with-car-seat-nyc">How to ask for a car seat</a></p>');
+  assert.equal(seats.querySelectorAll("a").length, 1);
+});
+
 check("index.html: the amenities are the owner's eight, each an icon and a caption of at most three words, with Comfortable interior fourth so its long first word shares a column with Professional on phones", () => {
   const amen = perks.querySelector(':scope > .perks > section.amen[aria-labelledby="amen-h"]');
   assert.ok(amen, "no amenities block");

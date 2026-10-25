@@ -70,9 +70,9 @@ for (const file of pages) {
 
 check(`the site links to /book at least 248 times (${total})`, () => assert.ok(total >= 248, `${total} links`));
 
-check("the four booking pages carry the booking form posting to /api/book", () => {
+check("the five booking pages carry the booking form posting to /api/book", () => {
   const forms = pages.filter((f) => readFileSync(join(ROOT, f), "utf8").includes('<form id="book-form" class="bk" method="post" action="/api/book"'));
-  assert.deepEqual(forms, ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html"]);
+  assert.deepEqual(forms, ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"]);
 });
 
 if (failures) {

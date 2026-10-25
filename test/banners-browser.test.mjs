@@ -63,7 +63,7 @@ const ZOOM = (slug) => {
 };
 const SIZES = (slug) => `(max-width: 1023px) ${ZOOM(slug) > 1 ? `calc((100vw - 48px) * ${ZOOM(slug)})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 
-await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 23, BANNERS.join(", ")));
+await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 25, BANNERS.join(", ")));
 
 for (const f of BANNERS) {
   const html = readFileSync(join(ROOT, f), "utf8");
@@ -335,7 +335,7 @@ async function fold(engine, browser, pages, viewports, fits = true) {
 
 const WIDGET = BANNERS.filter((f) => /<section class="banner banner--book[ "]/.test(readFileSync(join(ROOT, f), "utf8")));
 const FOLD = [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1680, 1050], [1920, 1080], [2560, 1440], [1024, 768], [820, 1180], [390, 844], [375, 667], [390, 664], [360, 800], [375, 812], [384, 832], [412, 839], [360, 780], [390, 800], [393, 786], [412, 915], [430, 932], [393, 659], [360, 660], [768, 954], [768, 1024], [600, 960], [810, 1080], [834, 1112]];
-await check(`every widget banner page is found (${WIDGET.length})`, () => assert.equal(WIDGET.length, 16, WIDGET.join(", ")));
+await check(`every widget banner page is found (${WIDGET.length})`, () => assert.equal(WIDGET.length, 18, WIDGET.join(", ")));
 
 const chrome = await chromium.launch();
 await sweep("chromium", chrome, BANNERS, VIEWPORTS);
@@ -345,7 +345,7 @@ await pixels("chromium", chrome, BANNERS, [390, 844, 3]);
 for (const [width, height] of [[1440, 900], [1366, 768], [1024, 768], [375, 667]]) {
   const ctx = await chrome.newContext({ viewport: { width, height } });
   await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
-  for (const f of ["services.html", "locations/bronx.html", "black-car-service-brooklyn.html", "chauffeur-service-nyc.html", "locations/jfk-airport.html", "about.html", "faq.html"]) {
+  for (const f of ["services.html", "locations/bronx.html", "black-car-service-brooklyn.html", "chauffeur-service-nyc.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/newark-airport.html", "about.html", "faq.html"]) {
     await check(`${f} at ${width}: the banner loads with no layout shift`, async () => {
       const p = await ctx.newPage();
       await p.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__cls += e.value; }).observe({ type: "layout-shift", buffered: true }); });
@@ -358,8 +358,8 @@ for (const [width, height] of [[1440, 900], [1366, 768], [1024, 768], [375, 667]
   }
   await ctx.close();
 }
-await readable("chromium", chrome, ["services.html", "black-car-service-brooklyn.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "locations/jfk-airport.html", "locations/manhattan.html", "fleet.html", "rates.html", "404.html"], [[1024, 768], [1280, 720], [1280, 800], [1366, 768], [1440, 900], [1920, 1080]]);
-await readable("chromium", chrome, ["services.html", "black-car-service-brooklyn.html", "limousine-service-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/manhattan.html"], [[375, 667], [390, 844]]);
+await readable("chromium", chrome, ["services.html", "black-car-service-brooklyn.html", "chauffeur-service-nyc.html", "car-service-with-car-seat-nyc.html", "limousine-service-nyc.html", "locations/jfk-airport.html", "locations/newark-airport.html", "locations/manhattan.html", "fleet.html", "rates.html", "404.html"], [[1024, 768], [1280, 720], [1280, 800], [1366, 768], [1440, 900], [1920, 1080]]);
+await readable("chromium", chrome, ["services.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "limousine-service-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/manhattan.html", "fleet.html"], [[375, 667], [390, 844]]);
 await chrome.close();
 
 const SAMPLE = ["services.html", "locations/bronx.html", "locations/jfk-airport.html", "about.html", "faq.html", "404.html"];
@@ -369,7 +369,7 @@ for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
     console.log(`  ..   ${engine} is not installed here, its banner sweep is skipped`);
     continue;
   }
-  await sweep(engine, b, SAMPLE, [[390, 844], [1024, 768], [1440, 900], [2560, 1440]]);
+  await sweep(engine, b, [...SAMPLE, "car-service-with-car-seat-nyc.html", "locations/newark-airport.html", "fleet.html"], [[390, 844], [1024, 768], [1440, 900], [2560, 1440]]);
   await fold(engine, b, ["services.html", "black-car-service-brooklyn.html", "chauffeur-service-nyc.html", "locations/jfk-airport.html", "locations/manhattan.html", "locations/queens.html"], [[1280, 720], [1366, 768], [1920, 1080], [390, 844], [375, 667], [360, 800], [390, 664]]);
   await fold(engine, b, ["locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/manhattan.html", "black-car-service-brooklyn.html"], [[320, 568], [360, 640], [375, 600]], false);
   await readable(engine, b, ["services.html", "locations/jfk-airport.html", "about.html"], [[1440, 900]]);

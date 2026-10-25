@@ -148,20 +148,20 @@ const policiesFor = (path) =>
     .routes.filter((r) => r.headers && "Content-Security-Policy" in r.headers && new RegExp(r.src).test(path))
     .map((r) => r.headers["Content-Security-Policy"]);
 
-const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"].map((a) => `/locations/${a}`)];
-const PAYMENT_PAGES = ["/", "/book", "/booking-confirmed", "/locations/jfk-airport", "/locations/laguardia-airport", ...SEARCH_PAGES];
-const PAYMENT_FILES = ["index.html", "book.html", "booking-confirmed.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", ...SEARCH_PAGES.map((p) => `${p.slice(1)}.html`)];
+const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", "/car-service-with-car-seat-nyc", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"].map((a) => `/locations/${a}`)];
+const PAYMENT_PAGES = ["/", "/book", "/booking-confirmed", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", ...SEARCH_PAGES];
+const PAYMENT_FILES = ["index.html", "book.html", "booking-confirmed.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...SEARCH_PAGES.map((p) => `${p.slice(1)}.html`)];
 
-test("vercel's transformed routes send one identical Content-Security-Policy on the 19 payment pages and none elsewhere", () => {
+test("vercel's transformed routes send one identical Content-Security-Policy on the 21 payment pages and none elsewhere", () => {
   const book = policiesFor("/book");
   assert.equal(book.length, 1);
-  assert.equal(PAYMENT_PAGES.length, 19);
+  assert.equal(PAYMENT_PAGES.length, 21);
   for (const path of PAYMENT_PAGES) assert.deepEqual(policiesFor(path), book, path);
-  const paths = ["/rates", "/faq", "/about", "/blog", "/services/x", "/locations/manhattan/x", "/locations", "/locations/jfk-airport/x", "/locations/jfk-airports", "/booking", "/book/x", "/books", "/api/book", "/api/places", "/booking-confirmed-old", "/index", "/fleet"];
+  const paths = ["/rates", "/faq", "/about", "/blog", "/services/x", "/locations/manhattan/x", "/locations", "/locations/jfk-airport/x", "/locations/jfk-airports", "/locations/newark-airport/x", "/car-service-with-car-seat-nyc/x", "/booking", "/book/x", "/books", "/api/book", "/api/places", "/booking-confirmed-old", "/index", "/fleet"];
   for (const path of paths) assert.deepEqual(policiesFor(path), [], path);
 });
 
-test("the 19 payment pages use one header rule each with the same policy text in vercel.json", () => {
+test("the 21 payment pages use one header rule each with the same policy text in vercel.json", () => {
   const rules = (config.headers || []).filter((h) => h.headers.some((x) => x.key === "Content-Security-Policy"));
   assert.deepEqual(rules.map((r) => r.source).sort(), [...PAYMENT_PAGES].sort());
   const values = new Set(rules.map((r) => r.headers.find((x) => x.key === "Content-Security-Policy").value));
@@ -186,7 +186,7 @@ test("the policy needs no new origin: no img-src, connect-src or default-src, so
   assert.ok(!policy.includes("unsafe-eval") && !policy.includes("unsafe-inline"));
 });
 
-test("the 19 payment pages hold no inline script and no inline event handler", () => {
+test("the 21 payment pages hold no inline script and no inline event handler", () => {
   for (const file of PAYMENT_FILES) {
     const html = readFileSync(join(ROOT, file), "utf8");
     const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].filter(([, attrs, body]) => !/\bsrc=/.test(attrs) && !/type="application\/ld\+json"/.test(attrs) && body.trim());
@@ -197,7 +197,7 @@ test("the 19 payment pages hold no inline script and no inline event handler", (
 
 const REDIRECTS = {
   "/pricing": "/rates", "/prices": "/rates", "/booking": "/book", "/book-now": "/book", "/reserve": "/book", "/reservations": "/book", "/quote": "/book",
-  "/contact-us": "/contact", "/about-us": "/about", "/airport-transfers": "/services#airport-transfers", "/jfk": "/locations/jfk-airport", "/lga": "/locations/laguardia-airport", "/newark": "/rates#ewr",
+  "/contact-us": "/contact", "/about-us": "/about", "/airport-transfers": "/services#airport-transfers", "/jfk": "/locations/jfk-airport", "/lga": "/locations/laguardia-airport", "/newark": "/locations/newark-airport",
 };
 
 test("the 13 short paths redirect with 301 to their pages, and every fragment they name exists on its page", () => {
@@ -217,7 +217,7 @@ test("vercel's transformed routes send 301 for the short paths and nothing for t
   const { routes } = getTransformedRoutes(config);
   const hit = (path) => routes.filter((r) => !r.has && r.status >= 300 && r.status < 400 && new RegExp(r.src).test(path));
   for (const from of Object.keys(REDIRECTS)) assert.deepEqual(hit(from).map((r) => r.status), [301], from);
-  for (const path of ["/rates", "/book", "/contact", "/about", "/services", "/locations/jfk-airport", "/locations/laguardia-airport", "/pricing-old", "/jfk-airport"]) assert.deepEqual(hit(path), [], path);
+  for (const path of ["/rates", "/book", "/contact", "/about", "/services", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", "/car-service-with-car-seat-nyc", "/pricing-old", "/jfk-airport"]) assert.deepEqual(hit(path), [], path);
 });
 
 test("the Speculation-Rules header points every page at /assets/speculation.json, and the rules file is served as speculation rules for an hour", () => {

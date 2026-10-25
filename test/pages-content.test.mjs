@@ -8,14 +8,15 @@ const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.
 const BASELINE = JSON.parse(readFileSync(join(ROOT, "test/fixtures/seo-baseline.json"), "utf8")).pages;
 
 const AREAS = { "locations/manhattan.html": "Manhattan", "locations/brooklyn.html": "Brooklyn", "locations/queens.html": "Queens", "locations/bronx.html": "The Bronx", "locations/staten-island.html": "Staten Island", "locations/financial-district.html": "Financial District", "locations/soho.html": "SoHo", "locations/upper-east-side.html": "Upper East Side", "locations/upper-west-side.html": "Upper West Side", "locations/long-island-city.html": "Long Island City" };
-const AIRPORTS = { "locations/jfk-airport.html": "JFK Airport", "locations/laguardia-airport.html": "LaGuardia Airport" };
-const MONEY = { "chauffeur-service-nyc.html": ["/services", "Services", "Chauffeur service"], "limousine-service-nyc.html": ["/services", "Services", "Limousine service"], "black-car-service-brooklyn.html": ["/locations", "Service areas", "Black car service, Brooklyn"] };
+const AIRPORTS = { "locations/jfk-airport.html": "JFK Airport", "locations/laguardia-airport.html": "LaGuardia Airport", "locations/newark-airport.html": "Newark Airport" };
+const MONEY = { "chauffeur-service-nyc.html": ["/services", "Services", "Chauffeur service"], "limousine-service-nyc.html": ["/services", "Services", "Limousine service"], "black-car-service-brooklyn.html": ["/locations", "Service areas", "Black car service, Brooklyn"], "car-service-with-car-seat-nyc.html": ["/services", "Services", "Car seats"] };
 
 const PHOTO = {
   "services.html": "/fleet/page-services-900.webp",
   "chauffeur-service-nyc.html": "/fleet/page-chauffeur-service-nyc-900.webp",
   "limousine-service-nyc.html": "/fleet/page-limousine-service-nyc-900.webp",
   "black-car-service-brooklyn.html": "/fleet/page-black-car-service-brooklyn-900.webp",
+  "car-service-with-car-seat-nyc.html": "/fleet/page-services-900.webp",
   "locations/manhattan.html": "/fleet/page-manhattan-900.webp",
   "locations/brooklyn.html": "/fleet/page-brooklyn-900.webp",
   "locations/queens.html": "/fleet/page-queens-900.webp",
@@ -28,6 +29,7 @@ const PHOTO = {
   "locations/long-island-city.html": "/fleet/page-long-island-city-900.webp",
   "locations/jfk-airport.html": "/fleet/page-jfk-airport-900.webp",
   "locations/laguardia-airport.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/newark-airport.html": "/fleet/page-jfk-airport-900.webp",
 };
 const BANNERS = Object.keys(PHOTO);
 const GOLD = {
@@ -35,6 +37,7 @@ const GOLD = {
   "chauffeur-service-nyc.html": "assigned to your day",
   "limousine-service-nyc.html": "weddings, prom and group travel",
   "black-car-service-brooklyn.html": "Brooklyn",
+  "car-service-with-car-seat-nyc.html": "car seats",
   "locations/manhattan.html": "Manhattan",
   "locations/brooklyn.html": "Brooklyn",
   "locations/queens.html": "Queens",
@@ -47,6 +50,7 @@ const GOLD = {
   "locations/long-island-city.html": "Long Island City",
   "locations/jfk-airport.html": "JFK Airport",
   "locations/laguardia-airport.html": "LaGuardia Airport",
+  "locations/newark-airport.html": "Newark Airport",
 };
 const LUX = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
 const ZOOM = (slug) => {
@@ -199,9 +203,9 @@ for (const file of BANNERS) {
     const pair = band.nextElementSibling.querySelector(":scope>div.frame>div.grid12.cm-pair.cm-pair--air");
     assert.ok(pair, "no map pairing after the band");
     assert.deepEqual(kids(pair).map(tagOf), ["div.prose.c7-12", "figure.citymap.c1-6", "ul.c7-12"]);
-    assert.deepEqual(kids(kids(pair)[0]).slice(0, 2).map((n) => norm(n.textContent)), ["Airports", "Both New York City airports"]);
+    assert.deepEqual(kids(kids(pair)[0]).slice(0, 2).map((n) => norm(n.textContent)), ["Airports", "New York area airports"]);
     assert.ok(pair.querySelector(":scope>figure.citymap>svg"), "no borough map after the band");
-    assert.deepEqual([...pair.querySelectorAll(":scope>ul>li>a.loc-card")].map((a) => a.getAttribute("href")), ["/locations/jfk-airport", "/locations/laguardia-airport"]);
+    assert.deepEqual([...pair.querySelectorAll(":scope>ul>li>a.loc-card")].map((a) => a.getAttribute("href")), ["/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport"]);
     assert.equal(document.querySelectorAll("main figure.citymap").length, 1);
   });
   check("locations.html: the H1 sets its key words, New York City, in one span.h-gold and holds no other markup", () => {
@@ -278,10 +282,11 @@ const PRICE = (area) => ["Airport price", `One total by class from any ${area}, 
 const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
 const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
-for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
+for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
+RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Name the seat in the booking notes when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
 
 for (const [file, rows] of Object.entries(RAILS)) {
   const { document } = read(file);
@@ -548,6 +553,70 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.deepEqual([...th.querySelectorAll("span.nowrap")].map((n) => n.textContent), ["S-Class"]);
   });
 }
+
+
+{
+  const { document } = read("locations/newark-airport.html");
+  check("locations/newark-airport.html: section#arrival opens the prose right after the rider facts box, with its heading, the curb rule, the Ride App line for every terminal and no terminal picker until each terminal has its own pickup point", () => {
+    const s = document.getElementById("arrival");
+    assert.ok(s && s.tagName === "SECTION" && s.parentElement.matches("div.prose.c1-8") && s.parentElement.firstElementChild === s, "section#arrival is not first in the prose");
+    assert.ok(s.parentElement.previousElementSibling.matches("aside.rail"), "the rider facts box does not come before it");
+    assert.equal(norm(document.getElementById("arrival-h").textContent), "How we meet you at Newark");
+    assert.equal(document.querySelector('main aside.rail a[href="#arrival"]')?.textContent, "How we meet you at Newark");
+    const ps = [...s.querySelectorAll(":scope>p")].map((p) => norm(p.textContent));
+    assert.ok(ps[0].startsWith("At Newark, a driver can't wait at the curb unless the passenger and bags are already there."), ps[0]);
+    assert.ok(ps[1].endsWith("Don't follow the Ride App Pick Up signs. They lead to the Uber and Lyft areas, like floor 3 of the Terminal C garage."), ps[1]);
+    assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
+  });
+  check("locations/newark-airport.html: the safety tip says no to offered rides and names no New York City rule or JFK source", () => {
+    const tip = document.querySelector("#arrival > aside.tip");
+    assert.ok(tip && tip.firstElementChild.matches("svg.icon") && tip.firstElementChild.querySelector("use").getAttribute("href") === "#i-shield");
+    assert.equal(norm(tip.querySelector("h3").textContent), "Only go with your chauffeur");
+    assert.deepEqual([...tip.querySelectorAll(":scope>p")].map((p) => norm(p.textContent)), ["Say no to anyone in the terminal who offers you a ride.", "Your chauffeur calls or messages you, or waits with a name sign if you booked meet and greet."]);
+    assert.doesNotMatch(document.querySelector("main").textContent, /TLC drivers may not|jfkairport\.com/);
+    assert.equal(document.querySelector('main a[href^="https://www.jfkairport.com"]'), null);
+  });
+  check("locations/newark-airport.html: the international arrivals line says who can use Mobile Passport Control, and the map marks Newark as this page", () => {
+    assert.ok([...document.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("It's for U.S. citizens, lawful permanent residents, Canadian citizen visitors and returning Visa Waiver Program travelers with an approved ESTA.")));
+    assert.ok(document.querySelector('main .citymap a.cm-port[href="/locations/newark-airport"][aria-current="page"]'), "the EWR marker is not the current page");
+    assert.equal(document.querySelectorAll("main .citymap a[aria-current]").length, 1);
+  });
+}
+
+{
+  const { document } = read("car-service-with-car-seat-nyc.html");
+  check("car-service-with-car-seat-nyc.html: the sections run How to ask, Count children as passengers, Airport pickups with children, Hourly days and big groups, then the questions, with no seat model or age section before the owner names the seats", () => {
+    const h2 = [...document.querySelectorAll("main h2")].filter((h) => !h.closest("form, aside")).map((h) => [h.id, norm(h.textContent)]);
+    assert.deepEqual(h2, [["ask", "How to ask for a car seat"], ["passengers", "Count children as passengers"], ["airports-h", "Airport pickups with children"], ["groups-h", "Hourly days and big groups"], ["", "Questions about car seats"], ["close-h", "Book a car with a car seat"]]);
+    assert.doesNotMatch(document.querySelector("main").textContent, /\[|NHTSA|American Academy of Pediatrics|certified|trained/);
+    assert.deepEqual([...document.querySelectorAll("main details summary")].map((x) => norm(x.textContent)), ["Do your cars have car seats?", "Is there a charge for a car seat?", "Do you install the car seat?", "Do children count as passengers?", "Can I get a car seat for an airport pickup?", "Can my chauffeur meet us inside the terminal?", "What happens if our flight is late?"]);
+  });
+}
+
+const SEAT_LINKS = [
+  ["faq.html", "Our car seat page"],
+  ["index.html", "How to ask for a car seat"],
+  ["rates.html", "Infant, toddler and booster seats, free on request"],
+  ["services.html", "Infant, toddler and booster seats, free on request."],
+  ["about.html", "Infant, toddler and booster seats, free on request."],
+  ["limousine-service-nyc.html", "Infant, toddler and booster seats, free on request."],
+  ["fleet.html", "Infant, toddler and booster seats are free on request."],
+  ["chauffeur-service-nyc.html", "Infant, toddler and booster seats, free on request."],
+  ["black-car-service-brooklyn.html", "Infant, toddler and booster seats, free on request."],
+  ...[...Object.keys(AREAS), ...Object.keys(AIRPORTS)].map((f) => [f, "Infant, toddler and booster seats, free on request."]),
+  ["locations/jfk-airport.html", "our car seat page"],
+  ["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "Infant, toddler and booster seats are free."],
+  ["blog/best-black-car-service-brooklyn-queens-march-20.html", "Infant, toddler and booster seats are free."],
+  ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "ask for a free car seat"],
+];
+check("the pages that state the free child seats link that line, word for word, to the car seat page", () => {
+  const miss = SEAT_LINKS.filter(([file, text]) => ![...read(file).document.querySelectorAll('main a[href="/car-service-with-car-seat-nyc"]')].some((a) => norm(a.textContent) === text));
+  assert.deepEqual(miss, []);
+});
+check("the airport guide, the pickup guide and the Staten Island page link Newark Liberty to the Newark Airport page in context", () => {
+  const want = [["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "/locations/newark-airport", "Newark Liberty"], ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "/locations/newark-airport#arrival", "Our Newark Airport page"], ["locations/staten-island.html", "/locations/newark-airport", "Newark Liberty"]];
+  assert.deepEqual(want.filter(([file, href, text]) => ![...read(file).document.querySelectorAll(`main .prose a[href="${href}"]`)].some((a) => norm(a.textContent) === text)), []);
+});
 
 if (failures) {
   console.error(`\n${failures} pages-content assertion(s) failed`);

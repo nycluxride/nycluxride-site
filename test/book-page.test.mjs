@@ -11,7 +11,7 @@ const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", ...AREAS.map((a) => `locations/${a}.html`)];
+const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`)];
 
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 const read = (f) => {
@@ -177,10 +177,10 @@ for (const [name, { document }] of [["book.html", book], ["booking-confirmed.htm
   });
 }
 
-check("the pay script loads in the head of the four FULL hosts, lux.js brings it to the 14 SEARCH hosts, the confirmation page loads the done script, and nowhere else checked here", () => {
-  assert.equal(HOSTS.length, 18);
-  for (const f of HOSTS.slice(0, 4)) assert.ok(readFileSync(join(ROOT, f), "utf8").includes(`/assets/${payName}`), f);
-  for (const f of [...HOSTS.slice(4), "booking-confirmed.html"]) assert.ok(!readFileSync(join(ROOT, f), "utf8").includes("/assets/pay."), f);
+check("the pay script loads in the head of the five FULL hosts, lux.js brings it to the 15 SEARCH hosts, the confirmation page loads the done script, and nowhere else checked here", () => {
+  assert.equal(HOSTS.length, 20);
+  for (const f of HOSTS.slice(0, 5)) assert.ok(readFileSync(join(ROOT, f), "utf8").includes(`/assets/${payName}`), f);
+  for (const f of [...HOSTS.slice(5), "booking-confirmed.html"]) assert.ok(!readFileSync(join(ROOT, f), "utf8").includes("/assets/pay."), f);
   assert.ok(doneName && readFileSync(join(ROOT, "booking-confirmed.html"), "utf8").includes(`/assets/${doneName}`));
   assert.ok(LUX.includes(`"/assets/${payName}"`), "lux.js does not load the current pay script");
   const others = ["rates.html", "404.html", "faq.html", "locations.html"].filter((f) => /\/assets\/(pay|done)\./.test(readFileSync(join(ROOT, f), "utf8")));
@@ -215,6 +215,12 @@ check("the done script labels a test or mock session and never a live one, and p
   for (const id of ["cs_test_a1b2c3d4e5f6", "cs_mock_7K3Q2P"]) assert.ok(rule.test(id), `${id} is not labelled`);
   for (const id of ["cs_live_a1b2c3d4e5f6", "xcs_test_a1", ""]) assert.equal(rule.test(id), false, `${id} is labelled`);
   assert.doesNotMatch(SRC, /cf-h|cf-receipt|cf-test/);
+});
+
+check("the done script repeats the rider's notes on the trip card as Your notes, escaped, from the booking saved in this tab, and the session lookup never returns them", () => {
+  assert.ok(DONE.includes('+rw("Your notes",ES([f.notes]));'), "the trip card does not repeat the notes");
+  assert.doesNotMatch(DONE, /rider_notes|s\.notes_text/);
+  assert.doesNotMatch(readFileSync(join(ROOT, "api/book.mjs"), "utf8"), /rider_notes|metadata\.notes/);
 });
 
 check("the pay and done scripts carry no comment, hold no price figure, and pay.js uses the config advance limit and notice window", () => {

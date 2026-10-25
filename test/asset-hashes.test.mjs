@@ -17,7 +17,7 @@ const BUDGETS = [
   [/^wide\..*\.css$/, 1700, true],
 ];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", ...AREAS.map((a) => `locations/${a}.html`)];
+const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`)];
 const BOOKING_CSS = 180700;
 const BOOK_SCRIPTS = 77000;
 const SPECULATION_BYTES = 600;
@@ -93,7 +93,7 @@ const linked = (file, re) =>
   [...readFileSync(join(ROOT, file), "utf8").matchAll(re)].map((m) => m[1]).filter((p) => existsSync(join(ROOT, p)));
 
 test(`booking pages load lux and book CSS within ${BOOKING_CSS} bytes`, () => {
-  assert.equal(BOOKING_PAGES.length, 19);
+  assert.equal(BOOKING_PAGES.length, 21);
   for (const file of BOOKING_PAGES) {
     const css = linked(file, /<link rel="stylesheet" href="\/(assets\/(?:lux|book)\.[^"]+\.css)">/g);
     assert.ok(css.some((p) => /^assets\/lux\./.test(p)), `${file} links no lux.css`);
