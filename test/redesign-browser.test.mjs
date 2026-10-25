@@ -444,21 +444,22 @@ const shown = (el) => {
   const cs = getComputedStyle(el);
   return r.width > 4 && r.height > 4 && cs.visibility === "visible" && cs.clipPath === "none" && r.left >= -1 && r.right <= innerWidth + 1;
 };
-for (const width of [390, 1440]) {
+for (const width of [390, 768, 1440]) {
   const p = await open({ viewport: { width, height: 900 } });
   await p.goto(`${base}/rates`, { waitUntil: "load" });
   await p.evaluate(() => document.fonts.ready);
   const t = await p.evaluate(`(() => {
     const shown = ${shown};
     const r = document.querySelector(".site-header__bar").getBoundingClientRect();
-    return { top: r.top, height: r.height, links: [...document.querySelectorAll(".site-header__lines a")].map((a) => [a.textContent.trim(), shown(a.querySelector("span")), a.getBoundingClientRect().height]) };
+    return { top: r.top, height: r.height, links: [...document.querySelectorAll(".site-header__lines a")].map((a) => [a.textContent.trim(), shown(a.querySelector("span")), a.getBoundingClientRect().height, a.getBoundingClientRect().width, shown(a.querySelector(".icon"))]) };
   })()`);
-  check(`/rates: at ${width}px the header bar is the top of the page${width < 1024 ? " and shows the phone, WhatsApp and email lines" : ", its phone lines are hidden and the pills carry phone and WhatsApp"}`, () => {
+  check(`/rates: at ${width}px the header bar is the top of the page${width < 768 ? " and shows the phone, WhatsApp and email icons as 44px targets named by their hidden text" : width < 1024 ? " and shows the phone, WhatsApp and email lines as 44px tall targets" : ", its phone lines are hidden and the pills carry phone and WhatsApp"}`, () => {
     assert.equal(Math.round(t.top), 0);
-    assert.equal(Math.round(t.height), width < 1024 ? 72 : 88, `the header bar is ${t.height}px tall`);
-    const want = [["+1 (646) 775-0556", width < 1024], ["WhatsApp", width < 1024], ["info@nycluxride.com", width < 1024]];
+    assert.equal(Math.round(t.height), width < 600 ? 56 : width < 1024 ? 64 : 76, `the header bar is ${t.height}px tall`);
+    const lab = width >= 768 && width < 1024;
+    const want = [["+1 (646) 775-0556", lab], ["WhatsApp", lab], ["info@nycluxride.com", lab]];
     assert.deepEqual(t.links.map((l) => l.slice(0, 2)), want);
-    for (const [text, vis, h] of t.links) if (vis) assert.ok(h >= 24, `${text} is a ${h}px target`);
+    if (width < 1024) for (const [text, , h, w, icon] of t.links) assert.ok(icon && h >= 44 && w >= 44, `${text} is a ${w}x${h}px target${icon ? "" : " without its icon"}`);
   });
   await p.evaluate(() => scrollTo({ top: 600, behavior: "instant" }));
   await p.waitForTimeout(500);
@@ -1300,7 +1301,7 @@ async function engineChecks(engine, b) {
     }));
     await c.close();
   }
-  check(`${engine}: at 1440x900 the homepage brand goes from 1.25 to 1 with a transition on the first scroll, 6 times out of 6`, () => assert.deepEqual(brand, Array(6).fill(["1.25", true, "1"])));
+  check(`${engine}: at 1440x900 the homepage brand goes from 1.1 to 1 with a transition on the first scroll, 6 times out of 6`, () => assert.deepEqual(brand, Array(6).fill(["1.1", true, "1"])));
 }
 
 await engineChecks("chromium", browser);

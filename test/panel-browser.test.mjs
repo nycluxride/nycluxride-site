@@ -397,7 +397,7 @@ for (const [name, b] of ENGINES) {
   await check(`${name}: on /book and / at 863 by 360, a phone held sideways, the open calendar stays open while the page scrolls down to its last row, so every bookable day of this month and the next can be tapped, and it closes once it has scrolled whole under the sticky header`, async () => {
     const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const state = (page) => page.evaluate(() => {
-      const c = document.getElementById("bk-cal"), h = document.querySelector(".site-header").getBoundingClientRect().bottom;
+      const c = document.getElementById("bk-cal"), h = Math.max(0, document.querySelector(".site-header").getBoundingClientRect().bottom);
       if (c.hidden) return null;
       const tap = [...c.querySelectorAll(".bk-cal__day:not([disabled])")].map((x) => [x, x.getBoundingClientRect()]).filter(([x, r]) => { const y = r.top + r.height / 2, e = document.elementFromPoint(r.left + r.width / 2, y); return y > h && y < innerHeight && !!e && x.contains(e); });
       return { tap: tap.map(([x, r]) => [x.dataset.day, r.left + r.width / 2, r.top + r.height / 2]), below: c.getBoundingClientRect().bottom - h };
