@@ -277,10 +277,25 @@ const helper = await browser.newPage();
   const rest = await p.evaluate(() => { const r = document.querySelector(".banner__book").getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; });
   const m = /matrix\(1, 0, 0, 1, ([-\d.]+), ([-\d.]+)\)/.exec(mid[1] || "");
   await check("(8) /locations/manhattan to /locations/brooklyn at 1440: the banner and the bar hold, the bar within 2px of its resting box at 180 ms", () => {
-    assert.ok(mid[0].includes("banner") && mid[0].includes("trip"), `groups ${mid[0].join(" ")}`);
+    assert.ok(mid[0].includes("banner-b") && mid[0].includes("trip"), `groups ${mid[0].join(" ")}`);
     assert.ok(m, `group transform ${mid[1]}`);
     const box = [Number(m[1]), Number(m[2]), parseFloat(mid[2]), parseFloat(mid[3])];
     box.forEach((v, i) => assert.ok(Math.abs(v - rest[i]) <= 2, `box ${box.map(Math.round)} against ${rest.map(Math.round)}`));
+  });
+  await ctx.close();
+}
+
+for (const [from, to] of [["/services", "/fleet"], ["/fleet", "/services"]]) {
+  const ctx = await context(1440, { pause: true });
+  const p = await ctx.newPage();
+  await p.goto(`${base}${from}`, { waitUntil: "load" });
+  await go(p, to);
+  const r = await p.evaluate(() => [window.__vt.names, window.__vt.anims.map((a) => a.effect.pseudoElement)]);
+  await p.evaluate(() => window.__finish());
+  await check(`(8b) ${from} to ${to} at 1440: the booking banner and the plain banner do not morph into each other, each fades on its own`, () => {
+    assert.ok(r[0].includes("banner") && r[0].includes("banner-b"), `groups ${r[0].join(" ")}`);
+    const pair = (n) => ["old", "new"].every((k) => r[1].includes(`::view-transition-${k}(${n})`));
+    assert.deepEqual(["banner", "banner-b", "banner-text", "banner-text-b"].filter(pair), []);
   });
   await ctx.close();
 }
