@@ -152,16 +152,16 @@ check("every id of the contract is present, the removed ids are gone, the notes 
   assert.equal(nt($("from-search").textContent), "JavaScript is off in your browser, and your trip didn't carry over. Please enter it again below.");
 });
 
-check("document order of the form, step 1, step 2, step 3, the three ways to finish, the information blocks and the summary card (owner changes 2 and 3)", () => {
+check("document order of the form, step 1, step 2, step 3, the three ways to finish, the information blocks and the summary card with the route map first in it, above the price (owner changes 2 and 3)", () => {
   const ids = (el) => [...el.children].map((e) => e.id || e.className);
-  assert.deepEqual(ids(form), ["bk-search", "bk-assure", "bk-sum", "bk-edit", "bk-opts", "bk-det", "bk-act", "bk-more", "bk-next3", "bk-side", "bk-map", "bk-drive", "bk-hp", "bk-nonce", "bk-places"]);
+  assert.deepEqual(ids(form), ["bk-search", "bk-assure", "bk-sum", "bk-edit", "bk-opts", "bk-det", "bk-act", "bk-more", "bk-next3", "bk-side", "bk-drive", "bk-hp", "bk-nonce", "bk-places"]);
   assert.deepEqual(ids($("bk-search")), ["bk-mode", "e-trip_type", "bk-from-f", "bk-stop1-f", "bk-stop2-f", "bk-to-f", "bk-adds", "bk-hours-f", "bk-date-f", "bk-flight-f", "bk-time-f", "bk-ret-c", "bk-ret-f", "bk-view", "bk-status"]);
   assert.deepEqual(ids($("bk-opts")), ["bk-opt-h", "bk-pax-f", "bk-pax-h", "bk-cards", "bk-vehicle-f", "bk-pills"]);
   assert.deepEqual(ids($("bk-act")), ["bk-tip", "bk-meet-f", "bk-sign-f", "bk-check", "bk-tot", "quote", "bk-go", "q-body"]);
   assert.deepEqual(ids($("bk-more")), ["bk-arrive", "bk-incl-h", "bk-incl"]);
   assert.deepEqual(ids($("bk-det")), ["bk-back", "bk-det-h", "bk-errs", "bk-who", "e-rider", "bk-pname-f", "bk-pphone-f", "bk-other-h", "bk-name-f", "bk-email-f", "bk-phone-f", "bk-reach", "e-reach", "bk-dflight-f", "bk-notes-add", "bk-notes-f"]);
   const pay = $("bk-side").querySelector(":scope > .bk-pay");
-  assert.deepEqual(ids($("bk-side")), ["bk-pay"]);
+  assert.deepEqual(ids($("bk-side")), ["bk-map", "bk-pay"]);
   assert.deepEqual(ids(pay), ["bk-wait", "bk-choice", "bk-route", "bk-route-n", "bk-qline", "bk-result", "bk-policy", "bk-bar"]);
   assert.deepEqual(ids($("bk-result")), ["price"]);
   assert.deepEqual(ids($("bk-go")), ["bk-next", "bk-submit", "q-mail", "q-wa", "bk-nopay", "bk-consent", "bk-under", "q-sent", "e-form"]);

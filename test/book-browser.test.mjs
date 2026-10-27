@@ -21,6 +21,8 @@ const nyNow = () => nyClock(Date.now() + MIN_NOTICE_HOURS * 36e5 + 59999);
 const firstDay = () => { const n = nyNow(); return n.slice(11) <= "23:50" ? n.slice(0, 10) : new Date(Date.parse(n.slice(0, 10)) + 864e5).toISOString().slice(0, 10); };
 const inWindow = () => { const t = nyClock(Math.ceil((Date.now() + 15 * 6e4) / 6e5) * 6e5); return { date: t.slice(0, 10), time: t.slice(11) }; };
 const HOUR_NOTE = "For a pickup within the next hour, email or WhatsApp us.";
+const DRIVE_N = "16.8 miles, about 43 min by car. Google Maps";
+const DRIVE_SEEN = "16.8 miles, about 43 min by car.";
 const DATE = nyDate(3);
 const RDATE = nyDate(6);
 const YEAR = nyDate(0).slice(0, 4);
@@ -443,13 +445,15 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await cards(page), JFK_CARDS);
     assert.deepEqual((await panel(page)).lines, AIRPORT_LINES);
   });
-  await check("B8 with GOOGLE_MOCK on a phone there is no map image and no map size in the route request, the route list in the summary card carries the drive time with the Google attribution and the drive line stays hidden", async () => {
+  await check("B8 with GOOGLE_MOCK on a phone the route map shows above the summary card at the size the route request asked for, the route list in the summary card carries the drive time, the note the miles and minutes with the Google attribution, and the drive line stays hidden", async () => {
     await page.waitForFunction(() => /About/.test(document.querySelector("#bk-route .bk-route__z")?.textContent || ""));
-    assert.deepEqual([await page.isVisible("#bk-map"), await page.$("#bk-map img")], [false, null]);
+    await page.waitForSelector("#bk-map img");
     assert.equal(routeBodies.length, 1);
-    assert.equal(routeBodies[0].map, undefined);
+    const inner = await page.evaluate(() => { const m = document.getElementById("bk-map"); return { width: m.clientWidth, height: m.clientHeight }; });
+    assert.deepEqual([await page.isVisible("#bk-map"), routeBodies[0].map], [true, inner]);
     assert.deepEqual(await page.$$eval("#bk-route li", (l) => l.map((x) => x.textContent)), ["12:40 PMThe New York EDITION, Madison Avenue, New York, NY", "About 1:25 PMJFK Terminal 4"]);
-    assert.equal(await page.textContent("#bk-route-n"), "Traffic estimate. Google Maps");
+    assert.equal(await page.textContent("#bk-route-n"), DRIVE_N);
+    assert.equal((await page.innerText("#bk-route-n")).trim(), DRIVE_SEEN, "beside the map image its own Google logo is the attribution");
     assert.equal(await page.getAttribute("#bk-route-n .bk-attr", "translate"), "no");
     assert.deepEqual([await page.isVisible("#bk-drive"), await page.evaluate(() => document.getElementById("bk-route").closest("#bk-side .bk-pay") !== null)], [false, true]);
   });
@@ -1274,7 +1278,7 @@ for (const [path, width] of [["/book", 390], ["/locations/jfk-airport", 390], ["
 for (const [path, width, height] of [["/", 390, 844], ["/book", 390, 844], ["/", 1440, 900], ["/book", 1440, 900]]) {
   const ctx = await context(G, { viewport: { width, height } });
   const big = width >= 1024;
-  await check(`B17 ${path} at ${width}: with Google keys the ${big ? "map card and the route list are" : "route list is"} drawn at the step switch, prices come before a late route, the drive time fills in place, CLS stays 0${path === "/book" ? ", also on /book#resume" : " on /book#options after the hand-off"}`, async () => {
+  await check(`B17 ${path} at ${width}: with Google keys the map card and the route list are drawn at the step switch${big ? "" : " on a phone too"}, prices come before a late route, the drive time fills in place, CLS stays 0${path === "/book" ? ", also on /book#resume" : " on /book#options after the hand-off"}`, async () => {
     const p = await open(ctx, G, path);
     await place(p, "from", "edition", "The New York EDITION");
     await p.waitForFunction(() => /^v1\./.test(document.getElementById("bk-from-ticket").value));
@@ -1287,20 +1291,21 @@ for (const [path, width, height] of [["/", 390, 844], ["/book", 390, 844], ["/",
     });
     if (path === "/") await Promise.all([p.waitForURL(/\/book#options$/), p.click("#bk-view")]);
     else await p.click("#bk-view");
-    assert.deepEqual([await p.isVisible("#bk-map"), await p.isVisible("#bk-drive"), await p.isVisible("#bk-route"), await p.isVisible("#bk-route-n")], [big, false, true, true]);
+    assert.deepEqual([await p.isVisible("#bk-map"), await p.isVisible("#bk-drive"), await p.isVisible("#bk-route"), await p.isVisible("#bk-route-n")], [true, false, true, true]);
     assert.ok(await p.$("#bk-route .bk-route__z .bk-sk[aria-hidden=true]"), "the drop-off time waits in a skeleton");
     const frame = await p.evaluate(() => [document.getElementById("bk-map").getBoundingClientRect().height, document.getElementById("bk-route").getBoundingClientRect().height]);
-    assert.ok(big ? frame[0] >= 80 : frame[0] === 0, JSON.stringify(frame));
+    assert.ok(frame[0] >= 80, JSON.stringify(frame));
     await priced(p);
     assert.equal(await p.$("#bk-map img"), null, "the prices did not wait for the route");
-    if (big) await p.waitForSelector("#bk-map img");
+    await p.waitForSelector("#bk-map img");
     await p.waitForFunction(() => /^About /.test(document.querySelector("#bk-route .bk-route__z")?.textContent || ""));
     await p.waitForTimeout(400);
     let [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));
     assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-map").getBoundingClientRect().height, document.getElementById("bk-route").getBoundingClientRect().height]), frame);
     assert.deepEqual(await p.$$eval("#bk-route li", (l) => l.map((x) => x.textContent)), ["12:40 PMThe New York EDITION, Madison Avenue, New York, NY", "About 1:25 PMJFK Terminal 4"]);
-    assert.equal(await p.textContent("#bk-route-n"), "Traffic estimate. Google Maps");
+    assert.equal(await p.textContent("#bk-route-n"), DRIVE_N);
+    assert.equal((await p.innerText("#bk-route-n")).trim(), DRIVE_SEEN, "beside the map image its own Google logo is the attribution");
     if (path === "/book") {
       await p.evaluate(() => sessionStorage.setItem("nlr-book", JSON.stringify({ ...JSON.parse(sessionStorage.getItem("nlr-book")), fields: Object.fromEntries(new FormData(document.getElementById("book-form"))), step: "details" })));
       await p.goto("about:blank");
@@ -2046,13 +2051,16 @@ const mapBoxes = (p) =>
   p.evaluate(() => {
     const r = (e) => { if (!e) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), width: Math.round(b.width), height: Math.round(b.height) }; };
     const go = (id) => { const a = r(document.getElementById(id)), h = document.querySelector(".site-header").getBoundingClientRect().bottom; return a.height && a.top >= h && a.bottom <= innerHeight ? a : r(document.getElementById("bk-bar-go")); };
-    const m = document.getElementById("bk-map"), cs = (e) => getComputedStyle(e), img = m.querySelector("img"), route = document.getElementById("bk-route");
+    const m = document.getElementById("bk-map"), cs = (e) => getComputedStyle(e), img = m.querySelector("img"), route = document.getElementById("bk-route"), side = document.getElementById("bk-side");
+    const whole = (i) => { const nw = i.naturalWidth, nh = i.naturalHeight, cw = i.clientWidth, ch = i.clientHeight, f = cs(i).objectFit, s = f === "cover" ? Math.max(cw / nw, ch / nh) : f === "contain" ? Math.min(cw / nw, ch / nh) : f === "none" ? 1 : NaN; return f === "fill" ? Math.abs(cw / ch - nw / nh) < 0.02 : nw * s <= cw + 0.5 && nh * s <= ch + 0.5 && i.offsetLeft >= 0 && i.offsetTop >= 0 && cw <= m.clientWidth && ch <= m.clientHeight; };
     return {
-      map: r(m), cards: r(document.getElementById("bk-cards")), incl: r(document.getElementById("bk-incl")), side: r(document.getElementById("bk-side")),
+      map: r(m), cards: r(document.getElementById("bk-cards")), incl: r(document.getElementById("bk-incl")), side: r(side), pay: r(document.querySelector("#bk-side .bk-pay")),
       next: go("bk-next"), submit: go("bk-submit"), header: r(document.querySelector(".site-header")), note: r(document.getElementById("resume")),
-      look: [cs(m).borderRadius, cs(m).boxShadow, cs(m).borderTopWidth], display: cs(m).display, offText: m.classList.contains("is-off") ? m.innerText : "",
-      img: img && { w: +img.getAttribute("width"), h: +img.getAttribute("height"), rw: Math.round(img.getBoundingClientRect().width), rh: Math.round(img.getBoundingClientRect().height), fit: cs(img).objectFit, srcset: img.srcset, ok: img.complete && img.naturalWidth > 0, alt: img.alt, policy: img.referrerPolicy },
-      route: route.hidden ? null : [...route.children].map((li) => li.textContent), routeNote: document.getElementById("bk-route-n").hidden ? null : document.getElementById("bk-route-n").textContent,
+      look: [cs(m).borderRadius, cs(m).boxShadow, cs(m).borderTopWidth], edge: [cs(m).borderTopStyle, cs(m).borderBottomStyle, cs(m).borderTopColor === cs(document.querySelector(".bk-lines tfoot th") || m).borderTopColor], display: cs(m).display, vis: cs(m).visibility, offText: m.classList.contains("is-off") ? m.innerText : "",
+      inner: [m.clientWidth, m.clientHeight], first: side.firstElementChild === m,
+      seen: ((t, g, sd) => t.height > 0 && t.top >= sd.top && t.bottom <= Math.min(sd.bottom, cs(document.getElementById("bk-bar")).display === "none" ? Infinity : g.top))(document.getElementById("price-total").getBoundingClientRect(), document.getElementById("bk-bar").getBoundingClientRect(), side.getBoundingClientRect()),
+      img: img && { w: +img.getAttribute("width"), h: +img.getAttribute("height"), rw: Math.round(img.getBoundingClientRect().width), rh: Math.round(img.getBoundingClientRect().height), fit: cs(img).objectFit, whole: whole(img), srcset: img.srcset, ok: img.complete && img.naturalWidth > 0, alt: img.alt, policy: img.referrerPolicy },
+      route: route.hidden ? null : [...route.children].map((li) => li.textContent), routeNote: document.getElementById("bk-route-n").hidden ? null : document.getElementById("bk-route-n").textContent, routeSeen: document.getElementById("bk-route-n").hidden ? null : document.getElementById("bk-route-n").innerText.trim(),
       inCard: !!route.closest("#bk-side"), drive: cs(document.getElementById("bk-drive")).display === "none" ? null : document.getElementById("bk-drive").innerText,
     };
   });
@@ -2075,7 +2083,7 @@ const sideBoxes = (p) =>
 
 for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768], [1440, 900]]) {
   const ctx = await context(G, { viewport: { width, height } });
-  await check(`B35 at ${width} by ${height} the route map sits in the left column after the included list, with no shadow, a sized request of at most 640 px and an image that covers it, the route list in the summary card carries the drive time, Book and pay online stays in view on steps 2 and 3 under the rows or at the foot of the summary card, after a cancelled payment and with meet and greet`, async () => {
+  await check(`B35 at ${width} by ${height} the route map is the first card of the right column, as wide as the summary card and above the price, with a 1 px line edge and no shadow, a sized request of at most 640 px and an image shown whole that still fits after a resize, the total in view above Book and pay online, the route list carries the drive time and the note the miles and minutes, a return trip routes and lists both legs in one request, Book and pay online stays in view on steps 2 and 3 under the rows or at the foot of the summary card, after a cancelled payment and with meet and greet`, async () => {
     const p = await open(ctx, G, "/book");
     const bodies = [];
     p.on("request", (r) => r.url().endsWith("/api/route") && bodies.push(JSON.parse(r.postData())));
@@ -2089,17 +2097,23 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768], [1440, 900
     await p.waitForTimeout(100);
     const b = await mapBoxes(p);
     assert.ok(b.next.bottom <= height && b.next.top >= b.header.bottom, `Book and pay online at scroll 0 ${JSON.stringify(b.next)}`);
-    assert.deepEqual([b.map.left, b.map.width], [b.cards.left, b.cards.width], "the map has the width of the rows");
-    assert.ok(b.map.top > b.incl.bottom, "the map comes after the included list");
-    assert.deepEqual([b.display, ...b.look], ["block", "16px", "none", "0px"]);
-    assert.ok(b.map.height >= 160 && b.map.height <= 320, JSON.stringify(b.map));
+    assert.deepEqual([b.first, b.map.left, b.map.width, b.map.top], [true, b.side.left, b.side.width, b.side.top], "the map is the first card of the right column, as wide as the summary card");
+    assert.ok(b.map.bottom <= b.pay.top && b.pay.width === b.map.width, `the map sits above the price card ${JSON.stringify([b.map, b.pay])}`);
+    assert.deepEqual([b.display, ...b.look, ...b.edge], ["block", "16px", "none", "1px", "solid", "solid", true]);
+    assert.ok(b.map.height >= 80 && b.map.height <= 330 && b.seen, `the map, the total and Book and pay online all show in the right column ${JSON.stringify([b.map, b.side, b.seen])}`);
     const body = bodies[0].map;
-    assert.ok(body.width <= 640 && body.width === Math.min(640, b.map.width) && Math.abs(body.height - Math.round(b.map.height * body.width / b.map.width)) <= 1, JSON.stringify([body, b.map]));
-    assert.deepEqual([b.img.w, b.img.h, b.img.rw, b.img.rh, b.img.fit, b.img.ok], [body.width, body.height, b.map.width, b.map.height, "cover", true]);
+    assert.ok(body.width <= 640 && body.width === Math.min(640, b.inner[0]) && Math.abs(body.height - Math.round(b.inner[1] * body.width / b.inner[0])) <= 1, JSON.stringify([body, b.inner]));
+    assert.deepEqual([b.img.w, b.img.h, b.img.rw, b.img.rh, b.img.fit, b.img.whole, b.img.ok], [body.width, body.height, ...b.inner, "contain", true, true]);
     assert.deepEqual([b.img.alt, b.img.policy], ["Route map from The New York EDITION, Madison Avenue, New York, NY to JFK Terminal 4", "strict-origin-when-cross-origin"]);
     assert.ok(/ 2x$/.test(b.img.srcset), b.img.srcset);
-    assert.deepEqual([b.route, b.routeNote, b.inCard, b.drive], [["12:40 PMThe New York EDITION, Madison Avenue, New York, NY", "About 1:25 PMJFK Terminal 4"], "Traffic estimate. Google Maps", true, null]);
-    const end = await p.evaluate(() => Math.max(0, Math.round(document.getElementById("bk-map").getBoundingClientRect().bottom + scrollY - innerHeight)));
+    assert.deepEqual([b.route, b.routeNote, b.routeSeen, b.inCard, b.drive], [["12:40 PMThe New York EDITION, Madison Avenue, New York, NY", "About 1:25 PMJFK Terminal 4"], DRIVE_N, DRIVE_SEEN, true, null]);
+    await p.setViewportSize({ width, height: height - 200 });
+    await p.waitForTimeout(200);
+    const z = await mapBoxes(p);
+    assert.deepEqual([z.img.fit, z.img.whole], ["contain", true], `after a resize the map image is still shown whole ${JSON.stringify([z.map, z.img])}`);
+    await p.setViewportSize({ width, height });
+    await p.waitForTimeout(200);
+    const end = await p.evaluate(() => Math.max(0, Math.round(document.getElementById("bk-incl").getBoundingClientRect().bottom + scrollY - innerHeight)));
     for (const y of [100, Math.round(end / 2), end]) {
       await p.evaluate((y) => scrollTo(0, y), y);
       await p.waitForTimeout(120);
@@ -2131,18 +2145,23 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768], [1440, 900
     assert.deepEqual([r2.display, r2.next.bottom <= height], ["block", true], `resume, Back to vehicles ${JSON.stringify([r2.map, r2.next])}`);
     await p.close();
     const q = await open(ctx, G, "/book");
+    const qb = [];
+    q.on("request", (r) => r.url().endsWith("/api/route") && qb.push(JSON.parse(r.postData())));
     await routeTrip(q, { from: ["jfk t4", "John F. Kennedy (JFK), Terminal 4"], to: ["edition", "The New York EDITION"], ret: true });
     await view(q);
     await priced(q);
     await q.waitForSelector("#bk-map img");
+    await q.waitForFunction(() => /Return/.test(document.getElementById("bk-route-n").textContent));
     const m0 = await mapBoxes(q);
+    assert.equal(m0.routeNote, "16.8 miles, about 43 min by car. Return: 16.8 miles, about 43 min by car. Google Maps", "a return trip lists both rides");
+    assert.deepEqual([qb.length, qb[0].from, qb[0].back, qb[0].map], [1, { id: "jfk-t4" }, { date: RDATE, time: "18:00" }, { width: Math.min(640, m0.inner[0]), height: Math.round(m0.inner[1] * Math.min(640, m0.inner[0]) / m0.inner[0]) }], "one route request carries both legs and the map size");
     await q.click('label[for="bk-c-premium"]');
     await priced(q);
     await q.evaluate(() => scrollTo(0, 0));
     await q.waitForTimeout(150);
     const m = await mapBoxes(q);
     assert.ok(m.next.bottom <= height, `another class ${JSON.stringify(m.next)}`);
-    assert.deepEqual([m.map.width, m.map.height, m.img.rw, m.img.rh], [m0.map.width, m0.map.height, m0.map.width, m0.map.height], "the map keeps its size and the image covers it when the class changes");
+    assert.deepEqual([m.map.width, m.map.height, m.img.rw, m.img.rh, m.img.whole], [m0.map.width, m0.map.height, ...m0.inner, true], "the map keeps its size and the image fits it whole when the class changes");
     await next(q);
     await q.check("#bk-meet");
     await q.waitForFunction(() => [...document.querySelectorAll("#price-lines th, #price-lines td")].some((x) => x.textContent === "Meet and greet"));
@@ -2158,16 +2177,19 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768], [1440, 900
 
 for (const [width, height] of [[1023, 768], [390, 844]]) {
   const ctx = await context(G, { viewport: { width, height } });
-  await check(`B35 at ${width} there is no map image and no map size is requested, the route list in the summary card carries the drive time and the drive line stays hidden`, async () => {
+  await check(`B35 at ${width} the route map sits right above the summary card, as wide as it, 16/9 and at most 360 px tall with a 1 px line edge, a map of that size is requested and shown whole, the route list carries the drive time, the note the miles and minutes, and the drive line stays hidden`, async () => {
     const p = await open(ctx, G, "/book");
     const bodies = [];
     p.on("request", (r) => r.url().endsWith("/api/route") && bodies.push(JSON.parse(r.postData())));
     await routeTrip(p);
     await view(p);
     await priced(p);
+    await p.waitForSelector("#bk-map img");
     await p.waitForFunction(() => /^About /.test(document.querySelector("#bk-route .bk-route__z")?.textContent || ""));
     const b = await mapBoxes(p);
-    assert.deepEqual([b.display, b.map.height, b.img, bodies.length, bodies[0].map, b.drive, b.routeNote], ["none", 0, null, 1, undefined, null, "Traffic estimate. Google Maps"]);
+    assert.deepEqual([b.display, b.first, b.map.left, b.map.width, b.map.bottom + 16, ...b.look, ...b.edge], ["block", true, b.pay.left, b.pay.width, b.pay.top, "16px", "none", "1px", "solid", "solid", true], JSON.stringify([b.map, b.pay]));
+    assert.ok(Math.abs(b.map.height - Math.min(360, b.map.width * 9 / 16)) <= 1, JSON.stringify(b.map));
+    assert.deepEqual([bodies.length, bodies[0].map, b.img.fit, b.img.whole, b.img.ok, b.drive, b.routeNote, b.routeSeen], [1, { width: Math.min(640, b.inner[0]), height: Math.round(b.inner[1] * Math.min(640, b.inner[0]) / b.inner[0]) }, "contain", true, true, null, DRIVE_N, DRIVE_SEEN]);
     assert.equal(b.route[1], "About 1:25 PMJFK Terminal 4");
     await p.close();
   });
@@ -2176,12 +2198,12 @@ for (const [width, height] of [[1023, 768], [390, 844]]) {
 
 {
   const ctx = await context(G, { viewport: { width: 1440, height: 900 } });
-  await check("B36 at 1440 a late route answer without a map keeps the map card's space (CLS 0) and says so in it, the route list keeps its rows and fills or empties its time slot, a server without static maps shows the drive line instead of the list, hourly trips draw neither", async () => {
-    const DRIVE = "About 43 min by car at 12:40 PM, traffic estimate. Google Maps";
+  await check("B36 at 1440 a late route answer without a map hides the map card but keeps its space (CLS 0), the route list keeps its rows and fills or empties its time slot, its note gives the miles and minutes only when a route came, a server without static maps shows the drive line instead of the list, hourly trips draw neither", async () => {
+    const DRIVE = DRIVE_N;
     for (const [name, body, box, time] of [
-      ["off", { kind: "off" }, "The route map is not available right now.", ""],
-      ["failed image", { kind: "ok", minutes: 43, miles: 16.8, map: { src: `${G.base}/assets/no-such-map.png`, src2x: `${G.base}/assets/no-such-map.png`, width: 440, height: 271 } }, DRIVE, "About 1:25 PM"],
-      ["no map", { kind: "ok", minutes: 43, miles: 16.8, attribution: "Google Maps" }, DRIVE, "About 1:25 PM"],
+      ["off", { kind: "off" }, "", ""],
+      ["failed image", { kind: "ok", minutes: 43, miles: 16.8, map: { src: `${G.base}/assets/no-such-map.png`, src2x: `${G.base}/assets/no-such-map.png`, width: 440, height: 271 } }, "", "About 1:25 PM"],
+      ["no map", { kind: "ok", minutes: 43, miles: 16.8, attribution: "Google Maps" }, "", "About 1:25 PM"],
     ]) {
       const p = await open(ctx, G, "/book");
       await p.route("**/api/route", async (r) => {
@@ -2191,13 +2213,13 @@ for (const [width, height] of [[1023, 768], [390, 844]]) {
       await routeTrip(p);
       await view(p);
       const a = await mapBoxes(p);
-      await p.waitForSelector("#bk-map.is-off");
+      await p.waitForSelector("#bk-map.is-off", { state: "attached" });
       await p.waitForTimeout(300);
       const b = await mapBoxes(p);
       const [value, shifts] = await cls(p);
       assert.ok(value < 0.001, `${name}: ${value} ${shifts.join(" | ")}`);
-      assert.deepEqual([b.display, b.img, b.map.height, b.offText, b.drive], ["grid", null, a.map.height, box, null], name);
-      assert.deepEqual([b.route.length, (await p.textContent("#bk-route .bk-route__z")).trim()], [2, time], `${name}: the route list`);
+      assert.deepEqual([b.display, b.vis, b.img, b.map.height, b.offText, b.drive], ["block", "hidden", null, a.map.height, box, null], name);
+      assert.deepEqual([b.route.length, (await p.textContent("#bk-route .bk-route__z")).trim(), b.routeNote, b.routeSeen], [2, time, time ? DRIVE : "", time ? DRIVE : ""], `${name}: the route list, with Google Maps in the note while no map image shows`);
       await p.close();
     }
     const n = await open(ctx, G, "/book");
@@ -2233,6 +2255,155 @@ for (const [width, height] of [[1023, 768], [390, 844]]) {
     assert.deepEqual([b.display, b.route, b.drive], ["none", null, null]);
     assert.ok(b.next.bottom <= 900);
     await h.close();
+  });
+  await ctx.close();
+}
+
+const typedTrip = async (p, { from = "350 5th Ave, New York, NY 10118", to = "277 Bedford Ave, Brooklyn, NY 11211", id = "", ret = false } = {}) => {
+  if (id) await place(p, "from", ...id);
+  else await place(p, "from", from);
+  await place(p, "to", to);
+  await pickDate(p, "#bk-date-btn", DATE);
+  await setTime(p, "14:00");
+  if (ret) {
+    await p.click("#bk-addret");
+    await pickDate(p, "#bk-rdate-btn", RDATE);
+    await setTime(p, "18:00", "#bk-rtime");
+  }
+};
+const drift = (p) =>
+  p.route("**/api/route", async (r) => {
+    const res = await r.fetch();
+    const j = await res.json();
+    await r.fulfill({ status: res.status(), contentType: "application/json", body: JSON.stringify(j.kind === "ok" ? { ...j, minutes: 41, miles: 9.9 } : j) });
+  });
+const routed = (p) => p.waitForFunction(() => document.querySelector("#bk-map img") && /miles/.test(document.getElementById("bk-route-n").textContent));
+const watch = (p) => {
+  const w = { route: [], options: [], ride: undefined };
+  p.on("request", (r) => {
+    if (r.url().endsWith("/api/route")) w.route.push(JSON.parse(r.postData()));
+    if (r.url().endsWith("/api/book") && JSON.parse(r.postData()).action === "options") w.options.push(JSON.parse(r.postData()));
+  });
+  p.on("response", (r) => r.url().endsWith("/api/book") && JSON.parse(r.request().postData()).action === "options" && r.json().then((j) => w.ride === undefined && (w.ride = j.ride || null), () => 0));
+  return w;
+};
+const shown = (p) => p.evaluate(() => document.getElementById("price-total").firstChild.textContent);
+
+for (const [width, height] of [[1440, 900], [390, 844]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  await check(`B139 at ${width} typed addresses get their route on the map: a trip priced by distance draws and labels the ride that set its price from the options answer with no second route call, a return lists both rides, an airport trip to a typed address and an airport return are routed in one request each beside the flat total, and an address the server cannot place gets no route`, async () => {
+    const p = await open(ctx, G, "/book");
+    const w = watch(p);
+    await drift(p);
+    await typedTrip(p);
+    await view(p);
+    await priced(p);
+    await routed(p);
+    const a = await mapBoxes(p);
+    assert.deepEqual([w.route.length, w.options.length, JSON.parse(w.options[0].map), w.ride.minutes, w.ride.miles], [0, 1, { width: Math.min(640, a.inner[0]), height: Math.round(a.inner[1] * Math.min(640, a.inner[0]) / a.inner[0]) }, 27, 4.6], "one route call: the options answer that priced the trip carries its map");
+    assert.deepEqual([a.routeNote, a.routeSeen, a.route[1], await shown(p), a.img.ok, a.img.alt], ["4.6 miles, about 27 min by car. Google Maps", "4.6 miles, about 27 min by car.", "About 2:30 PM277 Bedford Ave, Brooklyn, NY 11211", "$122.24", true, "Route map from 350 5th Ave, New York, NY 10118 to 277 Bedford Ave, Brooklyn, NY 11211"]);
+    let [value, shifts] = await cls(p);
+    assert.ok(value < 0.001, `${value} ${shifts.join(" | ")}`);
+    await p.close();
+    const q = await open(ctx, G, "/book");
+    const v = watch(q);
+    await drift(q);
+    await typedTrip(q, { ret: true });
+    await view(q);
+    await priced(q);
+    await routed(q);
+    const b = await mapBoxes(q);
+    assert.deepEqual([v.route.length, v.ride.minutes, v.ride.back, b.routeNote, await shown(q)], [0, 27, { minutes: 31, miles: 4.8 }, "4.6 miles, about 27 min by car. Return: 4.8 miles, about 31 min by car. Google Maps", "$244.48"]);
+    [value, shifts] = await cls(q);
+    assert.ok(value < 0.001, `return: ${value} ${shifts.join(" | ")}`);
+    await q.close();
+    for (const ret of [false, true]) {
+      const t = await open(ctx, G, "/book");
+      const u = watch(t);
+      await typedTrip(t, { id: ["jfk t4", "John F. Kennedy (JFK), Terminal 4"], to: "350 5th Ave, New York, NY 10118", ret });
+      await view(t);
+      await priced(t);
+      await routed(t);
+      const c = await mapBoxes(t);
+      assert.deepEqual([u.route.length, u.route[0].from, u.route[0].to, u.route[0].back, u.ride], [1, { id: "jfk-t4" }, { text: "350 5th Ave, New York, NY 10118" }, ret ? { date: RDATE, time: "18:00" } : undefined, null]);
+      assert.deepEqual([c.routeNote, c.route[1], await shown(t)], [ret ? "16.8 miles, about 43 min by car. Return: 16.8 miles, about 43 min by car. Google Maps" : DRIVE_N, "About 2:45 PM350 5th Ave, New York, NY 10118", ret ? "$370.00" : "$185.00"]);
+      await t.close();
+    }
+    const n = await open(ctx, G, "/book");
+    const x = watch(n);
+    await place(n, "from", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
+    await type(n, "to", "350 5th Ave");
+    await n.waitForFunction(() => /ZIP code needed/.test(document.querySelector('#bk-to-list [data-kind="typed"]')?.textContent || ""));
+    await n.keyboard.press("Escape");
+    await pickDate(n, "#bk-date-btn", DATE);
+    await setTime(n, "14:00");
+    await view(n);
+    await n.waitForTimeout(600);
+    const d = await mapBoxes(n);
+    assert.deepEqual([x.route.length, x.options.every((o) => o.map === undefined), d.display, d.route], [0, true, "none", null], "a typed end the server cannot place gets no route and no empty map");
+    await n.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 } });
+  await check("B142 at 390 a route answer that comes back off while the map card is below the screen removes the card and leaves the note empty, and nothing on screen moves", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.route("**/api/route", async (r) => {
+      await new Promise((z) => setTimeout(z, 900));
+      await r.fulfill({ status: 200, contentType: "application/json", body: '{"kind":"off"}' }).catch(() => {});
+    });
+    await routeTrip(p);
+    await view(p);
+    await p.evaluate(() => scrollTo(0, 0));
+    const a = await mapBoxes(p);
+    assert.ok(a.map.height > 80 && a.map.top >= 844, JSON.stringify(a.map));
+    await p.waitForFunction(() => document.getElementById("bk-map").hidden);
+    await p.waitForTimeout(300);
+    const b = await mapBoxes(p);
+    const [value, shifts] = await cls(p);
+    assert.ok(value < 0.001, `${value} ${shifts.join(" | ")}`);
+    assert.deepEqual([b.display, b.map.height, b.routeNote, (await p.textContent("#bk-route .bk-route__z")).trim(), b.route.length], ["none", 0, "", "", 2]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 1440, height: 900 } });
+  await check("B140 a paid trip priced by distance: the confirmation keeps the line with the miles and minutes that set the fare, and its trip card arrives at the time of that ride", async () => {
+    const p = await open(ctx, G, "/book");
+    await typedTrip(p);
+    await view(p);
+    await priced(p);
+    await routed(p);
+    await next(p);
+    await priced(p);
+    await details(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    const long = new Date(`${DATE}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    assert.deepEqual([await p.isVisible("#cf-summary"), await p.textContent("#cf-summary"), await p.textContent("#cf-total")], [true, `${long}, 2:00 PM. Business SUV, 4.6 miles and 27 min.`, "$122.24"]);
+    assert.deepEqual(await p.$$eval("#cf-route li", (l) => l.map((x) => x.textContent)), ["2:00 PM350 5th Ave, New York, NY 10118", "About 2:30 PM277 Bedford Ave, Brooklyn, NY 11211"]);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(P, { viewport: { width: 1440, height: 900 }, forcedColors: "active" });
+  await check("B141 forced colors: every place suggestion row has a CanvasText border and the active one a Highlight border", async () => {
+    const p = await open(ctx, P, "/book");
+    await type(p, "from", "jfk");
+    await p.waitForSelector("#bk-from-list [role=option]");
+    await p.keyboard.press("ArrowDown");
+    const b = await p.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => { const s = getComputedStyle(x); return [s.borderTopStyle, s.borderBottomStyle, parseFloat(s.borderTopWidth) >= 1, x.getAttribute("aria-selected") === "true"]; }));
+    assert.ok(b.length >= 6 && b.every(([t, u, w]) => t === "solid" && u === "solid" && w), JSON.stringify(b));
+    const [rest, active] = await p.evaluate(() => [...document.querySelectorAll("#bk-from-list [role=option]")].slice(0, 2).reverse().map((x) => getComputedStyle(x).borderTopColor));
+    assert.notEqual(rest, active);
+    await p.close();
   });
   await ctx.close();
 }
@@ -2638,7 +2809,7 @@ for (const width of [1440, 390]) {
     await p.waitForTimeout(300);
     const [v, s] = await cls(p);
     assert.equal(v, 0, s.join(" | "));
-    assert.deepEqual([await p.textContent("#bk-route-n"), await p.isVisible("#bk-drive")], ["Traffic estimate. Google Maps", false]);
+    assert.deepEqual([await p.textContent("#bk-route-n"), await p.isVisible("#bk-drive")], [DRIVE_N, false]);
     assert.deepEqual([(await p.textContent("#bk-next")).trim(), await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent)], ["Book and pay online", cash(TOTAL)]);
     if (width === 390) assert.deepEqual([await p.textContent("#bk-bar-total"), await p.getAttribute("#bk-bar-go", "aria-label")], [`${cash(TOTAL)} total`, null]);
     await next(p);
@@ -4157,7 +4328,7 @@ const FRAMES = () => {
     const f = document.getElementById("book-form"), g = (i) => document.getElementById(i);
     if (f && f.dataset.step !== "search") {
       const s = g("bk-side"), bar = g("bk-bar");
-      window.__fr.push({ t: Math.round(performance.now()), side: hi(s), pay: hi(s.firstElementChild), bar: hi(bar), act: hi(g("bk-act")), more: Math.round(g("bk-more").getBoundingClientRect().top + scrollY), q: bar.classList.contains("is-q"), off: bar.classList.contains("is-off"), xo: document.querySelectorAll(".bk-xo").length, keys: ["bk-side", "bk-act"].flatMap((i) => g(i).getAnimations()).map((a) => a.effect.getKeyframes().map((k) => k.height || "").join(">")).filter((v) => v.length > 1).join(), choice: op(g("bk-choice")), barop: op(bar), line: vis(g("bk-bar-q")) ? op(g("bk-bar-q")) : -1, qbody: vis(g("q-body")), tot: vis(g("bk-tot")) });
+      window.__fr.push({ t: Math.round(performance.now()), side: hi(s), pay: hi(s.querySelector(".bk-pay")), bar: hi(bar), act: hi(g("bk-act")), more: Math.round(g("bk-more").getBoundingClientRect().top + scrollY), q: bar.classList.contains("is-q"), off: bar.classList.contains("is-off"), xo: document.querySelectorAll(".bk-xo").length, keys: ["bk-side", "bk-act"].flatMap((i) => g(i).getAnimations()).map((a) => a.effect.getKeyframes().map((k) => k.height || "").join(">")).filter((v) => v.length > 1).join(), choice: op(g("bk-choice")), barop: op(bar), line: vis(g("bk-bar-q")) ? op(g("bk-bar-q")) : -1, qbody: vis(g("q-body")), tot: vis(g("bk-tot")) });
     }
     requestAnimationFrame(tick);
   };
@@ -5552,13 +5723,13 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     assert.equal(await q.evaluate(() => window.__cls) - c3, 0);
     const wrap = await q.evaluate(() => {
       const ol = document.createElement("ol"), out = [];
-      ol.className = "bk-trip__route";
+      ol.className = "bk-trip__route bk-route";
       document.getElementById("bk-check").append(ol);
       for (let m = 0; m < 1440; m += 5) {
         const t = ft(String(m / 60 | 0).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
         ol.innerHTML = `<li><span class="bk-route__t">${t}</span><span class="bk-route__p">JFK Terminal 4</span></li><li><span class="bk-route__t bk-route__z">About ${t}</span><span class="bk-route__p">350 5th Ave</span></li>`;
         const [s, z] = ol.querySelectorAll(".bk-route__t");
-        if (s.getBoundingClientRect().height > 21 || z.getBoundingClientRect().height > 41) out.push(t);
+        if (s.getBoundingClientRect().height > 21 || z.getBoundingClientRect().height > 21) out.push(t);
       }
       ol.remove();
       return out;
@@ -5577,7 +5748,7 @@ for (const [name, b] of ENGINES) {
       const p = await open(ctx, P, "/book");
       const saved = () => p.evaluate(() => { const f = JSON.parse(sessionStorage.getItem("nlr-book")).fields; return [f.phone_cc, f.phone, f.pphone_cc, f.pphone]; });
       const want = ["GB", "20 7946 0958", "IN", "98765 43210"];
-      await trip(p);
+      await trip(p, host.includes("laguardia") ? { from: ["laguardia terminal b", "LaGuardia (LGA), Terminal B"] } : {});
       await view(p);
       await priced(p);
       await next(p);
@@ -6436,6 +6607,378 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       assert.deepEqual([p.errors, p.failed], [[], []], host);
       await p.close();
     }
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 } });
+  const form = async (p, path) => {
+    await p.goto(`${G.base}${path}`, { waitUntil: "load" });
+    await p.waitForFunction(() => document.getElementById("book-form").classList.contains("is-js"));
+    return [await p.inputValue("#bk-from"), await p.inputValue("#bk-from-id"), await p.inputValue("#bk-to"), (await p.inputValue("#bk-date")) === DATE];
+  };
+  await check("B143 an airport page restores this tab's trip only when its pickup is that airport: after a JFK trip the Newark and LaGuardia pages keep their own pickup with no drop-off, the JFK page and the homepage bring the trip back, and an EWR Terminal B trip comes back on the Newark page only", async () => {
+    let p = await open(ctx, G, "/locations/jfk-airport");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await Promise.all([p.waitForURL(/\/book/), p.click("#bk-view")]);
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    const jfk = ["John F. Kennedy (JFK)", "jfk", "350 5th Ave, New York, NY 10118", true];
+    assert.deepEqual(await form(p, "/locations/newark-airport"), ["Newark Liberty (EWR)", "ewr", "", false]);
+    assert.deepEqual(await form(p, "/locations/laguardia-airport"), ["LaGuardia (LGA)", "lga", "", false]);
+    assert.deepEqual(await form(p, "/locations/jfk-airport"), jfk);
+    assert.deepEqual(await form(p, "/"), jfk);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+    p = await open(ctx, G, "/locations/newark-airport");
+    await place(p, "from", "ewr terminal b", "Newark Liberty (EWR), Terminal B");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await Promise.all([p.waitForURL(/\/book/), p.click("#bk-view")]);
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    assert.deepEqual(await form(p, "/locations/newark-airport"), ["EWR Terminal B", "ewr-tb", "350 5th Ave, New York, NY 10118", true]);
+    assert.deepEqual(await form(p, "/locations/jfk-airport"), ["John F. Kennedy (JFK)", "jfk", "", false]);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B145 step 2 of a round trip: the return chip opens the return calendar on the return day, a day picked there moves only the return, and the date chip still opens the pickup calendar on the pickup day", async () => {
+    const p = await open(ctx, G, "/book");
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await p.click("#bk-addret");
+    await pickDate(p, "#bk-rdate-btn", RDATE);
+    await setTime(p, "18:00", "#bk-rtime");
+    await view(p);
+    const open2 = async (n) => {
+      await p.click(`#bk-sum .bk-chip:nth-child(${n})`);
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+      await scrollIdle(p);
+      return p.evaluate(() => [document.getElementById("bk-cal").previousElementSibling.id, document.activeElement.dataset.day]);
+    };
+    assert.deepEqual((await chips(p)).slice(1), [`${shortDate(DATE)}, 2:00 PM`, `Return: ${shortDate(RDATE)}, 6:00 PM`]);
+    assert.deepEqual(await open2(3), ["bk-rdate-btn", RDATE]);
+    const later = nyDate(8);
+    await pickDate(p, "#bk-rdate-btn", later);
+    assert.deepEqual([await p.inputValue("#bk-date"), await p.inputValue("#bk-time"), await p.inputValue("#bk-rdate"), await p.inputValue("#bk-rtime")], [DATE, "14:00", later, "18:00"]);
+    await view(p);
+    assert.deepEqual((await chips(p)).slice(1), [`${shortDate(DATE)}, 2:00 PM`, `Return: ${shortDate(later)}, 6:00 PM`]);
+    assert.deepEqual(await open2(2), ["bk-date-btn", DATE]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B146 the drive time belongs to its own trip: after a picked route showed 4.6 miles, about 27 min by car, a typed drop-off pays with the arrival time of its own route, an airport pickup with a flight whose route does not come pays with no drive time after pickup and an hour long calendar event, and a picked route still shows its arrival", async () => {
+    const dm = (p) => p.evaluate(() => JSON.parse(sessionStorage.getItem("nlr-book")).dm);
+    const drawn = (p, m) => p.waitForFunction((x) => new RegExp(`about ${x} min by car`).test(document.getElementById("bk-route-n").textContent), m);
+    const pay = async (p) => {
+      await next(p);
+      await details(p);
+      await priced(p);
+      await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+      await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent) && !document.getElementById("cf-gcal").hasAttribute("aria-disabled"));
+      return p.evaluate(() => {
+        const [a, z] = new URL(document.getElementById("cf-gcal").href).searchParams.get("dates").split("/").map((s) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(9, 11), +s.slice(11, 13)));
+        return [document.getElementById("cf-route").textContent, (z - a) / 6e4];
+      });
+    };
+    let p = await open(ctx, G, "/book");
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await view(p);
+    await drawn(p, 27);
+    assert.equal(await dm(p), 27);
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(p, "to", "Greenwich, CT 06830");
+    await view(p);
+    await priced(p);
+    await drawn(p, 43);
+    assert.equal(await dm(p), 43);
+    const [route, minutes] = await pay(p);
+    assert.match(route, /About 2:45 PM/);
+    assert.equal(minutes, 43);
+    await p.close();
+    p = await open(ctx, G, "/book");
+    await p.route("**/api/route", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"kind":"off"}' }));
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await view(p);
+    await drawn(p, 27);
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(p, "from", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await p.fill("#bk-flight", "EK201");
+    await view(p);
+    await priced(p);
+    await p.waitForFunction(() => !document.querySelector("#bk-route .bk-sk") && document.getElementById("bk-route-n").textContent === "");
+    assert.equal(await dm(p), undefined);
+    const [flown, hour] = await pay(p);
+    assert.ok(!/About|after pickup/.test(flown), flown);
+    assert.equal(hour, 60);
+    await p.close();
+    p = await open(ctx, G, "/book");
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await view(p);
+    await drawn(p, 27);
+    const [picked, length] = await pay(p);
+    assert.match(picked, /About 2:30 PM/);
+    assert.equal(length, 27);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B149 at 390 the Luxury Sprinter on a distance and time trip: the bar reads Our dispatch team prices this Sprinter trip with Choose another car, and Choose another car moves to a car with a price", async () => {
+    const p = await open(ctx, G, "/book");
+    await trip(p, { from: ["edition", "The New York EDITION"], to: ["bedford", "277 Bedford Avenue"], time: "14:00" });
+    await view(p);
+    await priced(p);
+    await p.click('label[for="bk-c-sprinter"]');
+    await p.waitForSelector("#q-sprinter-distance", { state: "visible" });
+    await p.waitForTimeout(300);
+    const b = await reqBar(p);
+    assert.deepEqual([b.shown, b.isq, b.line, b.fix], [true, true, "Our dispatch team prices this Sprinter trip", "Choose another car"]);
+    await p.click("#q-fix");
+    assert.equal(await p.evaluate(() => document.activeElement.id), "bk-c-suv");
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 1440, height: 900 } });
+  await check("B144 a one-way trip with no airport end is priced at its pickup time: when the automatic pickup moves to the next slot before Book and pay online, the press asks for the total at the new time and shows it, and the next press pays that time", async () => {
+    const p = await openAt(ctx, G, "/book", Date.now());
+    const sent = posts(p);
+    await place(p, "from", "edition", "The New York EDITION");
+    await place(p, "to", "bedford", "277 Bedford Avenue");
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    const n = sent.length, was = sent[n - 1].time;
+    await p.clock.setSystemTime(Date.now() + 20 * 6e4);
+    await p.click("#bk-submit");
+    await p.waitForFunction(() => location.pathname !== "/book" || /^The total is now \$[\d,]+\.\d\d\. Press Book and pay online to continue\.$/.test(document.getElementById("bk-status").textContent));
+    assert.equal(new URL(p.url()).pathname, "/book", "the first press paid at the new time with no new total");
+    const moved = sent.slice(n);
+    assert.deepEqual(moved.map((b) => b.action), ["quote"], "the press asks for the new total before paying");
+    assert.notEqual(moved[0].time, was);
+    const shown = (await panel(p)).total;
+    assert.equal(await p.textContent("#bk-status"), `The total is now ${shown}. Press Book and pay online to continue.`);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click("#bk-submit")]);
+    assert.deepEqual(sent.slice(n).map((b) => b.action + " " + b.time), ["quote " + moved[0].time, "pay " + moved[0].time]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.equal(await p.textContent("#cf-total"), shown);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+const BOOKABLE = () => {
+  const on = [...document.querySelectorAll("#bk-cal [data-day]")].filter((b) => !b.disabled && b.getAttribute("aria-disabled") !== "true");
+  const seen = (b) => { const r = b.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; };
+  return { on: on.length, seen: on.filter(seen).length, focus: document.activeElement.dataset.day || "", focusSeen: seen(document.activeElement), last: (on[on.length - 1] || {}).dataset?.day };
+};
+for (const [name, b] of ENGINES) {
+  const touch = name === "firefox" ? { hasTouch: true } : { hasTouch: true, isMobile: true };
+  for (const [width, height, motion] of name === "webkit" ? [[734, 343, "reduce"], [734, 343, "no-preference"], [667, 375, "reduce"]] : [[844, 390, "reduce"], [844, 390, "no-preference"], [740, 360, "reduce"]]) {
+    const ctx = await engineContext(b, G, { viewport: { width, height }, ...touch, reducedMotion: motion });
+    await check(`B147 ${name} at ${width} by ${height} with ${motion} motion: on a phone held sideways the date picker opens with every bookable day of the month and the focused day in view, and a tap on the last one picks it`, async () => {
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(8000);
+      await p.goto(`${G.base}/book`, { waitUntil: "load" });
+      await p.waitForFunction(() => document.getElementById("book-form").classList.contains("is-js"));
+      await place(p, "from", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
+      await place(p, "to", "350 5th Ave, New York, NY 10118");
+      await scrollIdle(p);
+      await p.tap("#bk-date-btn");
+      await p.waitForFunction(() => !document.getElementById("bk-cal").hidden);
+      await p.waitForTimeout(300);
+      await scrollIdle(p);
+      const r = await p.evaluate(BOOKABLE);
+      assert.ok(r.on > 0 && r.seen === r.on && r.focus && r.focusSeen, JSON.stringify(r));
+      await p.tap(`#bk-cal [data-day="${r.last}"]`);
+      assert.equal(await p.inputValue("#bk-date"), r.last);
+      await p.close();
+    });
+    await ctx.close();
+  }
+}
+
+for (const [name, b] of ENGINES) {
+  const ctx = await engineContext(b, P, { viewport: { width: 390, height: 844 }, ...(name === "firefox" ? { hasTouch: true } : { hasTouch: true, isMobile: true }) });
+  for (const hour of [true, false]) {
+    await check(`B148 ${name} at 390 with touch, ${hour ? "by the hour" : "one way"}: a tap at the end of a long pickup address lands in the field and keeps the address, because the clear button takes taps only from where the text ends`, async () => {
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(8000);
+      await p.goto(`${P.base}/book`, { waitUntil: "load" });
+      await p.waitForFunction(() => document.getElementById("book-form").classList.contains("is-js"));
+      if (hour) await p.click('label[for="bk-hour"]');
+      await type(p, "from", "350 5th Ave, New York, NY 10118");
+      await p.keyboard.press("Escape");
+      await p.evaluate(() => document.activeElement.blur());
+      const [x, y, gap] = await p.evaluate(() => {
+        const i = document.getElementById("bk-from"), r = i.getBoundingClientRect(), s = getComputedStyle(i), end = r.right - parseFloat(s.borderRightWidth) - parseFloat(s.paddingRight), mid = r.top + r.height / 2;
+        let f = Math.ceil(r.left) + 1;
+        while (f < r.right && document.elementFromPoint(f, mid) === i) f++;
+        return [end - 3, mid, f - end];
+      });
+      assert.ok(gap >= -1, `the clear button takes taps ${-gap} px inside the text`);
+      await p.touchscreen.tap(x, y);
+      assert.equal(await p.inputValue("#bk-from"), "350 5th Ave, New York, NY 10118");
+      await p.close();
+    });
+  }
+  await ctx.close();
+}
+
+for (const [name, b] of ENGINES) {
+  await check(`B150 ${name} without javascript: /book#resume says nothing was charged and does not promise that the details are still there, and the form error /book#e-form is one text block next to its icon with no sideways scroll at 320 and 390`, async () => {
+    for (const width of [320, 390]) {
+      const ctx = await engineContext(b, P, { viewport: { width, height: 740 }, javaScriptEnabled: false });
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(8000);
+      await p.goto(`${P.base}/book#resume`, { waitUntil: "load" });
+      await p.waitForSelector("#resume", { state: "visible" });
+      assert.equal((await p.innerText("#resume")).replace(/\s+/g, " ").trim(), "Payment not completed. Nothing was charged. Book and pay online when you're ready.", `${width}`);
+      await p.goto(`${P.base}/book#e-form`, { waitUntil: "load" });
+      await p.waitForSelector("#e-form", { state: "visible" });
+      const m = await p.evaluate(() => {
+        const e = document.getElementById("e-form"), r = e.getBoundingClientRect(), s = e.firstElementChild.getBoundingClientRect();
+        return { kids: [...e.children].map((c) => c.tagName), wide: s.width >= r.width * 0.75, over: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      assert.deepEqual(m, { kids: ["SPAN"], wide: true, over: 0 }, `${width}`);
+      await ctx.close();
+    }
+  });
+}
+
+const { inflateSync } = await import("node:zlib");
+const pngAt = (buf) => {
+  let i = 8, w = 0, h = 0, ct = 0;
+  const parts = [];
+  while (i < buf.length) {
+    const n = buf.readUInt32BE(i), t = buf.toString("latin1", i + 4, i + 8);
+    if (t === "IHDR") [w, h, ct] = [buf.readUInt32BE(i + 8), buf.readUInt32BE(i + 12), buf[i + 17]];
+    if (t === "IDAT") parts.push(buf.subarray(i + 8, i + 8 + n));
+    i += 12 + n;
+  }
+  const bpp = { 6: 4, 2: 3, 4: 2 }[ct] || 1, s = w * bpp, raw = inflateSync(Buffer.concat(parts)), px = Buffer.alloc(h * s);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (s + 1)];
+    for (let x = 0; x < s; x++) {
+      const a = x >= bpp ? px[y * s + x - bpp] : 0, b = y ? px[(y - 1) * s + x] : 0, c = x >= bpp && y ? px[(y - 1) * s + x - bpp] : 0, q = a + b - c;
+      const pa = Math.abs(q - a), pb = Math.abs(q - b), pc = Math.abs(q - c);
+      px[y * s + x] = (raw[y * (s + 1) + 1 + x] + [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f]) & 255;
+    }
+  }
+  return { w, h, dark: (x, y) => { const o = y * s + x * bpp; return (bpp >= 3 ? (px[o] + px[o + 1] + px[o + 2]) / 3 : px[o]) < 200; } };
+};
+const lined = async (p, sel) => {
+  const rows = await p.evaluate((sel) => {
+    const ol = document.querySelector(sel);
+    if (!ol || !ol.getClientRects().length) return null;
+    ol.scrollIntoView({ block: "center" });
+    return [...ol.children].map((li) => {
+      const r = li.getBoundingClientRect(), t = li.querySelector(".bk-route__t"), a = li.querySelector(".bk-route__p"), g = document.createRange();
+      g.selectNodeContents(t);
+      const text = [...g.getClientRects()];
+      return { text: t.textContent, lines: new Set(text.map((x) => Math.round(x.top))).size, ink: text.length ? Math.max(...text.map((x) => x.right)) - r.left : 0, left: Math.round(t.getBoundingClientRect().left - r.left), end: Math.round(t.getBoundingClientRect().right - r.left), at: Math.round(a.getBoundingClientRect().left - r.left), x: r.left, y: r.top, line: parseFloat(getComputedStyle(a).lineHeight) };
+    });
+  }, sel);
+  if (!rows) return null;
+  for (const r of rows) {
+    const img = pngAt(await p.screenshot({ clip: { x: r.x + r.end, y: r.y, width: r.at - r.end, height: r.line } }));
+    const dot = [];
+    for (let y = 0; y < img.h; y++) {
+      const xs = [];
+      for (let x = 0; x < img.w; x++) if (img.dark(x, y)) xs.push(x);
+      if (xs.length >= 4) dot.push([y, xs[0], xs[xs.length - 1] + 1]);
+    }
+    r.dot = dot.length ? { gaps: [Math.min(...dot.map((d) => d[1])), img.w - Math.max(...dot.map((d) => d[2]))], y: (dot[0][0] + dot[dot.length - 1][0] + 1) / 2 } : null;
+  }
+  return rows;
+};
+const linedUp = (rows, where) => {
+  const msg = `${where} ${JSON.stringify(rows)}`;
+  assert.ok(rows && rows.length >= 2, msg);
+  assert.ok(rows.every((r) => r.lines <= 1 && (r.text === "" || /^(About )?\d{1,2}:\d\d [AP]M$/.test(r.text))), `every time sits on one line: ${msg}`);
+  assert.equal(new Set(rows.map((r) => r.left)).size, 1, `the times start in one column: ${msg}`);
+  assert.equal(new Set(rows.map((r) => r.at)).size, 1, `the addresses start in one column: ${msg}`);
+  for (const r of rows) {
+    assert.ok(r.ink <= r.end + 0.5 && r.dot, `the time ends before its dot: ${msg}`);
+    assert.ok(Math.abs(r.dot.gaps[0] - r.dot.gaps[1]) <= 1 && r.dot.gaps[0] >= 4, `each dot is centered between its time and its address: ${msg}`);
+    assert.ok(Math.abs(r.dot.y - r.line / 2) <= 1, `each dot is centered on its address line: ${msg}`);
+  }
+};
+for (const [name, b] of ENGINES) {
+  for (const width of [320, 1440]) {
+    const ctx = name === "chromium" ? await context(G, { viewport: { width, height: 900 } }) : await engineContext(b, G, { viewport: { width, height: 900 }, reducedMotion: "reduce" });
+    await check(`B151 ${name} at ${width}: the route lists line up, the times in one column, every dot centered between its time and its address and on its address line, and About 10:35 AM on one line in the summary card, Check your trip and the confirmation`, async () => {
+      const p = await ctx.newPage();
+      p.setDefaultTimeout(8000);
+      const errors = [];
+      p.on("pageerror", (e) => errors.push(e.message));
+      await p.goto(`${G.base}/book`, { waitUntil: "load" });
+      await p.waitForFunction(() => document.getElementById("book-form").classList.contains("is-js"));
+      await trip(p, { from: ["bedford", "277 Bedford Avenue"], to: ["edition", "The New York EDITION"], time: "10:00" });
+      await view(p);
+      await priced(p);
+      await p.waitForFunction(() => /^About /.test(document.querySelector("#bk-route .bk-route__z")?.textContent || ""));
+      const s2 = await lined(p, "#bk-route");
+      assert.equal(s2[1].text, "About 10:35 AM");
+      linedUp(s2, "summary card");
+      if (name === "chromium") {
+        const [value, shifts] = await cls(p);
+        assert.ok(value < 0.001, `${value} ${shifts.join(" | ")}`);
+      }
+      await next(p);
+      await p.waitForTimeout(300);
+      const s3 = await lined(p, "#bk-check-route");
+      if (s3) linedUp(s3, "Check your trip");
+      linedUp(await lined(p, "#bk-route"), "summary card on the details step");
+      await details(p);
+      await priced(p);
+      await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+      await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+      await p.waitForTimeout(300);
+      const cf = await lined(p, "#cf-route");
+      assert.equal(cf[1].text, "About 10:35 AM");
+      linedUp(cf, "confirmation");
+      assert.deepEqual(errors, []);
+      await p.close();
+    });
+    await ctx.close();
+  }
+}
+
+for (const width of [1440, 390]) {
+  const ctx = await context(G, { viewport: { width, height: width === 390 ? 844 : 900 } });
+  await check(`B152 at ${width} the route note names Google Maps only when no map image is on screen: beside the map image it reads 4.8 miles, about 31 min by car. and the image's own Google logo is the attribution, the details step hides the map and the note adds Google Maps, back on the vehicle step the map returns and the text goes, Traffic estimate shows nowhere and nothing moves`, async () => {
+    const p = await open(ctx, G, "/book");
+    const seen = () => p.evaluate(() => {
+      const n = document.getElementById("bk-route-n"), m = document.getElementById("bk-map"), img = m.querySelector("img");
+      return [n.getClientRects().length > 0 && n.innerText.trim(), getComputedStyle(n.querySelector(".bk-attr")).visibility, !!img && img.getClientRects().length > 0 && getComputedStyle(m).visibility === "visible", /traffic estimate/i.test(document.body.innerText + n.textContent)];
+    });
+    await routeTrip(p, { from: ["bedford", "277 Bedford Avenue"], to: ["edition", "The New York EDITION"] });
+    await view(p);
+    await priced(p);
+    await p.waitForSelector("#bk-map img");
+    assert.deepEqual(await seen(), ["4.8 miles, about 31 min by car.", "hidden", true, false], "the vehicle step with the map image");
+    await next(p);
+    assert.deepEqual(await seen(), ["4.8 miles, about 31 min by car. Google Maps", "visible", false, false], "the details step without the map");
+    await p.click("#bk-back");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await priced(p);
+    await p.waitForSelector("#bk-map img");
+    await p.waitForFunction(() => /miles/.test(document.getElementById("bk-route-n").textContent));
+    assert.deepEqual(await seen(), ["4.8 miles, about 31 min by car.", "hidden", true, false], "back on the vehicle step");
+    const [value, shifts] = await cls(p);
+    assert.ok(value < 0.001, `${value} ${shifts.join(" | ")}`);
+    assert.deepEqual(p.errors, []);
+    await p.close();
   });
   await ctx.close();
 }

@@ -47,6 +47,15 @@ check("no file outside test and scripts mentions Moovs", () => {
   assert.deepEqual(hits, [], hits.join(", "));
 });
 
+check("no shipped file names a rideshare company, so the airport pickup copy says rideshare pickup areas", () => {
+  const hits = files.flatMap((f) => {
+    const n = (readFileSync(join(ROOT, f), "utf8").match(/\b(uber|lyft)\b/gi) || []).length;
+    return n ? [`${f} (${n})`] : [];
+  });
+  assert.deepEqual(hits, [], hits.join(", "));
+  for (const f of ["locations/newark-airport.html", "blog/whatsapp-airport-pickup-coordination-nyc-april-24.html"]) assert.ok(readFileSync(join(ROOT, f), "utf8").includes("They lead to the rideshare pickup areas, like "), f);
+});
+
 const config = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
 
 check("vercel.json has no redirect from /book", () => {

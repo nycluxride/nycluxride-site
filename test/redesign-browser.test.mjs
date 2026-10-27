@@ -359,6 +359,34 @@ check(`keyboard: focus ring is visible with a positive offset`, () => {
   assert.ok(parseFloat(firstFocus.offset) >= 2, `offset ${firstFocus.offset}`);
 });
 await kb.close();
+for (const [width, height, top] of [[1440, 900, 1500], [1024, 768, 1500], [1000, 800, 1500], [390, 844, 1500], [844, 390, 1500], [844, 390, 20], [568, 320, 20]]) {
+  const p = await open({ viewport: { width, height } });
+  await p.goto(`${base}/about`, { waitUntil: "load" });
+  await p.evaluate(() => document.fonts.ready);
+  await p.evaluate((y) => scrollTo({ top: y, behavior: "instant" }), top);
+  await p.waitForTimeout(700);
+  await p.evaluate(() => document.querySelector("main").focus({ preventScroll: true }));
+  const stops = [];
+  for (let i = 0; i < 4; i++) {
+    await p.keyboard.press("Shift+Tab");
+    stops.push(await p.evaluate(() => new Promise((done) => {
+      let last = "", n = 0;
+      const f = () => {
+        const a = document.activeElement, r = a.getBoundingClientRect(), now = `${scrollY} ${r.top}`;
+        if (now !== last) { last = now; n = 0; }
+        if (++n < 20) return requestAnimationFrame(f);
+        done([Math.round(scrollY), !!a.closest(".site-header__bar") && r.top >= 0 && r.bottom <= innerHeight]);
+      };
+      requestAnimationFrame(f);
+    })));
+  }
+  const short = height < 500;
+  check(`/about at ${width}x${height} from ${top}px down: Shift+Tab into the header ${short ? "brings each control fully into view" : "never scrolls the page and each control stays in view"}`, () => {
+    assert.ok(stops.every(([, seen]) => seen), JSON.stringify(stops));
+    if (!short) assert.deepEqual(stops.map(([y]) => y), [top, top, top, top]);
+  });
+  await p.close();
+}
 
 const ROUTES = new Set(PAGES);
 const resolvesLocally = (p) => ROUTES.has(p.replace(/\/$/, "") || "/") || existsSync(join(ROOT, p.slice(1)));

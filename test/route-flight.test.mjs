@@ -81,8 +81,8 @@ const ROUTES = {
   ],
 };
 
-function expectedMap(width, height, scale) {
-  const url = `https://maps.googleapis.com/maps/api/staticmap?size=${width}x${height}&scale=${scale}&format=png&path=color:0x111111ff%7Cweight:5%7Cenc:${encodeURIComponent(POLYLINE)}&markers=size:mid%7Clabel:A%7C40.748441,-73.985664&markers=size:mid%7Clabel:B%7C40.641311,-73.778139&key=${BROWSER_KEY}`;
+function expectedMap(width, height, scale, lines = [POLYLINE]) {
+  const url = `https://maps.googleapis.com/maps/api/staticmap?size=${width}x${height}&scale=${scale}&format=png${lines.map((line) => `&path=color:0x111111ff%7Cweight:5%7Cenc:${encodeURIComponent(line)}`).join("")}&markers=size:mid%7Clabel:A%7C40.748441,-73.985664&markers=size:mid%7Clabel:B%7C40.641311,-73.778139&key=${BROWSER_KEY}`;
   const resource = url.slice("https://maps.googleapis.com".length);
   const signature = createHmac("sha1", Buffer.from(SECRET, "base64url")).update(resource).digest("base64").replace(/\+/g, "-").replace(/\//g, "_");
   return `${url}&signature=${signature}`;
@@ -171,10 +171,96 @@ await test("route: no server key and no mock answers off without a call, GOOGLE_
   assert.equal(calls.length, 0);
 });
 
-await test("route: typed text is never routed, ends must be one id or one ticket, at most 2 stops", async () => {
+await test("route: a typed end is routed by its text, or by the local row its text names, the way the price routes it, and text the server cannot place is not routed", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, ROUTES);
+  const typed = "350 5th Ave, New York, NY 10118";
+  const res = await route({ from: { text: `  ${typed} ` }, to: { text: "LGA Airport" }, date: DATE, time: "12:40" });
+  assert.deepEqual(res.body, { kind: "ok", minutes: 43, miles: 16.8, attribution: "Google Maps" });
+  assert.equal(calls.length, 1);
+  const sent = JSON.parse(calls[0].init.body);
+  assert.deepEqual([sent.origin, sent.destination, sent.intermediates], [{ address: typed }, { address: localById("lga").addr }, []]);
+  assert.equal((await route({ from: { text: "1 Main St, Brooklyn, NY 11201" }, stops: [{ text: "277 Bedford Ave, Brooklyn, NY 11211" }], to: { id: "jfk" }, date: DATE, time: "12:40" })).body.kind, "ok");
+  assert.deepEqual(JSON.parse(calls[1].init.body).intermediates, [{ address: "277 Bedford Ave, Brooklyn, NY 11211" }]);
+  for (const text of ["350 5th Ave", "John F Kennedy Blvd"]) assert.deepEqual((await route({ from: { text }, to: { id: "jfk" }, date: DATE, time: "08:00" })).body, { kind: "off" }, text);
+  assert.equal(calls.length, 2);
+});
+
+await test("route: a return trip routes the way back from the drop-off to the pickup at the return time, answers both rides and draws both legs on one signed map", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  process.env.GOOGLE_MAPS_BROWSER_KEY = BROWSER_KEY;
+  process.env.GOOGLE_MAPS_SIGNING_SECRET = SECRET;
+  const typed = "350 5th Ave, New York, NY 10118";
+  const BACK = "c~l~Fjk~uOxHJz@Q";
+  const HOME = { routes: [{ ...ROUTES.routes[0], duration: "2940s", distanceMeters: 28968, polyline: { encodedPolyline: BACK } }] };
+  reply = (url, init) => answer(200, JSON.parse(init.body).origin.address === typed ? HOME : ROUTES)();
+  const RET = day(12);
+  const body = { from: { id: "jfk-t4" }, to: { text: typed }, date: DATE, time: "12:40", back: { date: RET, time: "18:00" }, map: { width: 440, height: 235 } };
+  const res = await route(body);
+  assert.deepEqual(res.body, { kind: "ok", minutes: 43, miles: 16.8, back: { minutes: 49, miles: 18 }, map: { src: expectedMap(440, 235, 1, [POLYLINE, BACK]), src2x: expectedMap(440, 235, 2, [POLYLINE, BACK]), width: 440, height: 235 } });
+  assert.equal(calls.length, 2);
+  const [go, home] = calls.map((c) => JSON.parse(c.init.body));
+  assert.deepEqual([go.origin, go.destination, go.departureTime], [{ address: localById("jfk-t4").addr }, { address: typed }, nycToUtc(DATE, "12:40").toISOString()]);
+  assert.deepEqual([home.origin, home.destination, home.intermediates, home.departureTime], [{ address: typed }, { address: localById("jfk-t4").addr }, [], nycToUtc(RET, "18:00").toISOString()]);
+  logs.length = 0;
+  reply = (url, init) => (JSON.parse(init.body).origin.address === typed ? answer(500, {})() : answer(200, ROUTES)());
+  assert.deepEqual((await route({ ...body, map: undefined })).body, { kind: "ok", minutes: 43, miles: 16.8, attribution: "Google Maps" });
+  assert.deepEqual(logs, ["route 500"]);
+  calls.length = 0;
+  for (const back of [{ date: DATE, time: "12:40" }, { date: day(-1), time: "18:00" }, { date: "2026-02-30", time: "18:00" }, { date: RET }]) assert.deepEqual((await route({ ...body, back })).body, { kind: "off" }, JSON.stringify(back));
+  assert.equal(calls.length, 0);
+  reply = answer(200, ROUTES);
+  const kinds = [];
+  for (let i = 0; i < 6; i++) kinds.push((await route({ ...body, map: undefined }, { ip: "203.0.113.30" })).body.kind);
+  assert.deepEqual(kinds, [...Array(5).fill("ok"), "off"]);
+  assert.equal(calls.length, 10);
+});
+
+await test("flight probe: the first focus learns whether flights are on, and with Google on whether the route map can show, without a key in the answer", async () => {
+  const probe = async () => (await flight({ probe: true })).body;
+  assert.deepEqual(await probe(), { kind: "off" });
+  process.env.FLIGHT_API_KEY = FLIGHT_KEY;
+  assert.deepEqual(await probe(), { kind: "on" });
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  assert.deepEqual(await probe(), { kind: "on", map: 0 });
+  process.env.GOOGLE_MAPS_BROWSER_KEY = BROWSER_KEY;
+  process.env.GOOGLE_MAPS_SIGNING_SECRET = SECRET;
+  const on = await probe();
+  assert.deepEqual(on, { kind: "on", map: 1 });
+  delete process.env.FLIGHT_API_KEY;
+  assert.deepEqual(await probe(), { kind: "off", map: 1 });
+  for (const key of ["GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET"]) delete process.env[key];
+  process.env.GOOGLE_MOCK = "true";
+  assert.deepEqual(await probe(), { kind: "off", map: 1 });
+  assert.ok(!bodies.slice(-6).some((b) => b.includes(SERVER_KEY) || b.includes(BROWSER_KEY) || b.includes(FLIGHT_KEY)));
+  assert.equal(calls.length, 0);
+});
+
+await test("route: one static map draws every leg it is given, and falls back to the first leg when both would make the URL too long", async () => {
+  process.env.GOOGLE_MAPS_BROWSER_KEY = BROWSER_KEY;
+  process.env.GOOGLE_MAPS_SIGNING_SECRET = SECRET;
+  const a = { lat: 40.748441, lng: -73.985664 }, b = { lat: 40.641311, lng: -73.778139 };
+  const two = staticMapUrl([POLYLINE, "c~l~Fjk"], a, b, { width: 440, height: 235 });
+  assert.deepEqual([two.split("&path=").length - 1, two], [2, expectedMap(440, 235, 1, [POLYLINE, "c~l~Fjk"])]);
+  assert.equal(staticMapUrl([POLYLINE, ""], a, b, { width: 440, height: 235 }), expectedMap(440, 235, 1));
+  const long = "a".repeat(9000);
+  const one = staticMapUrl([long, long + "b"], a, b, { width: 440, height: 235 });
+  assert.deepEqual([one.split("&path=").length - 1, one.length < 16100, one.includes(`enc:${long}&`)], [1, true, true]);
+});
+
+await test("route: ends must be one id, one ticket or one text of 1 to 200 characters, at most 2 stops, and a return is an object", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   const bad = [
-    { from: { text: "350 5th Ave" }, to: { id: "jfk" }, date: DATE, time: "08:00" },
+    { from: { text: "" }, to: { id: "jfk" }, date: DATE, time: "08:00" },
+    { from: { text: "   " }, to: { id: "jfk" }, date: DATE, time: "08:00" },
+    { from: { text: "x".repeat(201) }, to: { id: "jfk" }, date: DATE, time: "08:00" },
+    { from: { text: "350 5th Ave, New York, NY 10118", id: "jfk" }, to: { id: "lga" }, date: DATE, time: "08:00" },
+    { from: { text: "350 5th Ave, New York, NY 10118", ticket: "v1.x.y" }, to: { id: "lga" }, date: DATE, time: "08:00" },
+    { from: { text: 350 }, to: { id: "jfk" }, date: DATE, time: "08:00" },
+    { from: { id: "jfk" }, to: { id: "lga" }, stops: [{ text: "" }], date: DATE, time: "08:00" },
+    { from: { id: "jfk" }, to: { id: "lga" }, date: DATE, time: "08:00", back: null },
+    { from: { id: "jfk" }, to: { id: "lga" }, date: DATE, time: "08:00", back: "2026-11-01 18:00" },
+    { from: { id: "jfk" }, to: { id: "lga" }, date: DATE, time: "08:00", back: [DATE, "18:00"] },
     { from: "jfk", to: { id: "lga" }, date: DATE, time: "08:00" },
     { from: { id: "jfk", ticket: "v1.x.y" }, to: { id: "lga" }, date: DATE, time: "08:00" },
     { to: { id: "lga" }, date: DATE, time: "08:00" },

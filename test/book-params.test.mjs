@@ -1892,6 +1892,55 @@ await test("handler: a one-way trip with no airport end gets distance prices on 
   assert.equal(calls.length, 2);
 });
 
+await test("handler: an options call with the map size answers the ride that set the distance price with the map of that ride, a return lists both rides, and other calls keep the priced ride", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const map = JSON.stringify({ width: 440, height: 233 });
+  const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
+  const one = await readJson(await post({ ...fields, action: "options", map, nonce: "nonce-ride-map-0000001" }), 200);
+  assert.deepEqual([one.service, one.ride.kind, one.ride.minutes, one.ride.miles, "back" in one.ride, one.ride.map.width, one.ride.map.height, one.ride.map.src2x === one.ride.map.src], ["distance", "ok", 27, 4.6, false, 440, 233, true]);
+  assert.ok(one.ride.map.src.startsWith("data:image/svg+xml,") && decodeURIComponent(one.ride.map.src).includes('width="440" height="233"'));
+  assert.equal(one.classes.find((c) => c.class === "suv").total_cents, 12224);
+  const quote = await readJson(await post({ ...fields, action: "quote", route: one.route, map, nonce: "nonce-ride-map-0000002" }), 200);
+  assert.deepEqual([quote.ride, quote.classes.find((c) => c.class === "suv").total_cents], [{ kind: "ok", minutes: 27, miles: 4.6, attribution: "Google Maps" }, 12224]);
+  const back = await readJson(await post({ ...trip({ ...fields, return: "1" }), return_time: "18:00", action: "options", map, nonce: "nonce-ride-map-0000003" }), 200);
+  assert.deepEqual([back.service, back.legs, back.ride.minutes, back.ride.miles, back.ride.back, back.ride.map.width], ["distance", 2, 27, 4.6, { minutes: 31, miles: 4.8 }, 440]);
+  const long = await readJson(await post({ ...fields, to_text: "1 Ocean Rd, Montauk, NY 11954", action: "options", map, nonce: "nonce-ride-map-0000004" }), 200);
+  assert.deepEqual([long.kind, long.reason, long.ride.minutes, long.ride.miles, long.ride.map.height], ["quote", "long-trip", 165, 118.3, 233]);
+  for (const bad of ["640x239", "{\"width\":9999,\"height\":233}", "[440,233]", "{"]) assert.deepEqual((await readJson(await post({ ...fields, action: "options", map: bad }), 200)).ride, { kind: "ok", minutes: 27, miles: 4.6, attribution: "Google Maps" }, bad);
+  const air = await readJson(await post({ ...fields, from_text: "John F. Kennedy (JFK)", from_id: "jfk", action: "options", map, nonce: "nonce-ride-map-0000005" }), 200);
+  assert.deepEqual([air.service, "ride" in air, "route" in air], ["airport", false, false]);
+  assert.equal(calls.length, 0);
+});
+
+await test("handler: with real keys the options call with a map size routes afresh even with an earlier ride token, signs one map with both legs of a return, and the pay call keeps the ride of that options answer", async () => {
+  const POLY = "a~l~Fjk~uOwHJy@P|bA`@\\", BACK = "c~l~Fjk~uOxHJz@Q";
+  const SECRET = Buffer.from("test-signing-secret-SENTINEL-bytes").toString("base64url");
+  setEnv({ ...LIVE, GOOGLE_MAPS_SERVER_KEY: "test-server-key-SENTINEL" });
+  Object.assign(process.env, { GOOGLE_MAPS_BROWSER_KEY: "test-browser-key", GOOGLE_MAPS_SIGNING_SECRET: SECRET });
+  let minutes = 27;
+  const leg = (latitude, longitude) => ({ latLng: { latitude, longitude } });
+  stripe = (url, init) => {
+    if (!url.startsWith("https://routes.googleapis.com/")) return STRIPE_OK(url, init);
+    const home = JSON.parse(init.body).origin.address !== MANHATTAN;
+    return new Response(JSON.stringify({ routes: [{ duration: `${(home ? 31 : minutes) * 60}s`, distanceMeters: home ? 7725 : 7403, polyline: { encodedPolyline: home ? BACK : POLY }, legs: [{ startLocation: leg(40.748441, -73.985664), endLocation: leg(40.714322, -73.961052) }] }] }), { status: 200 });
+  };
+  const map = JSON.stringify({ width: 440, height: 233 });
+  const fields = { ...trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" }), time: "11:15" };
+  const first = await readJson(await post({ ...fields, action: "options", map, nonce: "nonce-ride-keys-000001" }), 200);
+  assert.deepEqual([first.ride.minutes, first.ride.miles, calls.length], [27, 4.6, 1]);
+  minutes = 120;
+  const total = (body) => body.classes.find((c) => c.class === "suv").total_cents;
+  const again = await readJson(await post({ ...fields, action: "options", route: first.route, map, nonce: "nonce-ride-keys-000002" }), 200);
+  assert.deepEqual([again.ride.minutes, total(first), total(again) > total(first), calls.length], [120, 12224, true, 2]);
+  assert.ok(again.ride.map.src.startsWith("https://maps.googleapis.com/maps/api/staticmap?size=440x233&scale=1&format=png&path=") && again.ride.map.src.split("&path=").length === 2 && /&signature=[\w-]{27}=?$/.test(again.ride.map.src));
+  minutes = 50;
+  const quote = await readJson(await post({ ...fields, action: "quote", route: again.route, nonce: "nonce-ride-keys-000003" }), 200);
+  assert.deepEqual([quote.ride.minutes, total(quote), calls.length], [120, total(again), 2]);
+  const round = await readJson(await post({ ...fields, return: "1", return_date: inDays(5), return_time: "18:00", action: "options", map, nonce: "nonce-ride-keys-000004" }), 200);
+  assert.deepEqual([round.ride.minutes, round.ride.back, round.ride.map.src.split("&path=").length - 1, round.ride.map.src.includes(encodeURIComponent(BACK)), calls.length], [50, { minutes: 31, miles: 4.8 }, 2, true, 4]);
+  assert.ok(!JSON.stringify([first, again, quote, round]).includes("test-server-key-SENTINEL") && !JSON.stringify(round).includes(SECRET));
+});
+
 await test("handler: the distance requests and their redirects, outside-trip, long-trip and sprinter-distance, and no-airport when there is no route", async () => {
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
