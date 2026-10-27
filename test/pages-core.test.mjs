@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { CLASSES } from "../api/_rates.mjs";
+import { CLASSES, DISTANCE_RATES } from "../api/_rates.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const BASELINE = JSON.parse(readFileSync(join(ROOT, "test/fixtures/seo-baseline.json"), "utf8"));
@@ -470,6 +470,11 @@ check("the three posts that gained links keep their dateModified, so a new lastm
     assert.match(rail.querySelector("a.btn").getAttribute("href"), /^https:\/\/wa\.me\/16467750556/);
     assert.equal(main.children.length, 2);
   });
+  check("404.html: Where to go next links the guides to all three airports the Service areas row names, Newark after LaGuardia", () => {
+    const air = [...banner.nextElementSibling.querySelectorAll("a.ledger__row")].filter((a) => /-airport$/.test(a.getAttribute("href")));
+    const note = "Terminals, where we meet you, and flat rates from any New York City address.";
+    assert.deepEqual(air.map((a) => [a.getAttribute("href"), norm(a.querySelector(".ledger__name").textContent), norm(a.querySelector(".ledger__note").textContent)]), [["/locations/jfk-airport", "JFK Airport", note], ["/locations/laguardia-airport", "LaGuardia Airport", note], ["/locations/newark-airport", "Newark Airport", note]]);
+  });
   check("404.html: noindex and no canonical", () => {
     assert.equal(doc.querySelector('meta[name="robots"]').getAttribute("content"), "noindex");
     assert.equal(doc.querySelector('link[rel="canonical"]'), null);
@@ -492,6 +497,11 @@ check("the three posts that gained links keep their dateModified, so a new lastm
       assert.deepEqual(rows(sel).map((tr) => tr.dataset.seats), KEYS.map((k) => String(CLASSES[k].seats)));
       assert.deepEqual(rows(sel).map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML).slice(0, 2)]; }), KEYS.map((k) => [CLASSES[k].name, ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`]]));
     }
+  });
+  check("rates.html: each distance row carries data-seats and the two fit spans after the class name, so Who is traveling? marks it as in the airport and hourly tables", () => {
+    const keys = Object.keys(DISTANCE_RATES);
+    assert.deepEqual(rows("#distance-rates tbody tr").map((tr) => [tr.id, tr.dataset.seats]), keys.map((k) => [`distance-${k}`, String(CLASSES[k].seats)]));
+    assert.deepEqual(rows("#distance-rates tbody tr").map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML)]; }), keys.map((k) => [CLASSES[k].name, ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`]]));
   });
   check("rates.html: the closing card ends with Book a car, WhatsApp, then the reviews link (C-21, F13)", () => {
     const close = doc.querySelector("main .section--close");

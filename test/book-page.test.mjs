@@ -291,6 +291,15 @@ check("if pay2.js fails to load, or has not run 4 s in, the form shows the nativ
   assert.match(SHEETS, /\.bk\.is-js:not\(\.bk-p2off\) \.bk-time::after\{content:none\}/);
 });
 
+check("without javascript the payment notice makes no promise about kept details, and on every page with the booking form the form error is one text block, so it reads as one line next to its icon", () => {
+  assert.ok($("resume-k").classList.contains("js-only"));
+  for (const f of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"]) {
+    const e = read(f).document.getElementById("e-form");
+    assert.deepEqual([...e.childNodes].map((n) => n.nodeName), ["SPAN"], f);
+    assert.equal(norm(e.textContent), ERRORS.form.text, f);
+  }
+});
+
 if (failures) {
   console.error(`\n${failures} book page assertion(s) failed`);
   process.exit(1);

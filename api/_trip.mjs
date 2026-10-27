@@ -301,18 +301,19 @@ function waypointOf(end) {
 async function rideOf(from, to, departure, known, context, now) {
   const key = routeKey(from, to, departure.toISOString());
   const saved = known.get(key) || routeRides.get(key);
-  if (saved && saved.at + TICKET_TTL * 1000 > now) return { key, ...saved };
+  const fresh = Boolean(saved) && saved.at + TICKET_TTL * 1000 > now;
+  if (fresh && !context.map) return { key, ...saved };
   const allowed = (!context.request || clientBudget(context.request, "book-route", PICK_IP)) && instanceBudget("book-route", PICK_INSTANCE);
-  const result = allowed ? await computeRoute([from, to], departure, null) : { ok: false, status: 429 };
+  const result = allowed ? await computeRoute([from, to], departure, context.map || null) : { ok: false, status: 429 };
   if (!result.ok) {
     console.error("book-route", result.status);
-    return null;
+    return fresh ? { key, ...saved } : null;
   }
   const ride = { tenths: Math.round(result.miles * 10), minutes: result.minutes, at: now };
   routeRides.delete(key);
   routeRides.set(key, ride);
   if (routeRides.size > PLACE_ZONES) routeRides.delete(routeRides.keys().next().value);
-  return { key, ...ride };
+  return { key, ...ride, path: result };
 }
 
 async function driveTrip(trip, token, context) {
@@ -336,6 +337,7 @@ async function driveTrip(trip, token, context) {
     ...trip,
     route: signRoute(rides.map(({ key, tenths, minutes }) => [key, tenths, minutes]), Math.min(...rides.map((ride) => ride.at))),
     legs: trip.legs.map((item, i) => ({ ...item, reason: long ? "long-trip" : "", ride: { tenths: rides[i].tenths, minutes: rides[i].minutes } })),
+    paths: rides.map((ride) => ride.path),
   };
 }
 

@@ -13,6 +13,11 @@ const BIAS = { circle: { center: { latitude: 40.758, longitude: -73.9855 }, radi
 const PLACES_TIMEOUT_MS = 2500;
 const ROUTES_TIMEOUT_MS = 3000;
 const MAX_ITEMS = 5;
+const MAX_URL = 16000;
+const MAP_W = [120, 640];
+const MAP_H = [80, 640];
+const within = (n, [min, max]) => Number.isInteger(n) && n >= min && n <= max;
+export const mapSize = (map) => (map && typeof map === "object" && within(map.width, MAP_W) && within(map.height, MAP_H) ? { width: map.width, height: map.height } : null);
 
 const serverKey = () => String(process.env.GOOGLE_MAPS_SERVER_KEY || "").trim();
 export const googleOn = () => Boolean(serverKey()) || googleMock();
@@ -143,8 +148,19 @@ const coordinate = (value) => String(Math.round(value * 1e6) / 1e6);
 export function staticMapUrl(polyline, start, end, size, scale = 1) {
   const key = browserKey();
   const secret = signingSecret();
-  if (!key || !secret || !polyline || !start || !end || !size) return "";
+  const lines = [].concat(polyline).filter(Boolean);
+  if (!key || !secret || !lines.length || !start || !end || !size) return "";
   const marker = (label, { lat, lng }) => `&markers=size:mid%7Clabel:${label}%7C${coordinate(lat)},${coordinate(lng)}`;
-  const url = `${STATIC_URL}?size=${size.width}x${size.height}&scale=${scale}&format=png&path=color:0x111111ff%7Cweight:5%7Cenc:${encodeURIComponent(polyline)}${marker("A", start)}${marker("B", end)}&key=${encodeURIComponent(key)}`;
-  return signUrl(url, secret);
+  const paths = lines.map((line) => `&path=color:0x111111ff%7Cweight:5%7Cenc:${encodeURIComponent(line)}`).join("");
+  const url = `${STATIC_URL}?size=${size.width}x${size.height}&scale=${scale}&format=png${paths}${marker("A", start)}${marker("B", end)}&key=${encodeURIComponent(key)}`;
+  return url.length > MAX_URL && lines.length > 1 ? staticMapUrl(lines[0], start, end, size, scale) : signUrl(url, secret);
+}
+
+export function routeMap(results, size) {
+  const [first] = results;
+  if (!size || !first) return null;
+  if (first.map) return first.map;
+  const lines = results.map((item) => item.polyline);
+  const src = staticMapUrl(lines, first.start, first.end, size, 1);
+  return src ? { src, src2x: staticMapUrl(lines, first.start, first.end, size, 2), ...size } : null;
 }

@@ -565,7 +565,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.equal(document.querySelector('main aside.rail a[href="#arrival"]')?.textContent, "How we meet you at Newark");
     const ps = [...s.querySelectorAll(":scope>p")].map((p) => norm(p.textContent));
     assert.ok(ps[0].startsWith("At Newark, a driver can't wait at the curb unless the passenger and bags are already there."), ps[0]);
-    assert.ok(ps[1].endsWith("Don't follow the Ride App Pick Up signs. They lead to the Uber and Lyft areas, like floor 3 of the Terminal C garage."), ps[1]);
+    assert.ok(ps[1].endsWith("Don't follow the Ride App Pick Up signs. They lead to the rideshare pickup areas, like floor 3 of the Terminal C garage."), ps[1]);
     assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
   });
   check("locations/newark-airport.html: the safety tip says no to offered rides and names no New York City rule or JFK source", () => {
@@ -616,6 +616,29 @@ check("the pages that state the free child seats link that line, word for word, 
 check("the airport guide, the pickup guide and the Staten Island page link Newark Liberty to the Newark Airport page in context", () => {
   const want = [["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "/locations/newark-airport", "Newark Liberty"], ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "/locations/newark-airport#arrival", "Our Newark Airport page"], ["locations/staten-island.html", "/locations/newark-airport", "Newark Liberty"]];
   assert.deepEqual(want.filter(([file, href, text]) => ![...read(file).document.querySelectorAll(`main .prose a[href="${href}"]`)].some((a) => norm(a.textContent) === text)), []);
+});
+
+const ldNodes = (document) => [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => { const j = JSON.parse(s.textContent); return j["@graph"] || [j]; });
+const ldAnswer = (document, name) => ldNodes(document).filter((n) => n["@type"] === "FAQPage").flatMap((n) => n.mainEntity).find((q) => q.name === name)?.acceptedAnswer.text;
+check("car-service-with-car-seat-nyc.html and faq.html: free child seats are offered on one-way trips too, in the lede, the answers, their JSON-LD and the Service description", () => {
+  const seat = read("car-service-with-car-seat-nyc.html").document;
+  const faq = read("faq.html").document;
+  const answer = "Yes. Infant, toddler and booster seats are free on request, on airport transfers, one-way trips and hourly bookings.";
+  assert.equal(norm(seat.querySelector("main .lede").textContent), "Infant, toddler and booster seats are free on request, on airport transfers, one-way trips and by the hour. You choose the seat, and we fit it before the car leaves.");
+  assert.deepEqual([norm(seat.querySelector("#q-car-seats .acc__body").textContent), ldAnswer(seat, "Do your cars have car seats?")], [answer, answer]);
+  assert.equal(ldNodes(seat).find((n) => n["@type"] === "Service").description, "Chauffeured airport transfers, one-way trips and hourly bookings in New York City with infant, toddler and booster seats free on request.");
+  const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Are child safety seats available?");
+  const tail = "Our car seat page covers airport pickups, one-way trips and hourly bookings.";
+  assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Are child safety seats available?").endsWith(tail)], [true, true]);
+});
+check("locations/staten-island.html and black-car-service-brooklyn.html: the toll and cost answers cover one-way trips priced by distance and time, visible and in JSON-LD", () => {
+  const si = read("locations/staten-island.html").document;
+  const bk = read("black-car-service-brooklyn.html").document;
+  assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("On hourly bookings and one-way trips priced by distance and time, bridge tolls are charged at cost after the ride to the card saved at booking.")), "the route paragraph");
+  const toll = "Yes. The Verrazzano-Narrows Bridge charges tolls in both directions. On an airport ride, tolls and airport fees are already in the price. On hourly bookings and one-way trips priced by distance and time, we charge tolls at cost after the ride to the card saved at booking. A round trip over the bridge means two tolls.";
+  assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
+  const cost = "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, NYC sales tax and the Black Car Fund included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
+  assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
 
 if (failures) {
