@@ -15,6 +15,8 @@ const BUDGETS = [
   [/^pay2\..*\.js$/, 12000, true],
   [/^done\..*\.js$/, 9000, false],
   [/^wide\..*\.css$/, 1700, true],
+  [/^map\..*\.js$/, 12288, true],
+  [/^map\..*\.css$/, 3072, true],
 ];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
 const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`)];

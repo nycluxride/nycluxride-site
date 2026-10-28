@@ -216,7 +216,7 @@ function read(file) {
 
 const FILES = htmlFiles(ROOT);
 const pages = FILES.map(read);
-const scriptFiles = readdirSync(join(ROOT, "assets")).filter((f) => /^(lux|pay2?|done)\.[A-Za-z0-9]+\.js$/.test(f)).sort();
+const scriptFiles = readdirSync(join(ROOT, "assets")).filter((f) => /^(lux|pay2?|done|map)\.[A-Za-z0-9]+\.js$/.test(f)).sort();
 const scriptStrings = [...new Set(scriptFiles.flatMap((f) => jsStrings(readFileSync(join(ROOT, "assets", f), "utf8"))).filter(isCopy).map(plain))].filter((s) => s.length > 3);
 const copyStrings = [];
 const walkCopy = (v) => {

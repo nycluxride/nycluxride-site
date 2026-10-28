@@ -33,8 +33,10 @@ const STATIC = [
   "policy-single-source",
   "prose-shape",
   "landing",
+  "map-api",
+  "gmock",
 ];
-const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser"];
+const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser"];
 
 const files = process.argv.includes("--static") ? STATIC : [...STATIC, ...BROWSER];
 const failed = [];

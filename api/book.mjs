@@ -59,10 +59,13 @@ function mapOf(text) {
   }
 }
 
-function rideBody(trip, size) {
+function rideBody(trip, size, draw) {
   const legs = trip.trip_type === "one" && Array.isArray(trip.legs) ? trip.legs : [];
   if (!legs.length || !legs.every((item) => item.ride)) return {};
-  const leg = ({ ride }) => ({ minutes: ride.minutes, miles: ride.tenths / 10 });
+  const leg = (item) => {
+    const path = draw && Array.isArray(trip.paths) && trip.paths[legs.indexOf(item)];
+    return { minutes: item.ride.minutes, miles: item.ride.tenths / 10, ...(path && path.polyline && { path: path.polyline }) };
+  };
   const back = legs.find((item) => item.back);
   const map = Array.isArray(trip.paths) && trip.paths.every(Boolean) ? routeMap(trip.paths, size) : null;
   return { ride: { kind: "ok", ...leg(legs.find((item) => !item.back)), ...(back && { back: leg(back) }), ...(map ? { map } : { attribution: "Google Maps" }) } };
@@ -83,7 +86,7 @@ function vehicleList(trip) {
     .map((key) => ({ vehicle: key, label: VEHICLES[key].model, total_cents: seated ? priceTrip({ ...trip, class: "suv", vehicle: key }).total : null }));
 }
 
-function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null } = {}) {
+function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null, draw = false } = {}) {
   const { group, text, google, short } = REASONS[reason];
   const hourly = HOURLY_START.includes(trip.from);
   return {
@@ -100,12 +103,12 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     tip_custom: TIP_RANGE,
     earliest: firstSlot(now),
     ...(trip.route && { route: trip.route }),
-    ...rideBody(trip, size),
+    ...rideBody(trip, size, draw),
     ...contactLinks(trip, ref, total),
   };
 }
 
-function optionsBody(trip, ref, check, now, size) {
+function optionsBody(trip, ref, check, now, size, draw) {
   const hourly = trip.trip_type === "hour";
   const price = check.reason ? null : priceTrip(trip);
   return {
@@ -126,7 +129,7 @@ function optionsBody(trip, ref, check, now, size) {
     hold: check.hold,
     earliest: firstSlot(now),
     ...(trip.route && { route: trip.route }),
-    ...rideBody(trip, size),
+    ...rideBody(trip, size, draw),
     ...contactLinks(trip, ref, price ? price.total : undefined),
   };
 }
@@ -213,11 +216,12 @@ async function handlePost(request) {
   if (settings.blackoutBad) console.error("blackout-config");
   const now = new Date();
   const size = input.action === "options" ? mapOf(fields.map) : null;
+  const draw = fields.draw === "1";
   const trip = await resolveTrip(input, { env: process.env, request, now, map: size });
   const check = checkTrip(trip, now, settings);
   if (check.kind === "invalid") return invalid(check.code);
-  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size }), `/book#q-${check.reason}`);
-  if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size));
+  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}`);
+  if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size, draw));
   if (check.reason) return reply(200, quoteBody(trip, ref, check.reason, now, { scope: "class" }), `/book#q-${check.reason}`);
   const price = priceTrip(trip, settings);
   if (check.hold) return reply(200, quoteBody(trip, ref, check.hold, now, { scope: "hold", total: price.total }), `/book#q-${check.hold}`);

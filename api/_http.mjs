@@ -10,6 +10,7 @@ const instanceCalls = new Map();
 export const production = () => process.env.VERCEL_ENV === "production";
 export const googleMock = () => process.env.GOOGLE_MOCK === "true" && !production();
 export const flightMock = () => process.env.FLIGHT_MOCK === "true" && !production();
+export const mapMock = () => ["true", "auth", "load"].includes(process.env.MAP_MOCK) && googleMock();
 export const wantsJson = (request) => (request.headers.get("accept") || "").includes("application/json");
 
 export function json(status, body, headers = {}) {

@@ -441,7 +441,7 @@ await test("pick with a key: Place Details with the Essentials mask, the zone, a
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, `https://places.googleapis.com/v1/places/ChIJedition?sessionToken=${SESSION}&languageCode=en&regionCode=us`);
   assert.equal(calls[0].init.method, "GET");
-  assert.deepEqual(calls[0].init.headers, { "X-Goog-Api-Key": SERVER_KEY, "X-Goog-FieldMask": "id,formattedAddress,shortFormattedAddress,addressComponents,types" });
+  assert.deepEqual(calls[0].init.headers, { "X-Goog-Api-Key": SERVER_KEY, "X-Goog-FieldMask": "id,formattedAddress,shortFormattedAddress,addressComponents,types,location" });
   assert.deepEqual(Object.keys(res.body), ["kind", "zone", "area", "airport", "ticket", "map"]);
   assert.deepEqual([res.body.kind, res.body.zone, res.body.area, res.body.airport, res.body.map], ["ok", "manhattan", "Manhattan", false, false]);
   assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJedition", zone: "manhattan", expired: false });

@@ -1,13 +1,16 @@
 import { createHmac } from "node:crypto";
-import { googleMock } from "./_http.mjs";
-import { mockSuggest, mockDetails, mockRoute } from "./_mock.mjs";
+import { googleMock, mapMock } from "./_http.mjs";
+import { mockSuggest, mockDetails, mockRoute, mockReverse, mockLocate } from "./_mock.mjs";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL = "https://places.googleapis.com/v1/places/";
 const ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes";
 const STATIC_URL = "https://maps.googleapis.com/maps/api/staticmap";
+const MAPS_JS_URL = "https://maps.googleapis.com/maps/api/js";
+const GEOCODE_URL = "https://geocode.googleapis.com/v4/geocode/";
 const SUGGEST_MASK = "suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.types";
-const DETAILS_MASK = "id,formattedAddress,shortFormattedAddress,addressComponents,types";
+const DETAILS_MASK = "id,formattedAddress,shortFormattedAddress,addressComponents,types,location";
+const REVERSE_MASK = "results.placeId,results.location,results.granularity,results.formattedAddress,results.addressComponents,results.types";
 const ROUTE_MASK = "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation";
 const BIAS = { circle: { center: { latitude: 40.758, longitude: -73.9855 }, radius: 50000 } };
 const PLACES_TIMEOUT_MS = 2500;
@@ -24,6 +27,12 @@ export const googleOn = () => Boolean(serverKey()) || googleMock();
 const browserKey = () => String(process.env.GOOGLE_MAPS_BROWSER_KEY || "").trim();
 const signingSecret = () => String(process.env.GOOGLE_MAPS_SIGNING_SECRET || "").trim();
 export const mapOn = () => googleMock() || Boolean(browserKey() && signingSecret());
+export const mapJsOn = () => mapMock() || (process.env.GOOGLE_MAPS_JS === "on" && Boolean(browserKey()));
+
+export function mapJs() {
+  if (mapMock()) return { src: `/__maps-mock${process.env.MAP_MOCK === "load" ? "-missing" : ""}.js?callback=nlrMap${process.env.MAP_MOCK === "auth" ? "&fail=auth" : ""}` };
+  return { src: `${MAPS_JS_URL}?${new URLSearchParams({ key: browserKey(), v: "weekly", loading: "async", libraries: "maps", language: "en", region: "US", callback: "nlrMap" })}` };
+}
 const DOWN_MS = 300000;
 let downUntil = 0;
 export const googleUp = () => googleOn() && Date.now() > downUntil;
@@ -100,6 +109,8 @@ const point = (location) => {
   const lng = location && location.latLng && Number(location.latLng.longitude);
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 };
+const round6 = (value) => Math.round(value * 1e6) / 1e6;
+export const spot = (location) => (location && [location.latitude, location.longitude].every((n) => typeof n === "number" && Number.isFinite(n)) ? { lat: round6(location.latitude), lng: round6(location.longitude) } : null);
 
 export async function computeRoute(waypoints, departure, size) {
   if (googleMock()) return { ok: true, mock: true, ...mockRoute(size, waypoints) };
@@ -133,7 +144,38 @@ export async function computeRoute(waypoints, departure, size) {
     polyline: route.polyline && typeof route.polyline.encodedPolyline === "string" ? route.polyline.encodedPolyline : "",
     start: legs.length ? point(legs[0].startLocation) : null,
     end: legs.length ? point(legs[legs.length - 1].endLocation) : null,
+    points: legs.length ? [...legs.map((item) => point(item.startLocation)), point(legs[legs.length - 1].endLocation)].map((item) => item && [round6(item.lat), round6(item.lng)]) : [],
   };
+}
+
+async function geocode(path, mask) {
+  const key = serverKey();
+  if (!key) return { ok: false, status: 0 };
+  return call(`${GEOCODE_URL}${path}?${new URLSearchParams({ languageCode: "en", regionCode: "us" })}`, { method: "GET", headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": mask } }, PLACES_TIMEOUT_MS);
+}
+
+export async function reverseGeocode(lat, lng) {
+  if (googleMock()) return { ok: true, results: mockReverse(lat, lng) };
+  const result = await geocode(`location/${round6(lat)},${round6(lng)}`, REVERSE_MASK);
+  if (!result.ok) return result;
+  return { ok: true, results: result.body && Array.isArray(result.body.results) ? result.body.results : [] };
+}
+
+export async function geocodeAddress(text) {
+  if (googleMock()) return mockLocate(text);
+  const result = await geocode(`address/${encodeURIComponent(text)}`, "results.location");
+  if (!result.ok) return result;
+  const first = result.body && Array.isArray(result.body.results) ? result.body.results[0] : null;
+  const location = first && spot(first.location);
+  return location ? { ok: true, location } : { ok: false, status: 0 };
+}
+
+export async function geocodePlace(id) {
+  if (googleMock()) return mockLocate(id);
+  const result = await geocode(`places/${encodeURIComponent(id)}`, "location");
+  if (!result.ok) return result;
+  const location = result.body && spot(result.body.location);
+  return location ? { ok: true, location } : { ok: false, status: 0 };
 }
 
 export function signUrl(url, secret) {
