@@ -10,30 +10,40 @@ const FIXTURES = [
     trigger: "edition",
     item: { id: "mock-edition", main: "The New York EDITION", secondary: "Madison Avenue, New York, NY, USA", types: ["lodging", "hotel"] },
     address: "Madison Ave, New York, NY 10010, USA",
+    at: [40.741389, -73.987193],
+    kinds: ["establishment", "lodging", "point_of_interest"],
     components: [state("NY", "New York"), county("New York County"), borough("Manhattan"), zip("10010")],
   },
   {
     trigger: "bedford",
     item: { id: "mock-bedford", main: "277 Bedford Avenue", secondary: "Brooklyn, NY, USA", types: ["street_address"] },
     address: "277 Bedford Ave, Brooklyn, NY 11211, USA",
+    at: [40.714224, -73.961452],
+    kinds: ["street_address"],
     components: [state("NY", "New York"), county("Kings County"), borough("Brooklyn"), zip("11211")],
   },
   {
     trigger: "hoboken",
     item: { id: "mock-hoboken", main: "Hoboken", secondary: "NJ, USA", types: ["locality", "political"] },
     address: "Hoboken, NJ 07030, USA",
+    at: [40.743991, -74.032363],
+    kinds: ["locality", "political"],
     components: [state("NJ", "New Jersey"), county("Hudson County"), zip("07030")],
   },
   {
     trigger: "westchester",
     item: { id: "mock-hpn", main: "Westchester County Airport", secondary: "White Plains, NY, USA", types: ["airport"] },
     address: "240 Airport Rd, White Plains, NY 10604, USA",
+    at: [41.066959, -73.707575],
+    kinds: ["airport", "establishment", "point_of_interest"],
     components: [state("NY", "New York"), county("Westchester County"), zip("10604")],
   },
   {
     trigger: "terminal 4",
     item: { id: "mock-jfk-t4", main: "JFK Terminal 4", secondary: "Queens, NY, USA", types: ["airport"] },
     address: "JFK Terminal 4, Jamaica, NY 11430, USA",
+    at: [40.644166, -73.782425],
+    kinds: ["airport", "establishment", "point_of_interest"],
     components: [state("NY", "New York"), county("Queens County"), borough("Queens"), zip("11430")],
   },
 ];
@@ -62,7 +72,85 @@ export function mockDetails(id) {
     shortFormattedAddress: fixture.address.split(",")[0],
     addressComponents: fixture.components.map((component) => ({ ...component, types: [...component.types] })),
     types: [...fixture.item.types],
+    location: { latitude: fixture.at[0], longitude: fixture.at[1] },
   };
+}
+
+const PLACE_AT = new Map([
+  ["350 5th Ave, New York, NY 10118", [40.748441, -73.985664]],
+  ["277 Bedford Ave, Brooklyn, NY 11211", [40.714224, -73.961452]],
+  ["200 Park Ave, New York, NY 10166", [40.753606, -73.976457]],
+  ["Greenwich, CT 06830", [41.026489, -73.628456]],
+  ["1 Ocean Rd, Montauk, NY 11954", [41.035144, -71.944656]],
+  ["John F. Kennedy International Airport, Queens, NY 11430", [40.641311, -73.778139]],
+  ["John F. Kennedy International Airport Terminal 1, Queens, NY 11430", [40.643365, -73.789667]],
+  ["John F. Kennedy International Airport Terminal 4, Queens, NY 11430", [40.644166, -73.782425]],
+  ["John F. Kennedy International Airport Terminal 5, Queens, NY 11430", [40.645545, -73.776574]],
+  ["John F. Kennedy International Airport Terminal 7, Queens, NY 11430", [40.648706, -73.783089]],
+  ["John F. Kennedy International Airport Terminal 8, Queens, NY 11430", [40.646648, -73.789688]],
+  ["LaGuardia Airport, East Elmhurst, NY 11371", [40.776927, -73.873966]],
+  ["Newark Liberty International Airport, Newark, NJ 07114", [40.689532, -74.174462]],
+  ["Teterboro Airport, Teterboro, NJ 07608", [40.850103, -74.060837]],
+].map(([text, at]) => [norm(text), at]));
+const AREA = [40.758, -73.9855];
+
+function placeAt(text) {
+  const fixture = FIXTURES.find(({ item }) => item.id === text);
+  if (fixture) return fixture.at;
+  const known = PLACE_AT.get(norm(text));
+  if (known) return known;
+  let hash = 0;
+  for (const char of norm(text)) hash = (hash * 31 + char.codePointAt(0)) % 100003;
+  return [AREA[0] - 0.08 + (hash % 160) / 1000, AREA[1] - 0.08 + ((hash / 160) % 160) / 1000].map((n) => Math.round(n * 1e6) / 1e6);
+}
+
+const meters = ([a, b], [c, d]) => {
+  const rad = Math.PI / 180;
+  const x = (d - b) * rad * Math.cos(((a + c) / 2) * rad);
+  return Math.hypot(x, (c - a) * rad) * 6371000;
+};
+
+export function mockReverse(lat, lng) {
+  const near = FIXTURES.map((fixture) => [meters([lat, lng], fixture.at), fixture]).filter(([distance]) => distance <= 300).sort((a, b) => a[0] - b[0])[0];
+  if (!near) return [];
+  const { item, address, components, at, kinds } = near[1];
+  const parts = components.map((component) => ({ ...component, types: [...component.types] }));
+  const result = (placeId, formattedAddress, types) => ({ placeId, location: { latitude: at[0], longitude: at[1] }, granularity: "ROOFTOP", formattedAddress, addressComponents: parts, types });
+  return [result(item.id, address, [...kinds]), result(`${item.id}-area`, address.split(", ").slice(1).join(", "), ["postal_code"])];
+}
+
+export function mockLocate(text) {
+  const at = placeAt(String(text ?? ""));
+  return { ok: true, location: { lat: at[0], lng: at[1] } };
+}
+
+function encode(points) {
+  let out = "";
+  let last = [0, 0];
+  for (const item of points) {
+    const next = item.map((n) => Math.round(n * 1e5));
+    for (let i = 0; i < 2; i++) {
+      let value = next[i] - last[i];
+      value = value < 0 ? ~(value << 1) : value << 1;
+      while (value >= 0x20) {
+        out += String.fromCharCode((0x20 | (value & 0x1f)) + 63);
+        value >>= 5;
+      }
+      out += String.fromCharCode(value + 63);
+    }
+    last = next;
+  }
+  return out;
+}
+
+function mockPath(waypoints) {
+  const ends = waypoints.map((waypoint) => placeAt(waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : String((waypoint && waypoint.address) || "")));
+  const line = [ends[0]];
+  for (let i = 1; i < ends.length; i++) {
+    const [a, b] = [ends[i - 1], ends[i]];
+    line.push([a[0] + (b[0] - a[0]) * 0.35, a[1] + (b[1] - a[1]) * 0.8], b);
+  }
+  return { polyline: encode(line), points: ends, start: { lat: ends[0][0], lng: ends[0][1] }, end: { lat: ends[ends.length - 1][0], lng: ends[ends.length - 1][1] } };
 }
 
 const MANHATTAN = "350 5th Ave, New York, NY 10118";
@@ -87,7 +175,7 @@ function mockDrive(waypoints) {
 }
 
 export function mockRoute(size, waypoints) {
-  const drive = mockDrive(waypoints);
+  const drive = { ...mockDrive(waypoints), ...(Array.isArray(waypoints) && waypoints.length > 1 && mockPath(waypoints)) };
   if (!size) return drive;
   const src = `data:image/svg+xml,${encodeURIComponent(mapSvg(size.width, size.height))}`;
   return { ...drive, map: { src, src2x: src, ...size } };

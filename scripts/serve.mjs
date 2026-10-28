@@ -11,6 +11,7 @@ const CONFIG = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'))
 const PAGE_HEADERS = CONFIG.headers.filter((rule) => /^\/[a-z0-9/-]*$/.test(rule.source))
 const REDIRECTS = new Map((CONFIG.redirects || []).filter((rule) => /^\/[a-z0-9/-]*$/.test(rule.source)).map((rule) => [rule.source, rule]))
 const SPECULATION = { 'Speculation-Rules': '"/assets/speculation.json"' }
+const MAP_MOCK = ['true', 'auth', 'load'].includes(process.env.MAP_MOCK)
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -90,6 +91,11 @@ createServer((req, res) => {
       if (!res.headersSent) res.writeHead(500)
       res.end()
     })
+    return
+  }
+  if (MAP_MOCK && path === '/__maps-mock.js') {
+    res.writeHead(200, { 'content-type': MIME['.js'], 'cache-control': 'no-store' })
+    res.end(readFileSync(join(ROOT, 'test', 'fixtures', 'gmaps-mock.js')))
     return
   }
   const redirect = REDIRECTS.get(path)

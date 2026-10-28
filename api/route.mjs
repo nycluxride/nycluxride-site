@@ -1,7 +1,7 @@
 import { MAX_STOPS } from "./_rates.mjs";
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
 import { localById, classifyText } from "./_places.mjs";
-import { verifyTicket } from "./_ticket.mjs";
+import { verifyTicket, routeKey, signRoute } from "./_ticket.mjs";
 import { googleOn, computeRoute, mapSize, routeMap } from "./_google.mjs";
 import { nycToUtc, validDate } from "./_trip.mjs";
 
@@ -16,7 +16,7 @@ const bad = () => json(400, { kind: "error", code: "bad" });
 const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const isEnd = (end) => isObject(end) && ["id", "ticket", "text"].filter((key) => typeof end[key] === "string").length === 1 && (end.text === undefined || placeText(end.text) !== "");
 const rowPoint = (row) => (row.gid ? { placeId: row.gid } : { address: row.addr });
-const leg = (result) => ({ minutes: result.minutes, miles: result.miles });
+const leg = (result, draw) => ({ minutes: result.minutes, miles: result.miles, ...(draw && result.polyline && { path: result.polyline }) });
 
 function placeText(text) {
   const value = clean(text, MAX_TEXT + 1);
@@ -66,7 +66,12 @@ export async function POST(request) {
     if (home && !home.ok) console.error("route", home.status);
     const legs = home && home.ok ? [result, home] : [result];
     const map = routeMap(legs, size);
-    return json(200, { kind: "ok", ...leg(result), ...(legs[1] && { back: leg(home) }), ...(map ? { map } : { attribution: "Google Maps" }) });
+    const draw = data.draw === 1;
+    const [first, last] = [waypoints[0], waypoints[waypoints.length - 1]];
+    const keys = [routeKey(first, last, departure.toISOString()), legs[1] && routeKey(last, first, back.toISOString())];
+    const token = draw && !stops.length ? signRoute(legs.map((item, i) => [keys[i], Math.round(item.miles * 10), item.minutes]), now) : "";
+    const points = draw && Array.isArray(result.points) && result.points.every(Array.isArray) ? result.points : null;
+    return json(200, { kind: "ok", ...leg(result, draw), ...(points && { points }), ...(legs[1] && { back: leg(home, draw) }), ...(token && { route: token }), ...(map ? { map } : { attribution: "Google Maps" }) });
   } catch {
     console.error("handler");
     return off();

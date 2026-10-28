@@ -173,7 +173,7 @@ test("the payment pages' policy limits scripts, form targets, framing, the base 
   const [policy] = policiesFor("/book");
   const directives = Object.fromEntries(policy.split(";").map((d) => d.trim().split(/\s+/)).map(([name, ...values]) => [name, values]));
   assert.deepEqual(Object.keys(directives).sort(), ["base-uri", "form-action", "frame-ancestors", "object-src", "script-src"]);
-  assert.deepEqual(directives["script-src"], ["'self'", "https://www.googletagmanager.com", "https://www.googleadservices.com", "https://www.google.com", "https://googleads.g.doubleclick.net", "https://www.gstatic.com"]);
+  assert.deepEqual(directives["script-src"], ["'self'", "https://www.googletagmanager.com", "https://www.googleadservices.com", "https://www.google.com", "https://googleads.g.doubleclick.net", "https://www.gstatic.com", "https://maps.googleapis.com"]);
   assert.deepEqual(directives["form-action"], ["'self'", ...CHECKOUT_ORIGINS]);
   assert.deepEqual(directives["frame-ancestors"], ["'self'"]);
   assert.deepEqual(directives["base-uri"], ["'self'"]);
