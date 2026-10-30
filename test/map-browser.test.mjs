@@ -872,6 +872,36 @@ for (const fails of [false, true]) {
   });
 }
 
+await check("M27 a New Jersey address to JFK: the caption reads 25.0 miles, about 45 min by car. as on a trip priced by distance and time, the options request carries that route token, no second route request, and the cards show the airport fare or the distance and time fare with no tolls line", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await type(p, "from", "Secaucus, NJ 07094");
+  await p.locator("#bk-from-list [data-kind=typed]").click();
+  await place(p, "to", "jfk", "John F. Kennedy (JFK)");
+  await drawn(p);
+  await settle(p);
+  assert.equal(await p.textContent(".bk-mp__c"), "25.0 miles, about 45 min by car.");
+  const [r] = routes(ctx);
+  assert.ok(r && JSON.parse(r.body).draw === 1);
+  await view(p);
+  await settle(p);
+  const body = JSON.parse(ctx.api.find((x) => x.path === "book" && JSON.parse(x.body).action === "options").body);
+  assert.deepEqual([body.map, body.draw], [undefined, "1"]);
+  assert.deepEqual([...readRoute(body.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[250, 45]]);
+  assert.equal(routes(ctx).length, 1, "no second route request");
+  const n = await p.evaluate(() => ({ text: document.getElementById("bk-route-n").textContent, attr: getComputedStyle(document.querySelector("#bk-route-n .bk-attr")).visibility }));
+  assert.deepEqual([n.text, n.attr], ["25.0 miles, about 45 min by car. Google Maps", "hidden"]);
+  const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
+  assert.deepEqual(cards, [...["suv", "premium", "first", "sedan"].map((c) => cash(priceDistance(c, { tenths: 250, minutes: 45 }, "jfk").total)), "Price on request"]);
+  assert.deepEqual(cards.slice(0, 4), ["$182.53", "$221.97", "$297.25", "$157.25"]);
+  assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls and airport fees"))));
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
 for (const [, b] of ENGINES) await b.close();
 if (failures) {
   console.error(`\n${failures} map browser check(s) failed`);

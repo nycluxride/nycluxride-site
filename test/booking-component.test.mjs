@@ -43,7 +43,7 @@ const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"
 const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Book and pay online</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>`;
 const EXT = `${ICON("i-external")}<span class="sr-only"> (opens in a new tab)</span>`;
 const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#cancellation" target="_blank" rel="noopener">rates and cancellation terms${EXT}</a>.</p>`;
-const ASSURE = `<ul class="assure-row" id="bk-assure" role="list"><li>${ICON("i-check")}Airport prices include tolls, airport fees and taxes</li><li>${ICON("i-clock")}Free waiting after you land</li><li>${ICON("i-phone")}We answer 24 hours a day, every day</li></ul>`;
+const ASSURE = `<ul class="assure-row" id="bk-assure" role="list"><li>${ICON("i-check")}Flat airport rates include tolls, airport fees and taxes</li><li>${ICON("i-clock")}Free waiting after you land</li><li>${ICON("i-phone")}We answer 24 hours a day, every day</li></ul>`;
 const MONITOR = "Set the pickup time to your scheduled landing time. We track your flight.";
 const P1_FIRST = POLICY.cancel.slice(0, POLICY.cancel.indexOf(".") + 1);
 const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Limo Sprinter or Jet Sprinter" };
@@ -380,7 +380,7 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.equal(nt($("price-total").closest("tr").querySelector("th[scope=row]").textContent), "Total");
   assert.ok($("price-total").closest("tfoot"));
   assert.ok($("price-notes").matches("ul.bk-later"));
-  assert.deepEqual([$("price-notes").dataset.airport, $("price-notes").dataset.hourly, $("price-notes").textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, ""]);
+  assert.deepEqual([$("price-notes").dataset.airport, $("price-notes").dataset.hourly, $("price-notes").dataset.outside, $("price-notes").textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, ""]);
   assert.equal($("quote").getAttribute("aria-label"), "Booking request");
   const blocks = [...$("quote").querySelectorAll("div.bk-q")];
   assert.deepEqual(blocks.map((b) => b.id), [...Object.keys(REASONS).map((r) => `q-${r}`), "q-error"]);
@@ -574,6 +574,10 @@ check("no other page loads the pay script, and only booking-confirmed.html loads
     assert.ok(lux.includes(`s.src="/assets/${pay}"`), "lux.js does not point at the current pay file");
     assert.ok(lux.includes('d.querySelector("#book-form.bk--go")'));
     assert.ok(lux.includes('["focusin","pointerdown","keydown"]') && lux.includes("requestIdleCallback") && lux.includes('addEventListener("load",idle)'));
+  });
+  check("pay.js asks for the route of a trip only while the request body fits the body limit of /api/route", () => {
+    const limit = Number(/\nconst LIMIT = (\d+);\n/.exec(read("api/route.mjs"))[1]);
+    assert.ok(read(`assets/${pay}`).includes(`return JSON.stringify(o).length<${limit + 1}&&o}`), String(limit));
   });
 }
 

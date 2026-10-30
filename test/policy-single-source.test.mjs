@@ -24,7 +24,7 @@ function check(name, fn) {
 
 check("POLICY.cancel is today's cancellation sentence, with its phone number and WhatsApp, and no dash or semicolon", () => {
   assert.equal(POLICY.cancel, "Cancellation terms are confirmed in writing with the reservation. To change or cancel, call +1 (646) 775-0556 or message on WhatsApp with your reference, and give as much notice as you can.");
-  for (const s of [POLICY.cancel, POLICY.later.airport, POLICY.later.hourly, NOTES.included]) assert.doesNotMatch(s, /[–—;]/);
+  for (const s of [POLICY.cancel, POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, NOTES.included]) assert.doesNotMatch(s, /[–—;]/);
 });
 
 check("rates.html shows POLICY.cancel word for word in #cancellation", () => {

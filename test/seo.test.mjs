@@ -12,6 +12,8 @@ const NOINDEX_RE = /(^|,)\s*(noindex|none)\s*(,|$)/i;
 const RETIRED = {
   "/blog/brooklyn-black-car-service-local-guide-april-28": "/black-car-service-brooklyn",
   "/home.webp": "/hero-new.webp",
+  "/airports/jfk-limo": "/locations/jfk-airport",
+  "/airports/ewr-limo": "/locations/newark-airport",
 };
 
 function htmlFiles(dir) {

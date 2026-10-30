@@ -21,10 +21,10 @@ const A = [
   "A gratuity for your chauffeur is optional and chosen when you book.",
   "After an airport transfer, only true extras are charged to the card saved at booking: waiting beyond the free window, extra stops and parking, each with an itemized receipt.",
   "Hourly bookings are charged the hourly fare with NYC sales tax and the Black Car Fund at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  "Airport transfers are one total price with tolls, airport fees and taxes included, and the gratuity for your chauffeur is optional. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  "Airport transfer prices include tolls, airport fees and taxes, and the gratuity is optional.",
-  "Airport transfer prices include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before NYC sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
-  "Airport prices from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
+  "Airport transfers to or from a New York City address are one total price with tolls, airport fees and taxes included, and the gratuity for your chauffeur is optional. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
+  "Airport transfer prices for New York City addresses include tolls, airport fees and taxes, and the gratuity is optional.",
+  "Airport transfer prices for New York City addresses include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before NYC sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
+  "Flat airport rates from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
 ];
 const RATES_LEDE = "Airport transfers are one total price by vehicle class from any New York City address, with tolls, airport fees and taxes included. Hourly work is billed by vehicle class with a three hour minimum. There is no meter and no surge multiplier, so the price does not move with demand.";
 const EXEMPT = [...A, COPY.POLICY.cancel, RATES_LEDE, ...Object.values(COPY.CHECKOUT)].sort((a, b) => b.length - a.length);
@@ -47,7 +47,7 @@ const FORMS_64 = new Set([
   "Sooner by email or WhatsApp when a car is free.",
   "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup.",
   "One total by class from any New York City address, with tolls, airport fees and taxes included.",
-  "Airport prices include tolls, airport fees and taxes.",
+  "Flat airport rates include tolls, airport fees and taxes.",
   "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.",
   "Tell us which one you need.",
   "Book online at least 1 hour before pickup.",

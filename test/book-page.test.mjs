@@ -129,7 +129,7 @@ check("booking-confirmed.html static copy works without javascript: seal, H1, th
   assert.equal(norm($("cf-total", cf).closest("tr").querySelector("th").textContent), "Paid");
   assert.equal($("cf-receipt", cf).lastElementChild, $("cf-summary", cf));
   assert.ok($("cf-notes", cf).matches("ul.bk-later"));
-  assert.deepEqual([$("cf-notes", cf).dataset.airport, $("cf-notes", cf).dataset.hourly, $("cf-notes", cf).textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, ""]);
+  assert.deepEqual([$("cf-notes", cf).dataset.airport, $("cf-notes", cf).dataset.hourly, $("cf-notes", cf).dataset.outside, $("cf-notes", cf).textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, ""]);
   assert.equal(norm($("cf-help", cf).textContent), "Call +1 (646) 775-0556 or message us on WhatsApp. We answer calls and messages 24 hours a day, every day.");
   assert.deepEqual([...$("cf-help", cf).querySelectorAll("a")].map((a) => a.getAttribute("href")), ["tel:+16467750556", "https://wa.me/16467750556"]);
   assert.deepEqual([...$("cf-help", cf).querySelectorAll("span.nowrap")].map((n) => n.textContent), ["24 hours"], "24 hours stays whole, as on every other page");

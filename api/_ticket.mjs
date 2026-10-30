@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { norm, ZONES } from "./_places.mjs";
 import { googleMock } from "./_http.mjs";
 
-export const TICKET = /^v1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
+export const TICKET = /^v1\.[A-Za-z0-9_-]{20,506}\.[A-Za-z0-9_-]{43}$/;
 export const ROUTE = /^r1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
 export const TICKET_TTL = 21600;
 const INFO = "nlr place ticket v1";
@@ -36,10 +36,10 @@ export function proofOk(id, label, proof) {
   return timingSafeEqual(Buffer.from(proof), Buffer.from(proofMac(key, id, label)));
 }
 
-export function signTicket(id, zone, label, now) {
+export function signTicket(id, zone, label, now, area = false) {
   const key = ticketKey();
   if (!key) return "";
-  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000) })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(area && { a: 1 }) })).toString("base64url");
   const ticket = `v1.${payload}.${mac(key, payload)}`;
   return TICKET.test(ticket) ? ticket : "";
 }
@@ -60,7 +60,7 @@ export function verifyTicket(ticket, label, now) {
   if (!ZONES.includes(data.z) || data.z === "unknown") return null;
   if (label !== null && data.h !== labelHash(label)) return null;
   const age = Math.floor(Number(now) / 1000) - data.t;
-  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S };
+  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S, ...(data.a === 1 && { area: true }) };
 }
 
 const routeMac = (key, payload) => createHmac("sha256", key).update(`r1.${payload}`).digest("base64url");

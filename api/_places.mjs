@@ -57,6 +57,7 @@ const ZIP_TAIL = "\\s+\\d{5}(?:-\\d{4})?";
 const AFTER_COMMA = new RegExp(`,\\s*(?:${STATE_CODES.split(" ").join("|")}|${STATE_NAMES})(?=$|,|${ZIP_TAIL}(?:$|,))`);
 const BEFORE_ZIP = new RegExp(`(?:^|[\\s,])(?:${STATE_CODES.split(" ").filter((code) => !WORD_CODES.includes(code)).join("|")})${ZIP_TAIL}(?![\\d-])`);
 const LAST_ZIP = /(?:^|\D)(\d{5})(?:-\d{4})?$/;
+const NYC_TAIL = /(?:^|\D)(\d{5})(?:-\d{4})?(?:[\s,]+(?:ny|new york|nyc|new york city))+$/;
 const STREET_WORDS = "ave|avenue|av|blvd|boulevard|st|street|rd|road|pl|place|plaza|pkwy|parkway|expy|expressway|dr|drive|ln|lane|ct|court|ter|terrace|bridge|beach|college|mall|crossing|center|centre";
 const BOROUGH_WORDS = new RegExp(`(?:^|[^a-z0-9'])(the bronx|bronx|manhattan|brooklyn|queens|staten island)(?![a-z0-9'])(?!\\s+(?:${STREET_WORDS})(?![a-z0-9']))`, "g");
 const BOROUGH_ZONES = { manhattan: "manhattan", brooklyn: "brooklyn", queens: "queens", bronx: "bronx", "the bronx": "bronx", "staten island": "staten-island" };
@@ -67,6 +68,9 @@ const SUB_ZONES = { Manhattan: "manhattan", Brooklyn: "brooklyn", Queens: "queen
 const TEB_NAMES = ["teterboro airport", "(teb)", "atlantic aviation", "jet aviation", "signature aviation", "flexjet"];
 const EWR_GROUNDS = /Newark Liberty|\bEWR\b|\bBrewster R(?:oa)?d\b/i;
 const TEB_GROUNDS = /\bFred Wehran\b|\bLindbergh Dr(?:ive)?\b|^(?:233|485) Industrial Ave/i;
+const AREA_TAIL = new RegExp(`(?:(?:^| )(?:usa|us|united states|ny|new york city|new york|nyc|${STATE_CODES.split(" ").join("|")}|${STATE_NAMES}|\\d{5}(?: \\d{4})?))+$`);
+const AREA_NAME = /^(?:(?:borough of )?(?:manhattan|brooklyn|queens|(?:the )?bronx|staten island)(?: borough)?|(?:[a-z']+ ){1,2}county)?$/;
+const CITY_ZONES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 
 export const norm = (text) =>
   String(text ?? "")
@@ -85,6 +89,11 @@ export const lite = (text) =>
     .trim()
     .replace(/(?:,\s*|\s+)(?:usa|us|united states(?: of america)?)$/, "")
     .trim();
+
+export const areaText = (text) => AREA_NAME.test(norm(text).replace(AREA_TAIL, ""));
+const cityText = (plain) => CITY_STATE.test(plain) || (plain.match(/[\s,]\d{5}(?!\d)/g) || []).some((zip) => CITY_ZONES.includes(zipBorough(zip.slice(1))));
+const hasBorough = (text) => [...lite(text).matchAll(BOROUGH_WORDS)].length > 0;
+export const routeText = (text, zone) => (!CITY_ZONES.includes(zone) || /\b\d{5}\b|\bny\b|new york|\bnyc\b/i.test(text) ? text : hasBorough(text) ? `${text}, NY` : `${text}, ${AREA_LABELS[zone]}, NY`);
 
 const BY_ID = new Map(PLACE_LIST.map((row) => [row.id, row]));
 const BY_NAME = new Map();
@@ -105,21 +114,35 @@ export function zipBorough(zip) {
   return "outside";
 }
 
+function airportPart(part) {
+  const coded = / (jfk|lga|ewr|teb)$/.exec(part);
+  const hit = BY_NAME.get(coded ? part.slice(0, coded.index) : part);
+  if (!hit || !AIRPORT_ZONES.includes(hit.zone) || (coded && hit.zone !== coded[1])) return null;
+  return coded || /\b(?:airport|international)\b/.test(part) ? hit : null;
+}
+
 export function classifyText(text) {
   const key = norm(text);
   const exact = BY_NAME.get(key);
   if (exact) return { zone: exact.zone, id: exact.id };
   const head = BY_NAME.get(norm(String(text ?? "").split(",")[0]));
   if (head) return { zone: head.zone, id: head.id };
+  for (const part of String(text ?? "").split(",")) {
+    const hit = airportPart(norm(part));
+    if (hit) return { zone: hit.zone, id: hit.id };
+  }
   const words = ` ${key} `;
   if (words.includes(" 11430 ") && /\s(?:jfk|kennedy)\s/.test(words)) return { zone: "jfk", id: "jfk" };
   if (words.includes(" 11371 ") && /\s(?:lga|laguardia|la guardia)\s/.test(words)) return { zone: "lga", id: "lga" };
   if (words.includes(" 07114 ") && /\s(?:ewr|newark liberty|newark airport|newark international)\s/.test(words)) return { zone: "ewr", id: "ewr" };
   if (words.includes(" 07608 ") && /\s(?:teb|teterboro airport|aviation)\s/.test(words)) return { zone: "teb", id: "teb" };
   const plain = lite(text);
-  if (AFTER_COMMA.test(plain) || BEFORE_ZIP.test(plain)) return { zone: "outside", id: "" };
-  const zip = LAST_ZIP.exec(plain);
-  if (zip) return { zone: zipBorough(zip[1]) || "unknown", id: "" };
+  if (AFTER_COMMA.test(plain) || BEFORE_ZIP.test(plain)) return { zone: cityText(plain) ? "unknown" : "outside", id: "" };
+  const zip = LAST_ZIP.exec(plain) || NYC_TAIL.exec(plain);
+  if (zip) {
+    const zone = zipBorough(zip[1]) || "unknown";
+    return { zone: zone === "outside" && cityText(plain) ? "unknown" : zone, id: "" };
+  }
   const boroughs = [...plain.matchAll(BOROUGH_WORDS)];
   if (boroughs.length) return { zone: BOROUGH_ZONES[boroughs[boroughs.length - 1][1]], id: "" };
   if (CITY_STATE.test(plain)) return { zone: "manhattan", id: "" };

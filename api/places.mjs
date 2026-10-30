@@ -2,6 +2,8 @@ import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.
 import { AREA_LABELS, AIRPORT_ZONES, classifyText, classifyPlace, localById } from "./_places.mjs";
 import { googleOn, mapOn, mapJsOn, autocomplete, placeDetails, reverseGeocode, geocodeAddress, geocodePlace, spot } from "./_google.mjs";
 import { signTicket, verifyTicket, placeProof, proofOk } from "./_ticket.mjs";
+import { airportZip } from "./_trip.mjs";
+import { LABELS, REASONS } from "./_copy.mjs";
 
 const LIMIT = 1024;
 const SESSION = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -36,7 +38,7 @@ async function suggest(request, data) {
   const input = clean(data.input, LIMIT);
   if (length(input) < 3 || length(input) > MAX_TEXT || !SESSION.test(raw(data.session))) return bad();
   const { zone } = classifyText(input);
-  const typed = { zone, area: AREA_LABELS[zone] };
+  const typed = zone === "unknown" && airportZip(input) ? { zone, area: LABELS.airportZip, hint: REASONS["airport-zip"].text } : { zone, area: AREA_LABELS[zone] };
   if (!googleOn()) return json(200, { kind: "ok", google: false, items: [], typed });
   if (!clientBudget(request, "places-suggest", SUGGEST_IP) || !instanceBudget("places-suggest", SUGGEST_INSTANCE)) return busy();
   const result = await autocomplete(input, data.session);
@@ -67,7 +69,9 @@ async function pick(request, data) {
     console.error("places-pick", "label");
     return json(200, { kind: "error" });
   }
-  const ticket = signTicket(id, zone, label, Date.now());
+  const types = kinds(result.details);
+  const area = types.some((type) => /^(?:sublocality|administrative_area_level_)/.test(type) || type === "locality" || type === "postal_code") && !types.some((type) => ADDRESS_TYPES.includes(type));
+  const ticket = signTicket(id, zone, label, Date.now(), area);
   if (!ticket) {
     console.error("places-pick", "ticket");
     return json(200, { kind: "error" });

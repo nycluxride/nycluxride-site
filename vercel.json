@@ -93,6 +93,16 @@
       "statusCode": 301
     },
     {
+      "source": "/airports/jfk-limo",
+      "destination": "/locations/jfk-airport",
+      "statusCode": 301
+    },
+    {
+      "source": "/airports/ewr-limo",
+      "destination": "/locations/newark-airport",
+      "statusCode": 301
+    },
+    {
       "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "nycluxride-site.vercel.app" }],
       "destination": "https://www.nycluxride.com/:path",

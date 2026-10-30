@@ -216,8 +216,8 @@ test("the taxes line and the hourly caption show both percents of api/_rates.mjs
   assert.deepEqual(percents.filter((p) => !allowed.has(p)), []);
 });
 
-test("tolls and airport fees are included on airport transfers and billed after hourly rides and trips priced by distance and time", () => {
-  assert.equal(facts["Tolls and airport fees"], "Included on airport transfers. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking");
+test("tolls and airport fees are included on airport transfers to or from a New York City address and billed after hourly rides and trips priced by distance and time", () => {
+  assert.equal(facts["Tolls and airport fees"], "Included on airport transfers to or from a New York City address. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking");
   assert.equal(facts["Extra stops"], "On airport transfers, charged after the ride to the card saved at booking");
   assert.equal(facts.Tolls, undefined);
 });
@@ -269,7 +269,7 @@ test("the distance and time table has one row per class with a rate, in CLASSES 
     assert.equal(squash(cell), `${dollars(base)} base, $${(mile / 100).toFixed(2)} per mile, $${(minute / 100).toFixed(2)} per minute, ${dollars(minimum)} minimum`, cls);
     assert.equal(cell.querySelectorAll("span.nowrap").length, 4, cls);
   }
-  assert.equal(squash(page.querySelector("#distance-rates tfoot tr:last-child td")), copy.REASONS["sprinter-distance"].text);
+  assert.deepEqual([...page.querySelectorAll("#distance-rates tfoot tr")].slice(1).map(squash), [copy.REASONS["sprinter-distance"].text, copy.REASONS["sprinter-outside"].text]);
 });
 
 test("the distance worked example is base plus miles plus minutes from api/_trip.mjs distanceFare, with the tax and Black Car Fund of api/_rates.mjs", () => {
@@ -286,10 +286,27 @@ test("the distance section says how the price is built and that tolls and parkin
   const prose = squash(page.querySelector("#distance .prose"));
   assert.ok(prose.includes("One-way trips that don't start or end at an airport are priced by distance and time, to or from any address in the five boroughs."), prose);
   assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
+  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Our dispatch team prices long trips."), prose);
   assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
   const note = squash(page.querySelector("#distance-caption .rate-table__note"));
   assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));
   assert.ok(note.includes(`NYC sales tax (${NYC_TAX_PERCENT}%)`) && note.includes(`Black Car Fund (${BCF_PERCENT}%)`) && note.endsWith("Tolls and parking are charged after the ride."), note);
+});
+
+test("the airport section and the distance caption say that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City pays the airport fare or the distance and time fare, whichever is higher, as api/_trip.mjs prices it", () => {
+  assert.deepEqual([...page.querySelectorAll("#airport .prose p")].map(squash), [
+    "Each transfer is a one-way, flat-rate ride to or from any address in the five boroughs. We track your flight and move the pickup if it lands early or late. The price stays the same.",
+    "To or from an address outside New York City, the fare is the airport fare or the fare by distance and time, whichever is higher. Tolls and parking for those trips are charged after the ride. Our dispatch team prices long trips and Luxury Sprinter trips to or from those addresses.",
+  ]);
+  assert.equal(squash(page.querySelector('#airport .prose a[href="#distance"]')), "fare by distance and time");
+  assert.equal(own(page.getElementById("distance-caption")), "One way trips priced by distance and time, by vehicle class.");
+  for (const cls of DISTANCE_KEYS) {
+    for (const airport of AIRPORT_PLACES) {
+      assert.equal(trip.priceDistance(cls, { tenths: 0, minutes: 0 }, airport).fare, AIRPORT_FARES[cls][airport], `${cls} ${airport}`);
+      assert.equal(trip.priceDistance(cls, { tenths: 600, minutes: 180 }, airport).fare, trip.distanceFare(cls, 600, 180), `${cls} ${airport}`);
+      assert.equal(trip.priceDistance(cls, { tenths: 600, minutes: 180 }, airport).tolls, 0, `${cls} ${airport}`);
+    }
+  }
 });
 
 test("every $ figure in the four rate tables is reproducible from the config", () => {

@@ -1,11 +1,11 @@
 import { MAX_STOPS } from "./_rates.mjs";
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
-import { localById, classifyText } from "./_places.mjs";
+import { localById, classifyText, routeText } from "./_places.mjs";
 import { verifyTicket, routeKey, signRoute } from "./_ticket.mjs";
 import { googleOn, computeRoute, mapSize, routeMap } from "./_google.mjs";
 import { nycToUtc, validDate } from "./_trip.mjs";
 
-const LIMIT = 1024;
+const LIMIT = 3072;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const ROUTE_IP = 10;
 const ROUTE_INSTANCE = 60;
@@ -34,7 +34,7 @@ function waypoint(end, now) {
     const text = placeText(end.text);
     const { zone, id } = classifyText(text);
     const row = localById(id);
-    return row ? rowPoint(row) : zone === "unknown" ? null : { address: text };
+    return row ? rowPoint(row) : zone === "unknown" ? null : { address: routeText(text, zone) };
   }
   if (typeof end.id === "string") {
     const row = localById(end.id);
