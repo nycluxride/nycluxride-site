@@ -4,6 +4,8 @@ export const HEADINGS = {
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
+  "street-address": { group: "price", text: "Add the street address to see the price.", google: "Add the street address, or pick it from the list, to see the price." },
+  "airport-zip": { group: "price", text: "This address is in an airport ZIP code. For the airport itself, type its name, like JFK or Newark Liberty (EWR), to see the price. Our dispatch team prices other trips here." },
   "stop-leg": { group: "price", text: "Our dispatch team prices trips with stops, unless each part is between JFK, LaGuardia, Newark or Teterboro and a New York City address." },
   "airport-to-airport": { group: "price", text: "Our dispatch team prices trips between two airports." },
   "no-airport": { group: "price", text: "We can't price this trip online right now. Our dispatch team prices it. You can also book by the hour and pay now.", short: "We can't price this trip online right now. Our dispatch team prices it." },
@@ -15,11 +17,12 @@ export const REASONS = {
   "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, our dispatch team prices it." },
   "sprinter-hourly": { group: "price", text: "Our dispatch team prices Luxury Sprinter bookings by the hour." },
   "sprinter-distance": { group: "price", text: "Our dispatch team prices Luxury Sprinter trips that don't start or end at an airport." },
+  "sprinter-outside": { group: "price", text: "Our dispatch team prices Luxury Sprinter trips between an airport and an address outside New York City." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
-  "clock-change": { group: "phone", text: "The clocks change at this hour. This pickup time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
+  "clock-change": { group: "phone", text: "The clocks change at this hour. A pickup or return at this time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
   "short-notice": { group: "phone", text: "For a pickup within the next hour, email info@nycluxride.com or message us on WhatsApp." },
-  "far-ahead": { group: "phone", text: "For a pickup more than a year from now, email info@nycluxride.com or message us on WhatsApp." },
+  "far-ahead": { group: "phone", text: "For a pickup or return more than a year from now, email info@nycluxride.com or message us on WhatsApp." },
 };
 export const ERROR_BLOCK = { group: "phone", text: "Online payment isn't available right now. Send us the trip and we'll reply with a payment link." };
 export const ERRORS = {
@@ -51,6 +54,7 @@ export const POLICY = {
   later: {
     airport: "After the ride, only waiting beyond the free window, extra stops and parking are charged to your card, each on an itemized receipt.",
     hourly: "After the ride, tolls and parking are charged to your card, each on an itemized receipt.",
+    outside: "After the ride, waiting beyond the free window, tolls and parking are charged to your card, each on an itemized receipt.",
   },
 };
 const INCLUDED = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included.";
@@ -80,12 +84,14 @@ export const LABELS = {
   legs: "{class}, {legs} airport transfers",
   distance: "{class}, {miles} miles and {minutes} min",
   distanceLegs: "{class}, {legs} rides, {miles} miles and {minutes} min",
+  airportZip: "Airport ZIP code",
 };
 export const CHECKOUT = {
   terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, extra stops, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.",
   submit: "Today you pay the total shown: the fare, NYC sales tax, the Black Car Fund, tolls and airport fees, meet and greet if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, extra stops and parking are charged to this card, with an itemized receipt.",
   submitHourly: "Today you pay the hourly fare, NYC sales tax, the Black Car Fund, meet and greet if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
   submitDistance: "Today you pay the fare, NYC sales tax, the Black Car Fund and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
+  submitOutside: "Today you pay the fare, NYC sales tax, the Black Car Fund, meet and greet if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.",
   license: "Licensed by the NYC Taxi and Limousine Commission, base license {license}.",
   afterSubmit: "We confirm your car and chauffeur in writing before your ride. To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference {ref}.",
 };

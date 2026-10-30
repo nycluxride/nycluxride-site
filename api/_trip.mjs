@@ -27,7 +27,7 @@ import {
   CONTACT,
 } from "./_rates.mjs";
 import { LABELS, NOTES, POLICY, MESSAGE } from "./_copy.mjs";
-import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, localById } from "./_places.mjs";
+import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, localById, areaText, routeText } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
 import { googleOn, placeDetails, computeRoute } from "./_google.mjs";
@@ -37,6 +37,7 @@ const ENDS = ["from", "stop1", "stop2", "to"];
 const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
+const ROUTED = ["no-airport", "outside-city"];
 const NONCE = /^[A-Za-z0-9-]{16,64}$/;
 const FLIGHT = /^[A-Za-z0-9 -]{1,20}$/;
 const EMAIL = /^[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
@@ -46,7 +47,7 @@ const INTEGER = /^\d+$/;
 const MILES = /^\d+\.\d$/;
 const LOCAL_ID = /^[a-z0-9-]{2,24}$/;
 const MAX_TEXT = 200;
-const MAX_TICKET = 520;
+const MAX_TICKET = 553;
 const PICK_IP = 15;
 const PICK_INSTANCE = 100;
 const PLACE_ZONES = 1000;
@@ -73,6 +74,8 @@ const NEW_YORK = new Intl.DateTimeFormat("en-US", {
 const has = (object, key) => typeof key === "string" && Object.prototype.hasOwnProperty.call(object, key);
 const canonical = (text) => (INTEGER.test(text) ? String(Number(text)) : text);
 const tipAmountOk = (amount) => INTEGER.test(amount) && Number(amount) * 100 >= TIP_CUSTOM.min && Number(amount) * 100 <= TIP_CUSTOM.max;
+export const airportZip = (text) => (text.match(/\b\d{5}\b/g) || []).some((zip) => DISTANCE_SKIP_ZIPS.includes(zip));
+const unplaced = (text) => (airportZip(text) ? "airport-zip" : "unplaced");
 const line = (label, cents) => ({ label, cents });
 const taxLabel = () => fill(LABELS.tax, { percent: NYC_TAX_PERCENT });
 const bcfLabel = () => fill(LABELS.bcf, { percent: BCF_PERCENT });
@@ -246,10 +249,10 @@ export async function resolveEnd(end, trip, context = {}) {
   if (!text) return null;
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const ticket = trip[`${end}_ticket`] ? verifyTicket(trip[`${end}_ticket`], text, now) : null;
-  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "" };
+  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
   if (ticket && googleOn()) {
     const known = placeZones.get(ticket.id);
-    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "" };
+    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
     const allowed = (!context.request || clientBudget(context.request, "places-pick", PICK_IP)) && instanceBudget("places-pick", PICK_INSTANCE);
     const result = allowed ? await placeDetails(ticket.id, "") : { ok: false, status: 429 };
     if (result.ok) {
@@ -257,14 +260,14 @@ export async function resolveEnd(end, trip, context = {}) {
       placeZones.delete(ticket.id);
       placeZones.set(ticket.id, { zone, until: now + TICKET_TTL * 1000 });
       if (placeZones.size > PLACE_ZONES) placeZones.delete(placeZones.keys().next().value);
-      return { text, zone, place: ticket.id, id: "" };
+      return { text, zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
     }
     console.error("places-pick", result.status);
   }
   const row = localById(trip[`${end}_id`]);
   if (row && norm(row.label) === norm(text)) return { text, zone: row.zone, place: row.id, id: row.id };
   const { zone, id } = classifyText(text);
-  return { text, zone, place: id, id };
+  return { text, zone, place: id, id, ...(areaText(text) && { area: true }) };
 }
 
 export async function resolveTrip(trip, context = {}) {
@@ -295,7 +298,7 @@ export async function resolveTrip(trip, context = {}) {
 function waypointOf(end) {
   const row = end.id ? localById(end.id) : null;
   if (row) return row.gid ? { placeId: row.gid } : { address: row.addr };
-  return end.place ? { placeId: end.place } : { address: end.text };
+  return end.place ? { placeId: end.place } : { address: routeText(end.text, end.zone) };
 }
 
 async function rideOf(from, to, departure, known, context, now) {
@@ -319,10 +322,11 @@ async function rideOf(from, to, departure, known, context, now) {
 async function driveTrip(trip, token, context) {
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const check = checkTrip(trip, now, OPEN);
-  if (check.kind !== "quote" || check.reason !== "no-airport") return trip;
-  if ([trip.ends.from, trip.ends.to].some((end) => (end.text.match(/\b\d{5}\b/g) || []).some((zip) => DISTANCE_SKIP_ZIPS.includes(zip)))) return trip;
-  if (![trip.from, trip.to].some((zone) => DISTANCE_AREAS.includes(zone))) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "outside-trip" })) };
+  if (check.kind !== "quote" || !ROUTED.includes(check.reason)) return trip;
+  if ([trip.ends.from, trip.ends.to].some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
+  if (check.reason === "no-airport" && ![trip.from, trip.to].some((zone) => DISTANCE_AREAS.includes(zone))) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "outside-trip" })) };
   if (!googleOn()) return trip;
+  if ([trip.ends.from, trip.ends.to].some((end) => end.area)) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "street-address" })) };
   const known = readRoute(token, now);
   const ends = [waypointOf(trip.ends.from), waypointOf(trip.ends.to)];
   const rides = await Promise.all(
@@ -344,6 +348,7 @@ async function driveTrip(trip, token, context) {
 export const withinLimits = ({ tenths, minutes }) => tenths <= DISTANCE_LIMITS.miles * 10 && minutes <= DISTANCE_LIMITS.minutes;
 const distanceTrip = (trip) => trip.trip_type === "one" && Array.isArray(trip.legs) && trip.legs.length > 0 && trip.legs.every((item) => item.ride && !item.reason);
 export const serviceOf = (trip) => (trip.trip_type === "hour" ? "hourly" : distanceTrip(trip) ? "distance" : "airport");
+export const airportDistance = (trip) => distanceTrip(trip) && trip.legs.some((item) => item.airport);
 
 function vehicleFor(trip, cls) {
   if (cls === trip.class && has(VEHICLES, trip.vehicle)) return trip.vehicle;
@@ -354,21 +359,21 @@ function vehicleFor(trip, cls) {
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
   if (trip.trip_type === "hour" && VEHICLES[vehicleFor(trip, cls)].hourly === null) return "sprinter-hourly";
-  if (distanceTrip(trip) && !has(DISTANCE_RATES, cls)) return "sprinter-distance";
+  if (distanceTrip(trip) && !has(DISTANCE_RATES, cls)) return trip.legs[0].airport ? "sprinter-outside" : "sprinter-distance";
   if (Number(trip.passengers) > CLASSES[cls].seats) return "seats";
   return "";
 }
 
 function spatialReason(trip) {
   if (trip.trip_type === "hour") {
-    if (trip.from === "unknown") return { reason: "unplaced", field: "from_text" };
+    if (trip.from === "unknown") return { reason: unplaced(trip.from_text), field: "from_text" };
     if (!HOURLY_START.includes(trip.from)) return { reason: "outside-hourly", field: "" };
     const hours = Number(trip.hours);
     if (hours < HOURS.min || hours > HOURS.max) return { reason: "hours-range", field: "" };
     return null;
   }
   const ends = endsOf(trip);
-  for (const name of ENDS) if (ends[name] && ends[name].zone === "unknown") return { reason: "unplaced", field: `${name}_text` };
+  for (const name of ENDS) if (ends[name] && ends[name].zone === "unknown") return { reason: unplaced(ends[name].text), field: `${name}_text` };
   const legs = trip.legs || legsOf(trip);
   if (!legs.length) return { reason: "unplaced", field: "from_text" };
   const unpriced = legs.find((item) => item.reason);
@@ -399,7 +404,7 @@ export function checkTrip(trip, now, settings) {
   if (!validDate(trip.date) || !TIME.test(trip.time)) return invalid("date");
   const current = Number(now);
   const pickup = nycToUtc(trip.date, trip.time).getTime();
-  if (pickup <= current) return invalid("date-past");
+  if ((wallTime(pickup + HOUR_MS) === `${trip.date} ${trip.time}` ? pickup + HOUR_MS : pickup) <= current) return invalid("date-past");
   if (one && trip.return) {
     if (!validDate(trip.return_date) || !TIME.test(trip.return_time)) return invalid("return-date");
     if (nycToUtc(trip.return_date, trip.return_time).getTime() <= pickup) return invalid("return-date");
@@ -467,8 +472,8 @@ export function distanceFare(cls, tenths, minutes) {
   return Math.max(rate.minimum, rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute);
 }
 
-export function priceDistance(cls, { tenths, minutes }) {
-  const fare = distanceFare(cls, tenths, minutes);
+export function priceDistance(cls, { tenths, minutes }, airport) {
+  const fare = Math.max(distanceFare(cls, tenths, minutes), airport ? AIRPORT_FARES[cls][airport] : 0);
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { fare, tax, bcf, tolls: 0, total: fare + tax + bcf };
@@ -492,7 +497,7 @@ export function priceTrip(trip, settings) {
   const tipPercent = Number(trip.tip) || 0;
   const service = serviceOf(trip);
   const plain = service === "airport";
-  const legs = hourly ? [] : (trip.legs || legsOf(trip)).map((item) => (item.ride ? priceDistance(trip.class, item.ride) : priceLeg(trip.class, item.airport)));
+  const legs = hourly ? [] : (trip.legs || legsOf(trip)).map((item) => (item.ride ? priceDistance(trip.class, item.ride, item.airport) : priceLeg(trip.class, item.airport)));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
   const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
   const tax = hourly ? percentCents(fare, NYC_TAX_PERCENT) : sum("tax");
@@ -516,7 +521,7 @@ export function priceTrip(trip, settings) {
     total: fare + tax + bcf + tolls + meet + tip,
     value: fare + meet,
     lines,
-    notes: plain ? [NOTES.included, POLICY.later.airport] : [POLICY.later.hourly],
+    notes: plain ? [NOTES.included, POLICY.later.airport] : [airportDistance(trip) ? POLICY.later.outside : POLICY.later.hourly],
     service,
   };
 }
@@ -660,6 +665,6 @@ export function receipt(metadata, settings, taxCents) {
     summary: !known ? "" : validDate(data.return_date || "") && TIME.test(data.return_time || "") ? fill(LABELS.summaryReturn, { date: formatDate(data.date), time: formatTime(data.time), rdate: formatDate(data.return_date), rtime: formatTime(data.return_time), service }) : fill(LABELS.summary, { date: formatDate(data.date), time: formatTime(data.time), service }),
     lines,
     value: cents("fare_cents") + cents("meet_cents"),
-    notes: hourly || distance ? [POLICY.later.hourly] : [NOTES.included, POLICY.later.airport],
+    notes: distance && AIRPORT_PLACES.includes(data.airport) ? [POLICY.later.outside] : hourly || distance ? [POLICY.later.hourly] : [NOTES.included, POLICY.later.airport],
   };
 }

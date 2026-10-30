@@ -24,8 +24,8 @@ import {
   classTotal,
 } from "../api/_trip.mjs";
 import { ERRORS, REASONS, NOTES, POLICY } from "../api/_copy.mjs";
-import { MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_AREAS, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS } from "../api/_rates.mjs";
-import { ROUTE, routeKey, signRoute, readRoute } from "../api/_ticket.mjs";
+import { MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_AREAS, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS, AIRPORT_FARES, AIRPORT_PLACES } from "../api/_rates.mjs";
+import { ROUTE, routeKey, signRoute, readRoute, signTicket } from "../api/_ticket.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
@@ -271,6 +271,11 @@ await test("a return pickup on a blackout date is paused, in the clock change ho
   await isHold({ ...back, date: "2027-09-25", return_date: "2027-10-02", return_time: "18:00" }, "far-ahead");
 });
 
+await test("in the second pass of the repeated hour when the clocks go back, a pickup later in that hour gets the clock-change hold and not date-past, and a time already passed is date-past", async () => {
+  for (const [now, time] of [["2026-11-01T05:10:00.000Z", "01:45"], ["2026-11-01T06:10:00.000Z", "01:45"], ["2026-11-01T06:10:00.000Z", "01:15"], ["2026-11-01T06:50:00.000Z", "01:55"]]) await isHold({ ...BASE, date: "2026-11-01", time }, "clock-change", ON, new Date(now));
+  for (const [now, date, time] of [["2026-11-01T06:10:00.000Z", "2026-11-01", "01:05"], ["2026-11-01T06:10:00.000Z", "2026-11-01", "00:50"], ["2027-03-14T07:40:00.000Z", "2027-03-14", "02:30"], ["2026-11-02T06:10:00.000Z", "2026-11-02", "01:05"]]) await isError({ ...BASE, date, time }, "date-past", ON, new Date(now));
+});
+
 await test("short-notice within 1 hour of the earliest pickup, far-ahead beyond 365 days", async () => {
   await isHold({ ...BASE, date: "2026-10-01", time: "12:10" }, "short-notice");
   await isHold({ ...BASE, date: "2026-10-01", time: "12:59" }, "short-notice");
@@ -447,12 +452,14 @@ await test("the flight is kept only at an airport pickup, the return flight only
 });
 
 await test("strings are cleaned and cut to 200 code points, ids must match the id pattern, tickets the ticket pattern", () => {
-  const trip = readInput({ ...BASE, from_text: `  ${"A".repeat(250)}  `, passengers: " 02 ", from_id: "JFK", to_id: "a".repeat(25), from_ticket: "v1.short.mac", to_ticket: `v1.${"a".repeat(480)}.${"b".repeat(43)}` });
+  const trip = readInput({ ...BASE, from_text: `  ${"A".repeat(250)}  `, passengers: " 02 ", from_id: "JFK", to_id: "a".repeat(25), from_ticket: "v1.short.mac", to_ticket: `v1.${"a".repeat(507)}.${"b".repeat(43)}` });
   assert.equal(trip.from_text, "A".repeat(200));
   assert.equal(trip.passengers, "2");
   assert.deepEqual([trip.from_id, trip.to_id, trip.from_ticket, trip.to_ticket], ["", "", "", ""]);
   const good = `v1.${"a".repeat(40)}.${"b".repeat(43)}`;
   assert.equal(readInput({ ...BASE, from_ticket: good }).from_ticket, good);
+  const longest = `v1.${"a".repeat(506)}.${"b".repeat(43)}`;
+  assert.deepEqual([longest.length, readInput({ ...BASE, to_ticket: longest }).to_ticket], [553, longest]);
   assert.equal(readInput({ ...BASE, from_id: "jfk-t4" }).from_id, "jfk-t4");
   assert.equal(readInput({ ...BASE, from_text: "350 Fifth Avenue\ud800" }).from_text, "350 Fifth Avenue");
   assert.equal(readInput({ ...BASE, from_text: "a\nb\u202ec\u2066d\u0000e" }).from_text, "a b c d e");
@@ -686,7 +693,7 @@ await test("each ride of a return trip of that kind is priced from its own route
   });
 });
 
-await test("guardrails: both ends outside the five boroughs is outside-trip, over the limits is long-trip, no route keeps the no-airport request, airports and stops keep their rules", async () => {
+await test("guardrails: both ends outside the five boroughs is outside-trip, over the limits is long-trip, no route keeps the no-airport request, airports and stops keep their rules, and an airport to an address outside New York City pays at least the airport fare", async () => {
   await withMock(async () => {
     await isQuote({ ...RIDE, from_text: "Hoboken, NJ 07030", to_text: GREENWICH }, "outside-trip");
     await isQuote({ ...RIDE, to_text: MONTAUK }, "long-trip");
@@ -694,7 +701,8 @@ await test("guardrails: both ends outside the five boroughs is outside-trip, ove
     await isQuote({ ...RIDE, stop1_text: PARK }, "stop-leg");
     assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
     assert.equal((await priced({ ...FROM_JFK, to_text: BROOKLYN })).total, AIRPORT_TOTALS.suv.jfk);
-    await isQuote({ ...FROM_JFK, to_text: "Hoboken, NJ 07030" }, "outside-city");
+    const hoboken = await priced({ ...FROM_JFK, to_text: "Hoboken, NJ 07030" });
+    assert.deepEqual([pairs(hoboken.lines), hoboken.tolls, hoboken.total, hoboken.service], [[["Fare", AIRPORT_FARES.suv.jfk], ["NYC sales tax (8.875%)", 1376], ["Black Car Fund (2.25%)", 349]], 0, 17225, "distance"]);
     assert.equal((await priced({ ...HOURLY, from_text: BROOKLYN })).total, 28337);
   });
   await isQuote(RIDE, "no-airport");
@@ -711,14 +719,14 @@ await test("guardrails: both ends outside the five boroughs is outside-trip, ove
   }
 });
 
-await test("an airport typed as a street address with its ZIP code keeps the no-airport request and never gets a distance price", async () => {
+await test("an airport typed as a street address with its ZIP code gets the airport ZIP code request and never gets a distance price", async () => {
   await withMock(async () => {
     for (const text of ["3 Brewster Rd, Newark, NJ 07114", "Terminal B, Newark, NJ 07114", "3 Brewster Rd, Newark, NJ 07114-3709", "111 Industrial Ave, Teterboro, NJ 07608"]) {
-      await isQuote({ ...RIDE, to_text: text }, "no-airport");
-      await isQuote({ ...RIDE, from_text: text, to_text: MANHATTAN }, "no-airport");
-      await isQuote({ ...RIDE, to_text: text, return: "1", return_date: "2026-10-18", return_time: "18:00" }, "no-airport");
+      await isQuote({ ...RIDE, to_text: text }, "airport-zip");
+      await isQuote({ ...RIDE, from_text: text, to_text: MANHATTAN }, "airport-zip");
+      await isQuote({ ...RIDE, to_text: text, return: "1", return_date: "2026-10-18", return_time: "18:00" }, "airport-zip");
       const { trip } = await run({ ...RIDE, to_text: text });
-      assert.deepEqual([trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["", [["no-airport", undefined]]], text);
+      assert.deepEqual([trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["", [["airport-zip", undefined]]], text);
     }
     assert.equal((await priced({ ...RIDE, to_text: "12 Washington St, Hoboken, NJ 07030", class: "suv" })).service, "distance");
     assert.equal((await priced({ ...BASE, to_text: "Newark Liberty International Airport, 3 Brewster Rd, Newark, NJ 07114", to_id: "" })).total, AIRPORT_TOTALS.suv.ewr);
@@ -728,12 +736,31 @@ await test("an airport typed as a street address with its ZIP code keeps the no-
   const calls = [];
   globalThis.fetch = async (url) => (calls.push(String(url)), new Response("{}", { status: 503 }));
   try {
-    await isQuote({ ...RIDE, to_text: "3 Brewster Rd, Newark, NJ 07114", date: "2026-10-21" }, "no-airport");
+    await isQuote({ ...RIDE, to_text: "3 Brewster Rd, Newark, NJ 07114", date: "2026-10-21" }, "airport-zip");
     assert.deepEqual(calls, []);
   } finally {
     globalThis.fetch = fetch;
     delete process.env.GOOGLE_MAPS_SERVER_KEY;
   }
+  await isQuote({ ...RIDE, to_text: "3 Brewster Rd, Newark, NJ 07114" }, "airport-zip");
+});
+
+await test("an address typed in the JFK or LaGuardia ZIP code without the airport's name gets the airport ZIP code request on that end, one way and by the hour, while the airport typed with its ZIP code keeps its flat rate and other unknown text keeps the ZIP code request", async () => {
+  for (const [fields, field] of [[{ ...BASE, to_text: "TWA Hotel, One Idlewild Dr, Jamaica, NY 11430", to_id: "" }, "to_text"], [{ ...BASE, to_text: "Terminal B, East Elmhurst, NY 11371", to_id: "" }, "to_text"], [{ ...FROM_JFK, from_text: "Queens, NY 11430", from_id: "" }, "from_text"], [{ ...BASE, stop1_text: "1 Idlewild Dr, 11430-1234" }, "stop1_text"], [{ ...HOURLY, from_text: "TWA Hotel, One Idlewild Dr, Jamaica, NY 11430" }, "from_text"]]) {
+    await isQuote(fields, "airport-zip", field);
+  }
+  assert.equal((await priced({ ...BASE, to_text: "TWA Hotel at JFK, Jamaica, NY 11430", to_id: "" })).total, AIRPORT_TOTALS.suv.jfk);
+  assert.equal((await priced({ ...BASE, to_text: "LaGuardia Airport, East Elmhurst, NY 11371", to_id: "" })).total, AIRPORT_TOTALS.suv.lga);
+  await isQuote({ ...BASE, to_text: "The Plaza Hotel", to_id: "" }, "unplaced", "to_text");
+  await isQuote({ ...HOURLY, from_text: "The Plaza Hotel" }, "unplaced", "from_text");
+});
+
+await test("an address with its ZIP code typed before New York, NY or NYC is placed by that ZIP code and gets its flat airport rate or its distance price, while a house number there still asks for the ZIP code", async () => {
+  for (const to_text of ["1535 Broadway, 10036 New York", "Empire State Building, 10118, NYC", "Times Square, 10036 New York, USA"]) assert.equal((await priced({ ...FROM_JFK, to_text })).total, AIRPORT_TOTALS.suv.jfk, to_text);
+  assert.equal((await priced({ ...BASE, from_text: "Flushing, 11354 New York" })).total, AIRPORT_TOTALS.suv.jfk);
+  await withMock(async () => assert.equal((await priced({ ...RIDE, to_text: "277 Bedford Ave, 11211 NY" })).service, "distance"));
+  await isQuote({ ...FROM_JFK, to_text: "10036 Broadway, New York" }, "unplaced", "to_text");
+  await isQuote({ ...FROM_JFK, to_text: "TWA Hotel, 11430 New York" }, "airport-zip", "to_text");
 });
 
 await test("the route numbers come from the server: a signed route token it issued is reused, a changed, expired or other-trip token is ignored", async () => {
@@ -765,6 +792,265 @@ await test("receipt: a distance trip rebuilds the lines with no tolls line, the 
   assert.deepEqual(out.notes, [POLICY.later.hourly]);
   assert.equal(out.value, 11000);
   assert.equal(receipt({ ...meta, legs: "2", miles: "9.4", minutes: "58", return_date: "2026-10-18", return_time: "18:00" }, ON).summary, "Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. Business SUV, 2 rides, 9.4 miles and 58 min.");
+});
+
+const SECAUCUS = "Secaucus, NJ 07094";
+const JFK_ADDRESS = "John F. Kennedy International Airport, Queens, NY 11430";
+const NJ_JFK = { ...BASE, from_text: SECAUCUS };
+const JFK_NJ = { ...FROM_JFK, to_text: SECAUCUS };
+const ROUND_TRIP = { return: "1", return_date: "2026-10-18", return_time: "18:00" };
+const TAX = "NYC sales tax (8.875%)";
+const BCF = "Black Car Fund (2.25%)";
+
+await test("an airport fare is the floor of a ride between an airport and an address outside New York City: max(AIRPORT_FARES, distanceFare), then tax and the Black Car Fund, no tolls", () => {
+  assert.deepEqual([distanceFare("suv", 250, 45), distanceFare("sedan", 250, 45)], [16425, 12250]);
+  assert.deepEqual(priceDistance("suv", { tenths: 250, minutes: 45 }, "jfk"), { fare: 16425, tax: 1458, bcf: 370, tolls: 0, total: 18253 });
+  assert.deepEqual(priceDistance("sedan", { tenths: 250, minutes: 45 }, "jfk"), { fare: AIRPORT_FARES.sedan.jfk, tax: 1256, bcf: 318, tolls: 0, total: 15725 });
+  for (const cls of Object.keys(DISTANCE_RATES)) {
+    for (const airport of AIRPORT_PLACES) {
+      for (const [tenths, minutes] of [[0, 0], [90, 18], [250, 45], [600, 180]]) {
+        const fare = Math.max(AIRPORT_FARES[cls][airport], distanceFare(cls, tenths, minutes));
+        assert.equal(priceDistance(cls, { tenths, minutes }, airport).fare, fare, `${cls} ${airport} ${tenths} ${minutes}`);
+      }
+      assert.equal(priceDistance(cls, { tenths: 0, minutes: 0 }, airport).fare, AIRPORT_FARES[cls][airport], `${cls} ${airport} floor`);
+      assert.equal(priceDistance(cls, { tenths: 600, minutes: 180 }, airport).fare, distanceFare(cls, 600, 180), `${cls} ${airport} distance`);
+    }
+  }
+  assert.deepEqual(priceDistance("suv", { tenths: 150, minutes: 45 }, ""), priceDistance("suv", { tenths: 150, minutes: 45 }));
+});
+
+await test("an airport trip to or from an address outside New York City is priced from the Google route at the airport fare or by distance and time, whichever is higher, with no tolls line and the after the ride note, in every class but the Luxury Sprinter", async () => {
+  await withMock(async () => {
+    const floor = await priced({ ...NJ_JFK, to_text: "Newark Liberty (EWR)", to_id: "ewr" });
+    assert.deepEqual(pairs(floor.lines), [["Fare", 15500], [TAX, 1376], [BCF, 349]]);
+    assert.deepEqual([floor.fare, floor.tax, floor.bcf, floor.tolls, floor.meet, floor.tip, floor.total, floor.value, floor.service], [AIRPORT_FARES.suv.ewr, 1376, 349, 0, 0, 0, 17225, 15500, "distance"]);
+    assert.deepEqual(floor.notes, [POLICY.later.outside]);
+    for (const cls of Object.keys(DISTANCE_RATES)) assert.equal((await priced({ ...NJ_JFK, to_text: "Newark Liberty (EWR)", to_id: "ewr", class: cls })).fare, AIRPORT_FARES[cls].ewr, cls);
+    const suv = await priced(NJ_JFK);
+    assert.deepEqual(pairs(suv.lines), [["Fare", 16425], [TAX, 1458], [BCF, 370]]);
+    assert.deepEqual([suv.fare, suv.tolls, suv.total, suv.value, suv.service], [16425, 0, 18253, 16425, "distance"]);
+    assert.deepEqual(suv.notes, [POLICY.later.outside]);
+    const sedan = await priced({ ...NJ_JFK, class: "sedan" });
+    assert.deepEqual(pairs(sedan.lines), [["Fare", 14151], [TAX, 1256], [BCF, 318]]);
+    assert.equal(sedan.total, 15725);
+    await isClass({ ...NJ_JFK, class: "sprinter" }, "sprinter-outside");
+    const { trip } = await run({ ...NJ_JFK, class: "sprinter" });
+    assert.deepEqual(["suv", "premium", "first", "sedan", "sprinter"].map((cls) => classTotal(trip, cls)), [18253, 22197, 29725, 15725, null]);
+    assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.direction, leg.reason, leg.ride]), [["outside", "jfk", "jfk", "to-airport", "", { tenths: 250, minutes: 45 }]]);
+    assert.match(trip.route, ROUTE);
+    assert.deepEqual([...readRoute(trip.route, NOW).values()].map(({ tenths, minutes }) => [tenths, minutes]), [[250, 45]]);
+    assert.equal(serviceLabel({ ...trip, class: "suv" }), "Business SUV, 25.0 miles and 45 min");
+    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 18253).split("\n").at(-1), "Total shown: $182.53");
+    assert.equal((await priced({ ...NJ_JFK, to_text: "JFK Airport, Queens, NY 11430", to_id: "" })).total, 18253);
+    assert.equal((await priced({ ...NJ_JFK, to_text: "Newark Liberty International Airport, 3 Brewster Rd, Newark, NJ 07114", to_id: "" })).total, 17225);
+    assert.equal((await priced({ ...FROM_JFK, from_text: "JFK Airport, Queens, NY 11430", from_id: "", to_text: SECAUCUS })).total, 18935);
+  });
+});
+
+await test("a JFK pickup to New Jersey keeps the flight number, meet and greet and the gratuity of an airport trip, and a drop-off at JFK from New Jersey offers no meet and greet", async () => {
+  await withMock(async () => {
+    const { trip, price } = await run({ ...JFK_NJ, flight: "EK 201", meet: "1", tip: "15" });
+    assert.deepEqual([trip.flight, trip.meetOffered, trip.meet, trip.legs[0].direction, trip.legs[0].airport, trip.legs[0].ride], ["EK 201", true, true, "from-airport", "jfk", { tenths: 252, minutes: 50 }]);
+    assert.deepEqual(pairs(price.lines), [["Fare", 16830], [TAX, 1494], [BCF, 379], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2525]]);
+    assert.deepEqual([price.tolls, price.total, price.value, price.service, price.notes], [0, 23728, 19330, "distance", [POLICY.later.outside]]);
+    assert.equal(price.tip, Math.round((16830 * 15) / 100));
+    const drop = await run({ ...NJ_JFK, flight: "EK 201", meet: "1" });
+    assert.deepEqual([drop.trip.flight, drop.trip.meetOffered, drop.trip.meet, drop.price.meet, drop.price.total, drop.price.notes], ["", false, false, 0, 18253, [POLICY.later.outside]]);
+    const sedan = await priced({ ...JFK_NJ, class: "sedan", tip: "15" });
+    assert.deepEqual(pairs(sedan.lines), [["Fare", AIRPORT_FARES.sedan.jfk], [TAX, 1256], [BCF, 318], ["Gratuity for your chauffeur (15%)", 2123]]);
+    assert.equal(sedan.total, 17848);
+  });
+});
+
+await test("each ride of a return trip between an airport and an address outside New York City is priced from its own route and pickup time, each with its own airport floor", async () => {
+  await withMock(async () => {
+    const suv = await priced({ ...NJ_JFK, ...ROUND_TRIP, return_flight: "B6 1234" });
+    assert.deepEqual(suv.legs.map((leg) => [leg.fare, leg.tax, leg.bcf, leg.tolls]), [[16425, 1458, 370, 0], [17040, 1512, 383, 0]]);
+    assert.deepEqual(pairs(suv.lines), [["Fare", 33465], [TAX, 2970], [BCF, 753]]);
+    assert.equal(suv.total, 37188);
+    assert.deepEqual(suv.notes, [POLICY.later.outside]);
+    const sedan = await priced({ ...NJ_JFK, ...ROUND_TRIP, class: "sedan" });
+    assert.deepEqual(sedan.legs.map((leg) => leg.fare), [AIRPORT_FARES.sedan.jfk, AIRPORT_FARES.sedan.jfk]);
+    assert.equal(sedan.total, 31450);
+    const { trip } = await run({ ...NJ_JFK, ...ROUND_TRIP, return_flight: "B6 1234" });
+    assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.back, leg.ride]), [["outside", "jfk", false, { tenths: 250, minutes: 45 }], ["jfk", "outside", true, { tenths: 254, minutes: 52 }]]);
+    assert.deepEqual([trip.return_flight, serviceLabel(trip)], ["B6 1234", "Business SUV, 2 rides, 50.4 miles and 97 min"]);
+  });
+});
+
+await test("guardrails of an airport trip to an address outside New York City: long-trip over the limits, an airport ZIP code address, other airports, airport to airport and stops keep their requests, and no Google or no route keeps outside-city", async () => {
+  await withMock(async () => {
+    const LONG = { ...BASE, from_text: "John F. Kennedy (JFK)", from_id: "jfk", to_text: MONTAUK, to_id: "" };
+    await isQuote(LONG, "long-trip");
+    await isQuote({ ...LONG, ...ROUND_TRIP }, "long-trip");
+    assert.deepEqual((await run(LONG)).trip.legs.map((leg) => [leg.reason, leg.ride]), [["long-trip", { tenths: 1046, minutes: 125 }]]);
+    const out = routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-14", "07:30").toISOString());
+    const back = routeKey({ address: JFK_ADDRESS }, { address: SECAUCUS }, nycToUtc("2026-10-18", "18:00").toISOString());
+    await isQuote({ ...NJ_JFK, route: signRoute([[out, 400, 181]], NOW) }, "long-trip");
+    assert.equal((await priced({ ...NJ_JFK, route: signRoute([[out, 600, 180]], NOW) })).fare, distanceFare("suv", 600, 180));
+    await isQuote({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 400, 181]], NOW) }, "long-trip");
+    await isQuote({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 601, 60]], NOW) }, "long-trip");
+    assert.equal((await priced({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 600, 180]], NOW) })).fare, 16425 + distanceFare("suv", 600, 180));
+    for (const text of ["3 Brewster Rd, Newark, NJ 07114", "Terminal B, Newark, NJ 07114", "1 Hotel Rd, Newark, NJ 07114", "111 Industrial Ave, Teterboro, NJ 07608"]) {
+      await isQuote({ ...FROM_JFK, to_text: text }, "outside-city");
+      await isQuote({ ...BASE, from_text: text }, "outside-city");
+      await isQuote({ ...BASE, from_text: text, ...ROUND_TRIP }, "outside-city");
+      const { trip } = await run({ ...FROM_JFK, to_text: text });
+      assert.deepEqual([trip.to, trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["outside", "", [["outside-city", undefined]]], text);
+    }
+    await isQuote({ ...NJ_JFK, from_text: "Westchester County (HPN)", from_id: "hpn", to_text: SECAUCUS, to_id: "" }, "other-airport");
+    await isQuote({ ...NJ_JFK, from_text: "Newark Liberty (EWR)", from_id: "ewr" }, "airport-to-airport");
+    await isQuote({ ...NJ_JFK, stop1_text: MANHATTAN }, "stop-leg");
+    await isQuote({ ...JFK_NJ, stop1_text: "Hoboken, NJ 07030" }, "stop-leg");
+    assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
+  });
+  await isQuote(NJ_JFK, "outside-city");
+  await isQuote(JFK_NJ, "outside-city");
+  await isQuote({ ...NJ_JFK, ...ROUND_TRIP }, "outside-city");
+  const fetch = globalThis.fetch;
+  process.env.GOOGLE_MAPS_SERVER_KEY = "route-test-key";
+  const calls = [];
+  globalThis.fetch = async (url) => (calls.push(String(url)), new Response("{}", { status: 503 }));
+  try {
+    await isQuote({ ...NJ_JFK, date: "2026-10-21" }, "outside-city");
+    assert.deepEqual(calls, ["https://routes.googleapis.com/directions/v2:computeRoutes"]);
+    calls.length = 0;
+    await isQuote({ ...FROM_JFK, to_text: "3 Brewster Rd, Newark, NJ 07114", date: "2026-10-21" }, "outside-city");
+    assert.deepEqual(calls, []);
+  } finally {
+    globalThis.fetch = fetch;
+    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  }
+});
+
+await test("the route of an airport trip to New Jersey comes from the server: its signed route token is reused, a token of another trip is ignored", async () => {
+  await withMock(async () => {
+    const fields = { ...NJ_JFK, date: "2026-10-23", time: "09:10" };
+    const key = routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-23", "09:10").toISOString());
+    const own = await run({ ...fields, route: signRoute([[key, 300, 60]], NOW) });
+    assert.deepEqual([own.trip.legs[0].ride, own.price.fare, own.price.total], [{ tenths: 300, minutes: 60 }, 19400, 21559]);
+    const other = await run({ ...fields, route: signRoute([[routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-24", "09:10").toISOString()), 300, 60]], NOW) });
+    assert.deepEqual([other.trip.legs[0].ride, other.price.total], [{ tenths: 250, minutes: 45 }, 18253]);
+  });
+});
+
+await test("receipt: an airport trip to New Jersey rebuilds its lines with meet and greet and the gratuity, no tolls line, the after the ride note of a trip priced by distance and time, and the miles and minutes", () => {
+  const meta = { ref: "48213590", service: "distance", direction: "from-airport", airport: "jfk", class: "suv", legs: "1", miles: "25.2", minutes: "50", date: "2026-10-14", time: "07:30", flight: "EK 201", meet: "1", fare_cents: "16830", tax_cents: "1494", bcf_cents: "379", tolls_cents: "0", meet_cents: "2500", tip_percent: "15", tip_cents: "2525", total_cents: "23728" };
+  const out = receipt(meta, ON);
+  assert.equal(out.summary, "Wed, Oct 14, 2026, 7:30 AM. Business SUV, 25.2 miles and 50 min.");
+  assert.deepEqual(pairs(out.lines), [["Fare", 16830], [TAX, 1494], [BCF, 379], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2525]]);
+  assert.equal(out.lines.reduce((sum, item) => sum + item.cents, 0), 23728);
+  assert.deepEqual([out.notes, out.value], [[POLICY.later.outside], 19330]);
+});
+
+await test("an airport trip to or from text that names a New York City ZIP code or New York, NY and also another state or a ZIP code outside the city asks for the ZIP code or a pick, and never gets the price of an address outside New York City without its tolls line", async () => {
+  await withMock(async () => {
+    for (const text of ["350 5th Ave, New York, NY 10118, NJ", "350 5th Ave, 07030, New York, NY"]) {
+      await isQuote({ ...BASE, from_text: text }, "unplaced", "from_text");
+      await isQuote({ ...BASE, from_text: text, ...ROUND_TRIP }, "unplaced", "from_text");
+      await isQuote({ ...FROM_JFK, to_text: text }, "unplaced", "to_text");
+      await isQuote({ ...BASE, to_text: "LaGuardia (LGA)", to_id: "lga", from_text: text, class: "sedan" }, "unplaced", "from_text");
+    }
+    assert.deepEqual(pairs((await priced(BASE)).lines), LEG);
+    assert.deepEqual([(await priced({ ...BASE, from_text: "New York Ave, Union City, NJ 07087" })).service, (await priced({ ...FROM_JFK, to_text: "100 Manhattan Ave, Union City, NJ" })).service], ["distance", "distance"]);
+  });
+});
+
+await test("an end that names only an area gets no distance price: a borough, New York, a ZIP code or a state, typed or picked, asks for the street address on a trip with no airport end and on an airport trip to or from an address outside New York City, with no route lookup", async () => {
+  await withMock(async () => {
+    for (const [from_text, to_text] of [["Manhattan", "Brooklyn"], ["10001", "11201"], ["New York, NY", BROOKLYN], [MANHATTAN, "Queens"], ["Staten Island", "Manhattan"], ["Brooklyn 11201", "The Bronx"]]) {
+      await isQuote({ ...RIDE, from_text, to_text }, "street-address");
+      await isQuote({ ...RIDE, from_text, to_text, ...ROUND_TRIP }, "street-address");
+    }
+    const { trip } = await run({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn" });
+    assert.deepEqual([trip.route, trip.ends.from.area, trip.ends.to.area, trip.legs.map((leg) => [leg.reason, leg.ride])], ["", true, true, [["street-address", undefined]]]);
+    for (const text of ["07030", "07030, NJ", "NJ 07094", "New Jersey 07030"]) {
+      await isQuote({ ...JFK_NJ, to_text: text }, "street-address");
+      await isQuote({ ...NJ_JFK, from_text: text }, "street-address");
+      await isQuote({ ...NJ_JFK, from_text: text, ...ROUND_TRIP }, "street-address");
+    }
+    const picked = (id, zone, label, area) => signTicket(id, zone, label, NOW, area);
+    await isQuote({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", true) }, "street-address");
+    await isQuote({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", true) }, "street-address");
+    assert.equal((await priced({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", false) })).service, "distance");
+    assert.equal((await priced({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", false) })).service, "distance");
+    for (const [from_text, to_text] of [["Upper East Side, New York, NY", "Williamsburg, Brooklyn, NY"], ["Times Square, New York, NY", BROOKLYN], [MANHATTAN, "Hoboken, NJ 07030"], [MANHATTAN, GREENWICH]]) assert.equal((await priced({ ...RIDE, from_text, to_text })).service, "distance", `${from_text} to ${to_text}`);
+    assert.equal((await priced(NJ_JFK)).total, 18253);
+    assert.equal((await priced({ ...BASE, from_text: "Manhattan" })).total, AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced({ ...FROM_JFK, to_text: "Brooklyn" })).total, AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced({ ...HOURLY, from_text: "Manhattan" })).total, 28337);
+    for (const fields of [{ ...JFK_NJ, to_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP }, { ...JFK_NJ, to_text: "Fairfield County, CT" }, { ...RIDE, from_text: "Queens County" }, { ...RIDE, from_text: "Borough of Manhattan" }, { ...RIDE, from_text: "Manhattan Borough" }]) await isQuote(fields, "street-address");
+    await isQuote({ ...RIDE, from_text: "07030", to_text: GREENWICH }, "outside-trip");
+    await isQuote({ ...RIDE, from_text: "07114" }, "airport-zip");
+  });
+  await isQuote({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn" }, "no-airport");
+  await isQuote({ ...JFK_NJ, to_text: "07030" }, "outside-city");
+  const fetch = globalThis.fetch;
+  process.env.GOOGLE_MAPS_SERVER_KEY = "route-test-key";
+  const calls = [];
+  globalThis.fetch = async (url) => (calls.push(String(url)), new Response("{}", { status: 503 }));
+  try {
+    await isQuote({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn", date: "2026-10-21" }, "street-address");
+    await isQuote({ ...JFK_NJ, to_text: "07030", date: "2026-10-21" }, "street-address");
+    await isQuote({ ...JFK_NJ, to_text: "Bergen County, NJ", date: "2026-10-21" }, "street-address");
+    await isQuote({ ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP, date: "2026-10-16" }, "street-address");
+    await isQuote({ ...RIDE, from_text: "Queens County", date: "2026-10-21" }, "street-address");
+    assert.deepEqual(calls, []);
+  } finally {
+    globalThis.fetch = fetch;
+    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  }
+});
+
+await test("a typed New York City name is routed inside its borough: the price asks Google for the name with its borough and NY, and a name with a borough gets NY, while an address with a ZIP code, NY or New York and a town outside the city go as typed", async () => {
+  const fetch = globalThis.fetch;
+  process.env.GOOGLE_MAPS_SERVER_KEY = "route-test-key";
+  const sent = [];
+  globalThis.fetch = async (url, init) => (sent.push(JSON.parse(init.body)), new Response(JSON.stringify({ routes: [{ duration: "1500s", distanceMeters: 8047 }] }), { status: 200, headers: { "content-type": "application/json" } }));
+  try {
+    for (const [to_text, address] of [["Civic Center", "Civic Center, Manhattan, NY"], ["Manhattan Beach", "Manhattan Beach, Brooklyn, NY"], ["South Beach", "South Beach, Staten Island, NY"], ["Castle Hill", "Castle Hill, The Bronx, NY"], ["Union Square", "Union Square, Manhattan, NY"], ["Vermont St, Brooklyn", "Vermont St, Brooklyn, NY"], [BROOKLYN, BROOKLYN], ["Times Square, New York", "Times Square, New York"], ["Hoboken, NJ 07030", "Hoboken, NJ 07030"]]) {
+      sent.length = 0;
+      const { price } = await run({ ...RIDE, to_text, date: "2026-10-27" });
+      assert.deepEqual([sent.length, sent[0] && sent[0].origin, sent[0] && sent[0].destination], [1, { address: MANHATTAN }, { address }], to_text);
+      assert.deepEqual([price && price.service, price && price.fare], ["distance", distanceFare("suv", 50, 25)], to_text);
+    }
+  } finally {
+    globalThis.fetch = fetch;
+    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  }
+});
+
+await test("an airport typed with its code or named after a terminal gets its flat airport rate, and a typed JFK terminal pickup keeps meet and greet and the flight number, also on a trip to New Jersey", async () => {
+  await withMock(async () => {
+    for (const [to_text, airport] of [["LaGuardia Airport (LGA)", "lga"], ["JFK Airport (JFK)", "jfk"], ["Newark Liberty International Airport (EWR)", "ewr"], ["Teterboro Airport (TEB)", "teb"], ["Terminal 4, JFK Airport, Queens, NY", "jfk"], ["Terminal B, LaGuardia Airport, Queens, NY", "lga"], ["LaGuardia Airport (LGA), Queens, NY", "lga"], ["Terminal C, Newark Liberty International Airport, Newark, NJ", "ewr"]]) {
+      const price = await priced({ ...BASE, to_text, to_id: "" });
+      assert.deepEqual([price.service, price.total], ["airport", AIRPORT_TOTALS.suv[airport]], to_text);
+    }
+    const T4 = { ...FROM_JFK, from_text: "Terminal 4, JFK Airport, Queens, NY", from_id: "" };
+    const { trip, price } = await run({ ...T4, flight: "B6 123", meet: "1" });
+    assert.deepEqual([trip.from, trip.flight, trip.meetOffered, trip.meet, trip.legs[0].direction], ["jfk", "B6 123", true, true, "from-airport"]);
+    assert.deepEqual(pairs(price.lines), [...LEG, ["Meet and greet", 2500]]);
+    assert.equal(price.total, 21000);
+    const nj = await run({ ...T4, to_text: SECAUCUS, flight: "EK 201", meet: "1" });
+    assert.deepEqual([nj.trip.flight, nj.trip.meet, nj.trip.legs[0].airport, nj.trip.legs[0].ride, nj.price.service], ["EK 201", true, "jfk", { tenths: 254, minutes: 52 }, "distance"]);
+    assert.deepEqual(pairs(nj.price.lines), [["Fare", 17040], [TAX, 1512], [BCF, 383], ["Meet and greet", 2500]]);
+    await isQuote({ ...BASE, to_text: "LaGuardia Airport (JFK)", to_id: "" }, "unplaced", "to_text");
+    await isQuote({ ...BASE, to_text: "New York (LGA)", to_id: "" }, "unplaced", "to_text");
+    assert.equal((await priced({ ...RIDE, to_text: "Hilton, JFK, Queens" })).service, "distance");
+  });
+  assert.equal((await priced({ ...BASE, to_text: "Terminal 4, JFK Airport, Queens, NY", to_id: "" })).total, AIRPORT_TOTALS.suv.jfk);
+});
+
+await test("a place picked with a long Google place ID keeps its ticket: the ticket of a 239 character ID reaches the trip, so an intersection in Yonkers to JFK is priced as an address outside New York City instead of asking for a ZIP code", async () => {
+  await withMock(async () => {
+    const label = "Central Park Ave & Tuckahoe Rd, Yonkers, NY";
+    const id = `Ei${"x".repeat(237)}`;
+    const ticket = signTicket(id, "outside", label, NOW);
+    assert.equal(ticket.length, 455);
+    const { trip, price } = await run({ ...NJ_JFK, from_text: label, from_ticket: ticket });
+    assert.deepEqual([trip.from, trip.ends.from.place, price && price.service, price && price.total], ["outside", id, "distance", 17225]);
+    await isQuote({ ...NJ_JFK, from_text: label }, "unplaced", "from_text");
+  });
 });
 
 await test("every ERRORS code and every REASONS key has a case", () => {

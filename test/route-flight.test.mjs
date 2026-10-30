@@ -186,6 +186,16 @@ await test("route: a typed end is routed by its text, or by the local row its te
   assert.equal(calls.length, 2);
 });
 
+await test("route: a typed New York City name is routed inside its borough the way the price routes it, with its borough and NY, while a name with a borough gets NY and an address with a ZIP code, NY or New York and a town outside the city go as typed", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, ROUTES);
+  for (const [text, address] of [["Civic Center", "Civic Center, Manhattan, NY"], ["Manhattan Beach", "Manhattan Beach, Brooklyn, NY"], ["South Beach", "South Beach, Staten Island, NY"], ["Castle Hill", "Castle Hill, The Bronx, NY"], ["Vermont St, Brooklyn", "Vermont St, Brooklyn, NY"], ["350 5th Ave, New York, NY 10118", "350 5th Ave, New York, NY 10118"], ["Times Square, New York", "Times Square, New York"], ["Hoboken, NJ 07030", "Hoboken, NJ 07030"]]) {
+    calls.length = 0;
+    assert.equal((await route({ from: { text }, to: { id: "jfk" }, date: DATE, time: "12:40" })).body.kind, "ok", text);
+    assert.deepEqual([calls.length, JSON.parse(calls[0].init.body).origin], [1, { address }], text);
+  }
+});
+
 await test("route: a return trip routes the way back from the drop-off to the pickup at the return time, answers both rides and draws both legs on one signed map", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   process.env.GOOGLE_MAPS_BROWSER_KEY = BROWSER_KEY;
@@ -214,6 +224,21 @@ await test("route: a return trip routes the way back from the drop-off to the pi
   for (let i = 0; i < 6; i++) kinds.push((await route({ ...body, map: undefined }, { ip: "203.0.113.30" })).body.kind);
   assert.deepEqual(kinds, [...Array(5).fill("ok"), "off"]);
   assert.equal(calls.length, 10);
+});
+
+await test("route: a trip with two stops and a return whose four ends are tickets of the longest place IDs with the longest zone and the area mark fits the body limit and is routed through the four places", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, ROUTES);
+  const ids = ["a", "b", "c", "d"].map((n) => `Ei${n.repeat(298)}`);
+  const ends = ids.map((id, i) => ({ ticket: signTicket(id, "staten-island", `${i + 1} Very Long Street Name, Staten Island, NY 10314`, Date.now(), true) }));
+  assert.deepEqual(ends.map((end) => end.ticket.length), [553, 553, 553, 553]);
+  const body = { from: ends[0], stops: [ends[1], ends[2]], to: ends[3], date: DATE, time: "08:00", back: { date: DATE, time: "20:00" }, map: { width: 640, height: 1000 }, draw: 1 };
+  assert.ok(JSON.stringify(body).length > 2300, String(JSON.stringify(body).length));
+  assert.deepEqual(await route(body).then((res) => [res.status, res.body.kind]), [200, "ok"]);
+  assert.equal(calls.length, 2);
+  const [out, back] = calls.map((call) => JSON.parse(call.init.body));
+  assert.deepEqual([out.origin, out.intermediates, out.destination], [{ placeId: ids[0] }, [{ placeId: ids[1] }, { placeId: ids[2] }], { placeId: ids[3] }]);
+  assert.deepEqual([back.origin, back.intermediates, back.destination], [{ placeId: ids[3] }, [], { placeId: ids[0] }]);
 });
 
 await test("flight probe: the first focus learns whether flights are on, and with Google on whether the route map can show, without a key in the answer", async () => {
@@ -308,11 +333,12 @@ await test("route: a Routes error, a timeout or an empty answer is off and logs 
   assert.equal((await route({ from: { id: "jfk" }, to: { id: "lga" }, date: DATE, time: "08:00" }, { ip: "203.0.113.21" })).body.kind, "ok");
 });
 
-await test("route and flight refuse cross-site, other types and large bodies, and export only POST", async () => {
-  for (const [handler, path] of [[routePost, "/api/route"], [flightPost, "/api/flight"]]) {
+await test("route and flight refuse cross-site, other types and bodies over 3072 and 1024 bytes, and export only POST", async () => {
+  for (const [handler, path, limit] of [[routePost, "/api/route", 3072], [flightPost, "/api/flight", 1024]]) {
     assert.deepEqual(await send(handler, path, {}, { site: "cross-site" }).then((res) => [res.status, res.body]), [403, { kind: "error", code: "origin" }]);
     assert.deepEqual(await send(handler, path, {}, { type: "text/plain" }).then((res) => [res.status, res.body]), [415, { kind: "error", code: "type" }]);
-    assert.deepEqual(await send(handler, path, null, { raw: JSON.stringify({ pad: "x".repeat(1100) }) }).then((res) => [res.status, res.body]), [413, { kind: "error", code: "too-large" }]);
+    assert.deepEqual(await send(handler, path, null, { raw: JSON.stringify({ pad: "x".repeat(limit - 9) }) }).then((res) => [res.status, res.body]), [413, { kind: "error", code: "too-large" }]);
+    assert.deepEqual(await send(handler, path, null, { raw: JSON.stringify({ pad: "x".repeat(limit - 10) }) }).then((res) => [res.status, res.body]), [400, { kind: "error", code: "bad" }]);
   }
   assert.deepEqual(Object.keys(await import("../api/route.mjs")), ["POST"]);
   assert.deepEqual(Object.keys(await import("../api/flight.mjs")), ["POST"]);
@@ -576,21 +602,23 @@ await test("flight: the probe answers on or off without a lookup and without spe
   assert.equal(calls.length, 1);
 });
 
-await test(`flight: at most ${FLIGHT_DAILY} provider lookups per instance and New York day, then off without a call, cache hits are free and a new day starts again`, async () => {
+await test(`flight: at most ${FLIGHT_DAILY} provider lookups per instance and New York day, then off without a call, cache hits are free and a new day starts again, also from the first hour of the 25 hour day the clocks go back`, async () => {
   process.env.FLIGHT_API_KEY = FLIGHT_KEY;
-  logs.length = 0;
   reply = answer(204);
-  const start = Date.now() + 3 * 86400000;
-  const date = NY_DATE.format(new Date(start + 5 * 86400000));
-  for (let i = 1; i <= FLIGHT_DAILY; i++) assert.equal((await lookupFlight(`ZZ${i}`, date, "JFK", start)).kind, "none", String(i));
-  assert.equal(calls.length, FLIGHT_DAILY);
-  assert.deepEqual(await lookupFlight("ZZ9001", date, "JFK", start + 60000), { kind: "off" });
-  assert.deepEqual(await lookupFlight("ZZ7", date, "JFK", start + 60000), { kind: "none" });
-  assert.equal(calls.length, FLIGHT_DAILY);
-  assert.deepEqual(logs, ["flight daily"]);
   assert.equal(FLIGHT_DAILY, 80);
-  assert.equal((await lookupFlight("ZZ9001", date, "JFK", start + 86400000)).kind, "none");
-  assert.equal(calls.length, FLIGHT_DAILY + 1);
+  for (const start of [Date.now() + 3 * 86400000, Date.parse("2026-11-01T04:05:00.000Z")]) {
+    logs.length = 0;
+    calls.length = 0;
+    const date = NY_DATE.format(new Date(start + 5 * 86400000));
+    for (let i = 1; i <= FLIGHT_DAILY; i++) assert.equal((await lookupFlight(`ZZ${i}`, date, "JFK", start)).kind, "none", String(i));
+    assert.equal(calls.length, FLIGHT_DAILY);
+    assert.deepEqual(await lookupFlight("ZZ9001", date, "JFK", start + 60000), { kind: "off" });
+    assert.deepEqual(await lookupFlight("ZZ7", date, "JFK", start + 60000), { kind: "none" });
+    assert.equal(calls.length, FLIGHT_DAILY);
+    assert.deepEqual(logs, ["flight daily"]);
+    assert.equal((await lookupFlight("ZZ9001", date, "JFK", start + 25 * 3600000)).kind, "none", new Date(start).toISOString());
+    assert.equal(calls.length, FLIGHT_DAILY + 1);
+  }
 });
 
 await test("no sentinel key or signing secret appears in a response body or a log line", () => {

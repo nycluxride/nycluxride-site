@@ -177,13 +177,17 @@ await test("U4 here with Google: the v4 reverse request, the key in the header, 
   assert.deepEqual(await reverseGeocode(40.7, -73.9), { ok: false, status: 0 });
 });
 
-await test("U5 a long Geocoding place ID still signs a ticket that passes the ticket pattern and verifyTicket, and an ID too long for a ticket gives the error answer", async () => {
+await test("U5 a Geocoding place ID of 300 characters, the longest the places API takes, signs a ticket with the longest zone and the area mark that passes the ticket pattern and verifyTicket, the here answer signs it, and a longer ID gives the error answer", async () => {
   live();
-  const id = "Ei" + "x".repeat(223);
-  const ticket = signTicket(id, "staten-island", "1 Very Long Street Name, Staten Island, NY 10314", Date.now());
+  const id = "Ei" + "x".repeat(298);
+  const ticket = signTicket(id, "staten-island", "1 Very Long Street Name, Staten Island, NY 10314", Date.now(), true);
   assert.ok(TICKET.test(ticket), String(ticket.length));
-  assert.equal(verifyTicket(ticket, "1 Very Long Street Name, Staten Island, NY 10314", Date.now()).id, id);
-  reply = answer(200, { results: [v4("277 Bedford Ave, Brooklyn, NY 11211, USA", [state("NY", "New York"), county("Kings County"), zip("11211")], ["street_address"], "Ei" + "y".repeat(280))] });
+  assert.deepEqual([verifyTicket(ticket, "1 Very Long Street Name, Staten Island, NY 10314", Date.now()).id, readInput({ trip_type: "one", from_ticket: ticket }).from_ticket], [id, ticket]);
+  const long = "Ei" + "y".repeat(298);
+  reply = answer(200, { results: [v4("277 Bedford Ave, Brooklyn, NY 11211, USA", [state("NY", "New York"), county("Kings County"), zip("11211")], ["street_address"], long)] });
+  const here = (await places({ action: "here", ...BEDFORD })).body;
+  assert.deepEqual([here.kind, here.zone, verifyTicket(here.ticket, here.label, Date.now()).id], ["ok", "brooklyn", long]);
+  reply = answer(200, { results: [v4("277 Bedford Ave, Brooklyn, NY 11211, USA", [state("NY", "New York"), county("Kings County"), zip("11211")], ["street_address"], `${long}y`)] });
   assert.deepEqual((await places({ action: "here", ...BEDFORD })).body, { kind: "error" });
 });
 
@@ -313,6 +317,26 @@ await test("U11 while the interactive map is off, here and locate answer off and
   process.env.GOOGLE_MAPS_BROWSER_KEY = BROWSER_KEY;
   assert.equal((await places({ action: "here", ...BEDFORD })).body.kind, "ok", "the switch on answers again");
   assert.equal(calls.length, 1);
+});
+
+await test("U12 a typed New York City name is drawn and priced on one route, the options price reuses its token with no Routes call, and an area pick drawn on the map gets no distance price from its token", async () => {
+  mock();
+  const r = await route({ from: { text: "Civic Center" }, to: { text: BEDFORD_LABEL }, stops: [], date: DATE, time: "14:30", draw: 1 });
+  assert.deepEqual([r.body.kind, typeof r.body.route], ["ok", "string"]);
+  for (const key of ENV_KEYS) delete process.env[key];
+  live();
+  reply = answer(500, {});
+  const o = await book(fields({ from_text: "Civic Center", route: r.body.route, draw: "1" }));
+  assert.equal(calls.filter((c) => c.url.startsWith("https://routes.googleapis.com")).length, 0, "no Routes call");
+  assert.deepEqual([o.body.kind, o.body.service, o.body.ride.minutes, o.body.ride.miles], ["options", "distance", r.body.minutes, r.body.miles]);
+  for (const key of ENV_KEYS) delete process.env[key];
+  mock();
+  const label = "Manhattan, New York, NY";
+  const area = signTicket("ChIJmanhattan", "manhattan", label, Date.now(), true);
+  const drawn = await route({ from: { ticket: area }, to: { text: BEDFORD_LABEL }, stops: [], date: DATE, time: "14:30", draw: 1 });
+  assert.deepEqual([drawn.body.kind, typeof drawn.body.route], ["ok", "string"]);
+  const q = await book(fields({ from_text: label, from_ticket: area, route: drawn.body.route }));
+  assert.deepEqual([q.body.kind, q.body.reason, q.body.classes.every((c) => c.total_cents === null && c.reason === "street-address"), "route" in q.body], ["quote", "street-address", true, false]);
 });
 
 if (failures) {

@@ -82,6 +82,7 @@ const PLACE_AT = new Map([
   ["200 Park Ave, New York, NY 10166", [40.753606, -73.976457]],
   ["Greenwich, CT 06830", [41.026489, -73.628456]],
   ["1 Ocean Rd, Montauk, NY 11954", [41.035144, -71.944656]],
+  ["Secaucus, NJ 07094", [40.789543, -74.056534]],
   ["John F. Kennedy International Airport, Queens, NY 11430", [40.641311, -73.778139]],
   ["John F. Kennedy International Airport Terminal 1, Queens, NY 11430", [40.643365, -73.789667]],
   ["John F. Kennedy International Airport Terminal 4, Queens, NY 11430", [40.644166, -73.782425]],
@@ -154,6 +155,8 @@ function mockPath(waypoints) {
 }
 
 const MANHATTAN = "350 5th Ave, New York, NY 10118";
+const SECAUCUS = "Secaucus, NJ 07094";
+const JFK = "John F. Kennedy International Airport, Queens, NY 11430";
 const ROUTES = [
   ["mock-edition", "mock-bedford", 27, 4.6],
   ["mock-bedford", "mock-edition", 31, 4.8],
@@ -164,6 +167,11 @@ const ROUTES = [
   [MANHATTAN, "Greenwich, CT 06830", 52, 31.4],
   ["Greenwich, CT 06830", MANHATTAN, 58, 31.6],
   [MANHATTAN, "1 Ocean Rd, Montauk, NY 11954", 165, 118.3],
+  [SECAUCUS, JFK, 45, 25],
+  [JFK, SECAUCUS, 52, 25.4],
+  ["John F. Kennedy International Airport Terminal 4, Queens, NY 11430", SECAUCUS, 50, 25.2],
+  [SECAUCUS, "Newark Liberty International Airport, Newark, NJ 07114", 18, 9],
+  [JFK, "1 Ocean Rd, Montauk, NY 11954", 125, 104.6],
 ];
 const key = (text) => (text.startsWith("mock-") ? text : norm(text));
 const point = (waypoint) => (waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : norm(waypoint && waypoint.address));

@@ -6611,6 +6611,443 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   await ctx.close();
 }
 
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  const ride = (cls) => {
+    const r = DISTANCE_RATES[cls];
+    const fare = Math.max(AIRPORT_FARES[cls].jfk, r.minimum, r.base + Math.round((250 * r.mile) / 10) + 45 * r.minute);
+    return { fare, tax: percentCents(fare, NYC_TAX_PERCENT), bcf: percentCents(fare, BCF_PERCENT) };
+  };
+  const total = (cls) => { const x = ride(cls); return x.fare + x.tax + x.bcf; };
+  const njTrip = async (p) => {
+    await type(p, "from", "Secaucus, NJ 07094");
+    await p.waitForFunction(() => /Outside New York City/.test(document.querySelector('#bk-from-list [data-kind="typed"]')?.textContent || ""));
+    await p.keyboard.press("Escape");
+    await place(p, "to", "jfk", "John F. Kennedy (JFK)");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+  };
+  await check(`B153 at ${width} a New Jersey address to JFK shows the airport fare or the distance and time fare on the cards, the panel with no tolls line and the after the ride note, the route of that price, Book and pay online and CLS 0, and pays the same total`, async () => {
+    assert.deepEqual([ride("suv").fare, total("suv"), ride("sedan").fare, total("sedan")], [16425, 18253, AIRPORT_FARES.sedan.jfk, 15725]);
+    const p = await open(ctx, G, "/book");
+    const w = watch(p);
+    await njTrip(p);
+    await view(p);
+    await priced(p);
+    await routed(p);
+    await settle(p, 600);
+    assert.deepEqual(await cards(p), [...CLASS_KEYS.slice(0, 4).map((cls) => cash(total(cls))), "Price on request"]);
+    const suv = ride("suv");
+    assert.deepEqual(await panel(p), { lines: [["Fare", cash(suv.fare)], [L_TAX, cash(suv.tax)], [L_BCF, cash(suv.bcf)]], total: cash(total("suv")), notes: POLICY.later.outside });
+    assert.deepEqual([w.route.length, w.options.length, w.ride.minutes, w.ride.miles], [0, 1, 45, 25], "the options answer that priced the trip carries its route");
+    assert.equal(await p.textContent("#bk-route-n"), "25.0 miles, about 45 min by car. Google Maps");
+    assert.deepEqual(await p.evaluate(() => { const b = document.getElementById("bk-next"); return [getComputedStyle(b).display !== "none", b.getClientRects().length > 0, b.textContent, b.getAttribute("aria-disabled"), document.getElementById("bk-bar-go").textContent, document.getElementById("price").hidden]; }), [true, true, "Book and pay online", null, "Book and pay online", false]);
+    let [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    await p.click('label[for="bk-c-sprinter"]');
+    await settle(p, 500);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id), document.getElementById("price").hidden]), [["q-sprinter-outside"], true]);
+    assert.equal(await p.textContent("#q-sprinter-outside p"), REASONS["sprinter-outside"].text);
+    const b = await reqBar(p);
+    assert.deepEqual([b.line, b.fix], ["Our dispatch team prices this Sprinter trip", "Choose another car"]);
+    await p.click('label[for="bk-c-sedan"]');
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    const sedan = ride("sedan");
+    const want = [["Fare", cash(sedan.fare)], [L_TAX, cash(sedan.tax)], [L_BCF, cash(sedan.bcf)]];
+    assert.deepEqual((await panel(p)).lines, want);
+    assert.ok(await p.isVisible(await payBtn(p)), "Book and pay online on the details step");
+    assert.ok((await waText(p, "#q-wa")).endsWith(`\nTotal shown: ${cash(total("sedan"))}\nName: Ana Lopez\nEmail: ana.lopez@example.com\nMobile: +1 212 555 0100\nContact: Phone`));
+    const bodies = [];
+    p.on("request", (r) => r.method() === "POST" && r.url().endsWith("/api/book") && bodies.push(JSON.parse(r.postData() || "{}")));
+    await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    assert.match(bodies.find((x) => x.action === "pay").route, /^r1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => tr.cells[0].textContent), document.getElementById("cf-notes").textContent]), [["Fare", "NYC sales tax", "Black Car Fund"], POLICY.later.outside]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual(await p.$$eval("#cf-lines tr", (r) => r.map((x) => [x.cells[0].textContent, x.cells[1].textContent])), want);
+    const long = new Date(`${DATE}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    assert.deepEqual([await p.textContent("#cf-total"), await p.textContent("#cf-notes"), await p.isVisible("#cf-summary"), await p.textContent("#cf-summary")], [cash(total("sedan")), POLICY.later.outside, true, `${long}, 2:00 PM. Sedan & Electric, 25.0 miles and 45 min.`]);
+    await p.waitForTimeout(300);
+    [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check(`B153 at ${width} with a price that takes over 500 ms, a New Jersey address to JFK shows from the first frame the panel of a trip priced by distance and time, with no tolls line, the after the ride note and the Luxury Sprinter on Price on request, and CLS 0`, async () => {
+    const p = await open(ctx, G, "/book");
+    await njTrip(p);
+    await p.route("**/api/book", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    await p.click("#bk-view");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, document.getElementById("bk-p-sprinter").textContent]), [["Fare", "NYC sales tax", "Black Car Fund"], POLICY.later.outside, "Price on request"]);
+    await priced(p);
+    await settle(p, 600);
+    assert.deepEqual(await cards(p), [...CLASS_KEYS.slice(0, 4).map((cls) => cash(total(cls))), "Price on request"]);
+    assert.equal((await panel(p)).lines.length, 3);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  await check("B153 without javascript a New Jersey address to JFK pays the distance and time fare over the airport fare, and the Luxury Sprinter lands on its dispatch request", async () => {
+    const p = await open(ctx, G, "/book");
+    const fill = async () => {
+      await p.fill("#bk-from", "Secaucus, NJ 07094");
+      await p.fill("#bk-to", "John F. Kennedy (JFK)");
+      await p.fill("#bk-date", DATE);
+      await setTime(p, "14:00");
+      await details(p);
+    };
+    await fill();
+    const [post] = await Promise.all([p.waitForRequest((r) => r.url().endsWith("/api/book")), p.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/, { waitUntil: "commit" }), p.click("#bk-submit")]);
+    assert.deepEqual(["from_text", "to_text", "class", "route"].map((k) => new URLSearchParams(post.postData()).get(k)), ["Secaucus, NJ 07094", "John F. Kennedy (JFK)", "suv", null]);
+    const session = await (await fetch(`${G.base}/api/book?session_id=${new URL(p.url()).searchParams.get("session_id")}`)).json();
+    assert.deepEqual([session.lines.map((l) => [l.label, l.cents]), session.total_cents, session.notes, session.summary.endsWith(". Business SUV, 25.0 miles and 45 min.")], [[["Fare", 16425], [L_TAX, 1458], [L_BCF, 370]], 18253, [POLICY.later.outside], true]);
+    await p.goto(`${G.base}/book`, { waitUntil: "load" });
+    await fill();
+    await p.click('label[for="bk-c-sprinter"]');
+    await Promise.all([p.waitForURL(/\/book#q-sprinter-outside$/), p.click("#bk-submit")]);
+    assert.deepEqual([await p.isVisible("#q-sprinter-outside"), await p.textContent("#q-sprinter-outside p")], [true, REASONS["sprinter-outside"].text]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  const typedEnd = async (p, end, text, area) => {
+    await type(p, end, text);
+    await p.waitForFunction(([e, a]) => document.querySelector(`#bk-${e}-list [data-kind="typed"] .bk-opt__area`)?.textContent === a, [end, area]);
+    await p.keyboard.press("Escape");
+  };
+  const asked = async (p) => {
+    await p.waitForSelector("#q-street-address", { state: "visible" });
+    const b = await reqBar(p);
+    return [await p.textContent("#q-street-address p"), await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id)), await p.isHidden("#price"), b.isq, b.line, b.fix, b.qline];
+  };
+  const ASKED = () => [REASONS["street-address"].google, ["q-street-address"], true, true, "Add the street address to see the price", "", "Price on request for this trip."];
+  await check(`B154 at ${width} an end that names only an area asks for the street address: Manhattan to Brooklyn and JFK to a New Jersey ZIP code show the street-address request with its text, no price and the request bar line, with CLS 0, and street addresses then get their price`, async () => {
+    const p = await open(ctx, G, "/book");
+    await typedEnd(p, "from", "Manhattan", "Manhattan");
+    await typedEnd(p, "to", "Brooklyn", "Brooklyn");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await p.click("#bk-view");
+    assert.deepEqual(await asked(p), ASKED());
+    await settle(p, 600);
+    let [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(p, "from", "350 5th Ave, New York, NY 10118");
+    await place(p, "to", "277 Bedford Ave, Brooklyn, NY 11211");
+    await view(p);
+    await priced(p);
+    assert.equal(await shown(p), cash(DISTANCE_RATES.suv.minimum + percentCents(DISTANCE_RATES.suv.minimum, NYC_TAX_PERCENT) + percentCents(DISTANCE_RATES.suv.minimum, BCF_PERCENT)));
+    assert.equal(await p.isVisible("#q-street-address"), false);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+    const q = await open(ctx, G, "/book");
+    await place(q, "from", "jfk", "John F. Kennedy (JFK)");
+    await typedEnd(q, "to", "07030", "Outside New York City");
+    await pickDate(q, "#bk-date-btn", DATE);
+    await setTime(q, "14:00");
+    await q.click("#bk-view");
+    assert.deepEqual(await asked(q), ASKED());
+    [value, shifts] = await cls(q);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([q.errors, q.failed], [[], []]);
+    await q.close();
+  });
+  await check(`B155 at ${width} a JFK terminal typed after the airport name is a JFK pickup: the flight box and meet and greet show, the cards carry the JFK flat rates, and the booking pays the flat fare with meet and greet and sends the flight number`, async () => {
+    const p = await open(ctx, G, "/book");
+    const typed = "Terminal 4, JFK Airport, Queens, NY";
+    await typedEnd(p, "from", typed, "JFK");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "16:00");
+    assert.equal(await p.isVisible("#bk-flight"), true, "the flight box shows for the typed terminal");
+    await p.fill("#bk-flight", "B6 123");
+    await view(p);
+    await priced(p);
+    assert.deepEqual(await cards(p), JFK_CARDS);
+    await next(p);
+    assert.equal(await p.isVisible("#bk-meet-f"), true, "meet and greet is offered");
+    await p.check("#bk-meet");
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, cash(TOTAL + MEET_AND_GREET));
+    const want = [...AIRPORT_LINES, ["Meet and greet", cash(MEET_AND_GREET)]];
+    assert.deepEqual((await panel(p)).lines, want);
+    await details(p);
+    const bodies = [];
+    p.on("request", (r) => r.method() === "POST" && r.url().endsWith("/api/book") && bodies.push(JSON.parse(r.postData() || "{}")));
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    const pay = bodies.find((x) => x.action === "pay");
+    assert.deepEqual([pay.from_text, pay.flight, pay.meet], [typed, "B6 123", "1"]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual(await p.$$eval("#cf-lines tr", (r) => r.map((x) => [x.cells[0].textContent, x.cells[1].textContent])), want);
+    assert.equal(await p.textContent("#cf-total"), cash(TOTAL + MEET_AND_GREET));
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  await check("B154 without javascript an end that names only an area lands on the street-address request with its static text, and B155 a JFK terminal typed after the airport name pays the flat fare with meet and greet", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.fill("#bk-from", "Manhattan");
+    await p.fill("#bk-to", "Brooklyn");
+    await p.fill("#bk-date", DATE);
+    await setTime(p, "14:00");
+    await details(p);
+    await Promise.all([p.waitForURL(/\/book#q-street-address$/), p.click("#bk-submit")]);
+    assert.deepEqual([await p.isVisible("#q-street-address"), await p.textContent("#q-street-address p"), await p.isVisible("#q-wa")], [true, REASONS["street-address"].text, true]);
+    await p.goto(`${G.base}/book`, { waitUntil: "load" });
+    await p.fill("#bk-from", "Terminal 4, JFK Airport, Queens, NY");
+    await p.fill("#bk-to", "350 5th Ave, New York, NY 10118");
+    await p.fill("#bk-date", DATE);
+    await setTime(p, "16:00");
+    await p.fill("#bk-flight", "B6 123");
+    await p.check("#bk-meet");
+    await details(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/, { waitUntil: "commit" }), p.click("#bk-submit")]);
+    const session = await (await fetch(`${G.base}/api/book?session_id=${new URL(p.url()).searchParams.get("session_id")}`)).json();
+    assert.deepEqual([session.lines.map((l) => [l.label, l.cents]), session.total_cents], [[["Fare", FARE], [L_TAX, TAX], [L_BCF, BCF], ["Tolls and airport fees", TOLLS], ["Meet and greet", MEET_AND_GREET]], TOTAL + MEET_AND_GREET]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(P, { viewport: { width: 1440, height: 900 } });
+  await check("B156 a pickup or return time that a new date turns off is cleared: on the night the clocks change the chosen time in that hour gives way to Select a time, and Book your ride sends nothing and shows Add a pickup time. under Pickup time, or the return message on the return time", async () => {
+    const sunday = (y, m, n) => { const d = new Date(Date.UTC(y, m, 1)); d.setUTCDate(1 + ((7 - d.getUTCDay()) % 7) + 7 * (n - 1)); return d.toISOString().slice(0, 10); };
+    const next = (m, n) => { const y = +nyDate(0).slice(0, 4); const a = sunday(y, m, n); return a > nyDate(1) ? a : sunday(y + 1, m, n); };
+    const [day, hour] = [[next(10, 1), "01"], [next(2, 2), "02"]].sort((a, b) => (a[0] < b[0] ? -1 : 1))[0];
+    const near = (d) => new Date(Date.parse(`${day}T12:00:00Z`) + d * 864e5).toISOString().slice(0, 10);
+    const books = (p) => p.evaluate(() => performance.getEntriesByType("resource").filter((e) => e.name.endsWith("/api/book")).length);
+    const p = await open(ctx, P, "/book");
+    await trip(p, { date: near(-1), time: "22:00" });
+    await p.click("#bk-addret");
+    await pickDate(p, "#bk-rdate-btn", near(1));
+    await setTime(p, `${hour}:30`, "#bk-rtime");
+    await pickDate(p, "#bk-rdate-btn", day);
+    assert.deepEqual([await p.inputValue("#bk-rdate"), await p.inputValue("#bk-rtime"), (await p.textContent("#bk-rtime-btn")).trim(), await p.inputValue("#bk-time")], [day, "", "Select a time", "22:00"]);
+    const sent = await books(p);
+    await p.click("#bk-view");
+    await p.waitForSelector("#e-return-date", { state: "visible" });
+    assert.deepEqual([await p.isVisible("#e-time"), await p.evaluate(() => document.activeElement.id), await books(p)], [false, "bk-rtime-btn", sent]);
+    await p.click("#bk-rmret");
+    await setTime(p, `${hour}:30`);
+    await pickDate(p, "#bk-date-btn", day);
+    assert.deepEqual([await p.inputValue("#bk-date"), await p.inputValue("#bk-time"), (await p.textContent("#bk-time-btn")).trim()], [day, "", "Select a time"]);
+    await p.click("#bk-view");
+    await p.waitForSelector("#e-time", { state: "visible" });
+    assert.deepEqual([await p.isVisible("#e-date"), await p.evaluate(() => document.activeElement.id), await books(p)], [false, "bk-time-btn", sent]);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(P, { viewport: { width, height } });
+  const asked = async (p) => {
+    await p.waitForSelector("#q-airport-zip", { state: "visible" });
+    const b = await reqBar(p);
+    return [await p.textContent("#q-airport-zip p"), await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id)), await p.isHidden("#price"), b.isq, b.line, b.fix, b.qline];
+  };
+  const ASKED = () => [REASONS["airport-zip"].text, ["q-airport-zip"], true, true, "Our dispatch team prices this trip", "", "Price on request for this trip."];
+  await check(`B157 at ${width} an address typed in an airport ZIP code gets the airport ZIP code request: an address in the JFK ZIP code to Manhattan and one in the Newark airport ZIP code to Brooklyn show only that block with its text, no price, the request bar line and no button, with CLS 0, and the airport typed by its name then gets its flat rate`, async () => {
+    const p = await open(ctx, P, "/book");
+    await place(p, "from", "TWA Hotel, One Idlewild Dr, Jamaica, NY 11430");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await p.click("#bk-view");
+    assert.deepEqual(await asked(p), ASKED());
+    await settle(p, 600);
+    let [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(p, "from", "jfk", "John F. Kennedy (JFK)");
+    await view(p);
+    await priced(p);
+    assert.deepEqual(await cards(p), JFK_CARDS);
+    assert.equal(await p.isVisible("#q-airport-zip"), false);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+    const q = await open(ctx, P, "/book");
+    await place(q, "from", "3 Brewster Rd, Newark, NJ 07114");
+    await place(q, "to", "277 Bedford Ave, Brooklyn, NY 11211");
+    await pickDate(q, "#bk-date-btn", DATE);
+    await setTime(q, "14:00");
+    await q.click("#bk-view");
+    assert.deepEqual(await asked(q), ASKED());
+    [value, shifts] = await cls(q);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([q.errors, q.failed], [[], []]);
+    await q.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(P, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  await check("B157 without javascript an address typed in an airport ZIP code lands on the airport-zip request with its static text and WhatsApp to reserve", async () => {
+    const p = await open(ctx, P, "/book");
+    await p.fill("#bk-from", "TWA Hotel, One Idlewild Dr, Jamaica, NY 11430");
+    await p.fill("#bk-to", "350 5th Ave, New York, NY 10118");
+    await p.fill("#bk-date", DATE);
+    await setTime(p, "14:00");
+    await details(p);
+    await Promise.all([p.waitForURL(/\/book#q-airport-zip$/), p.click("#bk-submit")]);
+    assert.deepEqual([await p.isVisible("#q-airport-zip"), await p.textContent("#q-airport-zip p"), await p.isVisible("#q-wa")], [true, REASONS["airport-zip"].text, true]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+
+for (const [width, height] of [[390, 844], [1024, 900], [1440, 900]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  const outsideEnd = async (p, end) => {
+    await type(p, end, "Secaucus, NJ 07094");
+    await p.waitForFunction((e) => /Outside New York City/.test(document.querySelector(`#bk-${e}-list [data-kind="typed"]`)?.textContent || ""), end);
+    await p.keyboard.press("Escape");
+  };
+  const firstFrame = (p) => p.evaluate(() => [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, document.getElementById("bk-p-sprinter").textContent]);
+  const PLACEHOLDER = [["Fare", "NYC sales tax", "Black Car Fund"], POLICY.later.outside, "Price on request"];
+  for (const [name, setTrip] of [["a New Jersey address to JFK", async (p) => { await outsideEnd(p, "from"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }], ["a JFK pickup to a New Jersey address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await outsideEnd(p, "to"); }]]) {
+    await check(`B158 at ${width} ${name}, reloaded on the vehicle step and back from Stripe on /book#resume with a price that takes over 500 ms, shows from the first frame the panel of that trip, with no tolls line, the after the ride note with waiting beyond the free window and the Luxury Sprinter on Price on request, and CLS 0`, async () => {
+      const p = await open(ctx, G, "/book");
+      await setTrip(p);
+      await pickDate(p, "#bk-date-btn", DATE);
+      await setTime(p, "14:00");
+      await view(p);
+      await priced(p);
+      assert.equal((await panel(p)).notes, POLICY.later.outside);
+      await p.route("**/api/book", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+      await p.reload({ waitUntil: "load" });
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.deepEqual(await firstFrame(p), PLACEHOLDER, "reload on the vehicle step");
+      await priced(p);
+      await settle(p, 600);
+      let [value, shifts] = await cls(p);
+      assert.equal(value, 0, `reload: ${shifts.join(" | ")}`);
+      await next(p);
+      await details(p);
+      await settle(p, 400);
+      await p.goto(`${G.base}/rates`, { waitUntil: "load" });
+      await p.goto(`${G.base}/book#resume`, { waitUntil: "load" });
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
+      assert.deepEqual(await firstFrame(p), PLACEHOLDER, "back from Stripe");
+      await priced(p);
+      await settle(p, 1200);
+      [value, shifts] = await cls(p);
+      assert.equal(value, 0, `resume: ${shifts.join(" | ")}`);
+      assert.deepEqual([(await panel(p)).lines.length, (await panel(p)).notes, await p.textContent("#bk-p-sprinter")], [3, POLICY.later.outside, "Price on request"]);
+      assert.deepEqual([p.errors, p.failed], [[], []]);
+      await p.close();
+    });
+  }
+  await ctx.close();
+}
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(P, { viewport: { width, height } });
+  await check(`B159 at ${width} an address typed in the JFK ZIP code reads Airport ZIP code on its typed row and on its field, and once the field is left its hint is the airport ZIP code text, also after Edit trip, while other text the server can't place keeps the ZIP code hint`, async () => {
+    const p = await open(ctx, P, "/book");
+    const zip = await p.textContent("#e-from-zip");
+    assert.equal(zip, "Add the ZIP code after the name, like this: The New York EDITION, 10010.");
+    const hint = () => p.evaluate(() => [getComputedStyle(document.getElementById("e-from-zip")).display !== "none", document.getElementById("e-from-zip").textContent, (document.getElementById("bk-from").getAttribute("aria-describedby") || "").split(" ").includes("e-from-zip"), document.getElementById("bk-from-area").textContent]);
+    const leave = async (text, area) => {
+      await type(p, "from", text);
+      await p.waitForFunction((a) => document.querySelector('#bk-from-list [data-kind="typed"]')?.textContent.includes(a), area);
+      await p.keyboard.press("Escape");
+      await p.click("#bk-to");
+      await p.waitForFunction(() => document.activeElement && document.activeElement.id === "bk-to");
+      await settle(p, 300);
+    };
+    await leave("TWA Hotel, One Idlewild Dr, Jamaica, NY 11430", "Airport ZIP code");
+    assert.deepEqual(await hint(), [true, REASONS["airport-zip"].text, true, "Airport ZIP code"]);
+    await leave("The Plaza Hotel", "ZIP code needed");
+    assert.deepEqual(await hint(), [true, zip, true, "ZIP code needed"]);
+    await leave("Terminal B, East Elmhurst, NY 11371", "Airport ZIP code");
+    assert.deepEqual(await hint(), [true, REASONS["airport-zip"].text, true, "Airport ZIP code"]);
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await p.click("#bk-view");
+    await p.waitForFunction(() => document.getElementById("q-airport-zip").getClientRects().length > 0);
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    assert.deepEqual(await hint(), [true, REASONS["airport-zip"].text, true, "Airport ZIP code"]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 } });
+  const pay = async (p) => {
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "16:00");
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+  };
+  const day = (p) => p.evaluate(() => { const d = document.getElementById("cf-day"); return [d.children[1].textContent, d.dataset.b1, d.dataset.p, !document.getElementById("cf-fl").hidden]; });
+  await check("B160 a pickup at an airport typed by its name gets the airport text on the done page and the flight number prompt, from the zone the page resolved, and a JFK pickup to New Jersey shows the after the ride note with waiting beyond the free window from the first frame, with no tolls line and CLS 0", async () => {
+    let p = await open(ctx, G, "/book");
+    await type(p, "from", "Terminal 4, JFK Airport, Queens, NY");
+    await p.waitForFunction(() => /JFK/.test(document.querySelector('#bk-from-list [data-kind="typed"] .bk-opt__area')?.textContent || ""));
+    await p.keyboard.press("Escape");
+    await place(p, "to", "350 5th Ave, New York, NY 10118");
+    await pay(p);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    let [text, b1, street, prompt] = await day(p);
+    assert.deepEqual([text, prompt], [b1, true]);
+    assert.notEqual(text, street);
+    assert.match(await p.textContent("#cf-summary"), /\. From JFK, Business SUV\.$/);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+    p = await open(ctx, G, "/book");
+    await place(p, "from", "jfk", "John F. Kennedy (JFK)");
+    await type(p, "to", "Secaucus, NJ 07094");
+    await p.waitForFunction(() => /Outside New York City/.test(document.querySelector('#bk-to-list [data-kind="typed"]')?.textContent || ""));
+    await p.keyboard.press("Escape");
+    await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    await pay(p);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => tr.cells[0].textContent), document.getElementById("cf-notes").textContent]), [["Fare", "NYC sales tax", "Black Car Fund"], POLICY.later.outside]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual([await p.textContent("#cf-notes"), (await p.$$eval("#cf-lines tr", (r) => r.map((x) => x.cells[0].textContent))).includes("Tolls and airport fees")], [POLICY.later.outside, false]);
+    [text, b1, street, prompt] = await day(p);
+    assert.deepEqual([text, prompt], [b1, true]);
+    await p.waitForTimeout(300);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
 {
   const ctx = await context(G, { viewport: { width: 390, height: 844 } });
   const form = async (p, path) => {

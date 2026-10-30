@@ -1,6 +1,6 @@
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, rideTotals, emailOk } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk } from "./_trip.mjs";
 
 const SESSIONS = "https://api.stripe.com/v1/checkout/sessions";
 const TIMEOUT_MS = 10000;
@@ -155,7 +155,7 @@ export function sessionParams(trip, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: hourly ? CHECKOUT.submitHourly : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
+      submit: { message: hourly ? CHECKOUT.submitHourly : airportDistance(trip) ? CHECKOUT.submitOutside : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,
