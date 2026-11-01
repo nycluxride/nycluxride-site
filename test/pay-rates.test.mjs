@@ -296,6 +296,7 @@ test("the distance section says how the price is built and that tolls and parkin
 test("the airport section and the distance caption say that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City pays the airport fare or the distance and time fare, whichever is higher, as api/_trip.mjs prices it", () => {
   assert.deepEqual([...page.querySelectorAll("#airport .prose p")].map(squash), [
     "Each transfer is a one-way, flat-rate ride to or from any address in the five boroughs. We track your flight and move the pickup if it lands early or late. The price stays the same.",
+    "Pickup details for JFK, LaGuardia and Newark are on their airport pages.",
     "To or from an address outside New York City, the fare is the airport fare or the fare by distance and time, whichever is higher. Tolls and parking for those trips are charged after the ride. Our dispatch team prices long trips and Luxury Sprinter trips to or from those addresses.",
   ]);
   assert.equal(squash(page.querySelector('#airport .prose a[href="#distance"]')), "fare by distance and time");

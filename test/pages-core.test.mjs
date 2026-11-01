@@ -32,7 +32,7 @@ function check(name, fn) {
 
 const CARDS = [
   ["/services#airport-transfers", "Airport transfers", "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, NYC sales tax and the Black Car Fund included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
-  ["/chauffeur-service-nyc", "Hourly chauffeur", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum.", "mercedes-s-class", 1620, 971, "Black Mercedes-Benz S-Class in a courtyard at night"],
+  ["/chauffeur-service-nyc", "Hourly chauffeur", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum.", "bmw-7-series", 1607, 979, "Dark gray BMW 7 Series outside a stone building at night"],
   ["/limousine-service-nyc", "Weddings, prom and groups", "Luxury Sprinters for up to 12 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside the Jet Sprinter: two leather captain's chairs facing a screen"],
   ["/services#corporate", "Corporate accounts", "Monthly billing and priority scheduling for your company.", "lincoln-navigator", 1536, 1024, "Black Lincoln Navigator in a showroom"],
 ];
@@ -54,7 +54,7 @@ const CARD_SIZES = (w, h) => {
 };
 const ARROW = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>';
 const EXT = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span>';
-const REVIEWS = `<p><a class="lnk" href="https://maps.app.goo.gl/6dGNLcMvGazKFzkc7?g_st=iw" target="_blank" rel="noopener">Read the reviews on Google Maps${EXT}</a></p>`;
+const REVIEWS = `<p><a class="lnk" href="https://www.google.com/maps?cid=15477906940128800338" target="_blank" rel="noopener">Read the reviews on Google <span class="nowrap">Maps<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>`;
 const TRUST = '<ul class="assure-row assure-row--page" role="list"><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Flat airport rates include tolls, airport fees and taxes</li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg>We answer 24 hours a day, every day</li></ul>';
 const FITS = '<fieldset class="fits"><legend>Who is traveling?</legend><label><input type="radio" name="fits" value="0" checked="">All</label><label><input type="radio" name="fits" value="3">1 to 3</label><label><input type="radio" name="fits" value="5">4 or 5</label><label><input type="radio" name="fits" value="12">6 to 12</label></fieldset>';
 const P1 = "Cancellation terms are confirmed in writing with the reservation. To change or cancel, call +1 (646) 775-0556 or message on WhatsApp with your reference, and give as much notice as you can.";
@@ -152,7 +152,7 @@ const KEYS = Object.keys(CLASSES);
     assert.equal(doc.querySelectorAll('main use[href="#i-seat"]').length, 0);
     for (const a of doc.querySelectorAll("#fleet-track .lnk")) {
       assert.equal(a.lastElementChild, a.lastChild, "the arrow is the last node of the link");
-      assert.match(a.firstChild.textContent, /\S$/, "no space before the arrow");
+      assert.match(a.lastChild.previousSibling.textContent, /\S$/, "no space before the arrow");
     }
   });
 }
@@ -164,6 +164,7 @@ const HERO_C = {
   "contact.html": { img: "/fleet/page-contact-900.webp", gold: "NYC\u00a0LUX\u00a0RIDE", eyebrow: "Reservations and inquiries", btns: ["Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Contact</li></ol></nav>', preload: true },
   "faq.html": { img: "/fleet/page-faq-900.webp", gold: "questions", eyebrow: "Support", btns: null, crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">FAQ</li></ol></nav>', preload: true },
   "schedule.html": { img: "/fleet/page-schedule-900.webp", gold: "chauffeur", eyebrow: "Reservations", btns: ["Book a car", "Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Schedule a chauffeur</li></ol></nav>', preload: true },
+  "corporate-car-service-nyc.html": { img: "/fleet/page-financial-district-900.webp", gold: "New\u00a0York City", eyebrow: "Corporate travel", btns: ["Book a car", "Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li><a href="/services">Services</a></li><li aria-current="page">Corporate car service</li></ol></nav>', preload: true },
 };
 
 for (const [file, want] of Object.entries(HERO_C)) {
@@ -393,12 +394,35 @@ check("privacy-policy.html: section 2 starts with the new paragraph and the sess
   const next = doc.getElementById("how-we-collect").nextElementSibling.nextElementSibling;
   assert.ok(norm(next.textContent).startsWith(COPY[3][2]), norm(next.textContent).slice(0, 120));
 });
-check("privacy-policy.html: Last Updated October 13, 2026 and WebPage dateModified 2026-10-13", () => {
+check("privacy-policy.html: Last Updated November 1, 2026 and WebPage dateModified 2026-11-01", () => {
   const doc = load("privacy-policy.html");
   const page = graph(doc).find((n) => n["@type"] === "WebPage");
-  assert.equal(page.dateModified, "2026-10-13");
+  assert.equal(page.dateModified, "2026-11-01");
   const lines = [...doc.querySelectorAll("main p")].map((p) => norm(p.textContent)).filter((t) => t.startsWith("Last Updated:"));
-  assert.deepEqual(lines, ["Last Updated: October 13, 2026"]);
+  assert.deepEqual(lines, ["Last Updated: November 1, 2026"]);
+});
+check("privacy-policy.html: the lede names email clicks, section 2 says the Google tag also sends each page view and an event for call, WhatsApp and email taps and for a paid booking with its value and payment reference to Google Analytics and names its _ga and _ga_9MT2ZW7LPV cookies, and section 6 links the Google policy for Google Analytics", () => {
+  const doc = load("privacy-policy.html");
+  const ps = [];
+  for (let n = doc.getElementById("information-we-collect").nextElementSibling; n && n.tagName !== "H2"; n = n.nextElementSibling) ps.push(norm(n.textContent));
+  const tag = ps.find((t) => t.startsWith("Every page loads the Google Ads tag"));
+  assert.ok(tag.includes("in your browser's local storage. The tag also sends each page view to Google Analytics, and an event when you tap to call, message us on WhatsApp or email us, and when you pay for a booking, with its value and payment reference. Google Analytics sets the _ga and _ga_9MT2ZW7LPV cookies on this site. Third-party vendors"), tag);
+  assert.ok(norm(doc.querySelector("main .lede").textContent).includes("the Google Ads tag that measures ad results such as Book a car, call, WhatsApp and email clicks."), norm(doc.querySelector("main .lede").textContent));
+  assert.deepEqual([...doc.querySelectorAll('main a[href="https://policies.google.com/privacy"]')].map((a) => norm(a.textContent)), ["Google Privacy Policy (Google Ads, Google Analytics, Maps) (opens in a new tab)"]);
+});
+check("about.html: the At a glance service areas figure equals the number of area guides and the count in the copy above it", () => {
+  const doc = load("about.html");
+  const guides = readdirSync(join(ROOT, "locations")).filter((f) => f.endsWith(".html")).length;
+  const dt = [...doc.querySelectorAll("main dl.facts dt")].find((d) => norm(d.textContent) === "Service areas");
+  assert.equal(norm(dt.nextElementSibling.textContent), String(guides));
+  assert.ok(norm(doc.querySelector("main").textContent).includes(`Our guides cover ${guides} areas:`));
+});
+check("rates.html: the OfferCatalog carries no provider, which schema.org does not define for it, and stays the main entity of a WebPage about the business", () => {
+  const nodes = graph(load("rates.html"));
+  const catalog = nodes.find((n) => n["@type"] === "OfferCatalog");
+  const page = nodes.find((n) => n["@type"] === "WebPage");
+  assert.equal(Object.hasOwn(catalog, "provider"), false);
+  assert.deepEqual([page.mainEntity, page.about], [{ "@id": catalog["@id"] }, { "@id": "https://www.nycluxride.com/#organization" }]);
 });
 check("privacy-policy.html: section 2 lists the fields the schedule and contact forms ask for, and no others", () => {
   const fields = (file) => [...load(file).querySelectorAll("main form label")].map((l) => norm(l.textContent));
@@ -409,11 +433,12 @@ check("privacy-policy.html: section 2 lists the fields the schedule and contact 
   for (let n = doc.getElementById("information-we-collect").nextElementSibling; n && n.tagName !== "H2"; n = n.nextElementSibling) if (/\b(schedule|contact) forms?\b/.test(n.textContent)) ps.push(norm(n.textContent));
   assert.deepEqual(ps, ["The schedule form asks for your name, email, mobile, pickup address, destination, date and time. You can also add a flight or train number, the number of passengers, a vehicle class and notes. The contact form asks for your name, an email or mobile number and your message, and you can add a booking reference. These forms open your email app with the details filled in, and nothing is sent until you send that email."]);
 });
-check("sitemap.xml: every URL carries lastmod 2026-10-24, the release that added the car seat and Newark pages to the menu and footer of every page, and the URL list equals the baseline", () => {
+const LASTMOD = {"https://www.nycluxride.com/": "2026-11-01", "https://www.nycluxride.com/about": "2026-11-01", "https://www.nycluxride.com/black-car-service-brooklyn": "2026-11-01", "https://www.nycluxride.com/blog": "2026-11-01", "https://www.nycluxride.com/blog/best-black-car-service-brooklyn-queens-march-20": "2026-11-01", "https://www.nycluxride.com/blog/chauffeur-service-nyc-booking-guide-april-30": "2026-11-01", "https://www.nycluxride.com/blog/corporate-black-car-nyc-april-3": "2026-11-01", "https://www.nycluxride.com/blog/jfk-lga-ewr-airport-transfer-guide-april-17": "2026-11-01", "https://www.nycluxride.com/blog/manhattan-hourly-chauffeur-service-april-10": "2026-11-01", "https://www.nycluxride.com/blog/nyc-cruise-terminal-black-car-service-guide-march-6": "2026-11-01", "https://www.nycluxride.com/blog/nyc-limo-service-comparison-guide-april-29": "2026-11-01", "https://www.nycluxride.com/blog/nyc-prom-limo-booking-guide-march-13": "2026-11-01", "https://www.nycluxride.com/blog/wedding-event-limo-nyc-march-27": "2026-11-01", "https://www.nycluxride.com/blog/whatsapp-airport-pickup-coordination-nyc-april-24": "2026-11-01", "https://www.nycluxride.com/book": "2026-11-01", "https://www.nycluxride.com/car-service-with-car-seat-nyc": "2026-11-01", "https://www.nycluxride.com/card-authorization": "2026-11-01", "https://www.nycluxride.com/chauffeur-service-nyc": "2026-11-01", "https://www.nycluxride.com/contact": "2026-11-01", "https://www.nycluxride.com/corporate-car-service-nyc": "2026-11-01", "https://www.nycluxride.com/faq": "2026-11-01", "https://www.nycluxride.com/fleet": "2026-11-01", "https://www.nycluxride.com/limousine-service-nyc": "2026-11-01", "https://www.nycluxride.com/locations": "2026-11-01", "https://www.nycluxride.com/locations/bronx": "2026-11-01", "https://www.nycluxride.com/locations/brooklyn": "2026-11-01", "https://www.nycluxride.com/locations/financial-district": "2026-11-01", "https://www.nycluxride.com/locations/jfk-airport": "2026-11-01", "https://www.nycluxride.com/locations/laguardia-airport": "2026-11-01", "https://www.nycluxride.com/locations/long-island-city": "2026-11-01", "https://www.nycluxride.com/locations/manhattan": "2026-11-01", "https://www.nycluxride.com/locations/newark-airport": "2026-11-01", "https://www.nycluxride.com/locations/queens": "2026-11-01", "https://www.nycluxride.com/locations/soho": "2026-11-01", "https://www.nycluxride.com/locations/staten-island": "2026-11-01", "https://www.nycluxride.com/locations/upper-east-side": "2026-11-01", "https://www.nycluxride.com/locations/upper-west-side": "2026-11-01", "https://www.nycluxride.com/privacy-policy": "2026-11-01", "https://www.nycluxride.com/rates": "2026-11-01", "https://www.nycluxride.com/schedule": "2026-11-01", "https://www.nycluxride.com/services": "2026-11-01", "https://www.nycluxride.com/terms-of-service": "2026-11-01"};
+check("sitemap.xml: every URL carries the date its content, structured data or links last changed, 2026-11-01 for all 42 because that release gives every page a new LocalBusiness description and new footer links, and the URL list equals the baseline", () => {
   const xml = readFileSync(join(ROOT, "sitemap.xml"), "utf8");
   const mods = [...xml.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>\s*<\/url>/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(mods.map(([loc]) => loc), BASELINE.sitemap);
-  assert.deepEqual(mods.filter(([, mod]) => mod !== "2026-10-24"), []);
+  assert.deepEqual(Object.fromEntries(mods), LASTMOD);
   assert.equal(xml.split("<url>").length - 1, BASELINE.sitemap.length, "a URL without its lastmod");
 });
 check("the three posts that gained links keep their dateModified, so a new lastmod never rewrites a post date", () => {
@@ -577,7 +602,7 @@ check("faq.html: the static filter field of 2.7 item 11 sits above the first que
   assert.ok(f.nextElementSibling.matches("section.section--tight#reservations"));
   assert.equal(doc.querySelector("main details"), f.nextElementSibling.querySelector("details"));
 });
-for (const file of ["about.html", "contact.html", "faq.html", "fleet.html", "schedule.html", "card-authorization.html", "privacy-policy.html", "terms-of-service.html"]) {
+for (const file of ["about.html", "contact.html", "faq.html", "fleet.html", "schedule.html", "card-authorization.html", "privacy-policy.html", "terms-of-service.html", "corporate-car-service-nyc.html"]) {
   check(`${file}: the crumbs equal the page's BreadcrumbList, the last item the current page (G-20, decision 22)`, () => {
     const doc = load(file);
     const navs = doc.querySelectorAll("main nav.crumbs");

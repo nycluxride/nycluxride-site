@@ -220,6 +220,21 @@ const NO_GUTTER = () => {
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, s];
 };
 
+const CARDS = () => {
+  const rows = new Map(), r = (v) => Math.round(v * 2) / 2;
+  for (const c of document.querySelectorAll(".home .icards > .icard")) {
+    const b = c.getBoundingClientRect(), h = c.querySelector("h3").getBoundingClientRect(), k = Math.round(b.top);
+    rows.set(k, [...(rows.get(k) || []), { b, h, space: h.top - c.querySelector(".icard__photo").getBoundingClientRect().bottom }]);
+  }
+  const all = [...rows.values()];
+  return {
+    rows: all.map((x) => x.length),
+    space: all.map((x) => r(Math.min(...x.map((c) => c.space)))),
+    level: all.map((x) => r(Math.max(...x.map((c) => c.h.bottom)) - Math.min(...x.map((c) => c.h.bottom)))),
+    apart: all.slice(1).map((x, i) => r(Math.min(...x.map((c) => c.b.top)) - Math.max(...all[i].map((c) => c.b.bottom)))),
+  };
+};
+
 for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["firefox", firefox]]) {
   const browser = await type.launch();
   for (const width of WIDTHS) {
@@ -284,6 +299,11 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       else if (width >= 360) assert.deepEqual(s.wrapped, []);
     });
     await check(`${engine} ${width}px: free waiting is said once, by the band, not by the trust row of the hero form above it`, () => assert.deepEqual(s.freeHero, []));
+    if (!phone) {
+      const c = await p.evaluate(CARDS), two = width < 1280;
+      await check(`${engine} ${width}px: the four service cards sit in ${two ? "two rows of two, 24 px apart" : "one row"}, the titles in each row line up at the bottom and the longest starts 16 px below its photo`, () =>
+        assert.deepEqual(c, { rows: two ? [2, 2] : [4], space: two ? [16, 16] : [16], level: two ? [0, 0] : [0], apart: two ? [24] : [] }));
+    }
     if (engine === "chromium" && [390, 1440].includes(width)) {
       const cls = await p.evaluate(() => window.__cls);
       await check(`${engine} ${width}px: CLS on load is 0`, () => assert.equal(cls, 0));

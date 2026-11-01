@@ -23,6 +23,11 @@
       "statusCode": 301
     },
     {
+      "source": "/home.png",
+      "destination": "/hero-new.webp",
+      "statusCode": 301
+    },
+    {
       "source": "/blog/brooklyn-black-car-service-local-guide-april-28",
       "destination": "/black-car-service-brooklyn",
       "statusCode": 301

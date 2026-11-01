@@ -33,7 +33,7 @@ const NOJS = ["(one way)", "(by the hour)", " for airport pickups", " (airport p
 const STEP1_IDS = ["bk-search", "bk-mode", "bk-one", "bk-hour", "e-trip_type", "bk-adds", "bk-addstop", "bk-addret", "bk-hours-f", "bk-hours", "bk-date-f", "bk-date-l", "bk-date", "bk-date-btn", "bk-cal", "bk-flight-f", "bk-flight", "bk-flight-status", "bk-time-f", "bk-time-l", "bk-time", "bk-time-btn", "bk-tm", "bk-time-h", "bk-ret-c", "bk-ret", "bk-ret-f", "bk-ret-sum", "bk-rdate-f", "bk-rdate-l", "bk-rdate", "bk-rdate-btn", "bk-rtime-f", "bk-rtime", "bk-rflight-f", "bk-rflight", "bk-rflight-status", "bk-rmret", "bk-view", "bk-status", "bk-assure", "bk-stop1-h", "bk-stop2-h"];
 const END_IDS = Object.keys(ENDS).flatMap((e) => ["-f", "", "-id", "-ticket", "-area", "-x", "-pop", "-list"].map((s) => `bk-${e}${s}`)).concat(["bk-stop1-rm", "bk-stop2-rm"]);
 const STEP2_IDS = ["bk-opts", "bk-sum", "bk-edit", "bk-opt-h", "bk-wait", "bk-map", "bk-drive", "bk-pax-f", "bk-pax", "bk-pax-h", "bk-cards", ...Object.keys(CLASSES).flatMap((c) => [`bk-c-${c}`, `bk-p-${c}`]), ...Object.keys(CLASSES).flatMap((c) => [`bk-n-${c}`, `bk-m-${c}`, `bk-s-${c}`]), "bk-qline", "bk-arrive", "bk-vehicle-f", "bk-vehicle", "bk-meet-f", "bk-meet-no", "bk-meet", "bk-meet-p", "bk-meet-h", "bk-meet-t57", "bk-tip", "bk-tip-opts", "bk-tipamt-f", "bk-tipamt", "bk-tipamt-h", "e-tip_amount", "bk-tip-h", "bk-result", "price", "price-h", "price-lines", "price-total", "price-notes", "bk-act", "bk-tot", "bk-tot-l", "bk-tot-v", "quote", "bk-qnotes-f", "bk-qnotes", "bk-qnotes-h", "q-body", "q-wa", "q-mail", "q-fix", "q-retry", "q-sent", "bk-route", "bk-route-n", "bk-policy", "bk-go", "bk-nopay", "bk-under", "bk-submit", "e-form", "bk-hp", "bk-nonce", "bk-places", "bk-more", "bk-incl-h", "bk-incl", "bk-pills", ...Object.keys(CLASSES).map((c) => `bk-pp-${c}`), "bk-side", "bk-choice", "bk-consent", "bk-next", "bk-bar", "bk-bar-name", "bk-bar-total", "bk-bar-q", "bk-bar-go", "bk-bar-mail"];
-const STEP3_IDS = ["bk-det", "bk-back", "bk-det-h", "bk-who", "bk-r-other", "e-rider", "bk-name-f", "bk-name", "e-name", "bk-email-f", "bk-email", "e-email", "bk-phone-f", "bk-phone-cc", "bk-phone-face", "bk-phone", "bk-phone-h", "e-phone", "bk-reach", "bk-reach-phone", "bk-reach-wa", "e-reach", "bk-pname-f", "bk-pname", "e-pname", "bk-pphone-f", "bk-pphone-cc", "bk-pphone-face", "bk-pphone", "e-pphone", "bk-dflight-f", "bk-dflight", "bk-sign-f", "bk-sign", "bk-sign-h", "bk-notes-f", "bk-notes", "bk-notes-h", "bk-check", "bk-check-h", "bk-check-edit", "bk-check-route", "bk-check-rows", "bk-errs", "bk-email-s", "bk-phone-s", "bk-pphone-s", "bk-signcard", "bk-signname", "bk-notes-add", "bk-next3"];
+const STEP3_IDS = ["bk-det", "bk-back", "bk-det-h", "bk-who", "bk-r-other", "e-rider", "bk-name-f", "bk-name", "e-name", "bk-email-f", "bk-email", "e-email", "bk-phone-f", "bk-phone-cc", "bk-phone-face", "bk-phone", "bk-phone-h", "e-phone", "bk-reach", "bk-reach-opts", "bk-reach-phone", "bk-reach-wa", "e-reach", "bk-pname-f", "bk-pname", "e-pname", "bk-pphone-f", "bk-pphone-cc", "bk-pphone-face", "bk-pphone", "e-pphone", "bk-dflight-f", "bk-dflight", "bk-sign-f", "bk-sign", "bk-sign-h", "bk-notes-f", "bk-notes", "bk-notes-h", "bk-check", "bk-check-h", "bk-check-edit", "bk-check-route", "bk-check-rows", "bk-errs", "bk-email-s", "bk-phone-s", "bk-pphone-s", "bk-signcard", "bk-signname", "bk-notes-add", "bk-next3"];
 const REMOVED_IDS = ["bk-help", "bk-wa", "bk-helpline", "bk-hl-wa", "bk-hl-h", "bk-noflight", "bk-addflight", "bk-from-address", "bk-to-address", "e-from_address", "e-to_address", "bk-class", "bk-estimate", "q-switch", "q-switch-fare", "q-class-airport", "q-first-lga", "q-call", "bk-bar-wa", "bk-bar-tel", "bk-msg", "bk-steps", "bk-r-me", "bk-email-h", "bk-notes-add-h"];
 const ICON = (id) => `<svg class="icon" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
 const MEET = ['<fieldset class="bk-meet" id="bk-meet-f" data-show="from-priced">', '<legend>Where we meet<span class="bk-nojs"> (airport pickups)</span></legend>', '<label class="bk-mrow" for="bk-meet-no"><input type="radio" id="bk-meet-no" name="meet" value="" checked><span class="bk-mrow__t">At the curb or pickup area</span><span class="bk-mrow__p">Included</span><span class="bk-mrow__s">Your chauffeur confirms the exact spot by phone or WhatsApp once you have your bags.</span></label>', '<label class="bk-mrow" for="bk-meet"><input type="radio" id="bk-meet" name="meet" value="1"><span class="bk-mrow__t">Inside the terminal with a name sign</span><span class="bk-mrow__p" id="bk-meet-p"></span><span class="bk-mrow__s" id="bk-meet-h"><span id="bk-meet-bc">Your chauffeur waits inside near baggage claim. </span>Airport parking is charged after the ride.</span></label>', '<p class="bk-mrow__x" id="bk-meet-t57" hidden>For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.</p>', "</fieldset>"].join("\n");
@@ -186,7 +186,7 @@ check("each place box has its label, input, hidden fields, badge, clear button a
     const box = $(`bk-${end}-f`), input = $(`bk-${end}`);
     assert.ok(box.matches(`div.field.bk-place[data-end="${end}"]`), end);
     assert.equal(nt(box.querySelector(`label[for="bk-${end}"]`).firstChild.textContent), label, end);
-    assert.deepEqual(["type", "maxlength", "autocomplete", "list", "placeholder"].map((a) => input.getAttribute(a)), ["text", "200", "off", "bk-places", PH], end);
+    assert.deepEqual(["type", "maxlength", "autocomplete", "list", "placeholder"].map((a) => input.getAttribute(a)), ["text", "200", null, "bk-places", PH], end);
     assert.equal(input.name, `${end}_text`);
     assert.equal(input.hasAttribute("required"), end === "from", end);
     for (const s of ["id", "ticket"]) assert.ok($(`bk-${end}-${s}`).matches(`input[type=hidden][name="${end}_${s}"][value=""]`), `${end} ${s}`);
@@ -238,7 +238,7 @@ check("labels, qualifiers and texts of step 1 are exact", () => {
   assert.ok($("bk-date").matches("input[type=date][name=date][required]") && $("bk-rdate").matches("input[type=date][name=return_date]"));
   assert.equal($("bk-flight-f").dataset.show, "from-airport");
   assert.equal($("bk-rflight-f").dataset.show, "to-airport");
-  for (const id of ["bk-flight", "bk-rflight", "bk-dflight"]) assert.deepEqual(["type", "maxlength", "autocomplete", "autocapitalize", "spellcheck", "placeholder", "enterkeyhint"].map((a) => $(id).getAttribute(a)), ["text", "20", "off", "characters", "false", "For example DL 1234", "next"], id);
+  for (const id of ["bk-flight", "bk-rflight", "bk-dflight"]) assert.deepEqual(["type", "maxlength", "autocomplete", "autocapitalize", "spellcheck", "placeholder", "enterkeyhint"].map((a) => $(id).getAttribute(a)), ["text", "20", null, "characters", "false", "For example DL 1234", "next"], id);
   for (const id of ["bk-flight-status", "bk-rflight-status"]) assert.ok($(id).matches('p.bk-fl[aria-live="polite"]'), id);
   assert.deepEqual([nt($("bk-flight-status").textContent), $("bk-rflight-status").textContent], [MONITOR, ""]);
   for (const e of Object.keys(ENDS)) assert.deepEqual(["spellcheck", "autocorrect", "enterkeyhint"].map((a) => $(`bk-${e}`).getAttribute(a)), ["false", "off", "next"], e);
@@ -293,7 +293,7 @@ check("step 2: trip chips, Edit trip, heading, passengers, the request line, row
   assert.ok($("bk-tip").matches('fieldset.bk-tip.bk-js-only[data-show="details"]') && nt($("bk-tip").querySelector("legend").textContent) === "Gratuity for your chauffeur");
   assert.ok($("bk-tip-opts").matches("div.bk-chips") && $("bk-tip-opts").children.length === 0);
   assert.ok($("bk-tip-h").matches("p.field__hint") && $("bk-tip-h").previousElementSibling === $("bk-tipamt-f") && $("bk-tipamt-f").previousElementSibling === $("bk-tip-opts") && nt($("bk-tip-h").textContent) === LABELS.gratuityDescription && LABELS.gratuityDescription === "Paid in full to your chauffeur.");
-  assert.equal($("bk-tipamt-f").outerHTML, '<div class="field bk-tipamt" id="bk-tipamt-f" hidden=""><label for="bk-tipamt">Amount in dollars</label><span class="bk-row bk-tipamt__in"><input id="bk-tipamt" name="tip_amount" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="off" enterkeyhint="done" aria-describedby="bk-tipamt-h"></span><p class="field__hint bk-js-only" id="bk-tipamt-h"></p><p class="bk-e field__hint" id="e-tip_amount">Type the gratuity in whole dollars, or choose None.</p></div>', "Other opens a whole dollar amount with a number keypad, its hint built at run time and its own message");
+  assert.equal($("bk-tipamt-f").outerHTML, '<div class="field bk-tipamt" id="bk-tipamt-f" hidden=""><label for="bk-tipamt">Amount in dollars</label><span class="bk-row bk-tipamt__in"><input id="bk-tipamt" name="tip_amount" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" enterkeyhint="done" aria-describedby="bk-tipamt-h"></span><p class="field__hint bk-js-only" id="bk-tipamt-h"></p><p class="bk-e field__hint" id="e-tip_amount">Type the gratuity in whole dollars, or choose None.</p></div>', "Other opens a whole dollar amount with a number keypad, its hint built at run time and its own message");
 });
 
 
@@ -331,7 +331,7 @@ check("five class rows and five pills, in the order Business SUV, Business Premi
   assert.match(first.getAttribute("alt"), /^Black Mercedes-Benz S-Class /);
   const alts = ["Black Chevrolet Suburban in a white studio", "Black Cadillac Escalade ESV in a white studio", "Black Mercedes-Benz S-Class in a white studio", "Black Cadillac Lyriq in a white studio", "Black Mercedes-Benz Sprinter van in a white studio"];
   assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), alts.map((a) => ["960", "1192", a]));
-  const sizes = "(min-width: 1280px) 176px, (min-width: 1024px) 128px, (min-width: 600px) 176px, 96px";
+  const sizes = "(min-width: 600px) 128px, 96px";
   assert.deepEqual([...$("bk-cards").querySelectorAll("picture")].map((p) => [...p.querySelectorAll("source")].map((s) => s.getAttribute("sizes"))), order.map(() => [sizes, sizes]));
 });
 
@@ -401,7 +401,7 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.deepEqual([$("q-wa").className, $("q-wa").getAttribute("href"), $("q-wa").hasAttribute("data-wa"), $("q-wa").getAttribute("target"), $("q-wa").getAttribute("rel"), !!$("q-wa").querySelector('use[href="#i-whatsapp"]'), nt($("q-wa").textContent)], ["btn btn--ghost", "https://wa.me/16467750556", false, "_blank", "noopener", true, "WhatsApp to reserve"]);
   assert.equal($("q-call"), null);
   assert.ok($("q-sent").matches('div.notice.bk-js-only[role="status"][hidden]') && $("q-sent").textContent === "");
-  assert.equal($("bk-policy").innerHTML, `${P1_FIRST} <a class="lnk" href="/rates#cancellation" target="_blank" rel="noopener">Rates and cancellation terms${EXT}</a>`);
+  assert.equal($("bk-policy").innerHTML, `${P1_FIRST} <a class="lnk" href="/rates#cancellation" target="_blank" rel="noopener">Rates and cancellation <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>`);
   assert.equal(P1_FIRST, "Cancellation terms are confirmed in writing with the reservation.");
   assert.ok(parts["book.html"].includes(CONSENT), "the consent line and its two links in a new tab");
   assert.ok($("bk-next").matches('button.btn.bk-js-only[type=button][aria-describedby="bk-nopay"]') && nt($("bk-next").textContent) === "Book and pay online");
@@ -425,20 +425,20 @@ check("step 3: the step count, the error summary, Someone else is riding, passen
   assert.ok($("bk-reach").matches("fieldset.bk-seg") && nt($("bk-reach").querySelector("legend").textContent) === "How should we contact you?");
   assert.deepEqual([...$("bk-reach").querySelectorAll("input")].map((i) => [i.id, i.name, i.value, i.checked, nt(i.parentElement.textContent)]), [["bk-reach-phone", "reach", "phone", true, "Phone"], ["bk-reach-wa", "reach", "whatsapp", false, "WhatsApp"]]);
   const f = (id) => { const c = $(id); return [nt(form.querySelector(`label[for="${id}"]`).textContent), c.getAttribute("type"), c.getAttribute("maxlength"), c.getAttribute("autocomplete"), c.getAttribute("placeholder"), c.getAttribute("aria-describedby"), c.getAttribute("enterkeyhint"), c.getAttribute("autocapitalize")]; };
-  assert.deepEqual(f("bk-name"), ["Your full name", "text", "80", "name", null, null, "next", "words"]);
+  assert.deepEqual(f("bk-name"), ["Your full name", "text", "80", "name", "", null, "next", "words"]);
   assert.deepEqual(f("bk-email"), ["Your email", "email", "254", "email", "name@example.com", null, "next", null]);
   assert.deepEqual([$("bk-email").getAttribute("inputmode"), $("bk-email").getAttribute("spellcheck")], ["email", "false"]);
   assert.deepEqual(f("bk-phone"), ["Your mobile number", "tel", "32", "tel", "For example 212 555 0100", "bk-phone-h", "next", null]);
   assert.deepEqual(["bk-phone", "bk-pphone"].map((id) => $(id).getAttribute("pattern")), ["[+ \\(\\).\\-]*(?:[0-9][+ \\(\\).\\-]*){4,15}", "[+ \\(\\).\\-]*(?:[0-9][+ \\(\\).\\-]*){4,15}"]);
   assert.equal($("bk-phone").getAttribute("inputmode"), "tel");
-  assert.deepEqual(f("bk-pname"), ["Passenger's full name (if someone else is riding)", "text", "80", "off", null, null, "next", "words"]);
-  assert.deepEqual(f("bk-pphone"), ["Passenger's mobile number (if someone else is riding)", "tel", "32", "off", "For example 212 555 0100", "bk-other-h", "next", null]);
+  assert.deepEqual(f("bk-pname"), ["Passenger's full name (if someone else is riding)", "text", "80", null, "", null, "next", "words"]);
+  assert.deepEqual(f("bk-pphone"), ["Passenger's mobile number (if someone else is riding)", "tel", "32", null, "For example 212 555 0100", "bk-other-h", "next", null]);
   assert.ok($("bk-other-h").matches('p.bk-mrow__x[data-show="other"]') && $("bk-other-h").previousElementSibling === $("bk-pphone-f"));
   assert.deepEqual([...$("bk-other-h").children].map((e) => [e.className, nt(e.textContent)]).concat([[nt($("bk-other-h").lastChild.previousSibling.textContent)], [$("bk-other-n").textContent]]), [["bk-nojs", "If someone else is riding, your chauffeur contacts them on the day of the ride."], ["bk-js-only", "Your chauffeur contacts the passenger on the day of the ride."], ["bk-cc-h", "Outside the US, start their number with + and the country code."], ["Your confirmation, receipt and any changes go to your email."], ["the passenger"]]);
   assert.ok($("bk-other-h").lastChild === $("bk-other-h").querySelector(".bk-cc-h"), "the passenger note ends with how to type a number from another country");
   assert.deepEqual([...$("bk-phone-h").childNodes].map((n) => [n.nodeName, n.className, n.textContent]), [["SPAN", "", "We use this number to arrange your pickup."], ["SPAN", "bk-cc-h", " Outside the US, start with + and the country code."]], "the first sentence hides when someone else rides, the second shows only without the picker");
-  assert.deepEqual(f("bk-dflight"), ["Flight number", "text", "20", "off", "For example DL 1234", null, "next", "characters"]);
-  assert.deepEqual(f("bk-sign"), ["Name for the sign (meet and greet)", "text", "45", "off", null, "bk-sign-h", "next", "words"]);
+  assert.deepEqual(f("bk-dflight"), ["Flight number", "text", "20", null, "For example DL 1234", null, "next", "characters"]);
+  assert.deepEqual(f("bk-sign"), ["Name for the sign (meet and greet)", "text", "45", null, "", "bk-sign-h", "next", "words"]);
   assert.deepEqual([nt(form.querySelector('label[for="bk-notes"]').textContent), $("bk-notes").tagName, $("bk-notes").getAttribute("maxlength"), $("bk-notes").getAttribute("rows"), $("bk-notes").getAttribute("aria-describedby"), $("bk-notes").getAttribute("enterkeyhint")], ["Notes for your chauffeur (optional)", "TEXTAREA", "500", "3", "bk-notes-h", "done"]);
   assert.deepEqual(["bk-phone-h", "bk-sign-h", "bk-notes-h"].map((id) => $(id).matches("p.field__hint:not(.bk-e)") && nt($(id).textContent)), ["We use this number to arrange your pickup. Outside the US, start with + and the country code.", "Your chauffeur holds a sign with this name inside the terminal.", "For example child seats or large luggage."]);
   assert.deepEqual([...$("bk-det").querySelectorAll("p.field__hint:not(.bk-e,.bk-js-only)")].map((h) => h.id), ["bk-phone-h", "bk-notes-h"], "the details hold one hint before the notes open");
@@ -489,7 +489,16 @@ check("every ERRORS code has its message with the exact text in the place of its
   assert.equal(nt($("e-stop2").textContent), "Add the address of stop 2, or remove the stop.");
   assert.ok($("e-time").matches("p.bk-e.field__hint") && $("bk-time-f").contains($("e-time")) && nt($("e-time").textContent) === "Add a pickup time.");
   assert.equal(Object.keys(ERRORS).length, 22);
-  assert.equal(form.querySelectorAll(".bk-e").length, Object.keys(ERRORS).length + 7);
+  assert.ok($("e-dflight").matches("p.bk-e.field__hint") && $("e-dflight").previousElementSibling === $("bk-dflight") && nt($("e-dflight").textContent) === ERRORS.flight.text, "the step 3 flight number has its own message");
+  assert.equal(form.querySelectorAll(".bk-e").length, Object.keys(ERRORS).length + 8);
+});
+
+check("without javascript the sign field opens with a link to the meet and greet price and ends with the name it needs, and the request blocks end with how to change the trip", () => {
+  assert.equal($("bk-meet-n").outerHTML, `<p class="bk-nj" id="bk-meet-n"><a class="lnk" href="/rates#add-ons" target="_blank" rel="noopener">See the meet and greet price${EXT}</a></p>`);
+  assert.equal($("bk-sign-n").outerHTML, '<p class="field__hint bk-nj" id="bk-sign-n">Add a name here or in Your full name.</p>');
+  assert.ok($("bk-sign-f").firstElementChild === $("bk-meet-n") && $("bk-sign-f").lastElementChild === $("bk-sign-n") && $("bk-signcard").nextElementSibling === $("bk-sign-n"));
+  assert.ok($("bk-goback").matches("p.bk-nojs") && $("bk-goback").parentElement === $("quote") && [...$("quote").children].indexOf($("bk-goback")) < [...$("quote").children].indexOf($("q-error")) && nt($("bk-goback").textContent) === "Press Back to change your trip.");
+  for (const f of HOSTS) for (const id of ["bk-meet-n", "bk-sign-n", "bk-goback", "e-dflight"]) assert.equal(parts[f].split(`id="${id}"`).length, 2, `${f} ${id}`);
 });
 
 check("every input, select and textarea has a label, and the time selects hold four optgroups", () => {

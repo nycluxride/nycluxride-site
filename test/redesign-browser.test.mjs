@@ -781,13 +781,13 @@ check("/fleet: after scrolling with motion allowed no photo inside .plate__img s
 });
 await reveal.close();
 
-for (const width of [320, 390, 900, 1280, 1440]) {
+for (const width of [320, 390, 600, 650, 900, 1280, 1440]) {
   const p = await open({ viewport: { width, height: 900 } });
   await p.goto(`${base}/`, { waitUntil: "load" });
   await p.evaluate(() => document.fonts.ready);
   const gaps = await p.evaluate(() => [...document.querySelectorAll("main [id^=class-] .lnk")].map((a) => {
     const range = document.createRange();
-    range.selectNodeContents(a.firstChild);
+    range.selectNodeContents(a.querySelector(".icon").previousSibling);
     const rects = [...range.getClientRects()];
     const word = rects[rects.length - 1];
     const icon = a.querySelector(".icon").getBoundingClientRect();
@@ -827,6 +827,7 @@ for (const width of [320, 390, 768, 900, 1024]) {
     assert.deepEqual(closed.bar, [true, "2px", "24px", "rgb(201, 162, 39)"]);
   });
   await p.click(".nav-panel__more > summary");
+  await p.waitForFunction(() => { const n = document.getElementById("nav-panel"), h = n.scrollHeight, done = h > n.clientHeight && h === window.__navH; window.__navH = h; return done; }, null, { polling: 100, timeout: 3000 }).catch(() => {});
   await p.evaluate(() => { const n = document.getElementById("nav-panel"); n.scrollTop = n.scrollHeight; });
   await p.waitForTimeout(200);
   const opened = await p.evaluate(() => {
@@ -855,11 +856,22 @@ for (const width of [320, 390, 768, 900, 1024]) {
   const touch = await p.evaluate(() => [getComputedStyle(document.documentElement).webkitTapHighlightColor, getComputedStyle(document.querySelector("button")).touchAction, getComputedStyle(document.querySelector("a[href]")).touchAction, getComputedStyle(document.documentElement).colorScheme, getComputedStyle(document.querySelector(".plate__img") || document.body).backgroundColor]);
   check("taps: the tap highlight is transparent and buttons and links take touch-action manipulation", () => assert.deepEqual(touch.slice(0, 3), ["rgba(0, 0, 0, 0)", "manipulation", "manipulation"]));
   check("color-scheme computes only light", () => assert.match(touch[3], /^(only light|light only)$/));
-  const foot = await p.evaluate(() => { const f = document.querySelector(".site-footer"); return { h: f.getBoundingClientRect().height, wraps: [...f.querySelectorAll(".site-footer__grid a")].filter((a) => a.getClientRects().length > 1).map((a) => a.textContent.trim()) }; });
+  const footAt = async (width) => {
+    await p.setViewportSize({ width, height: 844 });
+    await p.waitForTimeout(150);
+    return p.evaluate(() => { const f = document.querySelector(".site-footer"); return { h: f.getBoundingClientRect().height, wraps: [...f.querySelectorAll(".site-footer__grid a")].filter((a) => { const r = document.createRange(); r.selectNodeContents(a); return new Set([...r.getClientRects()].filter((q) => q.width > 0).map((q) => Math.round(q.top))).size > 1; }).map((a) => a.textContent.trim()) }; });
+  };
+  const foot = await footAt(390);
   check(`/rates: the footer at 390 is at most 1,560px tall with no wrapped link (${Math.round(foot.h)}px)`, () => {
     assert.ok(foot.h <= 1560, `${foot.h}px`);
     assert.deepEqual(foot.wraps, []);
   });
+  for (const width of [360, 600, 1024]) {
+    const at = await footAt(width);
+    check(`/rates: at ${width}px no footer link wraps, counted by line boxes`, () => assert.deepEqual(at.wraps, []));
+  }
+  const narrow = await footAt(320);
+  check(`/rates: at 320px at most one footer link wraps (${narrow.wraps.join(", ") || "none"})`, () => assert.ok(narrow.wraps.length <= 1, narrow.wraps.join(", ")));
   await p.close();
 }
 {
@@ -1181,6 +1193,12 @@ async function engineChecks(engine, b) {
     guesses.push(await p.evaluate(() => { const g = document.getElementById("nf-guess"), a = g.querySelector("a"); return a ? `${g.textContent} ${a.getAttribute("href")}` : g.textContent; }));
   }
   check(`${engine}: the 404 guesses the closest page and stays empty without one`, () => assert.deepEqual(guesses, ["Did you mean JFK Airport? /locations/jfk-airport", "Did you mean Black car service Brooklyn? /black-car-service-brooklyn", "Did you mean Chauffeur service NYC? /chauffeur-service-nyc", ""]));
+  const york = [];
+  for (const path of ["/locations/new-york", "/new-york", "/new-york-car-service", "/new-york-airport-transfers", "/locations/newark"]) {
+    await p.goto(base + path, { waitUntil: "load" });
+    york.push(await p.evaluate(() => { const g = document.getElementById("nf-guess"), a = g.querySelector("a"); return a ? `${g.textContent} ${a.getAttribute("href")}` : g.textContent; }));
+  }
+  check(`${engine}: the 404 does not take the words new and york for Newark, and a Newark address still finds Newark Airport`, () => assert.deepEqual(york, ["Did you mean Service areas? /locations", "", "", "Did you mean JFK Airport? /locations/jfk-airport", "Did you mean Newark Airport? /locations/newark-airport"]));
   await done(p);
 
   for (const width of [390, 1440]) {
@@ -1222,6 +1240,19 @@ async function engineChecks(engine, b) {
         assert.ok(hits["meet and greet"].length && hits.bags.length);
         assert.deepEqual([hits["meet & greet"], hits["meet&greet"], hits["Meet&Greet"], hits.luggage], [hits["meet and greet"], hits["meet and greet"], hits["meet and greet"], hits.bags]);
         assert.deepEqual([hits.carseat, hits["baby seat"], hits.refund, hits.tip, hits.ewr], [["q-child-seats"], ["q-child-seats"], ["q-cancellation"], ["q-tolls-and-gratuity"], ["q-airport-rates"]]);
+      });
+      const words = {};
+      try {
+        for (const q of ["child's seat", "child’s seat", "driver", "driver wait", "will the driver wait"]) words[q] = await shown(q);
+      } catch (e) {
+        words.error = String(e.message).split("\n")[0];
+      }
+      check(`${engine}: /faq: child's seat finds the child seat answer with either apostrophe, and driver finds the answers about the chauffeur's waiting, pickup and fees`, () => {
+        assert.equal(words.error, undefined);
+        assert.deepEqual([words["child's seat"], words["child’s seat"]], [["q-child-seats"], ["q-child-seats"]]);
+        assert.deepEqual(words.driver, ["q-hourly-service", "q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-tolls-and-gratuity"]);
+        assert.deepEqual(words["driver wait"], ["q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges"]);
+        assert.deepEqual(words["will the driver wait"], ["q-jfk-pickup-point", "q-waiting-charges"]);
       });
     }
     let none;
@@ -1290,6 +1321,48 @@ async function engineChecks(engine, b) {
   check(`${engine}: JavaScript on, before pay.js runs, the trust row reads ink-2 with gold-700 icons on the homepage floor and on the cream banner under the ink card`, () =>
     assert.deepEqual(glass, [[false, "rgb(80, 80, 85)", "rgb(133, 104, 35)"], [false, "rgb(80, 80, 85)", "rgb(133, 104, 35)"]]));
   await done(p);
+
+  p = await page("/fleet", { viewport: { width: 1280, height: 800 } });
+  const tabsOn = () => p.evaluate(() => [...document.querySelectorAll(".jumps--tabs a[aria-current]")].map((a) => `${a.textContent.trim()}=${a.getAttribute("aria-current")}`));
+  const marks = [await tabsOn()];
+  for (const href of ["#first-class", "#fleet-all"]) {
+    await p.click(`.jumps--tabs a[href="${href}"]`);
+    await p.waitForFunction((h) => document.querySelector(`.jumps--tabs a[href="${h}"]`).hasAttribute("aria-current"), href, { timeout: 2000 }).catch(() => {});
+    marks.push(await tabsOn());
+    if (href === "#first-class") marks.push(await p.evaluate(() => getComputedStyle(document.querySelector(".jumps--tabs a[aria-current]") || document.body).boxShadow));
+  }
+  check(`${engine}: /fleet: the class tab on show carries aria-current, All vehicles at load, First Class after its tab and All vehicles after its own, with no box drawn around it`, () => assert.deepEqual(marks, [["All vehicles=true"], ["First Class=true"], "none", ["All vehicles=true"]]));
+  await done(p);
+
+  p = await page("/services", { viewport: { width: 1280, height: 800 } });
+  await p.evaluate(() => scrollTo(0, 1500));
+  const kept = await p.evaluate(() => {
+    const a = document.querySelector(".site-header__desk .btn"), out = [];
+    for (const k of ["metaKey", "ctrlKey", "shiftKey", "altKey", ""]) {
+      let taken;
+      const peek = (e) => { taken = e.defaultPrevented; e.preventDefault(); };
+      addEventListener("click", peek, { once: true });
+      a.dispatchEvent(new MouseEvent("click", k ? { bubbles: true, cancelable: true, [k]: true } : { bubbles: true, cancelable: true }));
+      out.push(taken);
+      if (k === "altKey") out.push(Math.round(scrollY));
+    }
+    return out;
+  });
+  check(`${engine}: /services: a Cmd, Ctrl, Shift or Alt click on the header Book a car keeps the browser's own action and leaves the page where it is, and a plain click still goes to the form`, () => assert.deepEqual(kept, [false, false, false, false, 1500, true]));
+  await done(p);
+
+  const shortBook = [];
+  for (const [path, width, height] of [["/locations/jfk-airport", 683, 384], ["/", 683, 384], ["/services", 640, 360]]) {
+    p = await page(path, { viewport: { width, height } });
+    await p.evaluate(() => scrollTo(0, 3000));
+    await p.waitForTimeout(200);
+    await p.evaluate(() => document.querySelector(".actionbar__cell--book").click());
+    await p.waitForFunction(() => document.activeElement && document.activeElement.id === "bk-from", null, { timeout: 3000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    shortBook.push(await p.evaluate(() => { const r = document.getElementById("bk-from").getBoundingClientRect(); return `${location.pathname} ${innerWidth}x${innerHeight} ${document.activeElement.id} ${r.top >= 0 && r.bottom <= innerHeight ? "on screen" : `at ${Math.round(r.top)} to ${Math.round(r.bottom)}`}`; }));
+    await done(p);
+  }
+  check(`${engine}: at 1366x768 and 1280x720 zoomed to 200%, Book a car in the action bar focuses the pickup box and brings it on screen`, () => assert.deepEqual(shortBook, ["/locations/jfk-airport 683x384 bk-from on screen", "/ 683x384 bk-from on screen", "/services 640x360 bk-from on screen"]));
 
   const menu = [];
   for (const path of ["/", "/book", "/about"]) {

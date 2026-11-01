@@ -7,6 +7,7 @@ const SRC = readFileSync(fileURLToPath(new URL("../assets/tracking.js", import.m
 const LABEL_LINE = 'var PURCHASE_LABEL = "";';
 const TEST_LABEL = "TESTPURCHASELABEL";
 const ADS_ID = "AW-18190711813";
+const GA4_ID = "G-9MT2ZW7LPV";
 
 function boot(url, body = "", label = false) {
   const dom = new JSDOM(`<!doctype html><html><body>${body}</body></html>`, { url, runScripts: "outside-only" });
@@ -15,7 +16,8 @@ function boot(url, body = "", label = false) {
   window.NLR_ADS_ID = ADS_ID;
   window.nlrGtag = (...args) => calls.push(args);
   window.eval(label ? SRC.replace(LABEL_LINE, `var PURCHASE_LABEL = "${TEST_LABEL}";`) : SRC);
-  return { window, calls, conversions: () => JSON.parse(JSON.stringify(calls.filter((c) => c[0] === "event" && c[1] === "conversion"))) };
+  const pick = (name) => () => JSON.parse(JSON.stringify(calls.filter((c) => c[0] === "event" && c[1] === name)));
+  return { window, calls, conversions: pick("conversion"), purchases: pick("purchase") };
 }
 
 function click(window, selector) {
@@ -47,9 +49,10 @@ test("the purchase label line is exactly the empty constant", () => {
   assert.equal(SRC.split("\n").filter((l) => l.includes("PURCHASE_LABEL =")).map((l) => l.trim()).join("|"), LABEL_LINE);
 });
 
-test("nlrPurchase fires one conversion with value, currency and the Stripe session id as the transaction id for a live session", () => {
-  const { window, conversions } = boot("https://www.nycluxride.com/booking-confirmed", "", true);
+test("with a purchase label, nlrPurchase sends the GA4 purchase and one Ads conversion with value, currency and the Stripe session id as the transaction id for a live session", () => {
+  const { window, conversions, purchases } = boot("https://www.nycluxride.com/booking-confirmed", "", true);
   assert.equal(window.nlrPurchase("cs_live_a1b2c3d4e5f6", "48213590", 22300), true);
+  assert.deepEqual(purchases(), [["event", "purchase", { send_to: GA4_ID, transaction_id: "cs_live_a1b2c3d4e5f6", value: 223, currency: "USD" }]]);
   assert.deepEqual(conversions(), [["event", "conversion", { send_to: `${ADS_ID}/${TEST_LABEL}`, value: 223, currency: "USD", transaction_id: "cs_live_a1b2c3d4e5f6" }]]);
 });
 
@@ -67,10 +70,10 @@ for (const [why, url, id] of [
   });
 }
 
-test("nlrPurchase fires nothing with the real empty label", () => {
+test("with the real empty label, nlrPurchase sends one GA4 purchase with transaction_id, value and currency USD and no Ads conversion", () => {
   const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
-  assert.equal(window.nlrPurchase("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P", 16500), false);
-  assert.deepEqual(calls, []);
+  assert.equal(window.nlrPurchase("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P", 16500), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["event", "purchase", { send_to: GA4_ID, transaction_id: "cs_live_a1b2c3d4e5f6", value: 165, currency: "USD" }]]);
 });
 
 test("nlrPurchase returns false without throwing when the tag is absent", () => {
@@ -79,8 +82,9 @@ test("nlrPurchase returns false without throwing when the tag is absent", () => 
   assert.equal(dom.window.nlrPurchase("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P", 16500), false);
 });
 
-const LINKS = '<a id="book" href="/book">Book a car</a><a id="bookq" href="/book?trip-type=one">Book a car</a><a id="bookh" href="/book#resume">Book a car</a><a id="booking" href="/booking-guide">Guide</a><a id="tel" href="tel:+16467750556">Call</a><a id="wa" href="https://wa.me/16467750556">WhatsApp</a><a id="rates" href="/rates">Rates</a>';
+const LINKS = '<a id="book" href="/book">Book a car</a><a id="bookq" href="/book?trip-type=one">Book a car</a><a id="bookh" href="/book#resume">Book a car</a><a id="booking" href="/booking-guide">Guide</a><a id="tel" href="tel:+16467750556">Call</a><a id="wa" href="https://wa.me/16467750556">WhatsApp</a><a id="mail" href="mailto:info@nycluxride.com">Email</a><a id="rates" href="/rates">Rates</a>';
 const events = (calls) => calls.filter((c) => c[0] === "event" && c[1] !== "conversion").map((c) => c[1]);
+const leads = (calls) => calls.filter((c) => c[0] === "event" && c[1] === "generate_lead").map((c) => JSON.parse(JSON.stringify(c[2])));
 
 test("a click on a /book link fires book_now_click on /rates", () => {
   const { window, calls, conversions } = boot("https://www.nycluxride.com/rates", LINKS);
@@ -104,18 +108,30 @@ for (const path of ["/book", "/booking-confirmed"]) {
   });
 }
 
-test("phone and WhatsApp clicks keep their labels on /book", () => {
+test("phone and WhatsApp clicks keep their Ads labels on /book and each sends one GA4 generate_lead with its channel", () => {
   const { window, calls, conversions } = boot("https://www.nycluxride.com/book", LINKS);
   click(window, "#tel");
   click(window, "#wa");
-  assert.deepEqual(events(calls), ["call_click", "whatsapp_click"]);
+  assert.deepEqual(events(calls), ["call_click", "generate_lead", "whatsapp_click", "generate_lead"]);
+  assert.deepEqual(leads(calls), [{ send_to: GA4_ID, lead_source: "call" }, { send_to: GA4_ID, lead_source: "whatsapp" }]);
   assert.deepEqual(conversions().map((c) => c[2].send_to), [`${ADS_ID}/Sz9RCOSt8L8cEIX4gOJD`, `${ADS_ID}/yIstCOet8L8cEIX4gOJD`]);
 });
 
-test("phone and WhatsApp clicks fire nothing on /booking-confirmed", () => {
+test("an email link sends one GA4 generate_lead with lead_source email and no Ads conversion", () => {
+  for (const path of ["/rates", "/book"]) {
+    const { window, calls, conversions } = boot(`https://www.nycluxride.com${path}`, LINKS);
+    click(window, "#mail");
+    assert.deepEqual(events(calls), ["generate_lead"], path);
+    assert.deepEqual(leads(calls), [{ send_to: GA4_ID, lead_source: "email" }], path);
+    assert.deepEqual(conversions(), [], path);
+  }
+});
+
+test("phone, WhatsApp and email clicks fire nothing on /booking-confirmed", () => {
   const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed", LINKS);
   click(window, "#tel");
   click(window, "#wa");
+  click(window, "#mail");
   assert.deepEqual(calls, []);
 });
 
@@ -203,6 +219,12 @@ test("a click on View options is not counted as a link click", () => {
   window.document.querySelector("#book-form").addEventListener("submit", (e) => e.preventDefault());
   click(window, "#bk-view");
   assert.deepEqual(events(calls), ["book_now_click"]);
+});
+
+test("GA4 events go to G-9MT2ZW7LPV through the existing tag only, and the Ads labels stay as they are", () => {
+  assert.equal(SRC.split("\n").filter((l) => l.includes("G-9MT2ZW7LPV")).map((l) => l.trim()).join("|"), 'var GA4_ID = "G-9MT2ZW7LPV";');
+  assert.doesNotMatch(SRC, /gtag\/js|"config"/);
+  for (const label of ["0YD2COGt8L8cEIX4gOJD", "Sz9RCOSt8L8cEIX4gOJD", "yIstCOet8L8cEIX4gOJD"]) assert.equal(SRC.split(label).length, 2, label);
 });
 
 test("tracking.js no longer names the old hero form", () => {

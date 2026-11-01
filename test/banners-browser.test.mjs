@@ -63,7 +63,7 @@ const ZOOM = (slug) => {
 };
 const SIZES = (slug) => `(max-width: 1023px) ${ZOOM(slug) > 1 ? `calc((100vw - 48px) * ${ZOOM(slug)})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 
-await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 25, BANNERS.join(", ")));
+await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 26, BANNERS.join(", ")));
 
 for (const f of BANNERS) {
   const html = readFileSync(join(ROOT, f), "utf8");
