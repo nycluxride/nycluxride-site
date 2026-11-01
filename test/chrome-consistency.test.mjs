@@ -8,7 +8,7 @@ const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.
 const BOOK = "/book";
 
 const SECTIONS = {
-  "/services": ["chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html"],
+  "/services": ["chauffeur-service-nyc.html", "corporate-car-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html"],
   "/contact": ["schedule.html", "card-authorization.html"],
   "/locations": (f) => f.startsWith("locations/"),
   "/blog": (f) => f.startsWith("blog/"),
@@ -19,8 +19,8 @@ const PANEL_ORDER = ["/", "/book", "/services", "/fleet", "/rates", "/locations"
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk-airport", "laguardia-airport", "newark-airport", "long-island-city", "soho", "upper-east-side", "upper-west-side", "financial-district"].map((a) => `/locations/${a}`);
 const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["jfk-airport", "laguardia-airport", "newark-airport", "manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"].map((a) => `locations/${a}.html`)];
 const FOOTER = {
-  Book: [BOOK, "/rates", "/schedule", "/card-authorization", "/car-service-with-car-seat-nyc"],
-  Services: ["/services", "/fleet", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn"],
+  Book: [BOOK, "/rates", "/fleet", "/schedule", "/card-authorization", "/car-service-with-car-seat-nyc"],
+  Services: ["/services", "/chauffeur-service-nyc", "/corporate-car-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn"],
   Company: ["/about", "/contact", "/faq", "/blog", "/privacy-policy", "/terms-of-service"],
 };
 const WA = "https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20book%20a%20ride.";
@@ -52,7 +52,7 @@ const FONT_PRELOADS = [
   '<link rel="preload" href="/assets/fonts/archivo-wordmark.woff2" as="font" type="font/woff2" crossorigin>',
 ];
 const fontPreload = (href) => href.replace(/\.[A-Za-z0-9_-]{6,}\.woff2$/, ".woff2");
-const REVIEWS = "https://maps.app.goo.gl/6dGNLcMvGazKFzkc7?g_st=iw";
+const REVIEWS = "https://www.google.com/maps?cid=15477906940128800338";
 const SOCIAL = ["https://www.instagram.com/nycluxride/", "https://www.facebook.com/nycluxride", "https://www.tiktok.com/@nycluxride.com"];
 const SPRITE = readFileSync(join(ROOT, "assets/icons.svg.html"), "utf8").trim();
 const BOOKING_WA = ["q-wa", "bk-bar-wa"];
@@ -277,7 +277,10 @@ for (const file of FILES) {
     assert.equal(document.querySelector('.site-footer a[href="/locations/newark-airport"]').textContent.trim(), "Newark Airport");
     assert.equal(document.querySelector('.site-footer a[href="/schedule"]').textContent.trim(), "Schedule a chauffeur");
     assert.equal(document.querySelector('.site-footer a[href="/fleet"]').textContent.trim(), "Fleet");
+    assert.equal(document.querySelector('.site-footer a[href="/corporate-car-service-nyc"]').textContent.trim(), "Corporate car service NYC");
     assert.equal(document.querySelector(".site-footer__about").textContent.trim(), FOOTER_ABOUT);
+    const org = [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => JSON.parse(s.textContent)["@graph"] || []).find((n) => n["@id"] === "https://www.nycluxride.com/#organization");
+    assert.equal(org.description, FOOTER_ABOUT, "the LocalBusiness description is the footer line");
   });
 
   check(`${file}: every booking link in the chrome and every a.btn to /book reads Book a car`, () => {

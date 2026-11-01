@@ -723,7 +723,8 @@ await check("M20 a late route answer never changes the priced trip: a new time w
 });
 
 for (const [w, h] of [[1440, 900], [1366, 768], [1280, 720], [1024, 768]]) {
-  await check(`M21 ${w}x${h}: the short side map on the vehicle step still frames the trip, zoom 10 or closer with both pins inside the map and apart`, async () => {
+  const short = h <= 786;
+  await check(`M21 ${w}x${h}: ${short ? "a window under 787 px tall hides the side map on the vehicle step and the route note carries the Google Maps credit" : "the short side map on the vehicle step still frames the trip, zoom 10 or closer with both pins inside the map and apart"}`, async () => {
     const ctx = await context(M, { viewport: { width: w, height: h } });
     const p = await open(ctx, M, "/book");
     await start(p);
@@ -731,12 +732,15 @@ for (const [w, h] of [[1440, 900], [1366, 768], [1280, 720], [1024, 768]]) {
     await drawn(p);
     await view(p);
     await settle(p);
-    const m = await p.evaluate(() => { const r = document.getElementById("bk-live").getBoundingClientRect(); return { zoom: __gmock.map.getZoom(), box: [r.left, r.top, r.right, r.bottom].map(Math.round), shown: getComputedStyle(document.getElementById("bk-live")).display }; });
-    const a = await px(p, EDITION), b = await px(p, BEDFORD);
-    assert.equal(m.shown, "block");
-    assert.ok(m.zoom >= 10, JSON.stringify(m));
-    assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 24, JSON.stringify([a, b, m]));
-    for (const q of [a, b]) assert.ok(q.x >= m.box[0] && q.x <= m.box[2] && q.y >= m.box[1] && q.y <= m.box[3], JSON.stringify([q, m]));
+    const m = await p.evaluate(() => { const r = document.getElementById("bk-live").getBoundingClientRect(); return { zoom: __gmock.map.getZoom(), box: [r.left, r.top, r.right, r.bottom].map(Math.round), shown: getComputedStyle(document.getElementById("bk-live")).display, credit: getComputedStyle(document.querySelector("#bk-route-n .bk-attr")).visibility }; });
+    if (short) assert.deepEqual([m.shown, m.credit], ["none", "visible"], JSON.stringify(m));
+    else {
+      const a = await px(p, EDITION), b = await px(p, BEDFORD);
+      assert.equal(m.shown, "block");
+      assert.ok(m.zoom >= 10, JSON.stringify(m));
+      assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 24, JSON.stringify([a, b, m]));
+      for (const q of [a, b]) assert.ok(q.x >= m.box[0] && q.x <= m.box[2] && q.y >= m.box[1] && q.y <= m.box[3], JSON.stringify([q, m]));
+    }
     assert.deepEqual(p.errors, []);
     await ctx.close();
   });
@@ -898,6 +902,522 @@ await check("M27 a New Jersey address to JFK: the caption reads 25.0 miles, abou
   assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls and airport fees"))));
   const [value, shifts] = await cls(p);
   assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+const visiblePins = (page) => page.evaluate(() => { const r = document.getElementById("bk-live").getBoundingClientRect(); return __gmock.overlays().filter((o) => /bk-pin--[ab]\b/.test(o.className) && !o.hidden).map((o) => { const b = o.node.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2; return { c: o.className.replace("bk-pin ", ""), lat: +o.lat.toFixed(4), lng: +o.lng.toFixed(4), inside: x >= r.left && x <= r.right && y >= r.top && y <= r.bottom }; }); });
+const inked = (page) => page.waitForFunction(() => window.__gmock && __gmock.lines().some((l) => l.color === "#0F1319" && l.points > 1), null, { timeout: 8000 });
+const panelOf = (page) => page.evaluate(() => { const m = document.getElementById("bk-mp"); return !m || !m.isConnected ? "none" : m.hidden ? "hidden" : "shown"; });
+const setTrip = (page, names, values) => page.evaluate(([n, v]) => { const f = document.getElementById("book-form").elements; n.forEach((k, i) => { f[k].value = v[i]; f[k].dispatchEvent(new Event("change", { bubbles: true })); }); }, [names, values]);
+
+await check("M28 keyboard pick while the map loads: the list keeps the highlighted row when the map adds Choose on the map, and Enter picks that row", async () => {
+  const ctx = await context(M);
+  await ctx.route((u) => u.pathname === "/__maps-mock.js", async (r) => {
+    await new Promise((z) => setTimeout(z, 2000));
+    await r.continue();
+  });
+  const p = await open(ctx, M, "/book");
+  await p.focus("#bk-from");
+  await p.waitForFunction(() => !document.getElementById("bk-from-pop").hidden && document.querySelectorAll("#bk-from-list [role=option]").length === 4);
+  await p.keyboard.press("ArrowDown");
+  await p.keyboard.press("ArrowDown");
+  const lit = () => p.evaluate(() => { const i = document.getElementById("bk-from").getAttribute("aria-activedescendant"); return i && document.getElementById(i).textContent; });
+  const before = await lit();
+  assert.match(before, /LaGuardia/);
+  assert.equal(await p.evaluate(() => document.getElementById("book-form").classList.contains("bk--live")), false, "the map is still loading");
+  await live(p);
+  await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+  assert.deepEqual(await p.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => x.dataset.kind)), ["local", "local", "local", "local", "map"]);
+  assert.equal(await lit(), before);
+  await p.keyboard.press("Enter");
+  assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-from-id")], ["LaGuardia (LGA)", "lga"]);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M29 an airport pickup leaves the empty drop-off with one row, Choose on the map, and ArrowDown then Enter opens that choice", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...JFK_ROW);
+  await p.waitForFunction(() => document.activeElement.id === "bk-to");
+  const list = () => p.evaluate(() => [document.getElementById("bk-to-pop").hidden, [...document.querySelectorAll("#bk-to-list [role=option]")].map((o) => o.dataset.kind), document.getElementById("bk-to").getAttribute("aria-expanded")]);
+  assert.deepEqual(await list(), [false, ["map"], "true"]);
+  await p.keyboard.press("ArrowDown");
+  await p.keyboard.press("Enter");
+  const b = await bar(p);
+  assert.deepEqual([b.hidden, b.label], [false, "Choose the drop-off"]);
+  assert.deepEqual(await p.evaluate(() => [document.activeElement.getAttribute("role"), document.getElementById("bk-to").value]), ["region", ""]);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M30 Choose on the map ends when its stop is removed or the trip turns By the hour, and a drop-off choice stays open when a stop is removed", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await p.click("#bk-addstop");
+  await p.evaluate(() => document.activeElement.blur());
+  await frame(p, 40.728, -73.975, 12);
+  const at = await px(p, BEDFORD);
+  await p.mouse.click(at.x, at.y);
+  assert.equal((await bar(p)).label, "Choose stop 1");
+  await addressIs(p, /277 Bedford Ave/);
+  await p.click("#bk-stop1-rm");
+  assert.equal((await bar(p)).hidden, true, "removing the stop being chosen ends the choice");
+  await p.click("#bk-addstop");
+  await place(p, "stop1", ...BEDFORD_ROW);
+  await ticket(p, "stop1");
+  await type(p, "to", "bedf");
+  await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
+  await p.locator("#bk-to-list [data-kind=map]").click();
+  assert.equal((await bar(p)).label, "Choose the drop-off");
+  await p.click("#bk-stop1-rm");
+  assert.equal((await bar(p)).hidden, false, "removing a stop keeps the drop-off choice");
+  await p.click("label[for=bk-hour]");
+  assert.equal((await bar(p)).hidden, true, "By the hour ends the drop-off choice");
+  assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-stop1").value, document.getElementById("bk-to-ticket").value]), ["", ""]);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+for (const held of [false, true]) {
+  await check(`M31 typed ends and Book at once: the vehicle step map shows the route with a pin at each end${held ? ", and when the answer carries no path the map asks for the route once" : " from the path in the answer, with no route request"}`, async () => {
+    const ctx = await context(M);
+    const p = await open(ctx, M, "/book");
+    if (held) await p.route("**/api/book", async (r) => {
+      const res = await r.fetch();
+      const j = await res.json();
+      if (j.ride) delete j.ride.path;
+      await r.fulfill({ response: res, json: j });
+    });
+    await start(p);
+    await type(p, "from", "350 5th Ave, New York, NY 10118");
+    await p.locator("#bk-from-list [data-kind=typed]").click();
+    await type(p, "to", "277 Bedford Ave, Brooklyn, NY 11211");
+    await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=typed]"));
+    await p.evaluate(async () => {
+      document.querySelector("#bk-to-list [data-kind=typed]").click();
+      await new Promise((z) => setTimeout(z, 30));
+      document.getElementById("bk-view").click();
+    });
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && /\d/.test(document.getElementById("bk-p-suv").textContent));
+    await inked(p);
+    await settle(p);
+    const ends = await visiblePins(p);
+    assert.deepEqual(ends.map((x) => x.c).sort(), ["bk-pin--a", "bk-pin--b"], JSON.stringify(ends));
+    assert.ok(near(ends.find((x) => x.c === "bk-pin--a"), [40.748441, -73.985664]) && near(ends.find((x) => x.c === "bk-pin--b"), BEDFORD), JSON.stringify(ends));
+    assert.equal(await p.evaluate(() => document.getElementById("bk-side").contains(document.getElementById("bk-live"))), true);
+    const after = ctx.api.slice(ctx.api.findIndex((x) => x.path === "book" && JSON.parse(x.body).action === "options"));
+    assert.equal(after.filter((x) => x.path === "route").length, held ? 1 : 0);
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M32 a reload on the search step: the map for the restored trip opens with both pins, the route and the caption after one route request", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await routeOf(p, EDITION_ROW, BEDFORD_ROW);
+  await drawn(p);
+  await settle(p, 800);
+  await p.reload({ waitUntil: "load" });
+  await p.waitForFunction(() => document.getElementById("bk-to-ticket").value.startsWith("v1."));
+  const n = ctx.api.length;
+  await p.click("#bk-date-btn");
+  await live(p);
+  await settle(p, 300);
+  await p.keyboard.press("Escape");
+  await inked(p);
+  await settle(p);
+  const all = await pins(p);
+  assert.ok(near(all.find((x) => x.c === "bk-pin--a"), EDITION) && near(all.find((x) => x.c === "bk-pin--b"), BEDFORD), JSON.stringify(all));
+  assert.equal(await p.textContent(".bk-mp__c"), "4.6 miles, about 27 min by car.");
+  assert.equal(ctx.api.slice(n).filter((x) => x.path === "route").length, 1);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+for (const phone of [true, false]) {
+  await check(`M33 ${phone ? "390 phone" : "1440 desktop"}: a long trip to Montauk fits, both pins inside the search map and the vehicle step map${phone ? "" : ", at zoom 8 or closer as before"}`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await place(p, "from", ...EDITION_ROW);
+    await ticket(p, "from");
+    await type(p, "to", "1 Ocean Rd, Montauk, NY 11954");
+    await p.locator("#bk-to-list [data-kind=typed]").click();
+    await drawn(p);
+    await settle(p);
+    for (const step of ["search", "options"]) {
+      if (step === "options") {
+        await view(p);
+        await settle(p);
+      }
+      await p.evaluate(() => document.getElementById("bk-live").scrollIntoView({ block: "center", behavior: "instant" }));
+      const ends = await visiblePins(p);
+      assert.deepEqual(ends.map((x) => x.inside), [true, true], `${step} ${JSON.stringify(ends)} zoom ${await p.evaluate(() => __gmock.map.getZoom())}`);
+      if (!phone) assert.ok((await p.evaluate(() => __gmock.map.getZoom())) >= 8);
+    }
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M34 a round trip: the search map caption gives both legs in the vehicle step words, and at 320 px the caption keeps its height when Remove return lands late", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await routeOf(p, EDITION_ROW, BEDFORD_ROW);
+  await drawn(p);
+  await p.click("#bk-addret");
+  await setTrip(p, ["return_date", "return_time"], [RDATE, "18:00"]);
+  await p.waitForFunction(() => __gmock.lines().some((l) => l.color === "#6E6E73" && l.points > 1));
+  await settle(p);
+  assert.equal(await p.textContent(".bk-mp__c"), "4.6 miles, about 27 min by car. Return: 4.8 miles, about 31 min by car.");
+  await view(p);
+  assert.equal(await p.textContent("#bk-route-n"), "4.6 miles, about 27 min by car. Return: 4.8 miles, about 31 min by car. Google Maps");
+  await ctx.close();
+  const narrow = await context(M, { ...PHONE, viewport: { width: 320, height: 640 } });
+  const q = await open(narrow, M, "/book");
+  await start(q);
+  await routeOf(q, EDITION_ROW, BEDFORD_ROW);
+  await drawn(q);
+  await q.click("#bk-addret");
+  await setTrip(q, ["return_date", "return_time"], [RDATE, "18:00"]);
+  await q.waitForFunction(() => /Return/.test(document.querySelector(".bk-mp__c").textContent));
+  const k = routes(narrow).length;
+  await setTrip(q, ["date", "time"], [DATE, "15:00"]);
+  for (let i = 0; i < 80 && routes(narrow).length === k; i++) await settle(q, 100);
+  await settle(q, 600);
+  await q.waitForFunction(() => /Return/.test(document.querySelector(".bk-mp__c").textContent));
+  await q.evaluate(() => document.querySelector(".bk-mp__c").scrollIntoView({ block: "center", behavior: "instant" }));
+  await settle(q);
+  const h = () => q.evaluate(() => Math.round(document.querySelector(".bk-mp__c").getBoundingClientRect().height));
+  assert.equal(await h(), 68);
+  await q.route("**/api/route", async (r) => {
+    await new Promise((z) => setTimeout(z, 900));
+    await r.continue();
+  });
+  const c0 = await q.evaluate(() => window.__cls);
+  await q.click("#bk-rmret");
+  await q.waitForFunction(() => !/Return/.test(document.querySelector(".bk-mp__c").textContent), null, { timeout: 8000 });
+  await settle(q);
+  assert.deepEqual([await h(), await q.evaluate((c) => +(window.__cls - c).toFixed(4), c0)], [68, 0]);
+  await q.unroute("**/api/route");
+  assert.deepEqual(q.errors, []);
+  await narrow.close();
+});
+
+await check("M35 the map region describes the Enter key while Enter places a pin, keeps Google's own description, and drops the hint once every end is set and on the vehicle step", async () => {
+  const ctx = await context(M);
+  await ctx.addInitScript(() => new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) n.nodeType === 1 && n.getAttribute("role") === "region" && !n.hasAttribute("aria-describedby") && n.setAttribute("aria-describedby", "gm-keys"); }).observe(document, { childList: true, subtree: true }));
+  const p = await open(ctx, M, "/book");
+  const desc = (want) => p.waitForFunction((w) => { const g = document.querySelector("#bk-live [role=region]"); return g && g.getAttribute("aria-describedby") === w; }, want, { timeout: 5000 });
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await desc("bk-mc-k gm-keys");
+  assert.equal(await p.textContent("#bk-mc-k"), "Move the map with the arrow keys and press Enter to put the pin in the middle.");
+  await place(p, "to", ...BEDFORD_ROW);
+  await ticket(p, "to");
+  await drawn(p);
+  await desc("gm-keys");
+  await type(p, "to", "bedford y");
+  await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
+  await p.keyboard.press("ArrowUp");
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.activeElement && document.activeElement.getAttribute("role") === "region");
+  await desc("bk-mc-k gm-keys");
+  await p.keyboard.press("Escape");
+  await place(p, "to", ...BEDFORD_ROW);
+  await ticket(p, "to");
+  await view(p);
+  await desc("gm-keys");
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M36 a time change and back redraws the cached route and the options request carries that route's token", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  const tokens = {};
+  p.on("response", (r) => r.url().endsWith("/api/route") && r.json().then((j) => (tokens[JSON.parse(r.request().postData()).time] = j.route), () => 0));
+  await start(p);
+  await routeOf(p, EDITION_ROW, BEDFORD_ROW);
+  const at = async (t) => {
+    await setTrip(p, ["date", "time"], [DATE, t]);
+    for (let i = 0; i < 80 && !tokens[t]; i++) await settle(p, 100);
+    assert.ok(tokens[t], `route for ${t}`);
+  };
+  await at("14:30");
+  await at("15:00");
+  const n = routes(ctx).length;
+  await setTrip(p, ["date", "time"], [DATE, "14:30"]);
+  await settle(p, 1200);
+  assert.equal(routes(ctx).length, n, "the cached route is reused");
+  await view(p);
+  const opt = JSON.parse(ctx.api.find((x) => x.path === "book" && JSON.parse(x.body).action === "options").body);
+  assert.notEqual(tokens["14:30"], tokens["15:00"]);
+  assert.equal(opt.route, tokens["14:30"]);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M37 By the hour with a typed pickup shows no empty map, the panel comes back for a one way trip, and Choose on the map still opens it", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await p.click("label[for=bk-hour]");
+  await type(p, "from", "350 5th Ave, New York, NY 10118");
+  await p.locator("#bk-from-list [data-kind=typed]").click();
+  await settle(p);
+  assert.match(await panelOf(p), /^(none|hidden)$/);
+  await ctx.close();
+  const one = await context(M);
+  const q = await open(one, M, "/book");
+  await start(q);
+  await type(q, "from", "350 5th Ave, New York, NY 10118");
+  await q.locator("#bk-from-list [data-kind=typed]").click();
+  await settle(q);
+  assert.equal(await panelOf(q), "shown");
+  await q.click("label[for=bk-hour]");
+  await settle(q);
+  assert.equal(await panelOf(q), "hidden");
+  await q.click("label[for=bk-one]");
+  await settle(q);
+  assert.deepEqual([await panelOf(q), await q.textContent(".bk-mp__c")], ["shown", "Click the map to set the drop-off."]);
+  await q.click("label[for=bk-hour]");
+  await type(q, "from", "bedf");
+  await q.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+  await q.locator("#bk-from-list [data-kind=map]").click();
+  assert.deepEqual([await panelOf(q), (await bar(q)).label], ["shown", "Choose the pickup"]);
+  const [value, shifts] = await cls(q);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(q.errors, []);
+  await one.close();
+});
+
+await check("M38 an address answer from a cancelled map choice never lands in the next choice", async () => {
+  const ctx = await context(M);
+  let held = 0;
+  await ctx.route((u) => u.pathname === "/api/places", async (r) => {
+    if (!/"action":"here"/.test(r.request().postData() || "") || held++) return r.continue();
+    const res = await r.fetch();
+    const body = await res.text();
+    await new Promise((z) => setTimeout(z, 1500));
+    await r.fulfill({ response: res, body });
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => document.activeElement.blur());
+  await frame(p, 40.68, -73.87, 12);
+  let at = await px(p, BEDFORD);
+  await p.mouse.click(at.x, at.y);
+  await settle(p, 450);
+  await p.click(".bk-mc .bk-mc__c");
+  at = await px(p, JFK_T4);
+  await p.mouse.click(at.x, at.y);
+  await addressIs(p, /JFK Terminal 4/);
+  await settle(p, 1800);
+  assert.equal(held, 2);
+  const b = await bar(p);
+  assert.ok(/JFK Terminal 4/.test(b.text) && b.off === null, JSON.stringify(b));
+  const c = (await pins(p)).find((x) => /bk-pin--c/.test(x.c));
+  assert.ok(near(c, JFK_T4), JSON.stringify(c));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M39 320 phone: a long place name with its area line fits the address line of the map sheet", async () => {
+  const ctx = await context(M, { ...PHONE, viewport: { width: 320, height: 640 } });
+  await ctx.route((u) => u.pathname === "/api/places", async (r) => {
+    if (!/"action":"here"/.test(r.request().postData() || "")) return r.continue();
+    const res = await r.fetch();
+    const j = await res.json();
+    await r.fulfill({ response: res, json: { ...j, label: "Long Island MacArthur Airport, 100 Arrival Ave, Ronkonkoma, NY 11779", area: "Outside New York City" } });
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await type(p, "from", "bedf");
+  await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+  await p.locator("#bk-from-list [data-kind=map]").click();
+  await p.waitForFunction(() => document.querySelector(".bk-mapd").open);
+  await p.evaluate(([a, b]) => (__gmock.map.setZoom(13), __gmock.map.setCenter({ lat: a, lng: b })), [40.728, -73.975]);
+  const t = await px(p, BEDFORD);
+  await p.touchscreen.tap(t.x, t.y);
+  await addressIs(p, /Outside New York City/, ".bk-mapd .bk-mc__a");
+  const a = await p.evaluate(() => { const e = document.querySelector(".bk-mapd .bk-mc__a"); return { text: e.textContent, scroll: e.scrollHeight, box: e.clientHeight }; });
+  assert.ok(a.text.split(" ").length > 8 && a.scroll <= a.box, JSON.stringify(a));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M40 the trip is framed again when the map box changes size: 1280 to 700 px wide keeps both pins inside", async () => {
+  const ctx = await context(M, { viewport: { width: 1280, height: 800 } });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await routeOf(p, EDITION_ROW, JFK_ROW);
+  await drawn(p);
+  await settle(p);
+  await p.setViewportSize({ width: 700, height: 800 });
+  await settle(p, 800);
+  await p.evaluate(() => document.getElementById("bk-live").scrollIntoView({ block: "center", behavior: "instant" }));
+  const ends = await visiblePins(p);
+  assert.deepEqual(ends.map((x) => x.inside), [true, true], JSON.stringify(ends));
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M41 dragging a pin past the edge of the map stops it 16 px inside the map, and the address is looked up there", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await routeOf(p, EDITION_ROW, BEDFORD_ROW);
+  await drawn(p);
+  await settle(p);
+  await p.evaluate(() => document.activeElement.blur());
+  await showMap(p);
+  const a = (await pins(p)).find((x) => x.c === "bk-pin--a");
+  const s = await px(p, [a.lat, a.lng]);
+  const box = await p.locator("#bk-live").boundingBox();
+  const looked = [];
+  p.on("request", (r) => r.url().endsWith("/api/places") && /"action":"here"/.test(r.postData() || "") && looked.push(JSON.parse(r.postData())));
+  await p.mouse.move(s.x, s.y);
+  await p.mouse.down();
+  await p.mouse.move(s.x + 8, s.y - 8, { steps: 2 });
+  await p.mouse.move(s.x, box.y - 400, { steps: 8 });
+  await p.mouse.up();
+  await settle(p, 800);
+  const c = await p.evaluate(() => { const e = document.querySelector(".bk-pin--c").getBoundingClientRect(); return [e.left + e.width / 2, e.top + e.height / 2]; });
+  assert.ok(c[1] >= box.y + 14 && c[1] <= box.y + 19, JSON.stringify([c, box]));
+  assert.equal(looked.length, 1);
+  const top = await p.evaluate(() => __gmock.ll(0, document.getElementById("bk-live").getBoundingClientRect().top).lat);
+  assert.ok(looked[0].lat < top, JSON.stringify([looked[0], top]));
+  assert.equal((await bar(p)).label, "Choose the pickup");
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M42 Escape inside a Google map dialog keeps the map choice, and Escape on the map itself still cancels it", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await p.keyboard.press("Escape");
+  await frame(p, 40.728, -73.975, 12);
+  const at = await px(p, BEDFORD);
+  await p.mouse.click(at.x, at.y);
+  await addressIs(p, /277 Bedford Ave/);
+  await p.evaluate(() => {
+    const d = document.createElement("dialog");
+    d.innerHTML = '<button type="button">Close</button>';
+    document.querySelector("#bk-live .gm-style").append(d);
+    d.show();
+    d.querySelector("button").focus();
+  });
+  await p.keyboard.press("Escape");
+  assert.equal((await bar(p)).hidden, false, "Escape inside the Google dialog keeps the choice");
+  await p.focus("#bk-live [role=region]");
+  await p.keyboard.press("Escape");
+  assert.equal((await bar(p)).hidden, true);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M43 forced colors: the text of Use this drop-off is GrayText while no address is found, and the button text color once it can be used", async () => {
+  const ctx = await context(M, { forcedColors: "active" });
+  await ctx.route((u) => u.pathname === "/api/places", async (r) => {
+    if (/"action":"here"/.test(r.request().postData() || "")) await new Promise((z) => setTimeout(z, 1200));
+    await r.continue();
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await p.keyboard.press("Escape");
+  await frame(p, 40.728, -73.975, 12);
+  const look = () => p.evaluate(() => { const u = document.querySelector(".bk-mc .bk-mc__u"); return [u.getAttribute("aria-disabled"), getComputedStyle(u).color]; });
+  const at = await px(p, BEDFORD);
+  await p.mouse.click(at.x, at.y);
+  const off = await look();
+  await addressIs(p, /277 Bedford Ave/);
+  const on = await look();
+  assert.equal(off[0], "true");
+  assert.equal(on[0], null);
+  const gray = await p.evaluate(() => { const s = document.createElement("span"); s.style.color = "GrayText"; document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; });
+  assert.deepEqual([off[1], on[1] !== gray], [gray, true]);
+  await ctx.close();
+});
+
+await check("M44 a failed pin lookup is tried again: By the hour, after an error answer a new pick of the same place shows its pin", async () => {
+  const ctx = await context(M);
+  let n = 0;
+  await ctx.route((u) => u.pathname === "/api/places", async (r) => {
+    if (!/"action":"locate"/.test(r.request().postData() || "")) return r.continue();
+    if (n++) return r.continue();
+    await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ kind: "error" }) });
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await p.click("label[for=bk-hour]");
+  await place(p, "from", ...JFK_ROW);
+  await settle(p, 800);
+  assert.deepEqual([n, (await pins(p)).length], [1, 0]);
+  await place(p, "from", ...JFK_ROW);
+  await p.waitForFunction(() => __gmock.overlays().some((o) => /bk-pin--a/.test(o.className)), null, { timeout: 5000 });
+  assert.equal(n, 2);
+  assert.ok(near((await pins(p)).find((x) => x.c === "bk-pin--a"), JFK_T4));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+for (const phone of [false, true]) {
+  await check(`M45 ${phone ? "390 phone" : "1440"}: when Google rejects the map after the search map is shown, the map box stays in place hidden until the next step, nothing moves, and the vehicle step shows the static map`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await routeOf(p, EDITION_ROW, BEDFORD_ROW);
+    await drawn(p);
+    await p.click("h1");
+    await settle(p, 1500);
+    const c0 = await p.evaluate(() => window.__cls);
+    await p.evaluate(() => window.gm_authFailure());
+    await settle(p, 1200);
+    const r = await p.evaluate((c) => { const m = document.getElementById("bk-mp"); return [+(window.__cls - c).toFixed(4), m && m.isConnected ? getComputedStyle(m).visibility : "gone"]; }, c0);
+    assert.deepEqual(r, [0, "hidden"]);
+    await p.click("#bk-view");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && /\d/.test(document.getElementById("bk-p-suv").textContent));
+    await p.waitForSelector("#bk-map img");
+    assert.deepEqual(await p.evaluate(() => [!!document.getElementById("bk-mp"), !!document.getElementById("bk-live"), sessionStorage.getItem("nlr-map-off")]), [false, false, "1"]);
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M46 when the map fails, Choose on the map leaves the open list and the other rows stay", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await p.click("#bk-from");
+  await live(p);
+  await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+  await p.evaluate(() => window.gm_authFailure());
+  await settle(p, 300);
+  const rows = await p.evaluate(() => [document.getElementById("bk-from-pop").hidden, [...document.querySelectorAll("#bk-from-list [role=option]")].map((o) => o.dataset.kind)]);
+  assert.deepEqual(rows, [false, ["local", "local", "local", "local"]]);
+  await p.keyboard.press("ArrowUp");
+  await p.keyboard.press("Enter");
+  assert.deepEqual([await p.inputValue("#bk-from-id"), await p.evaluate(() => document.activeElement.id)], ["teb", "bk-to"]);
   assert.deepEqual(p.errors, []);
   await ctx.close();
 });

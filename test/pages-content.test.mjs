@@ -618,6 +618,26 @@ check("the airport guide, the pickup guide and the Staten Island page link Newar
   assert.deepEqual(want.filter(([file, href, text]) => ![...read(file).document.querySelectorAll(`main .prose a[href="${href}"]`)].some((a) => norm(a.textContent) === text)), []);
 });
 
+check("rates.html, services.html and corporate-car-service-nyc.html: the airport text links the JFK, LaGuardia and Newark pages in one sentence that names those three airports, and services.html links JFK where it says how JFK pickups work", () => {
+  const line = "Pickup details for JFK, LaGuardia and Newark are on their airport pages.";
+  for (const [file, scope] of [["rates.html", (d) => d.getElementById("airport-h").closest(".prose")], ["services.html", (d) => d.getElementById("airport-transfers")], ["corporate-car-service-nyc.html", (d) => d.getElementById("airports")]]) {
+    const p = [...scope(read(file).document).querySelectorAll("p")].find((x) => norm(x.textContent) === line);
+    assert.ok(p, `${file}: no airport pages sentence in the airport section`);
+    assert.deepEqual([...p.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/locations/jfk-airport", "JFK"], ["/locations/laguardia-airport", "LaGuardia"], ["/locations/newark-airport", "Newark"]], file);
+  }
+  const at = [...read("services.html").document.querySelectorAll("#airport-transfers p")].find((p) => norm(p.textContent).startsWith("At JFK, your chauffeur meets you"));
+  assert.deepEqual([at.querySelector("a").getAttribute("href"), norm(at.querySelector("a").textContent)], ["/locations/jfk-airport", "JFK"]);
+});
+check("corporate-car-service-nyc.html: services.html #corporate and the corporate checklist post link the page in their copy, and the page leaves out the executive fleet Wi-Fi line until the owner confirms it", () => {
+  const svc = [...read("services.html").document.querySelectorAll('#corporate .prose a[href="/corporate-car-service-nyc"]')].map((a) => norm(a.textContent));
+  assert.deepEqual(svc, ["corporate car service"]);
+  const post = [...read("blog/corporate-black-car-nyc-april-3.html").document.querySelectorAll('main .prose a[href="/corporate-car-service-nyc"]')].map((a) => norm(a.textContent));
+  assert.deepEqual(post, ["corporate accounts"]);
+  const { document } = read("corporate-car-service-nyc.html");
+  assert.doesNotMatch(document.querySelector("main").textContent, /Wi-Fi|executive fleet/i);
+  assert.equal(norm(document.querySelector("main h1").textContent), "Corporate and executive car service in New York City");
+});
+
 const ldNodes = (document) => [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => { const j = JSON.parse(s.textContent); return j["@graph"] || [j]; });
 const ldAnswer = (document, name) => ldNodes(document).filter((n) => n["@type"] === "FAQPage").flatMap((n) => n.mainEntity).find((q) => q.name === name)?.acceptedAnswer.text;
 check("car-service-with-car-seat-nyc.html and faq.html: free child seats are offered on one-way trips too, in the lede, the answers, their JSON-LD and the Service description", () => {
@@ -639,6 +659,11 @@ check("locations/staten-island.html and black-car-service-brooklyn.html: the tol
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
   const cost = "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, NYC sales tax and the Black Car Fund included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
+});
+check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport transfers to or from a New York City address and hourly bookings, and says other one-way trips are priced on the Google Maps route at the pickup time, visible and in JSON-LD", () => {
+  const { document } = read("corporate-car-service-nyc.html");
+  const answer = "Not on airport transfers to or from a New York City address or on hourly bookings. Airport transfers are one total price by vehicle class and hourly bookings use the published rate for the class, with no surge on either. Other one-way trips are priced by the distance and time of the Google Maps route at your pickup time. See all rates.";
+  assert.deepEqual([norm(document.querySelector("#q-busy-times .acc__body").textContent), ldAnswer(document, "Do busy times change the price?")], [answer, answer]);
 });
 
 if (failures) {

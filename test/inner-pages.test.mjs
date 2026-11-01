@@ -12,6 +12,7 @@ const CLOSES = [
   "about.html", "faq.html", "locations.html", "blog.html", "schedule.html", "rates.html",
   ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"].map((a) => `locations/${a}.html`),
   "car-service-with-car-seat-nyc.html",
+  "corporate-car-service-nyc.html",
 ];
 
 function htmlFiles(dir) {

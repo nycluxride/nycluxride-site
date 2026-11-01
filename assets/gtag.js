@@ -35,9 +35,26 @@
       }
     });
 
-    var s = document.createElement("script");
-    s.async = true;
-    s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(ADS_TAG_ID) + "&l=nlrDataLayer";
-    (document.head || document.documentElement).appendChild(s);
+    var added = false, early = ["pointerdown", "keydown"];
+    var add = function () {
+      if (added) return;
+      added = true;
+      try {
+        early.forEach(function (type) { document.removeEventListener(type, add, true); });
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(ADS_TAG_ID) + "&l=nlrDataLayer";
+        (document.head || document.documentElement).appendChild(s);
+      } catch (e) {}
+    };
+    var idle = function () {
+      if (window.requestIdleCallback) window.requestIdleCallback(add, { timeout: 1000 });
+      else setTimeout(add, 1);
+    };
+    var wait = function () { setTimeout(idle, 1000); };
+    early.forEach(function (type) { document.addEventListener(type, add, true); });
+    if (location.pathname === "/booking-confirmed" || /[?&](gclid|gbraid|wbraid)=/.test(location.search)) add();
+    else if (document.readyState === "complete") wait();
+    else window.addEventListener("load", wait);
   } catch (e) {}
 })();

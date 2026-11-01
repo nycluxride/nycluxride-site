@@ -3,12 +3,20 @@
   var CALL_LABEL = "Sz9RCOSt8L8cEIX4gOJD";
   var WHATSAPP_LABEL = "yIstCOet8L8cEIX4gOJD";
   var PURCHASE_LABEL = "";
+  var GA4_ID = "G-9MT2ZW7LPV";
 
   function fire(debugEvent, label) {
     try {
       if (typeof window.nlrGtag !== "function") return;
       window.nlrGtag("event", debugEvent);
       window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + label, transport_type: "beacon" });
+    } catch (e) {}
+  }
+
+  function lead(source) {
+    try {
+      if (typeof window.nlrGtag !== "function") return;
+      window.nlrGtag("event", "generate_lead", { send_to: GA4_ID, lead_source: source });
     } catch (e) {}
   }
 
@@ -29,8 +37,12 @@
         return;
       } else if (href.indexOf("tel:") === 0) {
         fire("call_click", CALL_LABEL);
+        lead("call");
       } else if (href.indexOf("https://wa.me/") === 0 || href.indexOf("wa.me/") === 0) {
         fire("whatsapp_click", WHATSAPP_LABEL);
+        lead("whatsapp");
+      } else if (href.indexOf("mailto:") === 0) {
+        lead("email");
       }
     } catch (e2) {}
   }
@@ -51,14 +63,22 @@
 
   window.nlrPurchase = function (sessionId, ref, valueCents) {
     try {
-      if (!PURCHASE_LABEL || typeof window.nlrGtag !== "function") return false;
+      if (typeof window.nlrGtag !== "function") return false;
       if (String(sessionId).indexOf("cs_live_") !== 0 || location.hostname !== "www.nycluxride.com") return false;
-      window.nlrGtag("event", "conversion", {
-        send_to: window.NLR_ADS_ID + "/" + PURCHASE_LABEL,
+      window.nlrGtag("event", "purchase", {
+        send_to: GA4_ID,
+        transaction_id: sessionId,
         value: valueCents / 100,
-        currency: "USD",
-        transaction_id: sessionId
+        currency: "USD"
       });
+      if (PURCHASE_LABEL) {
+        window.nlrGtag("event", "conversion", {
+          send_to: window.NLR_ADS_ID + "/" + PURCHASE_LABEL,
+          value: valueCents / 100,
+          currency: "USD",
+          transaction_id: sessionId
+        });
+      }
       return true;
     } catch (e) {
       return false;

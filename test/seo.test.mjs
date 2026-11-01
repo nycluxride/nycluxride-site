@@ -11,6 +11,7 @@ const NOINDEX = ["404.html", "booking-confirmed.html"];
 const NOINDEX_RE = /(^|,)\s*(noindex|none)\s*(,|$)/i;
 const RETIRED = {
   "/blog/brooklyn-black-car-service-local-guide-april-28": "/black-car-service-brooklyn",
+  "/home.png": "/hero-new.webp",
   "/home.webp": "/hero-new.webp",
   "/airports/jfk-limo": "/locations/jfk-airport",
   "/airports/ewr-limo": "/locations/newark-airport",
@@ -67,6 +68,26 @@ for (const file of pages) {
     });
   }
 }
+
+const icons = (file) => [...new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document.querySelectorAll('link[rel="icon"]')].map((l) => [l.getAttribute("href"), l.getAttribute("sizes"), l.getAttribute("type")]);
+for (const file of pages) {
+  test(`${file}: links the 32 px favicon and the 192 px icon, the size Google asks for in search results`, () => {
+    assert.deepEqual(icons(file), [["/favicon-32x32.png", "32x32", "image/png"], ["/android-chrome-192x192.png", "192x192", "image/png"]]);
+  });
+}
+
+test("no page links the Maps share link that opens as NYC LUX RIDE, New Jersey, every reviews link opens the listing by its CID", () => {
+  const share = pages.filter((file) => readFileSync(join(ROOT, file), "utf8").includes("maps.app.goo.gl"));
+  assert.deepEqual(share, []);
+  for (const file of pages) assert.ok(readFileSync(join(ROOT, file), "utf8").includes('href="https://www.google.com/maps?cid=15477906940128800338"'), file);
+});
+
+test("the five booking form pages keep the booking request messages out of search snippets", () => {
+  for (const file of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"]) {
+    const quote = new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document.getElementById("quote");
+    assert.ok(quote && quote.hasAttribute("data-nosnippet"), file);
+  }
+});
 
 test("retired URLs redirect permanently to live pages", () => {
   const { routes } = getTransformedRoutes(JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8")));

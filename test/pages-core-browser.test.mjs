@@ -166,10 +166,107 @@ async function mapFocus(engine, browser) {
   }
 }
 
+async function fleetTabs(engine, browser) {
+  const under = [];
+  for (const [width, height] of [[320, 640], [390, 844], [600, 900], [767, 900], [1280, 800]]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+    await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const p = await ctx.newPage();
+    await p.goto(base + "/fleet", { waitUntil: "load" });
+    await p.evaluate(() => document.fonts.ready);
+    await p.evaluate(() => document.querySelector(".jumps--tabs").scrollIntoView({ block: "center" }));
+    await p.click('.jumps--tabs a[href="#business-suv"]');
+    await p.waitForFunction(() => location.hash === "#business-suv");
+    await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const hid = await p.evaluate(() => { const h = document.querySelector(".site-header").getBoundingClientRect().bottom; return [...document.querySelectorAll(".jumps--tabs a")].filter((a) => a.getBoundingClientRect().top < h - 0.5).map((a) => a.textContent.trim()); });
+    if (hid.length) under.push(`${width}x${height}: ${hid.join(", ")}`);
+    await ctx.close();
+  }
+  await check(`${engine}: after a tap on a /fleet class tab every tab stays below the sticky header, 320 to 1280 wide`, () => assert.deepEqual(under, []));
+}
+
+async function spacedHeader(engine, browser) {
+  const under = [];
+  for (const [width, height] of [[1280, 800], [1024, 768]]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+    await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const p = await ctx.newPage();
+    await p.goto(base + "/faq", { waitUntil: "load" });
+    await p.addStyleTag({ content: SPACING });
+    await p.evaluate(() => document.fonts.ready);
+    await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await p.waitForTimeout(100);
+    for (const id of ["q-hourly-service", "q-flight-delay", "q-tolls-and-gratuity"]) {
+      const [top, bottom] = await p.evaluate((i) => { const e = document.getElementById(i); e.scrollIntoView(); return [e.getBoundingClientRect().top, document.querySelector(".site-header").getBoundingClientRect().bottom]; }, id);
+      if (top < bottom - 0.5) under.push(`${width}x${height} #${id}: ${Math.round(top)} under a header that ends at ${Math.round(bottom)}`);
+    }
+    await ctx.close();
+  }
+  await check(`${engine}: with the WCAG 1.4.12 text spacing an FAQ answer scrolled into view lands below the taller header at 1280 and 1024`, () => assert.deepEqual(under, []));
+}
+
+async function focusRows(engine, browser) {
+  const covered = [];
+  for (const [width, height] of [[390, 844], [683, 384]]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+    await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const p = await ctx.newPage();
+    for (const path of ["/faq", "/rates", "/locations/jfk-airport"]) {
+      await p.goto(base + path, { waitUntil: "load" });
+      await p.evaluate(() => document.fonts.ready);
+      const n = await p.evaluate(() => {
+        const rows = [...document.querySelectorAll("main :is(summary,a.ledger__row)")].filter((e) => e.getClientRects().length);
+        const all = [...document.querySelectorAll("a[href],button,input,select,textarea,summary,[tabindex]")].filter((e) => e.tabIndex >= 0 && e.getClientRects().length);
+        const i = all.indexOf(rows[0]);
+        all[i - 1].focus({ preventScroll: true });
+        scrollTo(0, 0);
+        return all.indexOf(rows.at(-1)) - i + 1;
+      });
+      for (let i = 0; i < n; i++) {
+        await p.keyboard.press(engine === "webkit" ? "Alt+Tab" : "Tab");
+        const miss = await p.evaluate(() => new Promise((done) => requestAnimationFrame(() => {
+          const e = document.activeElement;
+          if (!e.matches("main :is(summary,a.ledger__row)")) return done(null);
+          const r = e.getBoundingClientRect(), bar = document.querySelector(".actionbar"), b = bar.getBoundingClientRect();
+          const top = Math.max(0, document.querySelector(".site-header").getBoundingClientRect().bottom);
+          const end = getComputedStyle(bar).visibility !== "hidden" && b.height > 0 ? Math.min(innerHeight, b.top) : innerHeight;
+          done(r.top < top - 0.5 || r.bottom > end + 0.5 ? `${e.textContent.trim().slice(0, 30)} at ${Math.round(r.top)} to ${Math.round(r.bottom)}, clear from ${Math.round(top)} to ${Math.round(end)}` : null);
+        })));
+        if (miss) covered.push(`${width}x${height} ${path}: ${miss}`);
+      }
+    }
+    await ctx.close();
+  }
+  await check(`${engine}: Tab brings each question and fare row of /faq, /rates and /locations/jfk-airport fully between the header and the action bar at 390x844 and 683x384`, () => assert.deepEqual(covered, []));
+}
+
+async function noJsMenu(engine, browser) {
+  const behind = [];
+  for (const [width, height] of [[390, 844], [320, 640]]) {
+    const ctx = await browser.newContext({ viewport: { width, height }, javaScriptEnabled: false, reducedMotion: "reduce" });
+    await ctx.route((u) => !u.href.startsWith(base), (r) => r.fulfill({ status: 204, body: "" }));
+    const p = await ctx.newPage();
+    await p.goto(base + "/about", { waitUntil: "load" });
+    await p.click("[data-nav-toggle]");
+    await p.waitForFunction(() => document.getElementById("nav-panel").matches(":popover-open"));
+    for (let i = 0; i < 30; i++) {
+      await p.keyboard.press(engine === "webkit" ? "Alt+Tab" : "Tab");
+      const at = await p.evaluate(() => { const e = document.activeElement; return !e || e === document.body || document.getElementById("nav-panel").contains(e) ? null : (e.textContent.trim() || e.tagName).slice(0, 30); });
+      if (at) behind.push(`${width}x${height} Tab ${i + 1}: ${at}`);
+    }
+    await ctx.close();
+  }
+  await check(`${engine}: without JavaScript, Tab stays in the open full screen menu at 390x844 and 320x640 and never lands on the page behind it`, () => assert.deepEqual(behind, []));
+}
+
 const chrome = await chromium.launch();
 await sweep("chromium", chrome);
 await maps("chromium", chrome);
 await mapFocus("chromium", chrome);
+await fleetTabs("chromium", chrome);
+await spacedHeader("chromium", chrome);
+await focusRows("chromium", chrome);
+await noJsMenu("chromium", chrome);
 await chrome.close();
 for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
   const b = await type.launch().catch(() => null);
@@ -180,6 +277,10 @@ for (const [engine, type] of [["webkit", webkit], ["firefox", firefox]]) {
   await sweep(engine, b);
   await maps(engine, b);
   await mapFocus(engine, b);
+  await fleetTabs(engine, b);
+  await spacedHeader(engine, b);
+  await focusRows(engine, b);
+  await noJsMenu(engine, b);
   await b.close();
 }
 
