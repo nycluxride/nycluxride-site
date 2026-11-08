@@ -1,13 +1,37 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
 import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk } from "./_trip.mjs";
+import { production } from "./_http.mjs";
 
-const SESSIONS = "https://api.stripe.com/v1/checkout/sessions";
+const API = "https://api.stripe.com/v1";
+const SESSIONS = `${API}/checkout/sessions`;
 const TIMEOUT_MS = 10000;
+const KEY_SHAPE = /^(rk|sk)_(live|test)_\S{10,}$/;
+const LIVE_KEY = /^(rk|sk)_live_/;
+const RESTRICTED_KEY = /^rk_/;
+const SIGNATURE_TOLERANCE_S = 300;
 const EXPIRES_AFTER_S = 1860;
 const MAX_DESCRIPTION = 1000;
 const MAX_VALUE = 500;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+export const secretKey = () => String(process.env.STRIPE_SECRET_KEY || "").trim();
+export const liveKey = () => LIVE_KEY.test(secretKey());
+
+export function keyProblem() {
+  const key = secretKey();
+  if (!key) return "key-missing";
+  if (!KEY_SHAPE.test(key) || (LIVE_KEY.test(key) && !RESTRICTED_KEY.test(key))) return "key-shape";
+  if (LIVE_KEY.test(key) !== production()) return "key-environment";
+  return "";
+}
+
+export function stripeKey() {
+  const problem = keyProblem();
+  if (problem) console.error(problem);
+  return problem ? "" : secretKey();
+}
 
 export function encodeForm(object) {
   const params = new URLSearchParams();
@@ -181,12 +205,12 @@ function parse(text) {
   }
 }
 
-async function call(url, init, key) {
+async function call(url, init, key, timeout = TIMEOUT_MS) {
   try {
     const res = await fetch(url, {
       ...init,
       headers: { Authorization: `Bearer ${key}`, "Stripe-Version": STRIPE_VERSION, ...init.headers },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeout),
     });
     const body = parse(await res.text());
     return { ok: res.ok, status: res.status, body, requestId: res.headers.get("request-id") || "" };
@@ -199,10 +223,37 @@ export function createSession(params, key) {
   return call(SESSIONS, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() }, key);
 }
 
-export function retrieveSession(id, key) {
-  return call(`${SESSIONS}/${encodeURIComponent(id)}`, { method: "GET", headers: {} }, key);
+export function retrieveSession(id, key, timeout) {
+  return call(`${SESSIONS}/${encodeURIComponent(id)}`, { method: "GET", headers: {} }, key, timeout);
 }
 
 export function expireSession(id, key) {
   return call(`${SESSIONS}/${encodeURIComponent(id)}/expire`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "" }, key);
+}
+
+export function retrieveIntent(id, key, timeout) {
+  return call(`${API}/payment_intents/${encodeURIComponent(id)}`, { method: "GET", headers: {} }, key, timeout);
+}
+
+export function updateMetadata(object, id, values, key, idempotency, timeout) {
+  const body = new URLSearchParams(Object.entries(values).map(([name, value]) => [`metadata[${name}]`, value]));
+  const headers = { "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": idempotency };
+  return call(`${API}/${object}/${encodeURIComponent(id)}`, { method: "POST", headers, body: body.toString() }, key, timeout);
+}
+
+export function signatureOk(header, payload, secret, now = Date.now()) {
+  if (typeof header !== "string" || header.length > 4096 || !secret) return false;
+  let stamp = null;
+  const signatures = [];
+  for (const part of header.split(",")) {
+    const at = part.indexOf("=");
+    if (at < 1) continue;
+    const name = part.slice(0, at).trim();
+    const value = part.slice(at + 1).trim();
+    if (name === "t" && stamp === null && /^\d{1,12}$/.test(value)) stamp = value;
+    else if (name === "v1" && /^[0-9a-f]{64}$/.test(value)) signatures.push(Buffer.from(value, "hex"));
+  }
+  if (stamp === null || !signatures.length || Math.abs(now / 1000 - Number(stamp)) > SIGNATURE_TOLERANCE_S) return false;
+  const expected = createHmac("sha256", secret).update(`${stamp}.`).update(payload).digest();
+  return signatures.reduce((ok, signature) => timingSafeEqual(signature, expected) || ok, false);
 }
