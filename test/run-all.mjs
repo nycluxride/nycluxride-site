@@ -35,6 +35,7 @@ const STATIC = [
   "landing",
   "map-api",
   "gmock",
+  "mail",
 ];
 const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser"];
 

@@ -2,8 +2,9 @@ import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIG
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
 import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
-import { sessionParams, createSession, retrieveSession, expireSession } from "./_stripe.mjs";
+import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
+import { mailBooking, mailSoon } from "./_mail.mjs";
 
 const MAX_BODY = 12288;
 const MOCK_LIMIT = 100;
@@ -11,33 +12,16 @@ const STRIPE_CALLS_PER_WINDOW = 1200;
 const READ_CALLS_PER_WINDOW = 1200;
 const UNKNOWN_LIMIT = 500;
 const CLIENT_CALLS_PER_WINDOW = 10;
+const MAIL_WAIT_MS = 1500;
 const SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{10,200}$/;
 const MOCK_ID = /^cs_mock_[1-9]\d{7}$/;
-const KEY_SHAPE = /^(rk|sk)_(live|test)_\S{10,}$/;
-const LIVE_KEY = /^(rk|sk)_live_/;
-const RESTRICTED_KEY = /^rk_/;
 const TYPES = ["application/json", "application/x-www-form-urlencoded"];
 const TIP_RANGE = { min_cents: TIP_CUSTOM.min, max_cents: TIP_CUSTOM.max };
 const mockSessions = new Map();
 const unknownIds = new Set();
 
-const secretKey = () => String(process.env.STRIPE_SECRET_KEY || "").trim();
 const previewDemo = () => process.env.VERCEL_ENV === "preview" && !secretKey();
-const mockMode = () => (process.env.BOOK_MOCK === "true" || previewDemo()) && !production() && !LIVE_KEY.test(secretKey());
-
-function keyProblem() {
-  const key = secretKey();
-  if (!key) return "key-missing";
-  if (!KEY_SHAPE.test(key) || (LIVE_KEY.test(key) && !RESTRICTED_KEY.test(key))) return "key-shape";
-  if (LIVE_KEY.test(key) !== production()) return "key-environment";
-  return "";
-}
-
-function stripeKey() {
-  const problem = keyProblem();
-  if (problem) console.error(problem);
-  return problem ? "" : secretKey();
-}
+const mockMode = () => (process.env.BOOK_MOCK === "true" || previewDemo()) && !production() && !liveKey();
 
 function stripeBudget(kind, limit) {
   if (instanceBudget(kind, limit)) return true;
@@ -272,7 +256,9 @@ async function handleGet(request) {
     console.error("stripe", result.status, result.requestId);
     return json(502, errorBody("stripe", contactLinks()));
   }
-  return json(200, sessionBody(result.body));
+  const body = sessionBody(result.body);
+  if (body.payment_status === "paid") await mailSoon(mailBooking(result.body, key), MAIL_WAIT_MS);
+  return json(200, body);
 }
 
 export async function POST(request) {

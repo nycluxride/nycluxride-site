@@ -249,12 +249,12 @@ test(".vercelignore does not exclude api/", () => {
   assert.deepEqual(lines.filter((l) => /^\/?api(\/.*)?$/.test(l)), []);
 });
 
-test("the files in api/ without a leading underscore are exactly book, flight, places and route", () => {
-  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "places.mjs", "route.mjs"]);
+test("the files in api/ without a leading underscore are exactly book, flight, places, route and stripe-webhook", () => {
+  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "places.mjs", "route.mjs", "stripe-webhook.mjs"]);
 });
 
 test("every api route answers no-store through the /api rule", () => {
-  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight"]) {
+  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight", "/api/stripe-webhook"]) {
     const values = (config.headers || []).filter((h) => pathToRegexp(h.source).test(path)).flatMap((h) => h.headers.filter((x) => x.key === "Cache-Control").map((x) => x.value));
     assert.deepEqual(values, ["no-store"], path);
   }

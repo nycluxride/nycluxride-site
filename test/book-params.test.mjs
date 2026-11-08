@@ -22,7 +22,7 @@ const LIVE_KEY = ["rk", "live", "51NlrFakeKeyUsedOnlyInTests"].join("_");
 const MANHATTAN = "350 5th Ave, New York, NY 10118";
 const CHECKOUT_URL = "https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4e5F6g7H8i9J0";
 const DESCRIPTOR_PREFIX = "NYCLUXRIDE";
-const ENV_KEYS = ["BOOKING_REF_SECRET", "PLACE_TICKET_SECRET", "STRIPE_SECRET_KEY", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT", "BOOK_MOCK", "VERCEL_ENV", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MOCK", "FLIGHT_MOCK", "FLIGHT_API_KEY"];
+const ENV_KEYS = ["BOOKING_REF_SECRET", "PLACE_TICKET_SECRET", "STRIPE_SECRET_KEY", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT", "BOOK_MOCK", "VERCEL_ENV", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MOCK", "FLIGHT_MOCK", "FLIGHT_API_KEY", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PORT", "MAIL_FROM", "OWNER_EMAILS", "STRIPE_WEBHOOK_SECRET"];
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
 const TERMS =
   "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, extra stops, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.";
@@ -355,6 +355,8 @@ async function test(name, fn) {
 
 const logged = [];
 console.error = (...args) => logged.push(args.map(String).join(" "));
+const noted = [];
+console.log = (...args) => noted.push(args.map(String).join(" "));
 
 const realFetch = globalThis.fetch;
 function stripeTotal(body) {
@@ -384,6 +386,7 @@ function setEnv(vars = {}) {
   calls = [];
   timeouts = [];
   logged.length = 0;
+  noted.length = 0;
 }
 
 for (const [name, [fields, nonce, ref, expected]] of Object.entries(EXPECTED)) {
@@ -1204,6 +1207,7 @@ await test("handler: GET with a paid session returns exactly the keys of 13.1.7,
   assert.equal(new Headers(calls[0].init.headers).get("stripe-version"), "2026-09-30.endive");
   assert.deepEqual(timeouts, [10000]);
   assert.deepEqual(logged, []);
+  assert.deepEqual(noted, ["mail-off 69042564"]);
 });
 
 await test("handler: GET rebuilds an hourly receipt with the hourly note and no tolls line", async () => {
@@ -1261,6 +1265,7 @@ await test("handler: GET with an unpaid session returns only kind, status and pa
   setEnv({ STRIPE_SECRET_KEY: KEY });
   stripe = () => new Response(JSON.stringify({ ...PAID_SESSION, status: "open", payment_status: "unpaid" }), { status: 200 });
   assert.deepEqual(await readJson(await get(PAID_SESSION.id), 200), { kind: "session", status: "open", payment_status: "unpaid" });
+  assert.deepEqual([calls.length, noted], [1, []]);
 });
 
 await test("handler: GET with a malformed id or an unknown id answers 200 unknown, an id Stripe did not know is not asked again, a Stripe failure 502, no key 503", async () => {
@@ -1774,7 +1779,7 @@ await test("dev server: a PUT gives 405 with Allow: GET, POST, and the new endpo
   const res = await http(`${server.base}/api/book`, { method: "PUT" });
   assert.equal(res.status, 405);
   assert.equal(res.headers.allow, "GET, POST");
-  for (const path of ["/api/places", "/api/route", "/api/flight"]) {
+  for (const path of ["/api/places", "/api/route", "/api/flight", "/api/stripe-webhook"]) {
     const answer = await http(`${server.base}${path}`);
     assert.equal(answer.status, 405, path);
     assert.equal(answer.headers.allow, "POST", path);
@@ -1782,7 +1787,7 @@ await test("dev server: a PUT gives 405 with Allow: GET, POST, and the new endpo
 });
 
 await test("dev server: helpers, sources and unknown names under /api/ are 404", async () => {
-  const paths = ["/api/_rates", "/api/_copy", "/api/_trip", "/api/_stripe", "/api/_places", "/api/_ticket", "/api/_google", "/api/_flight", "/api/_http", "/api/_mock", "/api/_phone", "/api/_phone.mjs", "/api/book.mjs", "/api/_rates.mjs", "/api/", "/api", "/api/missing", "/api/Book"];
+  const paths = ["/api/_rates", "/api/_copy", "/api/_trip", "/api/_stripe", "/api/_places", "/api/_ticket", "/api/_google", "/api/_flight", "/api/_http", "/api/_mock", "/api/_phone", "/api/_mail", "/api/_smtp", "/api/_phone.mjs", "/api/_mail.mjs", "/api/book.mjs", "/api/stripe-webhook.mjs", "/api/_rates.mjs", "/api/", "/api", "/api/missing", "/api/Book"];
   for (const path of paths) assert.equal((await http(`${server.base}${path}`)).status, 404, path);
 });
 

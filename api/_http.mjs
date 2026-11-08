@@ -38,8 +38,8 @@ export function originAllowed(request) {
   return origin === new URL(request.url).origin || PREVIEW_ORIGIN.test(origin);
 }
 
-export async function readBody(request, limit) {
-  if (!request.body) return "";
+export async function readBytes(request, limit) {
+  if (!request.body) return Buffer.alloc(0);
   const reader = request.body.getReader();
   const chunks = [];
   let size = 0;
@@ -53,7 +53,12 @@ export async function readBody(request, limit) {
     }
     chunks.push(value);
   }
-  return Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks);
+}
+
+export async function readBody(request, limit) {
+  const bytes = await readBytes(request, limit);
+  return bytes === null ? null : bytes.toString("utf8");
 }
 
 export async function jsonRequest(request, limit) {
