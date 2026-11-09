@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS } from "./_rates.mjs";
+import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk, seatCounts, seatText } from "./_trip.mjs";
 import { production } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -73,6 +73,7 @@ function intentDescription(trip, ref) {
   if (trip.flight) parts.push(`Flight ${trip.flight}`);
   if (trip.return && trip.return_flight) parts.push(`Return flight ${trip.return_flight}`);
   if (trip.meet) parts.push(LABELS.meet);
+  if (seatText(trip)) parts.push(seatText(trip));
   return `${parts.join(". ")}.`.slice(0, MAX_DESCRIPTION).replace(/[\ud800-\udbff]$/, "");
 }
 
@@ -128,6 +129,9 @@ export function metadataFor(trip, price, ref) {
     bcf_cents: price.bcf,
     tolls_cents: price.tolls,
     meet_cents: price.meet,
+    seats_cents: price.seats || "",
+    child_seats: price.seats ? price.seatCount : "",
+    ...Object.fromEntries(CHILD_SEATS.map((k) => [`${k}_seats`, (price.seats && seatCounts(trip)[k]) || ""])),
     tip_cents: price.tip,
     total_cents: price.total,
     rider: d.rider,
@@ -151,6 +155,7 @@ export function metadataFor(trip, price, ref) {
 function lineDescription(entry, i, trip, price, ref) {
   if (i === 0) return fareDescription(trip, ref);
   if (entry.label === LABELS.meet) return LABELS.meetDescription;
+  if (price.seats && entry.label === price.seatLabel) return `${seatText(trip)}.`;
   if (price.tip && (entry.label === LABELS.gratuityAmount || entry.label === fill(LABELS.gratuity, { rate: price.tipPercent }))) return LABELS.gratuityDescription;
   return undefined;
 }

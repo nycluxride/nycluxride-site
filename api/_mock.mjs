@@ -5,6 +5,8 @@ const state = (code, name) => part(["administrative_area_level_1", "political"],
 const county = (name) => part(["administrative_area_level_2", "political"], name);
 const borough = (name) => part(["sublocality_level_1", "sublocality", "political"], name);
 const zip = (code) => part(["postal_code"], code);
+const country = (code, name) => part(["country", "political"], name, code);
+const US = country("US", "United States");
 const FIXTURES = [
   {
     trigger: "edition",
@@ -12,7 +14,7 @@ const FIXTURES = [
     address: "Madison Ave, New York, NY 10010, USA",
     at: [40.741389, -73.987193],
     kinds: ["establishment", "lodging", "point_of_interest"],
-    components: [state("NY", "New York"), county("New York County"), borough("Manhattan"), zip("10010")],
+    components: [state("NY", "New York"), county("New York County"), borough("Manhattan"), zip("10010"), US],
   },
   {
     trigger: "bedford",
@@ -20,7 +22,7 @@ const FIXTURES = [
     address: "277 Bedford Ave, Brooklyn, NY 11211, USA",
     at: [40.714224, -73.961452],
     kinds: ["street_address"],
-    components: [state("NY", "New York"), county("Kings County"), borough("Brooklyn"), zip("11211")],
+    components: [state("NY", "New York"), county("Kings County"), borough("Brooklyn"), zip("11211"), US],
   },
   {
     trigger: "hoboken",
@@ -28,7 +30,7 @@ const FIXTURES = [
     address: "Hoboken, NJ 07030, USA",
     at: [40.743991, -74.032363],
     kinds: ["locality", "political"],
-    components: [state("NJ", "New Jersey"), county("Hudson County"), zip("07030")],
+    components: [state("NJ", "New Jersey"), county("Hudson County"), zip("07030"), US],
   },
   {
     trigger: "westchester",
@@ -36,7 +38,7 @@ const FIXTURES = [
     address: "240 Airport Rd, White Plains, NY 10604, USA",
     at: [41.066959, -73.707575],
     kinds: ["airport", "establishment", "point_of_interest"],
-    components: [state("NY", "New York"), county("Westchester County"), zip("10604")],
+    components: [state("NY", "New York"), county("Westchester County"), zip("10604"), US],
   },
   {
     trigger: "terminal 4",
@@ -44,7 +46,15 @@ const FIXTURES = [
     address: "JFK Terminal 4, Jamaica, NY 11430, USA",
     at: [40.644166, -73.782425],
     kinds: ["airport", "establishment", "point_of_interest"],
-    components: [state("NY", "New York"), county("Queens County"), borough("Queens"), zip("11430")],
+    components: [state("NY", "New York"), county("Queens County"), borough("Queens"), zip("11430"), US],
+  },
+  {
+    trigger: "cn tower",
+    item: { id: "mock-cn-tower", main: "CN Tower", secondary: "Bremner Boulevard, Toronto, ON, Canada", types: ["tourist_attraction", "point_of_interest"] },
+    address: "290 Bremner Blvd, Toronto, ON M5V 3L9, Canada",
+    at: [43.642566, -79.387057],
+    kinds: ["establishment", "point_of_interest", "tourist_attraction"],
+    components: [state("ON", "Ontario"), zip("M5V 3L9"), country("CA", "Canada")],
   },
 ];
 const mapSvg = (w, h) =>
@@ -83,6 +93,12 @@ const PLACE_AT = new Map([
   ["Greenwich, CT 06830", [41.026489, -73.628456]],
   ["1 Ocean Rd, Montauk, NY 11954", [41.035144, -71.944656]],
   ["Secaucus, NJ 07094", [40.789543, -74.056534]],
+  ["806 6th Street, Secaucus, NJ", [40.78825, -74.06184]],
+  ["Niagara Falls, NY 14303", [43.09447, -79.05671]],
+  ["1500 Market St, Philadelphia, PA 19102", [39.952584, -75.165953]],
+  ["1 Beacon St, Boston, MA 02108", [42.3585, -71.0618]],
+  ["Raleigh, NC", [35.77959, -78.638179]],
+  ["Bar Harbor, ME 04609", [44.3876, -68.2043]],
   ["John F. Kennedy International Airport, Queens, NY 11430", [40.641311, -73.778139]],
   ["John F. Kennedy International Airport Terminal 1, Queens, NY 11430", [40.643365, -73.789667]],
   ["John F. Kennedy International Airport Terminal 4, Queens, NY 11430", [40.644166, -73.782425]],
@@ -157,6 +173,9 @@ function mockPath(waypoints) {
 const MANHATTAN = "350 5th Ave, New York, NY 10118";
 const SECAUCUS = "Secaucus, NJ 07094";
 const JFK = "John F. Kennedy International Airport, Queens, NY 11430";
+const SECAUCUS_STREET = "806 6th Street, Secaucus, NJ";
+const NIAGARA = "Niagara Falls, NY 14303";
+const PHILADELPHIA = "1500 Market St, Philadelphia, PA 19102";
 const ROUTES = [
   ["mock-edition", "mock-bedford", 27, 4.6],
   ["mock-bedford", "mock-edition", 31, 4.8],
@@ -172,6 +191,13 @@ const ROUTES = [
   ["John F. Kennedy International Airport Terminal 4, Queens, NY 11430", SECAUCUS, 50, 25.2],
   [SECAUCUS, "Newark Liberty International Airport, Newark, NJ 07114", 18, 9],
   [JFK, "1 Ocean Rd, Montauk, NY 11954", 125, 104.6],
+  [SECAUCUS_STREET, NIAGARA, 420, 400],
+  [NIAGARA, SECAUCUS_STREET, 425, 400.4],
+  [PHILADELPHIA, "1 Beacon St, Boston, MA 02108", 322, 308.6],
+  [PHILADELPHIA, JFK, 118, 97.5],
+  [MANHATTAN, "Raleigh, NC", 480, 501],
+  [JFK, "Raleigh, NC", 505, 524.6],
+  [MANHATTAN, "Bar Harbor, ME 04609", 721, 480],
 ];
 const key = (text) => (text.startsWith("mock-") ? text : norm(text));
 const point = (waypoint) => (waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : norm(waypoint && waypoint.address));

@@ -14,6 +14,7 @@ import {
   TIP_PERCENTS,
   percentCents,
   MEET_AND_GREET,
+  CHILD_SEAT_CENTS,
   HOURS,
   MIN_NOTICE_HOURS,
   MAX_ADVANCE_DAYS,
@@ -117,7 +118,7 @@ test("#airport-total rows equal the Business SUV lines to JFK, Newark and Teterb
   const foot = [...table.querySelectorAll("tfoot tr")];
   assert.equal(squash(foot[0].querySelector("th")), "Total");
   assert.deepEqual(cents(squash(foot[0].querySelector("td"))), [airportTotal]);
-  assert.equal(squash(foot[1]), "Every class adds NYC sales tax and the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Meet and greet and a gratuity, if chosen, are added at booking.");
+  assert.equal(squash(foot[1]), "Every class adds NYC sales tax and the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Meet and greet, child seats and a gratuity, if chosen, are added at booking.");
   assert.deepEqual(cents(squash(foot[1])), [leg("suv", "jfk").tolls]);
 });
 
@@ -196,6 +197,15 @@ const facts = Object.fromEntries([...page.querySelectorAll("#add-ons dl.facts dt
 
 test("meet and greet equals MEET_AND_GREET", () => {
   assert.deepEqual(cents(facts["Meet and greet"] || ""), [MEET_AND_GREET]);
+});
+
+test("child seats equal CHILD_SEAT_CENTS per seat, charged once per booking and also once on a round trip, and the add-on links the car seat page", () => {
+  assert.equal(CHILD_SEAT_CENTS, 1500);
+  assert.deepEqual(cents(facts["Child seats"] || ""), [CHILD_SEAT_CENTS]);
+  assert.equal(facts["Child seats"], `Infant, toddler and booster seats, $${CHILD_SEAT_CENTS / 100} per seat, charged once at booking, also on a round trip`);
+  assert.doesNotMatch(facts["Child seats"], /\bfree\b|included/i);
+  const dd = [...page.querySelectorAll("#add-ons dl.facts dt")].find((dt) => squash(dt) === "Child seats").nextElementSibling;
+  assert.deepEqual([...dd.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["/car-service-with-car-seat-nyc", "Infant, toddler and booster seats"]]);
 });
 
 test("the gratuity line lists TIP_PERCENTS, none first, and says it is optional", () => {
@@ -284,9 +294,10 @@ test("the distance worked example is base plus miles plus minutes from api/_trip
 
 test("the distance section says how the price is built and that tolls and parking are charged after the ride, as on hourly bookings", () => {
   const prose = squash(page.querySelector("#distance .prose"));
-  assert.ok(prose.includes("One-way trips that don't start or end at an airport are priced by distance and time, to or from any address in the five boroughs."), prose);
+  assert.ok(prose.includes("One-way trips anywhere in the United States that don't start or end at an airport are priced by distance and time."), prose);
+  assert.ok(!/five boroughs|New York City address|60 miles|180 minutes/.test(prose), prose);
   assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
-  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Our dispatch team prices long trips."), prose);
+  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
   assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
   const note = squash(page.querySelector("#distance-caption .rate-table__note"));
   assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));
@@ -339,8 +350,9 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   const nodes = [...page.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => JSON.parse(s.textContent)["@graph"] || []);
   const catalog = nodes.find((n) => n["@type"] === "OfferCatalog");
   assert.ok(catalog, "rates.html has no OfferCatalog");
-  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, MEET_AND_GREET]);
+  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, MEET_AND_GREET, CHILD_SEAT_CENTS]);
   const unknown = [];
+  assert.deepEqual(catalog.itemListElement.filter((o) => o.name === "Child seat").map((o) => [Number(o.price) * 100, Number(o.priceSpecification.price) * 100]), [[CHILD_SEAT_CENTS, CHILD_SEAT_CENTS]]);
   const airport = catalog.itemListElement.filter((o) => o.name.startsWith("Airport transfer, "));
   assert.deepEqual(airport.map((o) => [o.name, new URL(o.url).hash.slice(1)]), CLASS_KEYS.flatMap((k) => [[`Airport transfer, JFK, Newark or Teterboro, ${CLASSES[k].name}`, `airport-${k}`], [`Airport transfer, LaGuardia, ${CLASSES[k].name}`, `airport-${k}`]]));
   for (const [i, offer] of airport.entries()) {

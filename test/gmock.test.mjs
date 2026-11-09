@@ -77,7 +77,9 @@ await test("map.js uses only names that the mock implements and that the Maps Ja
   const has = (p) => p in gm || [gm.Map, gm.OverlayView, gm.Polyline, gm.LatLng, gm.LatLngBounds, gm.MVCArray].some((c) => p in c.prototype || p in c) || p in gm.RenderingType || p in gm.event || REFERENCE.panes.includes(p) || REFERENCE.projection.includes(p) || REFERENCE.mouse.includes(p) || REFERENCE.polylineOptions.includes(p) || REFERENCE.mapOptions.includes(p) || REFERENCE.events.includes(p);
   assert.deepEqual(google.filter((p) => !has(p)), [], "not in the mock");
   const options = REFERENCE.mapOptions.filter((o) => new RegExp(`[{,]${o}:`).test(MAP_JS));
-  for (const o of ["center", "zoom", "minZoom", "maxZoom", "renderingType", "backgroundColor", "disableDefaultUI", "cameraControl", "gestureHandling", "restriction"]) assert.ok(options.includes(o), o);
+  for (const o of ["center", "zoom", "minZoom", "maxZoom", "renderingType", "backgroundColor", "disableDefaultUI", "cameraControl", "gestureHandling"]) assert.ok(options.includes(o), o);
+  assert.ok(!options.includes("restriction"), "the map is never held to the New York City area, so a trip anywhere in the United States fits");
+  assert.match(MAP_JS, /[{,]minZoom:3[,}]/, "the map can zoom out far enough to frame a 500 mile trip");
   const box = w.document.getElementById("m");
   assert.doesNotThrow(() => new gm.Map(box, Object.fromEntries(options.filter((o) => o !== "mapId").map((o) => [o, o === "center" ? { lat: 40.7, lng: -74 } : o === "restriction" ? { latLngBounds: { north: 42, south: 39, west: -76, east: -71 } } : o === "styles" ? [] : o === "gestureHandling" ? "cooperative" : o === "renderingType" ? "RASTER" : o === "backgroundColor" ? "#fff" : /Zoom|zoom/.test(o) ? 10 : true]))));
   assert.throws(() => new gm.Map(box, { styles: [], mapId: "x" }), /styles and mapId/);

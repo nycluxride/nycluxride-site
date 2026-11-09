@@ -27,11 +27,11 @@ const WAITS = [
   ["15 min", "Other pickups", "From the pickup time"],
 ];
 const SEATS = [
-  ["i-seat-infant", "Infant seat", "Free on request"],
-  ["i-seat-toddler", "Toddler seat", "Free on request"],
-  ["i-seat-booster", "Booster seat", "Free on request"],
+  ["i-seat-infant", "Infant seat", "Priced per seat"],
+  ["i-seat-toddler", "Toddler seat", "Priced per seat"],
+  ["i-seat-booster", "Booster seat", "Priced per seat"],
 ];
-const SEAT_NOTE = "Tell us which one you need in the booking notes, and we'll fit it before the car leaves.";
+const SEAT_NOTE = "Choose them when you book, and we'll fit them before the car leaves.";
 const AMENITIES = [
   ["i-bottle", "Bottled water", ""],
   ["i-wifi", "Free Wi-Fi", "Executive fleet"],
@@ -83,7 +83,7 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold, the client's line, and the infant, toddler and booster seat, each free on request, with the booking notes line kept in the FAQ", () => {
+check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold, the client's line, and the infant, toddler and booster seat, each priced per seat, with the rates add-on at its price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
   assert.equal(seats.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the card does not follow the booking card");
@@ -95,7 +95,8 @@ check("index.html: the child seats card sits in the hero right after the booking
   const items = [...seats.querySelectorAll(":scope > ul.seats__list[role=list] > li")];
   assert.deepEqual(items.map((li) => [art(li.querySelector(":scope > .seats__art")), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
-  assert.equal(fact("Child seats"), "Infant, toddler and booster seats, free on request");
+  assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip");
+  assert.doesNotMatch(seats.textContent, /free/i);
   assert.ok(answer("Are child safety seats available?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
 

@@ -45,9 +45,9 @@ export const PLACE_LIST = Object.freeze(
     Object.freeze({ id, label, sub, zone, iata, kind, parent, aliases: split(aliases), keys: split(keys), addr, gid: "" }),
   ),
 );
-export const ZONES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "unknown"];
+export const ZONES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "abroad", "unknown"];
 export const AIRPORT_ZONES = ["jfk", "lga", "ewr", "teb", "airport-other"];
-export const AREA_LABELS = { ...PLACES, "airport-other": "Price on request", unknown: "ZIP code needed" };
+export const AREA_LABELS = { ...PLACES, "airport-other": "Price on request", abroad: "Outside the United States", unknown: "ZIP code needed" };
 
 const STATE_CODES = "al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma mi mn ms mo mt ne nv nh nj nm nc nd oh ok or pa ri sc sd tn tx ut vt va wa wv wi wy dc pr vi gu as mp";
 const STATE_NAMES =
@@ -71,6 +71,11 @@ const TEB_GROUNDS = /\bFred Wehran\b|\bLindbergh Dr(?:ive)?\b|^(?:233|485) Indus
 const AREA_TAIL = new RegExp(`(?:(?:^| )(?:usa|us|united states|ny|new york city|new york|nyc|${STATE_CODES.split(" ").join("|")}|${STATE_NAMES}|\\d{5}(?: \\d{4})?))+$`);
 const AREA_NAME = /^(?:(?:borough of )?(?:manhattan|brooklyn|queens|(?:the )?bronx|staten island)(?: borough)?|(?:[a-z']+ ){1,2}county)?$/;
 const CITY_ZONES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
+const US_COUNTRIES = ["US", "PR", "VI", "GU", "AS", "MP"];
+const POSTAL = "[abceghj-nprstvxy]\\d[abceghj-nprstv-z] ?\\d[abceghj-nprstv-z]\\d";
+const PROVINCE_CODES = "ab|bc|mb|nb|nl|ns|nt|nu|on|pe|qc|sk|yt";
+const PROVINCE_NAMES = "alberta|british columbia|manitoba|new brunswick|newfoundland(?: and labrador)?|nova scotia|northwest territories|nunavut|prince edward island|qu[eé]bec|saskatchewan|yukon";
+const ABROAD = new RegExp(`(?:^|[\\s,])${POSTAL}(?:,?\\s*ca)?$|,\\s*(?:${PROVINCE_CODES})(?:\\s+(?:${POSTAL}|\\d{5}))?(?:,\\s*ca)?$|,\\s*(?:${PROVINCE_NAMES})(?:\\s+${POSTAL})?(?:,\\s*ca)?$|,\\s*ontario(?:\\s+${POSTAL})?$|,\\s*(?:canada|m[eé]xico)$`);
 
 export const norm = (text) =>
   String(text ?? "")
@@ -137,6 +142,7 @@ export function classifyText(text) {
   if (words.includes(" 07114 ") && /\s(?:ewr|newark liberty|newark airport|newark international)\s/.test(words)) return { zone: "ewr", id: "ewr" };
   if (words.includes(" 07608 ") && /\s(?:teb|teterboro airport|aviation)\s/.test(words)) return { zone: "teb", id: "teb" };
   const plain = lite(text);
+  if (ABROAD.test(plain.replace(/\./g, ""))) return { zone: "abroad", id: "" };
   if (AFTER_COMMA.test(plain) || BEFORE_ZIP.test(plain)) return { zone: cityText(plain) ? "unknown" : "outside", id: "" };
   const zip = LAST_ZIP.exec(plain) || NYC_TAIL.exec(plain);
   if (zip) {
@@ -170,6 +176,8 @@ export function classifyPlace(details, label) {
   const name = String(label ?? "");
   const address = String((details && details.formattedAddress) || "");
   const airport = types.includes("airport") || types.includes("international_airport");
+  const country = String(part("country").shortText || "");
+  if (country && !US_COUNTRIES.includes(country)) return "abroad";
   if (state === "NY" && zip === "11430") return "jfk";
   if (state === "NY" && zip === "11371") return "lga";
   if (state === "NJ" && zip === "07114" && EWR_GROUNDS.test(`${name} ${address}`)) return "ewr";

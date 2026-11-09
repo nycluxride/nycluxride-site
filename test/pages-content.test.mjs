@@ -276,7 +276,7 @@ for (const file of ["services.html", "locations.html", "blog.html"]) {
 
 const FREE = ["Free waiting", "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup."];
 const HOUR = ["By the hour", "Any class, with a 3-hour minimum."];
-const CHILD = ["Child seats", "Infant, toddler and booster seats, free on request."];
+const CHILD = ["Child seats", "Infant, toddler and booster seats, charged per seat at booking."];
 const AHEAD = ["Booking ahead", "Online at least 1 hour before pickup. Sooner by email or WhatsApp when a car is free."];
 const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
 const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
@@ -286,7 +286,7 @@ for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuard
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
-RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Name the seat in the booking notes when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
+RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Choose the seats when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
 
 for (const [file, rows] of Object.entries(RAILS)) {
   const { document } = read(file);
@@ -596,22 +596,24 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
 const SEAT_LINKS = [
   ["faq.html", "Our car seat page"],
   ["index.html", "How to ask for a car seat"],
-  ["rates.html", "Infant, toddler and booster seats, free on request"],
-  ["services.html", "Infant, toddler and booster seats, free on request."],
-  ["about.html", "Infant, toddler and booster seats, free on request."],
-  ["limousine-service-nyc.html", "Infant, toddler and booster seats, free on request."],
-  ["fleet.html", "Infant, toddler and booster seats are free on request."],
-  ["chauffeur-service-nyc.html", "Infant, toddler and booster seats, free on request."],
-  ["black-car-service-brooklyn.html", "Infant, toddler and booster seats, free on request."],
-  ...[...Object.keys(AREAS), ...Object.keys(AIRPORTS)].map((f) => [f, "Infant, toddler and booster seats, free on request."]),
+  ["rates.html", "Infant, toddler and booster seats"],
+  ["services.html", "Infant, toddler and booster seats, charged per seat at booking."],
+  ["about.html", "Infant, toddler and booster seats, charged per seat at booking."],
+  ["limousine-service-nyc.html", "Infant, toddler and booster seats, charged per seat at booking."],
+  ["fleet.html", "Infant, toddler and booster seats are charged per seat at booking."],
+  ["chauffeur-service-nyc.html", "Infant, toddler and booster seats, charged per seat at booking."],
+  ["black-car-service-brooklyn.html", "Infant, toddler and booster seats, charged per seat at booking."],
+  ...[...Object.keys(AREAS), ...Object.keys(AIRPORTS)].map((f) => [f, "Infant, toddler and booster seats, charged per seat at booking."]),
   ["locations/jfk-airport.html", "our car seat page"],
-  ["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "Infant, toddler and booster seats are free."],
-  ["blog/best-black-car-service-brooklyn-queens-march-20.html", "Infant, toddler and booster seats are free."],
-  ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "ask for a free car seat"],
+  ["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "Infant, toddler and booster seats are charged per seat at booking."],
+  ["blog/best-black-car-service-brooklyn-queens-march-20.html", "Infant, toddler and booster seats are charged per seat at booking."],
+  ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "book car seats with your ride"],
 ];
-check("the pages that state the free child seats link that line, word for word, to the car seat page", () => {
+check("the pages that state the child seat charge link that line, word for word, to the car seat page, and no page says child seats are free or included", () => {
   const miss = SEAT_LINKS.filter(([file, text]) => ![...read(file).document.querySelectorAll('main a[href="/car-service-with-car-seat-nyc"]')].some((a) => norm(a.textContent) === text));
   assert.deepEqual(miss, []);
+  const free = SEAT_LINKS.filter(([file]) => /(child|car|infant|toddler|booster) seats?[^.]{0,40}\b(free|included|no charge|nothing to your fare)\b|\bfree (child|car) seats?/i.test(norm(read(file).document.querySelector("main").textContent)));
+  assert.deepEqual(free, []);
 });
 check("the airport guide, the pickup guide and the Staten Island page link Newark Liberty to the Newark Airport page in context", () => {
   const want = [["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", "/locations/newark-airport", "Newark Liberty"], ["blog/whatsapp-airport-pickup-coordination-nyc-april-24.html", "/locations/newark-airport#arrival", "Our Newark Airport page"], ["locations/staten-island.html", "/locations/newark-airport", "Newark Liberty"]];
@@ -640,13 +642,25 @@ check("corporate-car-service-nyc.html: services.html #corporate and the corporat
 
 const ldNodes = (document) => [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => { const j = JSON.parse(s.textContent); return j["@graph"] || [j]; });
 const ldAnswer = (document, name) => ldNodes(document).filter((n) => n["@type"] === "FAQPage").flatMap((n) => n.mainEntity).find((q) => q.name === name)?.acceptedAnswer.text;
-check("car-service-with-car-seat-nyc.html and faq.html: free child seats are offered on one-way trips too, in the lede, the answers, their JSON-LD and the Service description", () => {
+check("car-service-with-car-seat-nyc.html and faq.html: child seats are offered on one-way trips too and charged per seat at booking, in the lede, the answers, their JSON-LD and the Service description, and the charge answer says once per booking, also on a round trip, with a link to the price", () => {
   const seat = read("car-service-with-car-seat-nyc.html").document;
   const faq = read("faq.html").document;
-  const answer = "Yes. Infant, toddler and booster seats are free on request, on airport transfers, one-way trips and hourly bookings.";
-  assert.equal(norm(seat.querySelector("main .lede").textContent), "Infant, toddler and booster seats are free on request, on airport transfers, one-way trips and by the hour. You choose the seat, and we fit it before the car leaves.");
+  const answer = "Yes. Infant, toddler and booster seats are available on airport transfers, one-way trips and hourly bookings, charged per seat at booking.";
+  assert.equal(norm(seat.querySelector("main .lede").textContent), "Infant, toddler and booster seats are charged per seat at booking, on airport transfers, one-way trips and by the hour. You choose the seats when you book, and we fit them before the car leaves.");
   assert.deepEqual([norm(seat.querySelector("#q-car-seats .acc__body").textContent), ldAnswer(seat, "Do your cars have car seats?")], [answer, answer]);
-  assert.equal(ldNodes(seat).find((n) => n["@type"] === "Service").description, "Chauffeured airport transfers, one-way trips and hourly bookings in New York City with infant, toddler and booster seats free on request.");
+  assert.equal(ldNodes(seat).find((n) => n["@type"] === "Service").description, "Chauffeured airport transfers, one-way trips and hourly bookings in New York City with infant, toddler and booster seats, charged per seat at booking.");
+  const charge = "Yes. Each child seat is charged once per booking, also on a round trip, and shows as its own line in your price. The price per seat is listed with our add-ons and terms.";
+  assert.deepEqual([norm(seat.querySelector("#q-seat-charge .acc__body").textContent), ldAnswer(seat, "Is there a charge for a car seat?")], [charge, charge]);
+  assert.deepEqual([...seat.querySelectorAll("#q-seat-charge a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/rates#add-ons", "add-ons and terms"]]);
+  const install = "Yes. Choose the seats when you book, and we'll fit them before the car leaves.";
+  assert.deepEqual([norm(seat.querySelector("#q-install .acc__body").textContent), ldAnswer(seat, "Do you install the car seat?")], [install, install]);
+  const airport = "Yes. You can add seats to airport transfers to or from JFK, LaGuardia, Newark and Teterboro. Flat airport rates include tolls, airport fees and taxes. Each seat is added to the total at booking.";
+  assert.deepEqual([norm(seat.querySelector("#q-airport-seat .acc__body").textContent), ldAnswer(seat, "Can I get a car seat for an airport pickup?")], [airport, airport]);
+  const ask = [...seat.querySelectorAll("#ask ~ p")].map((p) => norm(p.textContent));
+  assert.equal(ask[0], "When you book online, choose the infant, toddler and booster seats you need, and add the children's ages in the notes. Each seat is charged once per booking, also on a round trip, and the price is listed with our add-ons and terms.");
+  assert.doesNotMatch(norm(seat.querySelector("main").textContent), /step 3/i, "the seat counts show at step 3 for a priced trip and beside the request for a trip our dispatch team prices, so the page names no step");
+  assert.ok(ask[1].endsWith("and tell us which seats you need."), ask[1]);
+  assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Child Car Seats in NYC | NYC LUX RIDE", "Book infant, toddler and booster seats with your ride. Chauffeured cars to JFK, LaGuardia, Newark and Teterboro at flat rates, or by the hour."]);
   const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Are child safety seats available?");
   const tail = "Our car seat page covers airport pickups, one-way trips and hourly bookings.";
   assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Are child safety seats available?").endsWith(tail)], [true, true]);

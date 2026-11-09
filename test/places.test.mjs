@@ -82,7 +82,8 @@ const pick = (id, label, extra = {}) => ({ action: "pick", id, session: SESSION,
 const labelOf = (item) => (item.main + (item.secondary ? `, ${item.secondary}` : "")).replace(/, USA$/, "");
 const proofed = (items) => items.map((item) => ({ ...item, proof: createHmac("sha256", ticketKey()).update(`p1.${item.id}.${labelHash(labelOf(item))}`).digest("base64url") }));
 const component = (types, longText, shortText = longText) => ({ longText, shortText, types });
-const details = ({ state, county, sub, zip, types = ["street_address"], address = "" }) => ({
+const COUNTRY_NAMES = { US: "United States", CA: "Canada", MX: "Mexico", PR: "Puerto Rico" };
+const details = ({ state, county, sub, zip, country, types = ["street_address"], address = "" }) => ({
   id: "ChIJtest",
   formattedAddress: address,
   shortFormattedAddress: address.split(",")[0],
@@ -91,6 +92,7 @@ const details = ({ state, county, sub, zip, types = ["street_address"], address 
     county && component(["administrative_area_level_2", "political"], county),
     sub && component(["sublocality_level_1", "sublocality", "political"], sub),
     zip && component(["postal_code"], zip),
+    country && component(["country", "political"], COUNTRY_NAMES[country], country),
   ].filter(Boolean),
   types,
 });
@@ -169,7 +171,7 @@ const EXAMPLES = [
   ["Upper East Side, NYC", "manhattan", ""], ["Inwood, NY", "unknown", ""], ["Murray Hill, NY", "unknown", ""], ["Yankee Stadium, Bronx", "bronx", ""],
   ["St. George, Staten Island", "staten-island", ""], ["Pennsylvania Ave, Brooklyn", "brooklyn", ""],
   ["Little Italy, Baltimore", "unknown", ""], ["Port Richmond, Philadelphia", "unknown", ""], ["Financial District, Boston", "unknown", ""], ["Union Square, San Francisco", "unknown", ""],
-  ["South Beach, Miami", "unknown", ""], ["Clinton Hill, Newark", "unknown", ""], ["Coney Island, Cincinnati", "unknown", ""], ["Richmond Hill, ON", "unknown", ""],
+  ["South Beach, Miami", "unknown", ""], ["Clinton Hill, Newark", "unknown", ""], ["Coney Island, Cincinnati", "unknown", ""], ["Richmond Hill, ON", "abroad", ""],
   ["Little Italy", "manhattan", ""], ["Union Square, New York", "manhattan", ""], ["Clinton Hill, Brooklyn", "brooklyn", ""],
   ["JFK Airport, Queens", "jfk", "jfk"], ["LaGuardia Airport, Queens, NY", "lga", "lga"], ["Newark Liberty International Airport, Newark, NJ 07114", "ewr", "ewr"],
   ["Teterboro Airport, Teterboro, NJ 07608", "teb", "teb"], ["123 Frelinghuysen Ave, Newark, NJ 07114", "outside", ""], ["100 Main St, Teterboro, NJ 07608", "outside", ""],
@@ -263,10 +265,10 @@ await test("NEIGHBORHOODS holds normalized names, no denylisted or multi-borough
 });
 
 await test("ZONES, AIRPORT_ZONES and AREA_LABELS", () => {
-  assert.deepEqual(ZONES, ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "unknown"]);
+  assert.deepEqual(ZONES, ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "abroad", "unknown"]);
   assert.deepEqual(AIRPORT_ZONES, ["jfk", "lga", "ewr", "teb", "airport-other"]);
-  assert.deepEqual(AREA_LABELS, { ...PLACES, "airport-other": "Price on request", unknown: "ZIP code needed" });
-  assert.deepEqual(ZONES.map((zone) => AREA_LABELS[zone]), ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island", "JFK", "LaGuardia (LGA)", "Newark Liberty (EWR)", "Teterboro (TEB)", "Price on request", "Outside New York City", "ZIP code needed"]);
+  assert.deepEqual(AREA_LABELS, { ...PLACES, "airport-other": "Price on request", abroad: "Outside the United States", unknown: "ZIP code needed" });
+  assert.deepEqual(ZONES.map((zone) => AREA_LABELS[zone]), ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island", "JFK", "LaGuardia (LGA)", "Newark Liberty (EWR)", "Teterboro (TEB)", "Price on request", "Outside New York City", "Outside the United States", "ZIP code needed"]);
 });
 
 await test("classifyPlace on synthetic Place Details objects", () => {
@@ -304,6 +306,49 @@ await test("classifyPlace on synthetic Place Details objects", () => {
     [null, "", "outside"],
   ];
   for (const [place, label, zone] of cases) assert.equal(classifyPlace(place, label), zone, label);
+});
+
+await test("classifyPlace reads the country of Place Details: a place in Canada, Mexico or another country is abroad before any airport, state or ZIP code rule, a place in the United States or a US territory keeps its zone, and details with no country keep the rules of today", () => {
+  const cases = [
+    [details({ state: "ON", zip: "M5V 3L9", country: "CA", types: ["tourist_attraction", "point_of_interest"], address: "290 Bremner Blvd, Toronto, ON M5V 3L9, Canada" }), "CN Tower, Bremner Boulevard, Toronto, ON, Canada", "abroad"],
+    [details({ state: "ON", zip: "L5P 1B2", country: "CA", types: ["airport", "international_airport"], address: "6301 Silver Dart Dr, Mississauga, ON L5P 1B2, Canada" }), "Toronto Pearson International Airport", "abroad"],
+    [details({ state: "ON", country: "CA", types: ["locality", "political"] }), "Niagara Falls, ON, Canada", "abroad"],
+    [details({ state: "BC", zip: "22000", country: "MX", types: ["locality", "political"] }), "Tijuana, Baja California, Mexico", "abroad"],
+    [details({ state: "NY", county: "Queens County", zip: "11430", country: "CA", types: ["airport"] }), "JFK Terminal 4, Queens, NY, USA", "abroad"],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10010", country: "GB", types: ["lodging"] }), "The New York EDITION", "abroad"],
+    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", zip: "11211", country: "US", address: "277 Bedford Ave, Brooklyn, NY 11211, USA" }), "277 Bedford Avenue, Brooklyn, NY, USA", "brooklyn"],
+    [details({ state: "NY", county: "Queens County", zip: "11430", country: "US", types: ["airport"], address: "JFK Terminal 4, Jamaica, NY 11430, USA" }), "JFK Terminal 4, Queens, NY, USA", "jfk"],
+    [details({ state: "NY", county: "Niagara County", zip: "14303", country: "US", types: ["park", "point_of_interest"] }), "Niagara Falls State Park, Niagara Falls, NY, USA", "outside"],
+    [details({ state: "PA", county: "Philadelphia County", zip: "19102", country: "US" }), "1500 Market St, Philadelphia, PA, USA", "outside"],
+    [details({ state: "CA", county: "San Bernardino County", zip: "91761", country: "US", types: ["locality", "political"] }), "Ontario, CA, USA", "outside"],
+    [details({ zip: "00901", country: "PR", types: ["locality", "political"] }), "San Juan, Puerto Rico", "outside"],
+    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }), "Hoboken, NJ, USA", "outside"],
+  ];
+  for (const [place, label, zone] of cases) assert.equal(classifyPlace(place, label), zone, label);
+  const canada = details({ state: "ON", zip: "M5V 3L9", country: "CA" });
+  canada.addressComponents.reverse();
+  assert.equal(classifyPlace(canada, "x"), "abroad");
+});
+
+await test("classifyText reads Canada and Mexico from clear signs: a Canadian postal code, a province after a comma by its code or name, with or without dots or a postal code, or Canada or Mexico at the end, also before the country code CA, and a province code before a 5-digit postal code, while look-alike places in the United States keep their zones and other text stays unknown", () => {
+  const abroad = [
+    "Toronto, ON", "Toronto, ON M5V 3L9", "Toronto ON M5V 3L9", "M5V 3L9", "m5v3l9", "290 Bremner Blvd, Toronto, ON M5V 3L9, Canada", "Niagara Falls, Ontario", "Niagara Falls, ON L2E 6T2",
+    "Montréal, QC H3B 4W8", "Quebec City, Quebec", "Québec, Québec", "Vancouver, B.C.", "Vancouver, BC V6B 1A1", "Halifax, N.S.", "Calgary, Alberta", "St. John's, Newfoundland and Labrador",
+    "Charlottetown, Prince Edward Island", "Ottawa, Canada", "Mexico City, Mexico", "Cancún, Quintana Roo, México", "Toronto, ON, USA",
+    "1 Place Ville Marie, Montreal, QC H3B 2B6, CA", "Montreal, QC, CA", "Toronto, ON M5V 3L9, CA", "Vancouver, BC, CA", "Niagara Falls, ON, CA", "Montreal QC H3B 2B6 CA", "H3B 2B6, CA",
+    "Toronto, Ontario M5V 3L9, CA", "Montreal, Quebec, CA", "Calgary, Alberta T2P 1J9, CA", "Halifax, N.S., CA", "Tijuana, B.C. 22000", "Monterrey, N.L. 64000",
+  ];
+  for (const text of abroad) assert.deepEqual(classifyText(text), { zone: "abroad", id: "" }, text);
+  const home = [
+    ["Santa Fe, New Mexico", "outside"], ["Mexico, NY 13114", "outside"], ["Mexico, ME", "outside"], ["Ontario, CA 91761", "outside"], ["123 Main St, Ontario, CA", "outside"],
+    ["Toronto, OH 43964", "outside"], ["Canada, KY", "outside"], ["La Canada, CA 91011", "outside"], ["London, KY", "outside"], ["Windsor, CT", "outside"],
+    ["806 6th Street, Secaucus, NJ", "outside"], ["Niagara Falls, NY 14303", "outside"], ["1500 Market St, Philadelphia, PA 19102", "outside"], ["1 Beacon St, Boston, MA 02108", "outside"],
+    ["Richmond Hill, NY 11418", "queens"], ["350 5th Ave, New York, NY 10118", "manhattan"], ["JFK Airport, Queens, NY 11430", "jfk"],
+    ["Niagara Falls, NY", "unknown"], ["Toronto", "unknown"], ["La Canada", "unknown"], ["London, UK", "unknown"], ["Kingston, Jamaica", "unknown"],
+    ["Ontario, CA", "outside"], ["1 Civic Center Dr, Ontario, CA 91764", "outside"], ["Ontario, CA, USA", "outside"], ["Ontario, OR 97914", "outside"], ["Toronto, Ontario, CA", "outside"], ["Vancouver, WA 98660", "outside"],
+    ["Yukon, OK 73099", "outside"], ["123 Main St, Yukon 73099", "outside"], ["New Brunswick, NJ 08901", "outside"], ["College Ave, New Brunswick 08901", "outside"], ["Tijuana, B.C., MX", "unknown"],
+  ];
+  for (const [text, zone] of home) assert.equal(classifyText(text).zone, zone, text);
 });
 
 await test("classifyPlace looks components up by type, never by position", () => {
@@ -434,6 +479,8 @@ await test("suggest without a key answers google false with the typed area and n
   assert.deepEqual((await call(suggest("350 5th Ave"))).body.typed, { zone: "unknown", area: "ZIP code needed" });
   assert.deepEqual((await call(suggest("Hoboken, NJ"))).body.typed, { zone: "outside", area: "Outside New York City" });
   assert.deepEqual((await call(suggest("HPN"))).body.typed, { zone: "airport-other", area: "Price on request" });
+  assert.deepEqual((await call(suggest("Toronto, ON M5V 3L9"))).body.typed, { zone: "abroad", area: "Outside the United States" });
+  assert.deepEqual((await call(suggest("Niagara Falls, NY 14303"))).body.typed, { zone: "outside", area: "Outside New York City" });
 });
 
 await test("suggest: an address typed in the JFK or LaGuardia ZIP code without the airport's name answers its typed area as an airport ZIP code with the text of the airport ZIP code request as its hint, and no other typed answer has a hint", async () => {
@@ -603,14 +650,14 @@ await test("GOOGLE_MOCK: the fixtures of 13.6, prefix and contains matching, pic
   assert.deepEqual((await call(suggest("the edition hotel"))).body.items[0].mainMatches, []);
   assert.deepEqual((await call(suggest("zzz"))).body.items, []);
   const zones = {};
-  for (const [input, id, label] of [["edition", "mock-edition", "The New York EDITION, Madison Avenue, New York, NY, USA"], ["bedford", "mock-bedford", "277 Bedford Avenue, Brooklyn, NY, USA"], ["hoboken", "mock-hoboken", "Hoboken, NJ, USA"], ["westchester", "mock-hpn", "Westchester County Airport, White Plains, NY, USA"], ["terminal 4", "mock-jfk-t4", "JFK Terminal 4, Queens, NY, USA"]]) {
+  for (const [input, id, label] of [["edition", "mock-edition", "The New York EDITION, Madison Avenue, New York, NY, USA"], ["bedford", "mock-bedford", "277 Bedford Avenue, Brooklyn, NY, USA"], ["hoboken", "mock-hoboken", "Hoboken, NJ, USA"], ["westchester", "mock-hpn", "Westchester County Airport, White Plains, NY, USA"], ["terminal 4", "mock-jfk-t4", "JFK Terminal 4, Queens, NY, USA"], ["cn tower", "mock-cn-tower", "CN Tower, Bremner Boulevard, Toronto, ON, Canada"]]) {
     assert.deepEqual((await call(suggest(input))).body.items.map((item) => item.id), [id], input);
     const res = await call(pick(id, label));
     zones[id] = res.body.zone;
     assert.equal(res.body.map, true, id);
     assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()).zone, res.body.zone);
   }
-  assert.deepEqual(zones, { "mock-edition": "manhattan", "mock-bedford": "brooklyn", "mock-hoboken": "outside", "mock-hpn": "airport-other", "mock-jfk-t4": "jfk" });
+  assert.deepEqual(zones, { "mock-edition": "manhattan", "mock-bedford": "brooklyn", "mock-hoboken": "outside", "mock-hpn": "airport-other", "mock-jfk-t4": "jfk", "mock-cn-tower": "abroad" });
   assert.deepEqual((await call(pick("mock-unknown", "x"))).body, { kind: "error" });
   assert.equal(calls.length, 0);
 });
@@ -710,6 +757,36 @@ await test("pick refuses a label whose own words contradict Place Details, and k
   assert.equal((await call(pick("ChIJsig", "Signature Aviation, Fred Wehran Drive, Teterboro, NJ, USA"))).body.zone, "teb");
   reply = answer(200, details({ state: "NY", county: "Queens County", zip: "11430", types: ["airport"] }));
   assert.equal((await call(pick("ChIJt4", "JFK Terminal 4, Queens, NY, USA"))).body.zone, "jfk");
+});
+
+await test("pick: a place Google puts outside the United States is abroad whatever its label says, with its area label and ticket, a label in Canada or Mexico on Place Details in the United States is refused, and the trip to it asks dispatch with the outside the United States text", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  logs.length = 0;
+  const canada = details({ state: "ON", zip: "M5V 3L9", country: "CA", types: ["tourist_attraction", "point_of_interest"], address: "290 Bremner Blvd, Toronto, ON M5V 3L9, Canada" });
+  for (const label of ["CN Tower, Bremner Boulevard, Toronto, ON, Canada", "1 Main St, Greenwich, CT 06830", "Niagara Falls, NY, USA"]) {
+    reply = answer(200, canada);
+    const res = await call(pick("ChIJcntower", label));
+    assert.deepEqual([res.body.kind, res.body.zone, res.body.area, res.body.airport], ["ok", "abroad", "Outside the United States", false], label);
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJcntower", zone: "abroad", expired: false }, label);
+  }
+  for (const label of ["CN Tower, Bremner Boulevard, Toronto, ON, Canada", "Mexico City, Mexico"]) {
+    reply = answer(200, details({ state: "NY", county: "Niagara County", zip: "14303", country: "US" }));
+    assert.deepEqual((await call(pick("ChIJforged", label))).body, { kind: "error" }, label);
+  }
+  assert.deepEqual(logs, Array(2).fill("places-pick label"));
+  const label = "CN Tower, Bremner Boulevard, Toronto, ON, Canada";
+  reply = answer(200, canada);
+  const { body } = await call(pick("ChIJcntower", label));
+  const fields = { trip_type: "one", from_text: "806 6th Street, Secaucus, NJ", to_text: label, to_ticket: body.ticket, date: "2026-10-14", time: "07:30", passengers: "2", class: "suv", action: "options" };
+  const before = calls.length;
+  const trip = await resolveTrip(readInput(fields), { now: Date.now() });
+  assert.deepEqual([trip.to, trip.ends.to.place, trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["abroad", "ChIJcntower", "", [["outside-us", undefined]]]);
+  assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "quote", reason: "outside-us", field: "" });
+  assert.equal(calls.length, before, "no Place Details or route call");
+  assert.equal(REASONS["outside-us"].text, "Our dispatch team prices trips that start or end outside the United States.");
+  const stale = signTicket("ChIJcntower", "outside", label, Date.now() - (TICKET_TTL + 60) * 1000);
+  reply = answer(200, canada);
+  assert.deepEqual(await resolveEnd("to", readInput({ ...fields, to_ticket: stale }), { now: Date.now() }), { text: label, zone: "abroad", place: "ChIJcntower", id: "" });
 });
 
 await test("budgets: 120 suggests and 15 picks per address a minute, then 429 busy without typed, another address still answers", async () => {

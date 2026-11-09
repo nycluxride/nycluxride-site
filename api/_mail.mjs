@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { CLASSES, VEHICLES, PLACES, CONTACT, SITE_ORIGIN } from "./_rates.mjs";
+import { CLASSES, VEHICLES, PLACES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL } from "./_copy.mjs";
-import { receipt, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc } from "./_trip.mjs";
+import { receipt, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveIntent, retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk, headerText } from "./_smtp.mjs";
@@ -123,7 +123,7 @@ function tripRows(b) {
     [L.flight, f("flight")],
     [L.meet, meet ? L.yes : ""],
     [L.sign, meet ? f("sign_name") : ""],
-    [L.seats, f("child_seats")],
+    [L.seats, seatText({ seats: Object.fromEntries(CHILD_SEATS.map((k) => [k, f(`${k}_seats`)])) }) || f("child_seats")],
     [L.notes, f("notes")],
   ];
   return rows.filter(([, value]) => value);

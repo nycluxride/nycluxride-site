@@ -8,9 +8,7 @@ import {
   HOURLY_START,
   AIRPORT_FARES,
   AIRPORT_TOTALS,
-  ADDRESS_PLACES,
   DISTANCE_RATES,
-  DISTANCE_AREAS,
   DISTANCE_LIMITS,
   DISTANCE_SKIP_ZIPS,
   NYC_TAX_PERCENT,
@@ -19,6 +17,8 @@ import {
   TIP_CUSTOM,
   percentCents,
   MEET_AND_GREET,
+  CHILD_SEAT_CENTS,
+  CHILD_SEATS,
   HOURS,
   PASSENGERS,
   MIN_NOTICE_HOURS,
@@ -34,7 +34,7 @@ import { googleOn, placeDetails, computeRoute } from "./_google.mjs";
 import { readPhone } from "./_phone.mjs";
 
 const ENDS = ["from", "stop1", "stop2", "to"];
-const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
+const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 const ROUTED = ["no-airport", "outside-city"];
@@ -152,6 +152,7 @@ export function readInput(fields) {
     return_time: back ? raw.return_time : "",
     return_flight: back ? raw.return_flight : "",
     passengers: canonical(raw.passengers),
+    seats: Object.fromEntries(CHILD_SEATS.map((k) => [k, canonical(raw[`${k}_seats`])])),
     hours: hour ? canonical(raw.hours) : "",
     class: cls,
     vehicle: hour && cls ? (cls === "suv" ? suvVehicle : CLASS_DEFAULT_VEHICLE[cls]) : "",
@@ -220,6 +221,7 @@ function leg(from, to, back) {
   const toAirport = AIRPORT_ZONES.includes(to);
   let reason = "";
   if (from === "unknown" || to === "unknown") reason = "unplaced";
+  else if (from === "abroad" || to === "abroad") reason = "outside-us";
   else if (fromAirport && toAirport) reason = "airport-to-airport";
   else if (!fromAirport && !toAirport) reason = "no-airport";
   else if (from === "airport-other" || to === "airport-other") reason = "other-airport";
@@ -324,7 +326,6 @@ async function driveTrip(trip, token, context) {
   const check = checkTrip(trip, now, OPEN);
   if (check.kind !== "quote" || !ROUTED.includes(check.reason)) return trip;
   if ([trip.ends.from, trip.ends.to].some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
-  if (check.reason === "no-airport" && ![trip.from, trip.to].some((zone) => DISTANCE_AREAS.includes(zone))) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "outside-trip" })) };
   if (!googleOn()) return trip;
   if ([trip.ends.from, trip.ends.to].some((end) => end.area)) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "street-address" })) };
   const known = readRoute(token, now);
@@ -411,6 +412,7 @@ export function checkTrip(trip, now, settings) {
   }
   const passengers = Number(trip.passengers);
   if (!INTEGER.test(trip.passengers) || passengers < PASSENGERS.min || passengers > PASSENGERS.max) return invalid("passengers");
+  if (!seatsOk(trip)) return invalid("child_seats");
   if (hour && !INTEGER.test(trip.hours)) return invalid("hours");
   if (!has(CLASSES, trip.class)) return invalid("class");
   if (hour && !has(VEHICLES, trip.vehicle)) return invalid("vehicle");
@@ -422,6 +424,15 @@ export function checkTrip(trip, now, settings) {
   if (spatial) return { kind: "quote", reason: spatial.reason, field: spatial.field };
   return { kind: "price", reason: classReason(trip, trip.class), hold: holdFor(trip, current, settings) };
 }
+
+export const seatCounts = (trip) => Object.fromEntries(CHILD_SEATS.map((k) => [k, INTEGER.test((trip.seats || {})[k] || "") ? Number(trip.seats[k]) : 0]));
+export const seatTotal = (trip) => Object.values(seatCounts(trip)).reduce((sum, n) => sum + n, 0);
+export const seatText = (trip) => {
+  const parts = Object.entries(seatCounts(trip)).filter(([, n]) => n).map(([k, n]) => `${n} ${LABELS.seatTypes[k].toLowerCase().replace(/s$/, n === 1 ? "" : "s")}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts.join("");
+};
+const seatsOk = (trip) => CHILD_SEATS.every((k) => /^\d*$/.test((trip.seats || {})[k] || "")) && seatTotal(trip) <= Number(trip.passengers);
+const seatLabel = (count, cents) => (count > 0 && cents % count === 0 ? fill(LABELS.seats, { count, price: money(cents / count) }) : LABELS.seatsAll);
 
 export const emailOk = (text) => text.length <= 254 && EMAIL.test(text);
 
@@ -484,7 +495,7 @@ for (const cls of Object.keys(CLASSES)) {
   const ok = rate ? ["base", "mile", "minute", "minimum"].every((key) => Number.isInteger(rate[key]) && rate[key] >= 0) && rate.minimum > 0 : cls === "sprinter";
   if (!ok) throw new Error(`distance-config ${cls}`);
 }
-if (Object.keys(DISTANCE_RATES).some((cls) => !has(CLASSES, cls)) || !DISTANCE_AREAS.every((zone) => ADDRESS_PLACES.includes(zone)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
+if (Object.keys(DISTANCE_RATES).some((cls) => !has(CLASSES, cls)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
 
 export function classTotal(trip, cls) {
   if (classReason(trip, cls)) return null;
@@ -504,10 +515,13 @@ export function priceTrip(trip, settings) {
   const bcf = hourly ? percentCents(fare, BCF_PERCENT) : sum("bcf");
   const tolls = hourly ? 0 : sum("tolls");
   const meet = trip.meet ? MEET_AND_GREET : 0;
+  const seatCount = seatTotal(trip);
+  const seats = seatCount * CHILD_SEAT_CENTS;
   const tip = custom ? Number(trip.tip_amount) * 100 || 0 : tipPercent ? percentCents(fare, String(tipPercent)) : 0;
   const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), line(taxLabel(), tax), line(bcfLabel(), bcf)];
   if (plain) lines.push(line(LABELS.tolls, tolls));
   if (meet) lines.push(line(LABELS.meet, meet));
+  if (seats) lines.push(line(seatLabel(seatCount, seats), seats));
   if (tip) lines.push(line(custom ? LABELS.gratuityAmount : tipLabel(tipPercent), tip));
   return {
     legs,
@@ -516,10 +530,13 @@ export function priceTrip(trip, settings) {
     bcf,
     tolls,
     meet,
+    seats,
+    seatCount,
+    seatLabel: seats ? seatLabel(seatCount, seats) : "",
     tip,
     tipPercent,
-    total: fare + tax + bcf + tolls + meet + tip,
-    value: fare + meet,
+    total: fare + tax + bcf + tolls + meet + seats + tip,
+    value: fare + meet + seats,
     lines,
     notes: plain ? [NOTES.included, POLICY.later.airport] : [airportDistance(trip) ? POLICY.later.outside : POLICY.later.hourly],
     service,
@@ -614,6 +631,7 @@ export function composeMessage(trip, ref, totalCents) {
   if (one && has(CLASSES, trip.class)) lines.push(`Vehicle: ${CLASSES[trip.class].name}`);
   if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle)}`);
   if (trip.meet) lines.push("Meet and greet: Yes");
+  for (const [k, n] of Object.entries(seatCounts(trip))) if (n) lines.push(`${LABELS.seatTypes[k]}: ${n}`);
   if (trip.tip === "custom" && Number(trip.tip_amount) > 0) lines.push(`Gratuity: ${money(Number(trip.tip_amount) * 100)}`);
   if (Number(trip.tip) > 0) lines.push(`Gratuity: ${trip.tip}%`);
   if (Number.isInteger(totalCents)) lines.push(`Total shown: ${money(totalCents)}`);
@@ -659,12 +677,13 @@ export function receipt(metadata, settings, taxCents) {
     lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), line(taxLabel(), cents("tax_cents")), line(bcfLabel(), cents("bcf_cents")));
     if (cents("tolls_cents")) lines.push(line(LABELS.tolls, cents("tolls_cents")));
     if (cents("meet_cents")) lines.push(line(LABELS.meet, cents("meet_cents")));
+    if (cents("seats_cents")) lines.push(line(seatLabel(cents("child_seats"), cents("seats_cents")), cents("seats_cents")));
     if (cents("tip_cents")) lines.push(line(cents("tip_percent") > 0 ? tipLabel(cents("tip_percent")) : LABELS.gratuityAmount, cents("tip_cents")));
   }
   return {
     summary: !known ? "" : validDate(data.return_date || "") && TIME.test(data.return_time || "") ? fill(LABELS.summaryReturn, { date: formatDate(data.date), time: formatTime(data.time), rdate: formatDate(data.return_date), rtime: formatTime(data.return_time), service }) : fill(LABELS.summary, { date: formatDate(data.date), time: formatTime(data.time), service }),
     lines,
-    value: cents("fare_cents") + cents("meet_cents"),
+    value: cents("fare_cents") + cents("meet_cents") + cents("seats_cents"),
     notes: distance && AIRPORT_PLACES.includes(data.airport) ? [POLICY.later.outside] : hourly || distance ? [POLICY.later.hourly] : [NOTES.included, POLICY.later.airport],
   };
 }
