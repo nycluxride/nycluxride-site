@@ -298,7 +298,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 #bk-opt-h{grid-column:1}
 #bk-pax-f{grid-column:2;width:160px}
 .bk.is-js #bk-pax-f{width:auto}
-.bk.is-js #bk-pax-f:has(.bk-stepper){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.bk.is-js .field:has(>.bk-stepper){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 #bk-pax-l{flex:none}
 .bk-stepper{display:flex;align-items:center;gap:4px}
 .bk-stepper button{display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--gold-200);color:var(--ink)}
@@ -366,12 +366,18 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk-arrive b{font:var(--m5);color:var(--ink)}
 .bk-arrive span{font:var(--t4);color:var(--ink-2)}
 #bk-vehicle-f{max-width:24rem}
+.bk-kids{display:flex;flex-wrap:wrap;gap:12px 16px;max-width:24rem}
+.bk-kids>.field{flex:1 1 5rem}
+.bk-kids>p{flex:1 0 100%}
+.bk-kids>.field:has(>.bk-stepper){flex-basis:100%;justify-content:space-between}
+.bk-kids output{min-width:2em}
+.bk-kids[aria-invalid=true] output{color:var(--be)}
 #bk-incl-h{margin-top:16px}
 #bk-reach{align-self:start}
 .bk-who>label{font:400 16px/24px var(--font-sans)}
 .bk-det{gap:20px}
 .bk-det>.bk-e{margin-top:-12px}
-.bk[data-step=details] :is(#bk-tip,#bk-meet-f,#bk-check){margin-top:8px}
+.bk[data-step=details] :is(#bk-tip,#bk-meet-f,#bk-kids,#bk-check){margin-top:8px}
 #bk-back .icon{rotate:180deg}
 .bk-trip{display:grid;gap:12px;padding:20px 24px;border-radius:16px;background:#fff;box-shadow:var(--shadow-1)}
 .bk-trip h3{font:var(--m5);color:var(--ink)}
@@ -448,7 +454,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 #q-edit,#q-retry{margin-top:12px;justify-self:start}
 #q-fix{justify-self:start}
 #bk-go>.btn{width:100%}
-.bk-act:not(:has(.bk-q:target,.bk-q.is-on))>#q-body,html:has(.bk-page .bk) :is(.site-header__desk,.site-header__lines,.actionbar),html:has(.bk-page .bk[data-step$=s]) .site-nav,.bk.is-js #bk-pax-f:has(.bk-stepper)>select,.bk.is-js #bk-pax-f:has(.bk-stepper)::after,.bk:has(#bk-r-other:checked) #bk-phone-h>span:not(.bk-cc-h),.bk .field:has(>.bk-e.is-on)>.field__hint:not(.bk-e,.bk-js-only),.bk.is-js #bk-det:has(#bk-notes-f.is-open) #bk-notes-add,.bk:has(#price[hidden]) #bk-tot,.bk[data-step=details] :is(.bk-map,.bk-drive),.bk:has(#bk-route:not([hidden]))>.bk-drive,.bk:has(.bk-q:is(.is-on,:target)) #bk-next3,.bk:not(.is-js) .bk-quote:has(:is(#q-short-notice,#q-far-ahead,#q-paused,#q-clock-change):target)~.bk-go #bk-submit,html:has(.bk-conf) :is(.site-header__desk .btn,.actionbar__cell--book){display:none}
+.bk-act:not(:has(.bk-q:target,.bk-q.is-on))>#q-body,html:has(.bk-page .bk) :is(.site-header__desk,.site-header__lines,.actionbar),html:has(.bk-page .bk[data-step$=s]) .site-nav,.bk.is-js .field:has(>.bk-stepper)>select,.bk.is-js .field:has(>.bk-stepper)::after,.bk:has(#bk-r-other:checked) #bk-phone-h>span:not(.bk-cc-h),.bk .field:has(>.bk-e.is-on)>.field__hint:not(.bk-e,.bk-js-only),.bk.is-js #bk-det:has(#bk-notes-f.is-open) #bk-notes-add,.bk:has(#price[hidden]) #bk-tot,.bk[data-step=details] :is(.bk-map,.bk-drive),.bk:has(#bk-route:not([hidden]))>.bk-drive,.bk:has(.bk-q:is(.is-on,:target)) #bk-next3,.bk:not(.is-js) .bk-quote:has(:is(#q-short-notice,#q-far-ahead,#q-paused,#q-clock-change):target)~.bk-go #bk-submit,html:has(.bk-conf) :is(.site-header__desk .btn,.actionbar__cell--book){display:none}
 .bk-tip:disabled{opacity:.55}
 #bk-tip-h{margin-top:-4px}
 .bk-map{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--skeleton)}
@@ -610,7 +616,7 @@ html:has(.bk-conf) :is(.site-header,.site-footer,.actionbar,.skip){display:none}
 .bk-errs .is-ok::before{border-color:CanvasText}
 .bk-seal circle{fill:Canvas;stroke:CanvasText;stroke-width:2}
 .bk-seal path{stroke:CanvasText}
-.bk-conf [aria-disabled=true]{color:GrayText;border-color:GrayText}
+.bk-conf [aria-disabled=true],.bk-stepper button[aria-disabled=true]{color:GrayText;border-color:GrayText}
 .bk-ring,.bk .btn[aria-busy=true]>.icon,.bk .btn[aria-busy=true]::before{border-color:CanvasText;border-top-color:#0000}
 .bk-ix>label:first-of-type::before{forced-color-adjust:none;background:Highlight;box-shadow:none}
 .bk-ix>label:has(:checked){background:none;border-color:#0000}

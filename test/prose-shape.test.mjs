@@ -41,7 +41,7 @@ const TRACK_FORMS = ["We track your flight and move the pickup if it lands early
 const FORMS_64 = new Set([
   "We answer calls and messages 24 hours a day, every day.",
   "You can book any class by the hour, with a 3-hour minimum.",
-  "Infant, toddler and booster seats are free.",
+  "Infant, toddler and booster seats are charged per seat at booking.",
   "For a pickup within the next hour, email info@nycluxride.com or message us on WhatsApp.",
   "Online at least 1 hour before pickup.",
   "Sooner by email or WhatsApp when a car is free.",
@@ -49,10 +49,9 @@ const FORMS_64 = new Set([
   "One total by class from any New York City address, with tolls, airport fees and taxes included.",
   "Flat airport rates include tolls, airport fees and taxes.",
   "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.",
-  "Tell us which one you need.",
   "Book online at least 1 hour before pickup.",
   "For a pickup within the next hour, email or WhatsApp us.",
-  "Infant, toddler and booster seats, free on request.",
+  "Infant, toddler and booster seats, charged per seat at booking.",
   "We move the pickup if your flight lands early or late.",
   "Our dispatch team prices Luxury Sprinter bookings by the hour.",
 ]);

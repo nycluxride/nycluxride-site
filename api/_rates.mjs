@@ -50,8 +50,7 @@ export const DISTANCE_RATES = {
   first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
 };
-export const DISTANCE_AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
-export const DISTANCE_LIMITS = { miles: 60, minutes: 180 };
+export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
 export const NYC_TAX_PERCENT = "8.875";
 export const BCF_PERCENT = "2.25";
@@ -60,6 +59,8 @@ export const TIP_CUSTOM = { min: 100, max: 50000 };
 export const MAX_STOPS = 2;
 export const percentCents = (cents, percent) => Math.round((cents * Math.round(Number(percent) * 10000)) / 1000000);
 export const MEET_AND_GREET = 2500;
+export const CHILD_SEAT_CENTS = 1500;
+export const CHILD_SEATS = ["infant", "toddler", "booster"];
 export const HOURS = { min: 3, max: 12 };
 export const PASSENGERS = { min: 1, max: 12 };
 export const MIN_NOTICE_HOURS = 1;

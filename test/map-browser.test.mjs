@@ -1422,6 +1422,92 @@ await check("M46 when the map fails, Choose on the map leaves the open list and 
   await ctx.close();
 });
 
+for (const phone of [true, false]) {
+  await check(`M47 ${phone ? "390 phone" : "1440 desktop"}: the owner's long trip with no end in New York City, 806 6th Street, Secaucus, NJ to Niagara Falls, NY 14303, is framed on the trip itself with both pins inside the search map and the vehicle step map, the caption reads 400.0 miles, about 420 min by car., the cards show the distance and time prices with the Luxury Sprinter on Price on request, and nothing moves`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await type(p, "from", "806 6th Street, Secaucus, NJ");
+    await p.locator("#bk-from-list [data-kind=typed]").click();
+    await type(p, "to", "Niagara Falls, NY 14303");
+    await p.locator("#bk-to-list [data-kind=typed]").click();
+    await drawn(p);
+    await settle(p);
+    assert.equal(await p.textContent(".bk-mp__c"), "400.0 miles, about 420 min by car.");
+    for (const step of ["search", "options"]) {
+      if (step === "options") {
+        await view(p);
+        await settle(p);
+      }
+      await p.evaluate(() => document.getElementById("bk-live").scrollIntoView({ block: "center", behavior: "instant" }));
+      const ends = await visiblePins(p);
+      const at = await p.evaluate(() => ({ zoom: __gmock.map.getZoom(), center: __gmock.map.getCenter().toJSON() }));
+      assert.deepEqual(ends.map((x) => x.inside), [true, true], `${step} ${JSON.stringify(ends)} ${JSON.stringify(at)}`);
+      assert.ok(Math.abs(at.center.lng - (-74.06184 + -79.05671) / 2) < 0.05 && at.center.lat > 40.78825 && at.center.lat < 43.09447, `${step} the map is centered on the trip, ${JSON.stringify(at)}`);
+      assert.ok(at.zoom >= 3 && at.zoom <= 8, `${step} ${JSON.stringify(at)}`);
+    }
+    const body = JSON.parse(ctx.api.find((x) => x.path === "book" && JSON.parse(x.body).action === "options").body);
+    assert.deepEqual([...readRoute(body.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[4000, 420]]);
+    assert.equal(routes(ctx).length, 1, "no second route request");
+    const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
+    assert.deepEqual(cards, [...["suv", "premium", "first", "sedan"].map((c) => cash(priceDistance(c, { tenths: 4000, minutes: 420 }).total)), "Price on request"]);
+    assert.deepEqual(cards.slice(0, 4), ["$2,120.27", "$2,534.76", "$2,814.79", "$1,594.65"]);
+    await p.waitForTimeout(300);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+const FAR = "Choose on the map works around New York City. Type the address for a place farther away.";
+const BOSTON = [42.3601, -71.0589];
+await check("M48 1440 desktop: a click on the map outside the New York area, here Boston, says that Choose on the map works around New York City and to type the address after one here request, keeps Use this drop-off off, and a click back in New York City finds the address", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await type(p, "to", "bedf");
+  await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
+  await p.locator("#bk-to-list [data-kind=map]").click();
+  await frame(p, BOSTON[0], BOSTON[1], 12);
+  const center = await p.evaluate(() => __gmock.map.getCenter().toJSON());
+  assert.ok(Math.abs(center.lat - BOSTON[0]) < 0.01 && Math.abs(center.lng - BOSTON[1]) < 0.01, `the map can show Boston while choosing, ${JSON.stringify(center)}`);
+  const at = await px(p, BOSTON);
+  await p.mouse.click(at.x, at.y);
+  await addressIs(p, new RegExp(FAR.replace(/\./g, "\\.")));
+  const b0 = await bar(p);
+  assert.deepEqual([b0.hidden, b0.label, b0.text, b0.use, b0.off], [false, "Choose the drop-off", FAR, "Use this drop-off", "true"]);
+  const here = ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here");
+  assert.equal(here.length, 1);
+  await frame(p, 40.728, -73.975, 12);
+  const bed = await px(p, BEDFORD);
+  await p.mouse.click(bed.x, bed.y);
+  await addressIs(p, /277 Bedford Ave/);
+  assert.equal((await bar(p)).off, null);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+await check("M48 390 phone: a tap on the map sheet outside the New York area says that Choose on the map works around New York City and to type the address, and Use this drop-off stays off", async () => {
+  const ctx = await context(M, PHONE);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await type(p, "to", "bedf");
+  await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
+  await p.locator("#bk-to-list [data-kind=map]").click();
+  await p.waitForFunction(() => document.querySelector(".bk-mapd").open);
+  await p.evaluate(([a, b2]) => (__gmock.map.setZoom(12), __gmock.map.setCenter({ lat: a, lng: b2 })), BOSTON);
+  const t = await px(p, BOSTON);
+  await p.touchscreen.tap(t.x, t.y);
+  await addressIs(p, new RegExp(FAR.replace(/\./g, "\\.")), ".bk-mapd .bk-mc__a");
+  assert.equal(await p.getAttribute(".bk-mapd .bk-mc__u", "aria-disabled"), "true");
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
 for (const [, b] of ENGINES) await b.close();
 if (failures) {
   console.error(`\n${failures} map browser check(s) failed`);

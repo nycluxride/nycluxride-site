@@ -1,4 +1,4 @@
-import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, HOURLY_START } from "./_rates.mjs";
+import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, HOURLY_START } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
 import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
@@ -85,6 +85,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     classes: classList(trip, scope === "trip" ? reason : ""),
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
+    seat_cents: CHILD_SEAT_CENTS,
     earliest: firstSlot(now),
     ...(trip.route && { route: trip.route }),
     ...rideBody(trip, size, draw),
@@ -106,6 +107,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
     tip_custom: TIP_RANGE,
     meet: trip.meetOffered,
     meet_cents: trip.meetOffered ? MEET_AND_GREET : null,
+    seat_cents: CHILD_SEAT_CENTS,
     selected: { class: trip.class, vehicle: hourly ? trip.vehicle : "", tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
     price: price ? { lines: price.lines, total_cents: price.total, currency: "usd", notes: price.notes } : null,
     reason: check.reason,
@@ -204,7 +206,7 @@ async function handlePost(request) {
   const trip = await resolveTrip(input, { env: process.env, request, now, map: size });
   const check = checkTrip(trip, now, settings);
   if (check.kind === "invalid") return invalid(check.code);
-  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}`);
+  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}${REASONS[check.reason].short && !HOURLY_START.includes(trip.from) ? "-short" : ""}`);
   if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size, draw));
   if (check.reason) return reply(200, quoteBody(trip, ref, check.reason, now, { scope: "class" }), `/book#q-${check.reason}`);
   const price = priceTrip(trip, settings);

@@ -29,9 +29,10 @@ const length = (text) => Array.from(text).length;
 const raw = (value) => (typeof value === "string" ? value : "");
 const labelOf = (item) => (item.main + (item.secondary ? `, ${item.secondary}` : "")).replace(/, USA$/, "");
 const PRICED = ["jfk", "lga", "ewr", "teb"];
-const OUTSIDE_OK = ["outside", "ewr", "teb", "airport-other"];
-const conflicts = (text, zone) => (PRICED.includes(text) || text === "airport-other" ? text !== zone : text === "outside" && !OUTSIDE_OK.includes(zone));
-const inArea = (lat, lng) => [lat, lng].every((n) => typeof n === "number" && Number.isFinite(n)) && lat >= AREA.south && lat <= AREA.north && lng >= AREA.west && lng <= AREA.east;
+const OUTSIDE_OK = ["outside", "ewr", "teb", "airport-other", "abroad"];
+const conflicts = (text, zone) => (PRICED.includes(text) || text === "airport-other" || text === "abroad" ? text !== zone : text === "outside" && !OUTSIDE_OK.includes(zone));
+const onEarth = (lat, lng) => [lat, lng].every((n) => typeof n === "number" && Number.isFinite(n)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+const inArea = (lat, lng) => lat >= AREA.south && lat <= AREA.north && lng >= AREA.west && lng <= AREA.east;
 const kinds = (item) => (Array.isArray(item.types) ? item.types : []);
 
 async function suggest(request, data) {
@@ -81,7 +82,8 @@ async function pick(request, data) {
 }
 
 async function here(request, data) {
-  if (!inArea(data.lat, data.lng)) return bad();
+  if (!onEarth(data.lat, data.lng)) return bad();
+  if (!inArea(data.lat, data.lng)) return json(200, { kind: "far" });
   if (!googleOn() || !mapJsOn()) return json(200, { kind: "off" });
   if (!clientBudget(request, "places-here", HERE_IP) || !instanceBudget("places-here", HERE_INSTANCE)) return busy();
   const result = await reverseGeocode(data.lat, data.lng);

@@ -258,6 +258,7 @@ const NO_FLIGHT = await booked({ trip_type: "one", from_text: "John F. Kennedy (
 const NO_RETURN_FLIGHT = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 4", to_id: "jfk-t4", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const FOR_OTHER = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", flight: "UA 523", tip: "0", rider: "other", ...ME, reach: "phone", pname: "Ben Ortiz", pphone: "+44 20 7946 0958" });
 const TO_T5 = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 5", to_id: "jfk-t5", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
+const SEATS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", rider: "me", ...ME, reach: "phone" });
 const HOURLY_JFK = await booked({ trip_type: "hour", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", flight: "BA 117", meet: "1", tip: "0", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
@@ -801,6 +802,26 @@ await test("a child seats line whenever the payment metadata has child_seats, an
   assert.ok(withSeats.html.includes(">Child seats</th>"));
   const [without] = bookingLetters(paid(ONE_WAY), SETTINGS);
   assert.ok(!without.text.includes("Child seats"));
+});
+
+await test("a paid booking with child seats from the booking form names the seat types in the Child seats row of both emails and lists the seat line of the receipt at $15.00 a seat with the total paid", async () => {
+  setEnv();
+  assert.deepEqual([SEATS.metadata.seats_cents, SEATS.metadata.child_seats, SEATS.metadata.infant_seats, SEATS.metadata.booster_seats, "toddler_seats" in SEATS.metadata, SEATS.total], ["4500", "3", "1", "2", false, 27825]);
+  const session = paid(SEATS);
+  const [customer, owner] = bookingLetters(session, SETTINGS);
+  const pay = ["Fare: $155.00", "NYC sales tax (8.875%): $13.76", "Black Car Fund (2.25%): $3.49", "Tolls and airport fees: $12.75", "Meet and greet: $25.00", "Child seats (3 x $15.00): $45.00", "Gratuity for your chauffeur (15%): $23.25", "Paid: $278.25"];
+  for (const letter of [customer, owner]) {
+    assert.ok(letter.text.includes("\nPassengers: 3\nVehicle: Business SUV\n"), letter.kind);
+    assert.ok(letter.text.includes("\nChild seats: 1 infant seat and 2 booster seats\n"), letter.kind);
+    assert.deepEqual(sectionOf(letter.text, letter.kind === "customer" ? "Your payment" : "Payment"), pay, letter.kind);
+    const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
+    const tables = Object.fromEntries(tripTable(doc));
+    assert.deepEqual(tables[letter.kind === "customer" ? "Your trip" : "Trip"].find(([label]) => label === "Child seats"), ["Child seats", "1 infant seat and 2 booster seats"], letter.kind);
+    assert.deepEqual(tables[letter.kind === "customer" ? "Your payment" : "Payment"], pay.map((line) => line.split(": ")), letter.kind);
+  }
+  assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
+  const one = bookingLetters(paid(ONE_WAY, { metadata: { seats_cents: "1500", child_seats: "1", toddler_seats: "1" } }), SETTINGS)[0];
+  assert.ok(one.text.includes("\nChild seats: 1 toddler seat\n") && one.text.includes("\nChild seats (1 x $15.00): $15.00\n"), one.text);
 });
 
 await test("[TEST] starts both subjects only for a test mode session, and the test booking notice opens both bodies", async () => {

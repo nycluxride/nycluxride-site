@@ -82,7 +82,8 @@ check("book.html main is the band with the heading and the four notes, the step 
 });
 
 check("book.html holds every #e- message and every #q- block a 303 can land on", () => {
-  const ids = [...Object.keys(ERRORS).map((c) => `e-${c}`), ...Object.keys(REASONS).map((r) => `q-${r}`), "q-error"];
+  const ids = [...Object.keys(ERRORS).map((c) => `e-${c}`), ...Object.keys(REASONS).map((r) => `q-${r}`), ...Object.keys(REASONS).filter((r) => REASONS[r].short).map((r) => `q-${r}-short`), "q-error"];
+  assert.ok(ids.includes("q-no-airport-short"));
   assert.deepEqual(ids.filter((id) => !$(id)), []);
 });
 
@@ -276,7 +277,29 @@ check("a short-notice payment tells the rider on the confirmation page that the 
   assert.ok(s && s.matches("#cf-next > li > span"), "no #cf-confirm in the next steps");
   assert.equal(s.textContent, "We confirm your car and chauffeur in writing before your ride.");
   assert.equal(s.dataset.soon, "Your pickup is soon, so we'll confirm your car and chauffeur in writing shortly.");
-  assert.match(DONE, /s\.short_notice&&T\("cf-confirm",\$\("cf-confirm"\)\.dataset\.soon\)/);
+  assert.match(DONE, /C=i=>\$\("cf-"\+i\),T=\(i,v\)=>C\(i\)\.textContent=v,/);
+  assert.match(DONE, /s\.short_notice&&T\("confirm",C\("confirm"\)\.dataset\.soon\)/);
+});
+
+check("child seats: pay.js reprices on a change of any seat count, keys the price on the three counts, shows the price per seat from the answer, keeps a pending seat line in place, writes one line per seat type into the messages, keeps the passenger count from dropping below the seats, gives each seat count the stepper of the passenger count with More off at one seat per passenger and the seat message when it is pressed there, clears that message in the same task as the next change, shows the counts inside the request on step 2 and before Check your trip on step 3, and holds no seat price, and done.js keeps the seat line of the booking in the receipt skeleton", () => {
+  assert.match(PAY, /if\(\/\^\(class\|vehicle\|meet\|tip\|passengers\|\\w\+_seats\)\$\/\.test\(n\)\)\{/);
+  assert.match(PAY, /KF=\$\("bk-kids"\),KS=\(\)=>\[\.\.\.KF\.elements\]\.filter\(x=>x\.name\),SN=\(\)=>KS\(\)\.reduce\(\(a,x\)=>a\+ \+x\.value,0\),pq=\(\)=>\[E\.class\.value,E\.vehicle\.value,\$\("bk-meet"\)\.checked,te\(\),PA\.value,KS\(\)\.map\(x=>x\.value\),/);
+  assert.match(PAY, /let E=F\.elements,PA=E\.passengers,/);
+  assert.doesNotMatch(PAY, /E\.passengers\.value/);
+  assert.match(PAY, /su=\(\)=>\{let v=PA\.value,n=SN\(\);SX\.children\[1\]\.textContent=v\+\(v>1\?" passengers":" passenger"\);SX\.firstChild\.ariaDisabled=v<2\|\|v<=n;SX\.lastChild\.ariaDisabled=v>11;KX\.map\(\(x,i\)=>\{i=KS\(\)\[i\]\.value;x\.children\[1\]\.textContent!=i&&\(x\.children\[1\]\.textContent=i\);x\.firstChild\.ariaDisabled=i<1;x\.lastChild\.ariaDisabled=n>=v\}\)\}/, "a seat count is written only when it changes, so its live region speaks only then");
+  assert.match(PAY, /b&&\(b\.ariaDisabled!="true"\?\(s\.value=\+s\.value\+\(u\|\|-1\),dc\(s\)\):u&&s!=PA&&iv\(\{code:"child_seats",field:"child_seats"\}\)\)/);
+  assert.match(PAY, /SX=mS\(PA,"passengers"\);KX=KS\(\)\.map\(s=>mS\(s,s\.name\.replace\("_"," "\)\)\);/);
+  assert.match(PAY, /x\.setAttribute\("aria-labelledby",\(s\.labels\[0\]\.id=s\.id\+"-l"\)\+\(s==PA\?" bk-pax-h":""\)\);s==PA\|\|x\.setAttribute\(D,s\.getAttribute\(D\)\);s\.before\(x\);/, "a seat count's stepper keeps the hint of its select as its description");
+  assert.match(PAY, /WM2="";uk\(\$\("e-child_seats"\)\);su\(\);n=="passengers"&&\(fs\(\),ps\(\),pz\(\),V\(\)\);/);
+  assert.match(PAY, /GO\|\|\(n=>n\.previousElementSibling==KF\|\|n\.before\(KF\)\)\(\$\(c\.details\?"bk-check":"bk-qnotes-f"\)\);/);
+  assert.match(PAY, /r\.seat_cents&&T\("bk-kids-p",\(KC=M\(r\.seat_cents\)\)\+" each"\)/);
+  assert.match(PAY, /filter\(x=>!\/\^\(Meet\|Gratuity\|Child\)\/\.test\(x\)\)/);
+  assert.match(PAY, /n&&r\.push\(\[n=KC\?"Child seats \("\+n\+" x "\+KC\+"\)":"Child seats",LV\[n\]\|\|"\.\.\."\]\)/);
+  assert.match(PAY, /GO\|\|KS\(\)\.map\(x=>\+x\.value&&l\.push\(x\.labels\[0\]\.textContent\+" seats: "\+x\.value\)\)/);
+  assert.match(PAY, /if\(k=="invalid"\)return LD=CW=0,bz\(0\),iv\(r\);uk\(\$\("e-child_seats"\)\);/);
+  assert.doesNotMatch(SRC, /15\.00|\$15|seat_cents[:=]\d/);
+  assert.match(DONE, /\.\.\.f&&f\.meet=="1"\?\["Meet and greet"\]:\[\],\.\.\.\(f&&b\.ln\|\|\[\]\)\.filter\(l=>l\[0\]=="C"\),/);
+  assert.doesNotMatch(DONE, /15\.00|\$15|1500/);
 });
 
 check("if pay2.js fails to load, or has not run 4 s in, the form shows the native date input and time select at once, drops the queued picker work, still fetches the script once more, keeps the native controls when the script turns up after the form was used, and pays by a plain form post until the script runs", () => {
@@ -285,7 +308,8 @@ check("if pay2.js fails to load, or has not run 4 s in, the form shows the nativ
   assert.match(SRC, /setTimeout\(p2f,4e3\)/);
   assert.match(SRC, /P2<0&&\(FF\|\|F\.contains\(d\.activeElement\)\)\|\|\(P2=1,F\.classList\.remove\("bk-p2off"\),bt\(\)/);
   assert.match(SRC, /p2=f=>P2>0\?f\(\):P2\|\|PQ\.push\(f\)/);
-  assert.match(SRC, /F\.onsubmit=e=>\{let s=F\.dataset\.step;if\(s=="details"&&P2<1\)return;e\.preventDefault\(\)/);
+  assert.match(SRC, /F\.onsubmit=e=>\{let s=F\.dataset\.step;if\(s=="details"&&P2<1\)return;pD\(e\)/);
+  assert.match(SRC, /pD=e=>e\.preventDefault\(\),/);
   assert.match(SRC, /BG\.onclick=\(\)=>F\.dataset\.step=="details"\?P2<1\?F\.requestSubmit\(B\)/);
   assert.doesNotMatch(SRC, /p2\([A-Za-z0-9_$]+\)/, "a bare pay2 name is read before pay2.js is there");
   assert.match(SHEETS, /\.bk\.is-js:not\(\.bk-p2off\) \.bk-time::after\{content:none\}/);

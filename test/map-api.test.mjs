@@ -113,7 +113,7 @@ await test("U1 probe: the mock map script only under GOOGLE_MOCK and MAP_MOCK, t
   assert.equal(mapJs().src, "/__maps-mock-missing.js?callback=nlrMap");
 });
 
-await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket for that label, JFK Terminal 4 gives jfk, water gives none, bad input gives 400, the 21st call in a minute gives 429", async () => {
+await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket for that label, JFK Terminal 4 gives jfk, water gives none, a spot outside the New York area gives far with no lookup, bad input gives 400, the 21st call in a minute gives 429", async () => {
   mock();
   const a = await places({ action: "here", ...BEDFORD });
   assert.equal(a.status, 200);
@@ -123,7 +123,12 @@ await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket 
   const j = await places({ action: "here", lat: 40.6442, lng: -73.7826 });
   assert.deepEqual([j.body.kind, j.body.zone, j.body.airport, j.body.area], ["ok", "jfk", true, "JFK"]);
   assert.deepEqual((await places({ action: "here", lat: 40.68, lng: -74.04 })).body, { kind: "none" });
-  for (const bad of [{ lat: 30, lng: -73.9 }, { lat: 40.7, lng: -80 }, { lat: "40.7", lng: -73.9 }, { lat: 40.7 }, { lat: null, lng: -73.9 }, {}]) {
+  for (const far of [{ lat: 30, lng: -73.9 }, { lat: 40.7, lng: -80 }, { lat: 42.3601, lng: -71.0589 }, { lat: 43.0962, lng: -79.0377 }, { lat: 42.1001, lng: -73.9 }, { lat: 39.4999, lng: -74.5 }, { lat: 40.7, lng: -75.6001 }, { lat: 40.7, lng: -71.6999 }, { lat: -33.9, lng: 151.2 }]) {
+    const r = await places({ action: "here", ...far }, { from: "10.9.9.8" });
+    assert.deepEqual([r.status, r.body], [200, { kind: "far" }], JSON.stringify(far));
+  }
+  for (const edge of [{ lat: 42.1, lng: -73.9 }, { lat: 39.5, lng: -74.5 }, { lat: 40.7, lng: -75.6 }, { lat: 40.7, lng: -71.7 }]) assert.notEqual((await places({ action: "here", ...edge })).body.kind, "far", JSON.stringify(edge));
+  for (const bad of [{ lat: "40.7", lng: -73.9 }, { lat: 40.7 }, { lat: null, lng: -73.9 }, {}, { lat: 91, lng: -73.9 }, { lat: 40.7, lng: -181 }, { lat: 40.7, lng: "x" }, { lat: Infinity, lng: -73.9 }]) {
     const r = await places({ action: "here", ...bad });
     assert.deepEqual([r.status, r.body], [400, { kind: "error", code: "bad" }], JSON.stringify(bad));
   }
@@ -161,6 +166,8 @@ await test("U4 here with Google: the v4 reverse request, the key in the header, 
   assert.ok(calls[0].init.signal instanceof AbortSignal);
   assert.deepEqual([a.body.kind, a.body.label, verifyTicket(a.body.ticket, a.body.label, Date.now()).id], ["ok", "277 Bedford Ave, Brooklyn, NY 11211", "ChIJpremise"]);
   assert.ok(!JSON.stringify(a.body).includes(SERVER_KEY));
+  assert.deepEqual((await places({ action: "here", lat: 42.3601, lng: -71.0589 })).body, { kind: "far" });
+  assert.equal(calls.length, 1, "a spot outside the New York area sends no Geocoding request");
   reply = answer(200, { results: [result(["route"], "Bedford Ave, Brooklyn, NY 11211, USA", "ChIJroute"), result(["intersection"], "Bedford Ave & N 6th St, Brooklyn, NY 11211, USA", "ChIJcross"), result(["neighborhood", "political"], "Williamsburg, Brooklyn, NY, USA", "ChIJhood")] });
   const b = await places({ action: "here", ...BEDFORD });
   assert.deepEqual([b.body.kind, b.body.label], ["ok", "Bedford Ave & N 6th St, Brooklyn, NY 11211"]);
