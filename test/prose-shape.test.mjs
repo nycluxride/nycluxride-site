@@ -10,6 +10,8 @@ const SHAPE_FILE = join(ROOT, "test/fixtures/prose-shape.json");
 const RECORD = process.env.PROSE_SHAPE_RECORD === "1";
 const SHAPE = RECORD ? {} : JSON.parse(readFileSync(SHAPE_FILE, "utf8"));
 const COPY = await import(join(ROOT, "api/_copy.mjs"));
+const { CHILD_SEAT_CENTS } = await import(join(ROOT, "api/_rates.mjs"));
+const SEAT = `$${CHILD_SEAT_CENTS / 100} per seat`;
 
 const squash = (s) => String(s).replace(/\s+/g, " ").trim();
 const FAIL = WORDS.fail.map(([name, source, flags]) => [name, new RegExp(source, flags || "i")]);
@@ -41,7 +43,7 @@ const TRACK_FORMS = ["We track your flight and move the pickup if it lands early
 const FORMS_64 = new Set([
   "We answer calls and messages 24 hours a day, every day.",
   "You can book any class by the hour, with a 3-hour minimum.",
-  "Infant, toddler and booster seats are charged per seat at booking.",
+  `Infant, toddler and booster seats are ${SEAT}, charged at booking.`,
   "For a pickup within the next hour, email info@nycluxride.com or message us on WhatsApp.",
   "Online at least 1 hour before pickup.",
   "Sooner by email or WhatsApp when a car is free.",
@@ -51,7 +53,7 @@ const FORMS_64 = new Set([
   "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.",
   "Book online at least 1 hour before pickup.",
   "For a pickup within the next hour, email or WhatsApp us.",
-  "Infant, toddler and booster seats, charged per seat at booking.",
+  `Infant, toddler and booster seats, ${SEAT}, charged at booking.`,
   "We move the pickup if your flight lands early or late.",
   "Our dispatch team prices Luxury Sprinter bookings by the hour.",
 ]);

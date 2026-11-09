@@ -3,7 +3,7 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DISTANCE_RATES } from "../api/_rates.mjs";
+import { DISTANCE_RATES, CHILD_SEAT_CENTS } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RATES = "rates.html";
@@ -25,6 +25,8 @@ const PROSE_PRICE = /\$\s*\d|\bUSD\b|\d\s*%|\d\s*dollars?\b/gi;
 const PROSE_ATTRS = new Set(["content", "aria-label", "alt", "title", "placeholder"]);
 const PRICE_KEY = /price|offer/i;
 const PRICE_TYPE = /Offer|PriceSpecification|MonetaryAmount/;
+const SEAT_PRICE = `$${CHILD_SEAT_CENTS / 100} per seat`;
+const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;
 const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "cancellation"];
 
 function htmlFiles(dir) {
@@ -41,6 +43,7 @@ function htmlFiles(dir) {
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const strip = (text, tokens) =>
   tokens.reduce((t, tok) => t.replace(new RegExp(`${escape(tok)}(?![\\d]|[.,]\\d)`, "g"), ""), text);
+const unseat = (text) => text.replace(new RegExp(`${escape(SEAT_PRICE)}(?!\\w)`, "g"), "");
 
 function walk(node, visit, key = null) {
   if (Array.isArray(node)) node.forEach((v) => walk(v, visit, key));
@@ -84,10 +87,10 @@ for (const [file, p] of pages) {
   if (file === RATES) continue;
   const allowed = ALLOWED[file] || [];
 
-  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld`, () => {
+  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}`, () => {
     const hits = [];
     const scan = (where, s, re = PROSE_PRICE) => {
-      const rest = strip(String(s), allowed);
+      const rest = unseat(strip(String(s), allowed));
       for (const m of rest.matchAll(re)) hits.push(`${where}: ...${rest.slice(Math.max(0, m.index - 40), m.index + 30).trim()}...`);
     };
     scan("title", p.title);
@@ -96,6 +99,12 @@ for (const [file, p] of pages) {
     for (const block of p.ld)
       walk(block, (k, v, leaf) => leaf && typeof v === "string" && !NOT_A_PRICE.has(k) && scan(`json-ld ${k}`, v, /^https?:/.test(v) ? PRICE : PROSE_PRICE));
     assert.deepEqual(hits, [], `${hits.length} hit(s): ${hits.slice(0, 3).join(" | ")}`);
+  });
+
+  check(`${file}: every price per seat in text, title, attributes or json-ld is CHILD_SEAT_CENTS / 100 from api/_rates.mjs`, () => {
+    const found = [p.title, p.text, ...p.attrs.map(([, v]) => v), JSON.stringify(p.ld)].flatMap((s) => [...String(s).matchAll(SEAT_FORM)]);
+    const wrong = [...new Set(found.filter((m) => Number(m[1].replace(/,/g, "")) !== CHILD_SEAT_CENTS / 100).map((m) => m[0]))];
+    assert.deepEqual(wrong, [], `want ${SEAT_PRICE}, found ${wrong.join(", ")}`);
   });
 
   check(`${file}: json-ld carries no price, offer or price specification`, () => {
@@ -139,6 +148,10 @@ if (rates) {
     assert.equal(text.length, 2, "the distance minimum is the one $125 on the page");
     const all = [rates.title, text.join(" "), ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
     assert.doesNotMatch(all, /\$\s*(?:130|125|375)(?!\d)|"price":"(?:130|125|375)"/);
+  });
+  check(`${RATES}: the add-ons carry the child seat price other pages quote, ${SEAT_PRICE}`, () => {
+    const row = [...rates.document.querySelectorAll("#add-ons dt")].find((dt) => dt.textContent.trim() === "Child seats");
+    assert.ok(row?.nextElementSibling?.textContent.includes(SEAT_PRICE), "no child seat price in the add-ons");
   });
   check(`${RATES}: every anchor other pages link to exists`, () => {
     const missing = RATE_ANCHORS.filter((id) => !ratesIds.has(id));

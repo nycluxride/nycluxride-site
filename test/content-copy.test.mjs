@@ -42,6 +42,10 @@ const BANNED = [
   "free child seat",
   "in the booking notes",
   "Tell us which one you need",
+  "charged per seat at booking",
+  "price per seat is listed",
+  "the price is listed with our add-ons",
+  "Priced per seat",
 ];
 
 const A = {
