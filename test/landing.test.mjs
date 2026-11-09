@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
+import { CHILD_SEAT_CENTS } from "../api/_rates.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const read = (f) => readFileSync(join(ROOT, f), "utf8");
@@ -27,9 +28,9 @@ const WAITS = [
   ["15 min", "Other pickups", "From the pickup time"],
 ];
 const SEATS = [
-  ["i-seat-infant", "Infant seat", "Priced per seat"],
-  ["i-seat-toddler", "Toddler seat", "Priced per seat"],
-  ["i-seat-booster", "Booster seat", "Priced per seat"],
+  ["i-seat-infant", "Infant seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
+  ["i-seat-toddler", "Toddler seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
+  ["i-seat-booster", "Booster seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
 ];
 const SEAT_NOTE = "Choose them when you book, and we'll fit them before the car leaves.";
 const AMENITIES = [
@@ -83,7 +84,7 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold, the client's line, and the infant, toddler and booster seat, each priced per seat, with the rates add-on at its price and the FAQ line on choosing them when you book", () => {
+check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold, the client's line, and the infant, toddler and booster seat, each at the price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
   assert.equal(seats.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the card does not follow the booking card");
