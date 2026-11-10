@@ -84,14 +84,14 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold, the client's line, and the infant, toddler and booster seat, each at the price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
+check("index.html: the child seats card sits in the hero right after the booking card, the toddler seat badge then Child seats available with available as the gold pill, the client's line, and the infant, toddler and booster seat, each at the price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
   assert.equal(seats.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the card does not follow the booking card");
   assert.equal(seats.nextElementSibling, hero.querySelector(":scope > figure.hero__photo"), "the photo does not follow the card");
   const h = seats.querySelector(":scope > h2.seats__h#seats-h");
   assert.equal(norm(h.textContent), "Child seats available");
-  assert.equal(h.innerHTML, "Child seats <span>available</span>");
+  assert.equal(h.innerHTML, '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-seat-toddler"></use></svg>Child seats <span>available</span>');
   assert.equal(norm(seats.querySelector(":scope > p.seats__line").textContent), "Safe and comfortable travel for your family");
   const items = [...seats.querySelectorAll(":scope > ul.seats__list[role=list] > li")];
   assert.deepEqual(items.map((li) => [art(li.querySelector(":scope > .seats__art")), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
@@ -101,9 +101,9 @@ check("index.html: the child seats card sits in the hero right after the booking
   assert.ok(answer("Are child safety seats available?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
 
-check("index.html: the child seats card ends with one link, How to ask for a car seat, to the car seat page", () => {
+check("index.html: the child seats card ends with one link, How to ask for a car seat with the arrow, to the car seat page", () => {
   const seats = hero.querySelector(":scope > section.seats");
-  assert.equal(seats.lastElementChild.outerHTML, '<p class="seats__more"><a class="lnk" href="/car-service-with-car-seat-nyc">How to ask for a car seat</a></p>');
+  assert.equal(seats.lastElementChild.outerHTML, `<p class="seats__more"><a class="lnk" href="/car-service-with-car-seat-nyc">How to ask for a car seat ${ARROW}</a></p>`);
   assert.equal(seats.querySelectorAll("a").length, 1);
 });
 
