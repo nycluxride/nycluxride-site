@@ -28,9 +28,9 @@ const WAITS = [
   ["15 min", "Other pickups", "From the pickup time"],
 ];
 const SEATS = [
-  ["i-seat-infant", "Infant seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
-  ["i-seat-toddler", "Toddler seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
-  ["i-seat-booster", "Booster seat", `$${CHILD_SEAT_CENTS / 100} per seat`],
+  ["i-seat-infant", "Infant seat"],
+  ["i-seat-toddler", "Toddler seat"],
+  ["i-seat-booster", "Booster seat"],
 ];
 const SEAT_NOTE = "Choose them when you book, and we'll fit them before the car leaves.";
 const AMENITIES = [
@@ -84,17 +84,18 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the booking card, the toddler seat badge then Child seats available with available as the gold pill, the client's line, and the infant, toddler and booster seat, each at the price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
+check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold italic, the client's line, the infant, toddler and booster seat with their icons, and one price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
   assert.equal(seats.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the card does not follow the booking card");
   assert.equal(seats.nextElementSibling, hero.querySelector(":scope > figure.hero__photo"), "the photo does not follow the card");
   const h = seats.querySelector(":scope > h2.seats__h#seats-h");
   assert.equal(norm(h.textContent), "Child seats available");
-  assert.equal(h.innerHTML, '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-seat-toddler"></use></svg>Child seats <span>available</span>');
+  assert.equal(h.innerHTML, "Child seats <span>available</span>");
   assert.equal(norm(seats.querySelector(":scope > p.seats__line").textContent), "Safe and comfortable travel for your family");
   const items = [...seats.querySelectorAll(":scope > ul.seats__list[role=list] > li")];
-  assert.deepEqual(items.map((li) => [art(li.querySelector(":scope > .seats__art")), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
+  assert.deepEqual(items.map((li) => [use(li), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
+  assert.deepEqual([...seats.querySelectorAll(".seats__s")].map((p) => [p.parentElement === seats, p.innerHTML]), [[true, `<b>$${CHILD_SEAT_CENTS / 100}</b> per seat`]]);
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
   assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip");
   assert.doesNotMatch(seats.textContent, /free/i);
