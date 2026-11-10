@@ -174,7 +174,7 @@ article>.frame>.rail>p{margin-block-start:0}
 .home .site-header{--hdr-bg:#0000;--hdr-line:#0000;--hdr-fg:var(--ink);--hdr-nav:var(--ink-2);--hdr-veil:linear-gradient(#FBF8F299 0,#FBF8F299 60%,#FBF8F200 100%);--hdr-tel:var(--glass-light)}
 .home.is-scrolled .site-header{--hdr-bg:var(--header-glass);--hdr-line:var(--line);--hdr-veil:none;--hdr-blur:var(--blur-header);--hdr-tel:var(--white);box-shadow:inset 0 -1px var(--line),var(--shadow-2)}
 @media (hover:hover){.home:not(.is-scrolled) :is(.site-header__desk .tel,.site-header__mobile .icon-btn):hover{box-shadow:inset 0 0 0 1px var(--hdr-ring),var(--hdr-glass-sh)}}
-@media (min-width:1024px){.home:not(.hdr-ready) .site-header{animation:hdr-solid 1ms 3s forwards}}
+@media (min-width:1024px){.home:not(.hdr-ready) .site-header{animation:hdr-solid 1ms 3s forwards}.home .hero{--up:var(--hd)}}
 .home .hero{--hd:var(--header-h);margin-block-start:calc(var(--header-h)*-1)}
 }
 @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){.home.is-scrolled .site-header{--hdr-bg:var(--cream)}}
@@ -708,7 +708,7 @@ article>.band+.section--tight{padding-block-start:48px}
 :root:has(.hero__book){overflow-anchor:none}
 .hero__book{grid-row:6;position:relative;z-index:5;inline-size:100%;text-align:start}
 .hero>.seats{justify-self:stretch;border:1px solid var(--gold-300);background:var(--white);box-shadow:var(--shadow-2)}
-.hero__photo{grid-row:1/6;grid-column:full;justify-self:stretch;position:relative;z-index:-1;min-block-size:calc((var(--pb) - var(--py)) * var(--pw) + 24px + var(--pave));margin-block:-16px calc(var(--pave) * -1);overflow:clip;background:var(--cream);-webkit-mask:linear-gradient(#000 calc(100% - 48px),#0000);mask:linear-gradient(#000 calc(100% - 48px),#0000)}
+.hero__photo{grid-row:1/6;grid-column:full;justify-self:stretch;position:relative;z-index:-1;min-block-size:calc((var(--pb) - var(--py)) * var(--pw) + 24px + var(--pave) + var(--up,0px));margin-block:calc(-16px - var(--up,0px)) calc(var(--pave) * -1);overflow:clip;background:var(--cream);-webkit-mask:linear-gradient(#000 calc(100% - 48px),#0000);mask:linear-gradient(#000 calc(100% - 48px),#0000)}
 .hero__photo :is(picture,img){inline-size:100%;block-size:100%}
 .hero__photo :is(picture img,.plate__twin){position:absolute;inset:auto 0 calc(var(--pave) + 16px - (1 - var(--pb)) * var(--pw));block-size:auto;aspect-ratio:1696/2528;object-fit:cover;-webkit-mask:linear-gradient(#0000,#000 40px);mask:linear-gradient(#0000,#000 40px)}
 @media (scripting:none){.hero__book{grid-row:7;margin-block-start:16px}}

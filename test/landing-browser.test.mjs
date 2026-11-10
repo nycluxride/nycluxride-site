@@ -495,6 +495,22 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     await check(`${engine}: with forced colors at 390 the photo ends at or above the top of the booking card`, () => assert.ok(fb[0] <= fb[1] + 0.5, `photo ends ${fb[0]}, card ${fb[1]}`));
     await fc.close();
   }
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1331, height: 1000 } });
+    const p = await ctx.newPage();
+    await p.goto(`${base}/`, { waitUntil: "load" });
+    await p.evaluate(() => document.fonts.ready);
+    const seen = [];
+    for (const [width, height] of [[1023, 1000], [1331, 1000], [390, 844], [1440, 900], [1023, 1000], [1331, 1000]]) {
+      await p.setViewportSize({ width, height });
+      await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      await p.waitForTimeout(50);
+      seen.push(await p.evaluate(() => [innerWidth, document.documentElement.classList.contains("is-scrolled")]));
+    }
+    await check(`${engine}: resized at the top of the page across 1024px, the header takes the state of a fresh load at each size`, () =>
+      assert.deepEqual(seen, [[1023, true], [1331, false], [390, true], [1440, false], [1023, true], [1331, false]]));
+    await ctx.close();
+  }
   await browser.close();
 }
 

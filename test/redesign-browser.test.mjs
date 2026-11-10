@@ -551,6 +551,7 @@ const heroBoxes = (p) =>
       view: box("#bk-view"),
       h1: box(".hero > h1"),
       twin: box(".hero__photo > img.plate__twin:first-child"),
+      img: box(".hero__photo picture img"),
       twinShown: !!document.querySelector(".hero__photo > img.plate__twin:first-child")?.getClientRects().length,
       captions: document.querySelectorAll(".hero figcaption.slate").length,
       header: box(".site-header"),
@@ -589,6 +590,49 @@ check("/: after scrolling 1000px the header is no longer transparent and shows B
   assert.notEqual(w2.hdrBg, TRANSPARENT);
   assert.equal(w2.btn, "visible");
 });
+for (const [width, height] of [[1280, 1000], [1331, 1000], [1024, 1366], [1366, 1024], [1440, 900], [1920, 1080]]) {
+  const p = await open({ viewport: { width, height } });
+  const at = async (y) => {
+    await p.evaluate((y) => scrollTo(0, y), y);
+    await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await p.waitForTimeout(50);
+    return heroBoxes(p);
+  };
+  await p.goto(`${base}/`, { waitUntil: "load" });
+  await p.evaluate(() => document.fonts.ready);
+  await p.waitForTimeout(300);
+  const top = await heroBoxes(p);
+  const four = await at(4);
+  await p.waitForTimeout(300);
+  await p.reload({ waitUntil: "load" });
+  await p.evaluate(() => document.fonts.ready);
+  await p.waitForTimeout(300);
+  const again = await heroBoxes(p);
+  const near = await at(top.h1.top - top.header.bottom - 7);
+  const down = await at(200);
+  check(`/: at ${width}x${height} the header stays transparent over the hero photo for the first 4px of scroll and after a reload there, and turns solid before the headline comes within 8px of it`, () => {
+    for (const s of [top, four, again]) {
+      assert.ok(!s.scrolled, "html has is-scrolled at the top of the page");
+      assert.equal(s.hdrBg, TRANSPARENT);
+      assert.ok(s.photo.top <= s.header.top + 0.5 && s.img.top <= s.header.top + 0.5, `the photo starts at ${s.photo.top} and its image at ${s.img.top}, below the header top ${s.header.top}`);
+      assert.ok(s.h1.top >= s.header.bottom + 8, `the h1 starts at ${s.h1.top}, less than 8px under the header that ends at ${s.header.bottom}`);
+    }
+    for (const s of [near, down]) {
+      assert.ok(s.scrolled, `html has no is-scrolled with the h1 at ${s.h1.top} and the header ending at ${s.header.bottom}`);
+      assert.notEqual(s.hdrBg, TRANSPARENT);
+    }
+  });
+  await p.close();
+}
+{
+  const p = await open({ viewport: { width: 390, height: 844 } });
+  await p.goto(`${base}/`, { waitUntil: "load" });
+  await p.evaluate(() => document.fonts.ready);
+  await p.waitForTimeout(300);
+  const s = await heroBoxes(p);
+  check("/: at 390x844 the ink phone header uses its scrolled styles from the top of the page", () => assert.ok(s.scrolled, "html has no is-scrolled at the top"));
+  await p.close();
+}
 await wide.evaluate(() => scrollTo(0, 0));
 await wide.evaluate(() => {
   const f = document.getElementById("book-form");
