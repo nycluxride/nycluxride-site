@@ -582,11 +582,13 @@ await test("pick: the New York City entry of Google has no county, borough or ZI
   assert.equal((await call(pick("ChIJstate", "New York, USA"))).body.zone, "outside");
 });
 
-await test("pick marks a borough, a town, a ZIP code, a county or a state as an area in its ticket, and never a street address, a premise, a hotel, a neighborhood, an airport or a place that is also a point of interest", async () => {
+await test("pick marks a New York City borough, a ZIP code, a county or a state as an area in its ticket, and never a town or city outside New York City, a street address, a premise, a hotel, a neighborhood, an airport or a place that is also a point of interest", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   const cases = [
     [details({ state: "NY", county: "New York County", sub: "Manhattan", types: ["sublocality_level_1", "sublocality", "political"] }), "Manhattan, New York, NY", "manhattan", true],
-    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }), "Hoboken, NJ", "outside", true],
+    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", types: ["locality", "political"] }), "Brooklyn, NY", "brooklyn", true],
+    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }), "Hoboken, NJ", "outside", false],
+    [details({ state: "NY", county: "Niagara County", types: ["locality", "political"] }), "Niagara Falls, NY", "outside", false],
     [details({ state: "NY", sub: "Brooklyn", zip: "11201", types: ["postal_code"] }), "11201, Brooklyn Heights, NY", "brooklyn", true],
     [details({ state: "NJ", county: "Bergen County", types: ["administrative_area_level_2", "political"] }), "Bergen County, NJ", "outside", true],
     [details({ state: "NJ", types: ["administrative_area_level_1", "political"] }), "New Jersey", "outside", true],

@@ -71,7 +71,8 @@ async function pick(request, data) {
     return json(200, { kind: "error" });
   }
   const types = kinds(result.details);
-  const area = types.some((type) => /^(?:sublocality|administrative_area_level_)/.test(type) || type === "locality" || type === "postal_code") && !types.some((type) => ADDRESS_TYPES.includes(type));
+  const town = !["outside", "abroad"].includes(zone);
+  const area = types.some((type) => /^administrative_area_level_/.test(type) || type === "postal_code" || (town && (/^sublocality/.test(type) || type === "locality"))) && !types.some((type) => ADDRESS_TYPES.includes(type));
   const ticket = signTicket(id, zone, label, Date.now(), area);
   if (!ticket) {
     console.error("places-pick", "ticket");
