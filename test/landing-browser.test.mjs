@@ -511,6 +511,62 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       assert.deepEqual(seen, [[1023, true], [1331, false], [390, true], [1440, false], [1023, true], [1331, false]]));
     await ctx.close();
   }
+  {
+    const SEATS = () => {
+      const c = document.querySelector(".hero > .seats"), els = [...c.querySelectorAll(":scope > .seats__list > li, :scope > .seats__s, :scope > .seats__more")];
+      return { rv: c.dataset.rv ?? null, op: els.map((e) => getComputedStyle(e).opacity), anims: c.getAnimations({ subtree: true }).map((a) => a.animationName).sort(), tops: els.map((e) => Math.round(e.getBoundingClientRect().top + scrollY)) };
+    };
+    const open = async (o) => {
+      const ctx = await browser.newContext(o);
+      const p = await ctx.newPage();
+      await p.goto(`${base}/`, { waitUntil: "load" });
+      if (o.javaScriptEnabled !== false) await p.evaluate(() => document.fonts.ready);
+      await p.waitForTimeout(200);
+      return { ctx, p, at: await p.evaluate(SEATS) };
+    };
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      const { ctx, p, at } = await open({ viewport });
+      await p.evaluate(() => document.querySelector(".hero > .seats > .seats__list").scrollIntoView({ block: "center" }));
+      await p.waitForFunction(() => document.querySelector(".hero > .seats").getAnimations({ subtree: true }).length > 0, null, { timeout: 2000 }).catch(() => {});
+      const run = await p.evaluate(SEATS);
+      await p.evaluate(() => Promise.all(document.querySelector(".hero > .seats").getAnimations({ subtree: true }).map((a) => a.finished)));
+      const rest = await p.evaluate(SEATS);
+      await check(`${engine} ${viewport.width}x${viewport.height}: the child seats wait below the fold, rise in one after another with a gold ring as they scroll into view, and come to rest exactly in place`, () => {
+        assert.deepEqual([at.rv, at.op, at.anims], ["0", ["0", "0", "0", "0", "0"], []]);
+        assert.equal(run.rv, "1");
+        assert.deepEqual([...new Set(run.anims)], ["seat-in", "seat-ring"]);
+        assert.deepEqual([rest.op, rest.anims], [["1", "1", "1", "1", "1"], []]);
+        assert.deepEqual(rest.tops, at.tops);
+      });
+      if (viewport.width === 1440) {
+        await p.hover(".hero > .seats li:nth-child(2)");
+        await p.waitForTimeout(450);
+        const lift = await p.evaluate(() => { const a = getComputedStyle(document.querySelector(".hero > .seats li:nth-child(2) .seats__art")); return [a.translate, a.boxShadow !== "none"]; });
+        await check(`${engine} 1440x900: hovering a child seat lifts its gold medallion 3px with a soft shadow`, () => assert.deepEqual(lift, ["0px -3px", true]));
+      }
+      await ctx.close();
+    }
+    {
+      const { ctx, p, at } = await open({ viewport: { width: 1440, height: 900 } });
+      await p.emulateMedia({ media: "print" });
+      const printed = await p.evaluate(SEATS);
+      await check(`${engine}: printed while the child seats still wait below the fold, every seat, the price and the link print`, () => {
+        assert.equal(at.rv, "0");
+        assert.deepEqual(printed.op, ["1", "1", "1", "1", "1"]);
+      });
+      await ctx.close();
+    }
+    for (const [name, o] of [["with reduced motion", { viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" }], ["without javascript", { viewport: { width: 1440, height: 900 }, javaScriptEnabled: false }], ["with the seats on screen at load", { viewport: { width: 1024, height: 1366 } }]]) {
+      const { ctx, p, at } = await open(o);
+      await p.evaluate(() => document.querySelector(".hero > .seats > .seats__list").scrollIntoView({ block: "center" }));
+      await p.waitForTimeout(300);
+      const after = await p.evaluate(SEATS);
+      await check(`${engine} ${name}: the child seats show at once and never animate`, () => {
+        for (const s of [at, after]) assert.deepEqual([s.rv, s.op, s.anims], [null, ["1", "1", "1", "1", "1"], []]);
+      });
+      await ctx.close();
+    }
+  }
   await browser.close();
 }
 
