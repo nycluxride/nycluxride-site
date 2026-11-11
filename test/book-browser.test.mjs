@@ -2697,6 +2697,7 @@ async function stepTwo(p, { from = ["jfk t4", "John F. Kennedy (JFK), Terminal 4
   await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && !document.getElementById("bk-wait").textContent.startsWith("Finding"));
   await p.waitForTimeout(400);
 }
+const ASK_LINES = { "street-address": "Add the street address to see the price", "pickup-address": "Add the pickup street address to see the price", "return-address": "Add the drop-off street address to see the price" };
 const reqBar = (p) => p.evaluate(() => {
   const b = document.getElementById("bk-bar"), v = (id) => getComputedStyle(document.getElementById(id)).display !== "none";
   return { shown: getComputedStyle(b).display !== "none", isq: b.classList.contains("is-q"), line: document.getElementById("bk-bar-q").textContent, mail: v("bk-bar-mail"), go: v("bk-bar-go"), next: v("bk-next"), gold: document.getElementById("q-mail").className, href: decodeURIComponent(document.getElementById("bk-bar-mail").getAttribute("href")), wa: decodeURIComponent(document.getElementById("q-wa").getAttribute("href")), fix: document.getElementById("q-fix").hidden ? "" : document.getElementById("q-fix").textContent, qline: document.getElementById("bk-qline").hidden ? "" : document.getElementById("bk-qline").textContent };
@@ -6749,14 +6750,21 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     return [await p.textContent("#q-street-address p"), await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id)), await p.isHidden("#price"), b.isq, b.line, b.fix, b.qline];
   };
   const ASKED = () => [REASONS["street-address"].google, ["q-street-address"], true, true, "Add the street address to see the price", "", "Price on request for this trip."];
-  await check(`B154 at ${width} an end that names only an area asks for the street address: Manhattan to Brooklyn and JFK to a New Jersey ZIP code show the street-address request with its text, no price and the request bar line, with CLS 0, and street addresses then get their price`, async () => {
+  const askedFor = async (p, reason) => {
+    await p.waitForSelector(`#q-${reason}`, { state: "visible" });
+    const b = await reqBar(p);
+    return [await p.textContent(`#q-${reason} p`), await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id)), await p.isHidden("#price"), b.isq, b.line, b.fix, b.qline];
+  };
+  const ASKED_FOR = (reason) => [REASONS[reason].text, [`q-${reason}`], true, true, ASK_LINES[reason], "", "Price on request for this trip."];
+  await check(`B154 at ${width} an end that names only an area asks for a street address: a Manhattan pickup to Brooklyn asks for the pickup street address, JFK to a New Jersey ZIP code and a street address to Brooklyn ask for the street address, a round trip to Brooklyn asks for the return pickup, each with its text, no price and the request bar line, with CLS 0, and street addresses then get their price`, async () => {
     const p = await open(ctx, G, "/book");
     await typedEnd(p, "from", "Manhattan", "Manhattan");
     await typedEnd(p, "to", "Brooklyn", "Brooklyn");
     await pickDate(p, "#bk-date-btn", DATE);
     await setTime(p, "14:00");
     await p.click("#bk-view");
-    assert.deepEqual(await asked(p), ASKED());
+    assert.deepEqual(await askedFor(p, "pickup-address"), ASKED_FOR("pickup-address"));
+    assert.equal(REASONS["pickup-address"].text, "Add the pickup street address to see the price.");
     await settle(p, 600);
     let [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));
@@ -6781,6 +6789,25 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(value, 0, shifts.join(" | "));
     assert.deepEqual([q.errors, q.failed], [[], []]);
     await q.close();
+    const r = await open(ctx, G, "/book");
+    await place(r, "from", "350 5th Ave, New York, NY 10118");
+    await typedEnd(r, "to", "Brooklyn", "Brooklyn");
+    await pickDate(r, "#bk-date-btn", DATE);
+    await setTime(r, "14:00");
+    await r.click("#bk-view");
+    assert.deepEqual(await asked(r), ASKED());
+    await r.click("#bk-edit");
+    await r.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await r.click("#bk-addret");
+    await pickDate(r, "#bk-rdate-btn", RDATE);
+    await setTime(r, "18:00", "#bk-rtime");
+    await r.click("#bk-view");
+    assert.deepEqual(await askedFor(r, "return-address"), ASKED_FOR("return-address"));
+    assert.equal(REASONS["return-address"].text, "The drop-off is also your return pickup. Add its street address to see the price.");
+    [value, shifts] = await cls(r);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([r.errors, r.failed], [[], []]);
+    await r.close();
   });
   await check(`B155 at ${width} a JFK terminal typed after the airport name is a JFK pickup: the flight box and meet and greet show, the cards carry the JFK flat rates, and the booking pays the flat fare with meet and greet and sends the flight number`, async () => {
     const p = await open(ctx, G, "/book");
@@ -6819,15 +6846,30 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 {
   const ctx = await context(G, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
-  await check("B154 without javascript an end that names only an area lands on the street-address request with its static text, and B155 a JFK terminal typed after the airport name pays the flat fare with meet and greet", async () => {
+  await check("B154 without javascript a pickup that names only an area lands on the pickup street address request, a drop-off area on the street-address request and a round trip to it on the return pickup request, each with its static text, and B155 a JFK terminal typed after the airport name pays the flat fare with meet and greet", async () => {
     const p = await open(ctx, G, "/book");
     await p.fill("#bk-from", "Manhattan");
     await p.fill("#bk-to", "Brooklyn");
     await p.fill("#bk-date", DATE);
     await setTime(p, "14:00");
     await details(p);
-    await Promise.all([p.waitForURL(/\/book#q-street-address$/), p.click("#bk-submit")]);
-    assert.deepEqual([await p.isVisible("#q-street-address"), await p.textContent("#q-street-address p"), await p.isVisible("#q-wa")], [true, REASONS["street-address"].text, true]);
+    await Promise.all([p.waitForURL(/\/book#q-pickup-address$/), p.click("#bk-submit")]);
+    assert.deepEqual([await p.isVisible("#q-pickup-address"), await p.textContent("#q-pickup-address p"), await p.isVisible("#q-wa"), await p.isVisible("#q-street-address")], [true, REASONS["pickup-address"].text, true, false]);
+    for (const [back, reason] of [[false, "street-address"], [true, "return-address"]]) {
+      await p.goto(`${G.base}/book`, { waitUntil: "load" });
+      await p.fill("#bk-from", "350 5th Ave, New York, NY 10118");
+      await p.fill("#bk-to", "Brooklyn");
+      await p.fill("#bk-date", DATE);
+      await setTime(p, "14:00");
+      if (back) {
+        await p.check("#bk-ret");
+        await p.fill("#bk-rdate", RDATE);
+        await setTime(p, "18:00", "#bk-rtime");
+      }
+      await details(p);
+      await Promise.all([p.waitForURL(new RegExp(`/book#q-${reason}$`)), p.click("#bk-submit")]);
+      assert.deepEqual([await p.isVisible(`#q-${reason}`), await p.textContent(`#q-${reason} p`), await p.isVisible("#q-wa")], [true, REASONS[reason].text, true], reason);
+    }
     await p.goto(`${G.base}/book`, { waitUntil: "load" });
     await p.fill("#bk-from", "Terminal 4, JFK Airport, Queens, NY");
     await p.fill("#bk-to", "350 5th Ave, New York, NY 10118");
@@ -6839,6 +6881,271 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await Promise.all([p.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/, { waitUntil: "commit" }), p.click("#bk-submit")]);
     const session = await (await fetch(`${G.base}/api/book?session_id=${new URL(p.url()).searchParams.get("session_id")}`)).json();
     assert.deepEqual([session.lines.map((l) => [l.label, l.cents]), session.total_cents], [[["Fare", FARE], [L_TAX, TAX], [L_BCF, BCF], ["Tolls and airport fees", TOLLS], ["Meet and greet", MEET_AND_GREET]], TOTAL + MEET_AND_GREET]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(G, { viewport: { width, height } });
+  const typedEnd = async (p, end, text, area) => {
+    await type(p, end, text);
+    await p.waitForFunction(([e, a]) => document.querySelector(`#bk-${e}-list [data-kind="typed"] .bk-opt__area`)?.textContent === a, [end, area]);
+    await p.keyboard.press("Escape");
+  };
+  await check(`B198 at ${width} the pickup street address request and the return pickup request show alone in the quote with their text and heading, no price and the request bar line, on an airport trip at the flat rate, with CLS 0`, async () => {
+    for (const [reason, fill] of [
+      ["pickup-address", async (p) => { await typedEnd(p, "from", "Brooklyn", "Brooklyn"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }],
+      ["return-address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await typedEnd(p, "to", "Brooklyn", "Brooklyn"); await p.click("#bk-addret"); await pickDate(p, "#bk-rdate-btn", RDATE); await setTime(p, "18:00", "#bk-rtime"); }],
+    ]) {
+      const p = await open(ctx, G, "/book");
+      await fill(p);
+      await pickDate(p, "#bk-date-btn", DATE);
+      await setTime(p, "14:00");
+      await p.click("#bk-view");
+      await p.waitForSelector(`#q-${reason}`, { state: "visible" });
+      await settle(p, 600);
+      const b = await reqBar(p);
+      const shown = await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => [e.id, e.querySelector("h3").textContent, e.querySelector("p").textContent]));
+      assert.deepEqual([shown, await p.isHidden("#price"), b.isq, b.line, b.fix], [[[`q-${reason}`, HEADINGS.price, REASONS[reason].text]], true, true, ASK_LINES[reason], ""], reason);
+      assert.equal(await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, reason);
+      const [value, shifts] = await cls(p);
+      assert.equal(value, 0, `${reason} ${shifts.join(" | ")}`);
+      assert.deepEqual([p.errors, p.failed], [[], []], reason);
+      await p.close();
+    }
+  });
+  await ctx.close();
+  const off = await context(G, { viewport: { width, height }, javaScriptEnabled: false });
+  await check(`B198 at ${width} without javascript the pickup street address request and the return pickup request land on their own static blocks with the static text and WhatsApp to reserve, alone in the quote, with nothing moving after load and no sideways scroll`, async () => {
+    for (const [reason, fields] of [["pickup-address", { from: "Brooklyn", to: "John F. Kennedy (JFK)" }], ["return-address", { from: "John F. Kennedy (JFK)", to: "Brooklyn", back: true }]]) {
+      const p = await open(off, G, "/book");
+      await p.fill("#bk-from", fields.from);
+      await p.fill("#bk-to", fields.to);
+      await p.fill("#bk-date", DATE);
+      await setTime(p, "14:00");
+      if (fields.back) {
+        await p.check("#bk-ret");
+        await p.fill("#bk-rdate", RDATE);
+        await setTime(p, "18:00", "#bk-rtime");
+      }
+      await details(p);
+      await Promise.all([p.waitForURL(new RegExp(`/book#q-${reason}$`)), p.click("#bk-submit")]);
+      await p.waitForSelector(`#q-${reason}`, { state: "visible" });
+      const box = () => p.evaluate((r) => [document.getElementById(`q-${r}`), document.getElementById("q-wa"), document.getElementById("q-mail")].map((e) => { const x = e.getBoundingClientRect(); return [Math.round(x.top + scrollY), Math.round(x.left), Math.round(x.height)]; }), reason);
+      const first = await box();
+      await p.waitForTimeout(800);
+      assert.deepEqual(await box(), first, `${reason} nothing moves after load`);
+      const shown = await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => [e.id, e.querySelector("h3").textContent, e.querySelector("p").textContent]));
+      assert.deepEqual([shown, await p.isVisible("#q-wa"), await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)], [[[`q-${reason}`, HEADINGS.price, REASONS[reason].text]], true, 0], reason);
+      await p.close();
+    }
+  });
+  await off.close();
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 1440, height: 900 } });
+  await check("B199 typed but not picked: Book your ride uses the first suggestion when it clearly matches what was typed, the picked label shows in the trip summary and can be edited, the trip is priced and pays through Stripe with that place as before, a weak match keeps the typed text and its ZIP code request, a typed street address stays as typed, and a typed city pickup asks for its street address", async () => {
+    const p = await open(ctx, G, "/book");
+    await place(p, "from", "jfk", "John F. Kennedy (JFK)");
+    await type(p, "to", "277 Bedford");
+    await p.waitForSelector("#bk-to-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    const bodies = [];
+    p.on("request", (r) => r.method() === "POST" && r.url().endsWith("/api/book") && bodies.push(JSON.parse(r.postData() || "{}")));
+    await view(p);
+    await priced(p);
+    assert.deepEqual([await p.inputValue("#bk-to"), (await p.inputValue("#bk-to-ticket")).slice(0, 3)], ["277 Bedford Avenue, Brooklyn, NY", "v1."]);
+    assert.deepEqual(await cards(p), JFK_CARDS);
+    const chip = await p.textContent("#bk-sum .bk-chip");
+    assert.ok(chip.includes("277 Bedford Avenue, Brooklyn") && !chip.includes("277 Bedford "  + "Ave,"), chip);
+    const options = bodies.find((x) => x.action === "options");
+    assert.deepEqual([options.to_text, options.to_ticket.slice(0, 3)], ["277 Bedford Avenue, Brooklyn, NY", "v1."]);
+    await p.click("#bk-sum .bk-chip");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    assert.equal(await p.inputValue("#bk-to"), "277 Bedford Avenue, Brooklyn, NY", "the picked label is in the field to edit");
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    const pay = bodies.find((x) => x.action === "pay");
+    assert.deepEqual([pay.to_text, pay.to_ticket.slice(0, 3), pay.from_id], ["277 Bedford Avenue, Brooklyn, NY", "v1.", "jfk"]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.equal(await p.textContent("#cf-total"), cash(TOTAL));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+    const q = await open(ctx, G, "/book");
+    await place(q, "from", "jfk", "John F. Kennedy (JFK)");
+    await type(q, "to", "edition hotel");
+    await q.waitForSelector("#bk-to-list [data-kind=google]");
+    await q.keyboard.press("Escape");
+    await pickDate(q, "#bk-date-btn", DATE);
+    await setTime(q, "14:00");
+    await q.click("#bk-view");
+    await q.waitForSelector("#q-unplaced", { state: "visible" });
+    assert.deepEqual([await q.inputValue("#bk-to"), await q.inputValue("#bk-to-ticket")], ["edition hotel", ""], "a weak match is never used");
+    await q.click("#bk-edit");
+    await q.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(q, "to", "350 5th Ave, New York, NY 10118");
+    await view(q);
+    await priced(q);
+    assert.deepEqual([await q.inputValue("#bk-to"), await q.inputValue("#bk-to-ticket")], ["350 5th Ave, New York, NY 10118", ""], "a typed street address stays as typed");
+    await q.click("#bk-edit");
+    await q.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await type(q, "from", "hoboken");
+    await q.waitForSelector("#bk-from-list [data-kind=google]");
+    await q.keyboard.press("Escape");
+    await q.click("#bk-view");
+    await q.waitForSelector("#q-pickup-address", { state: "visible" });
+    assert.deepEqual([await q.inputValue("#bk-from"), (await q.inputValue("#bk-from-ticket")).slice(0, 3), await q.textContent("#q-pickup-address p")], ["Hoboken, NJ", "v1.", REASONS["pickup-address"].text]);
+    assert.ok((await q.textContent("#bk-sum .bk-chip")).includes("Hoboken"));
+    const [value, shifts] = await cls(q);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([q.errors, q.failed], [[], []]);
+    await q.close();
+  });
+  await check("B200 a picked city as the pickup asks for the pickup street address on a trip priced by distance and on an airport trip priced by distance, and as the drop-off of a one way trip it is priced", async () => {
+    const p = await open(ctx, G, "/book");
+    const city = async (end) => {
+      await type(p, end, "hoboken");
+      await p.waitForSelector(`#bk-${end}-list [data-kind=google]`);
+      await p.locator(`#bk-${end}-list [data-kind=google]`).first().click();
+      await p.waitForFunction((e) => /^v1\./.test(document.getElementById(`bk-${e}-ticket`).value), end);
+    };
+    for (const to of [["350 5th Ave, New York, NY 10118"], ["jfk", "John F. Kennedy (JFK)"]]) {
+      await city("from");
+      await place(p, "to", ...to);
+      await pickDate(p, "#bk-date-btn", DATE);
+      await setTime(p, "14:00");
+      await p.click("#bk-view");
+      await p.waitForSelector("#q-pickup-address", { state: "visible" });
+      assert.deepEqual([await p.isHidden("#price"), await p.textContent("#q-pickup-address p")], [true, REASONS["pickup-address"].text], to[0]);
+      await p.click("#bk-edit");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    }
+    await place(p, "from", "350 5th Ave, New York, NY 10118");
+    await city("to");
+    await view(p);
+    await priced(p);
+    assert.equal(await p.isVisible("#q-street-address"), false);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  const LOOKUP = "We couldn't look up this place. Type the address.";
+  const tickets = (p, end) => p.waitForFunction((e) => /^v1\./.test(document.getElementById(`bk-${e}-ticket`).value), end);
+  const bodiesOf = (p, path) => {
+    const list = [];
+    p.on("request", (r) => r.method() === "POST" && r.url().endsWith(`/api/${path}`) && list.push(JSON.parse(r.postData() || "{}")));
+    return list;
+  };
+  await check("B201 a pick that could not be looked up never prices the place as typed text: after a busy answer, an error answer or a failed request the field goes back to what was typed with a message, and Book your ride gets the ZIP code request with that text, for a pick from the list and for the pick Book your ride makes", async () => {
+    for (const how of ["busy", "error", "abort"]) {
+      for (const auto of [false, true]) {
+        const label = `${how} ${auto ? "automatic" : "manual"}`;
+        const p = await open(ctx, G, "/book");
+        await p.route("**/api/places", (r) => {
+          const b = JSON.parse(r.request().postData() || "{}");
+          if (b.action !== "pick" || b.id !== "mock-hoboken") return r.continue();
+          return how === "abort" ? r.abort() : r.fulfill({ status: how === "busy" ? 429 : 200, contentType: "application/json", body: JSON.stringify({ kind: how }) });
+        });
+        const books = bodiesOf(p, "book");
+        await place(p, "to", "edition", "The New York EDITION");
+        await tickets(p, "to");
+        await type(p, "from", "hoboken");
+        await p.waitForSelector("#bk-from-list [data-kind=google]");
+        if (auto) await p.keyboard.press("Escape");
+        else {
+          await p.locator("#bk-from-list [data-kind=google]").first().click();
+          await p.waitForFunction(() => document.getElementById("bk-from").value === "hoboken");
+          assert.deepEqual([await p.textContent("#bk-status"), await p.inputValue("#bk-from-ticket"), await p.textContent("#bk-from-area")], [LOOKUP, "", "ZIP code needed"], label);
+        }
+        await pickDate(p, "#bk-date-btn", DATE);
+        await setTime(p, "14:00");
+        await p.click("#bk-view");
+        await p.waitForSelector("#q-unplaced", { state: "visible" });
+        assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-from-ticket"), await p.isHidden("#price"), (await p.textContent("#bk-sum .bk-chip")).includes("hoboken")], ["hoboken", "", true, true], label);
+        assert.deepEqual(books.filter((x) => x.action === "options").map((x) => [x.from_text, x.from_ticket]), [["hoboken", ""]], label);
+        assert.deepEqual([p.errors, p.failed.filter((f) => !/\/api\/places/.test(f))], [[], []], label);
+        await p.close();
+      }
+    }
+  });
+  await check("B202 a slow pick holds the price request until its answer: one options request, with the ticket, and the pickup street address request", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.route("**/api/places", async (r) => {
+      const b = JSON.parse(r.request().postData() || "{}");
+      if (b.action === "pick" && b.id === "mock-hoboken") await new Promise((z) => setTimeout(z, 4000));
+      await r.continue();
+    });
+    const books = bodiesOf(p, "book");
+    await place(p, "to", "edition", "The New York EDITION");
+    await tickets(p, "to");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.locator("#bk-from-list [data-kind=google]").first().click();
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-pickup-address", { state: "visible", timeout: 12000 });
+    assert.deepEqual(books.filter((x) => x.action === "options").map((x) => [x.from_text, x.from_ticket.slice(0, 3)]), [["Hoboken, NJ", "v1."]], "one options request, after the pick answered");
+    assert.deepEqual([await p.isHidden("#price"), await p.textContent("#q-pickup-address p")], [true, REASONS["pickup-address"].text]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B203 Book your ride never picks a suggestion for typed text that also names an airport row in the list: the text stays as typed with its ZIP code request and no pick", async () => {
+    const p = await open(ctx, G, "/book");
+    const places = bodiesOf(p, "places");
+    await place(p, "from", "jfk", "John F. Kennedy (JFK)");
+    await type(p, "to", "westchester");
+    await p.waitForSelector("#bk-to-list [data-kind=google]");
+    assert.ok((await rows(p, "to")).some((r) => r[0] === "local" && /Westchester County \(HPN\)/.test(r[1])), JSON.stringify(await rows(p, "to")));
+    await p.keyboard.press("Escape");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-unplaced", { state: "visible" });
+    assert.deepEqual([await p.inputValue("#bk-to"), await p.inputValue("#bk-to-ticket"), places.filter((x) => x.action === "pick").length], ["westchester", "", 0], "text that also names an airport row is never picked by Book your ride");
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B204 Book your ride never replaces a choice of Use what I typed with a suggestion: the typed city stays with its ZIP code request and no pick", async () => {
+    const p = await open(ctx, G, "/book");
+    const places = bodiesOf(p, "places");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await place(p, "to", "edition", "The New York EDITION");
+    await tickets(p, "to");
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.locator("#bk-from-list [data-kind=typed]").click();
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-unplaced", { state: "visible" });
+    assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-from-ticket"), places.filter((x) => x.action === "pick" && x.id === "mock-hoboken").length], ["hoboken", "", 0], "Use what I typed stays");
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B205 the pick Book your ride makes closes the Places session of the suggestions it came from", async () => {
+    const p = await open(ctx, G, "/book");
+    const places = bodiesOf(p, "places");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "14:00");
+    await place(p, "to", "edition", "The New York EDITION");
+    await tickets(p, "to");
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-pickup-address", { state: "visible" });
+    const suggest = places.filter((x) => x.action === "suggest" && x.input === "hoboken").pop();
+    const pick = places.filter((x) => x.action === "pick" && x.id === "mock-hoboken");
+    assert.deepEqual([await p.inputValue("#bk-from"), pick.length, pick[0] && pick[0].session], ["Hoboken, NJ", 1, suggest.session], "the pick uses the session of its suggestions");
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual([p.errors, p.failed], [[], []]);
     await p.close();
   });
   await ctx.close();
@@ -7927,7 +8234,7 @@ for (const width of [1440, 390]) {
   }
   for (const [width, height] of [[1440, 900], [390, 844]]) {
     const ctx = await context(G, { viewport: { width, height } });
-    await check(`B185 at ${width} on /book a Google pick that is still answering holds the price for at most 3 s and not the page: Book your ride opens the vehicle step at once with the price placeholders and Finding prices…, nothing on the page moves, three presses send one options request, by the label at 3 s while the pick is still held, and the answer that comes after asks for the price again with the ticket`, async () => {
+    await check(`B185 at ${width} on /book a Google pick that is still answering holds the price until it answers and not the page: Book your ride opens the vehicle step at once with the price placeholders and Finding prices…, nothing on the page moves, three presses send no options request while the pick is held, also past 3 s, so the label is never priced without its ticket, and one options request with the ticket once it answers`, async () => {
       const p = await open(ctx, G, "/book");
       const w = watch(p);
       let release;
@@ -7952,17 +8259,13 @@ for (const width of [1440, 390]) {
         const sk = await cards(p);
         assert.ok(sk.every((c) => c.startsWith("...")), `price placeholders while the pick is held: ${JSON.stringify(sk)}`);
         assert.deepEqual([w.options, w.route, p.answered, await p.getAttribute("#bk-view", "aria-busy")], [[], [], 0, null], "no request while the pick is held");
-        await p.waitForFunction(() => !document.getElementById("bk-wait").textContent.startsWith("Finding") && !/^(|\.\.\.)$/.test(document.getElementById("bk-p-suv").textContent), null, { timeout: 12000 });
-        const dt = Date.now() - t0;
-        assert.ok(dt >= 2900, `the price came after ${dt} ms`);
-        assert.equal(p.answered, 0, "the pick is still held");
-        assert.deepEqual(w.options.map((b) => [b.from_text, b.from_ticket || ""]), [[LABEL, ""]], "three presses, one request, priced by the label while the pick is held");
+        await p.waitForTimeout(Math.max(0, 4000 - (Date.now() - t0)));
+        assert.deepEqual([w.options, w.route, p.answered, await p.textContent("#bk-wait"), (await cards(p)).every((c) => c.startsWith("..."))], [[], [], 0, "Finding prices…", true], "still no request past 3 s while the pick is held");
         assert.deepEqual(await cls(p), [0, []], "the vehicle step opened with the press and nothing moved while the pick was held");
         release();
         await p.waitForFunction((t) => document.getElementById("bk-from-ticket").value === t, ticket);
-        await p.waitForFunction(() => !document.getElementById("bk-wait").textContent.startsWith("Finding") && !/^(|\.\.\.)$/.test(document.getElementById("bk-p-suv").textContent) && document.getElementById("bk-p-suv").textContent.indexOf("$185.00") < 0);
         await priced(p);
-        assert.deepEqual(w.options.slice(1).map((b) => [b.from_text, b.from_ticket === ticket]), [[LABEL, true]], "one more options request, with the ticket");
+        assert.deepEqual(w.options.map((b) => [b.from_text, b.from_ticket === ticket]), [[LABEL, true]], "three presses, one options request, with the ticket");
         assert.deepEqual(await cards(p), want);
         assert.deepEqual(await panel(p), outside());
         await routed(p);
@@ -7978,8 +8281,9 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(G, { viewport: { width: 390, height: 844 } });
-    await check("B185 at 390 on / a Google pick that is still answering holds Book your ride for at most 3 s: the button shows its busy state and the status reads Finding prices… meanwhile, three presses send one request, and the hand-off to /book#options goes while the pick is still held", async () => {
+    await check("B185 at 390 on / a Google pick that is still answering holds Book your ride until it answers: the button shows its busy state and the status reads Finding prices… meanwhile, also past 3 s, three presses send one hand-off, and it goes to /book#options once the pick has answered, where the price carries the ticket", async () => {
       const p = await open(ctx, G, "/");
+      const w = watch(p);
       let release;
       const held = new Promise((z) => (release = z));
       p.answered = 0;
@@ -7996,11 +8300,16 @@ for (const width of [1440, 390]) {
       await p.click("#bk-view");
       await p.click("#bk-view");
       try {
+        await p.waitForTimeout(Math.max(0, 4000 - (Date.now() - t0)));
+        assert.deepEqual([new URL(p.url()).pathname, await busy(), p.answered], ["/", ["search", "true", "Finding prices…"], 0], "no hand-off while the pick is held, also past 3 s");
+        release();
         await p.waitForURL(/\/book#options$/, { timeout: 12000 });
-        const dt = Date.now() - t0;
-        assert.ok(dt >= 2900, `the hand-off went after ${dt} ms`);
-        assert.equal(p.answered, 0, "the hand-off did not wait for the pick");
-        assert.deepEqual([p.errors, p.failed.filter((x) => !/\/api\/places /.test(x))], [[], []]);
+        assert.ok(p.answered > 0, "the hand-off waited for the pick");
+        await p.waitForFunction(() => !document.getElementById("bk-wait").textContent.startsWith("Finding") && !/^(|\.\.\.)$/.test(document.getElementById("bk-p-suv").textContent));
+        await priced(p);
+        assert.deepEqual(await cards(p), want);
+        assert.ok(w.options.length > 0 && w.options.every((b) => b.from_text === LABEL && b.from_ticket === ticket), JSON.stringify(w.options.map((b) => [b.from_text, (b.from_ticket || "").slice(0, 12)])));
+        assert.deepEqual([p.errors, p.failed], [[], []]);
       } finally {
         release();
       }

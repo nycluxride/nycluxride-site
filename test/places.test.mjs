@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
-import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, localById, areaText, routeText } from "../api/_places.mjs";
+import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, localById, areaText, routeText, placeLevel, clearMatch } from "../api/_places.mjs";
 import { TICKET, TICKET_TTL, ticketKey, labelHash, signTicket, verifyTicket, placeProof, proofOk } from "../api/_ticket.mjs";
 import { PLACES, AIRPORT_FARES, AIRPORT_TOTALS } from "../api/_rates.mjs";
 import { POST } from "../api/places.mjs";
@@ -465,7 +465,7 @@ await test("suggest with a key: the exact request, field mask and body, the key 
       { id: "ChIJ4", main: "Four", mainMatches: [], secondary: "", types: [] },
       { id: "ChIJ5", main: "Five", mainMatches: [], secondary: "", types: [] },
     ]),
-    typed: { zone: "unknown", area: "ZIP code needed" },
+    typed: { zone: "unknown", area: "ZIP code needed", ask: true },
   });
   assert.equal(res.headers.get("cache-control"), "no-store");
   assert.equal(res.headers.get("content-type"), "application/json; charset=utf-8");
@@ -496,7 +496,7 @@ await test("suggest: a Google error or timeout answers kind error with google tr
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   logs.length = 0;
   reply = answer(429, { error: { message: `quota for ${SERVER_KEY}` } });
-  assert.deepEqual((await call(suggest("edition"))).body, { kind: "error", google: true, items: [], typed: { zone: "unknown", area: "ZIP code needed" } });
+  assert.deepEqual((await call(suggest("edition"))).body, { kind: "error", google: true, items: [], typed: { zone: "unknown", area: "ZIP code needed", ask: true } });
   reply = () => {
     throw new Error("timeout");
   };
@@ -562,7 +562,7 @@ await test("pick with a key: Place Details with the Essentials mask, the zone, a
   assert.equal((await call(pick("ChIJjfkt4", "JFK Terminal 4, Queens, NY, USA"))).body.map, false);
 });
 
-await test("pick: the New York City entry of Google has no county, borough or ZIP and still prices as Manhattan at the airport rates, its ticket marks it as an area that gets no distance price, and the New York State entry stays outside", async () => {
+await test("pick: the New York City entry of Google has no county, borough or ZIP and still prices as Manhattan at the airport rates as a drop-off, its ticket marks it as an area that gets no distance price and is no exact pickup, and the New York State entry stays outside", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   const city = { id: "ChIJOwg_06VPwokRYv534QaPC8g", formattedAddress: "New York, NY, USA", shortFormattedAddress: "New York", addressComponents: [component(["locality", "political"], "New York"), component(["administrative_area_level_1", "political"], "New York", "NY"), component(["country", "political"], "United States", "US")], types: ["locality", "political", "geocode"] };
   reply = answer(200, city);
@@ -573,38 +573,121 @@ await test("pick: the New York City entry of Google has no county, borough or ZI
     assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: city.id, zone: "manhattan", expired: false, area: true });
     const fields = { trip_type: "one", from_text: label, from_ticket: res.body.ticket, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: day, time: "14:00", passengers: "1", class: "suv", action: "options" };
     const airport = await resolveTrip(readInput(fields), { now: Date.now() });
-    assert.deepEqual([airport.from, priceTrip(airport).total], ["manhattan", AIRPORT_TOTALS.suv.jfk], label);
+    assert.deepEqual([airport.from, checkTrip(airport, Date.now(), readSettings({ PAYMENTS_ENABLED: "true" })).reason, priceTrip(airport).total], ["manhattan", "pickup-address", AIRPORT_TOTALS.suv.jfk], label);
+    const back = await resolveTrip(readInput({ ...fields, from_text: "John F. Kennedy (JFK)", from_id: "jfk", from_ticket: "", to_text: label, to_ticket: res.body.ticket, to_id: "" }), { now: Date.now() });
+    assert.deepEqual([back.to, checkTrip(back, Date.now(), readSettings({ PAYMENTS_ENABLED: "true" })), priceTrip(back).total], ["manhattan", { kind: "price", reason: "", hold: "" }, AIRPORT_TOTALS.suv.jfk], label);
     const before = calls.length;
     const ride = await resolveTrip(readInput({ ...fields, to_text: "277 Bedford Ave, Brooklyn, NY 11211", to_id: "" }), { now: Date.now() });
-    assert.deepEqual([checkTrip(ride, Date.now(), readSettings({ PAYMENTS_ENABLED: "true" })), calls.length], [{ kind: "quote", reason: "street-address", field: "" }, before], label);
+    assert.deepEqual([checkTrip(ride, Date.now(), readSettings({ PAYMENTS_ENABLED: "true" })), calls.length], [{ kind: "quote", reason: "pickup-address", field: "" }, before], label);
+    const drop = await resolveTrip(readInput({ ...fields, from_text: "277 Bedford Ave, Brooklyn, NY 11211", from_ticket: "", to_text: label, to_ticket: res.body.ticket, to_id: "" }), { now: Date.now() });
+    assert.deepEqual([checkTrip(drop, Date.now(), readSettings({ PAYMENTS_ENABLED: "true" })), calls.length], [{ kind: "quote", reason: "street-address", field: "" }, before], label);
   }
   reply = answer(200, { ...city, id: "ChIJstate", formattedAddress: "New York, USA", addressComponents: city.addressComponents.slice(1), types: ["administrative_area_level_1", "political", "geocode"] });
-  assert.equal((await call(pick("ChIJstate", "New York, USA"))).body.zone, "outside");
+  const state = await call(pick("ChIJstate", "New York, USA"));
+  assert.deepEqual([state.body.zone, state.body.exact, verifyTicket(state.body.ticket, "New York, USA", Date.now()).area], ["outside", false, true]);
 });
 
-await test("pick marks a New York City borough, a ZIP code, a county or a state as an area in its ticket, and never a town or city outside New York City, a street address, a premise, a hotel, a neighborhood, an airport or a place that is also a point of interest", async () => {
+await test("pick marks a New York City borough, New York City, a ZIP code, a county or a state as a broad area (a: 1) and a city, a town, a neighborhood, a colloquial area or a street with no number anywhere as a town (a: 2), both no exact pickup, and never a street address, a premise, a hotel, an airport, an intersection or a place that is also a point of interest", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   const cases = [
-    [details({ state: "NY", county: "New York County", sub: "Manhattan", types: ["sublocality_level_1", "sublocality", "political"] }), "Manhattan, New York, NY", "manhattan", true],
-    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", types: ["locality", "political"] }), "Brooklyn, NY", "brooklyn", true],
-    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }), "Hoboken, NJ", "outside", false],
-    [details({ state: "NY", county: "Niagara County", types: ["locality", "political"] }), "Niagara Falls, NY", "outside", false],
-    [details({ state: "NY", sub: "Brooklyn", zip: "11201", types: ["postal_code"] }), "11201, Brooklyn Heights, NY", "brooklyn", true],
-    [details({ state: "NJ", county: "Bergen County", types: ["administrative_area_level_2", "political"] }), "Bergen County, NJ", "outside", true],
-    [details({ state: "NJ", types: ["administrative_area_level_1", "political"] }), "New Jersey", "outside", true],
-    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", zip: "11211", types: ["street_address"] }), "277 Bedford Avenue, Brooklyn, NY", "brooklyn", false],
-    [details({ state: "NJ", county: "Hudson County", zip: "07094", types: ["premise"] }), "1 Meadowlands Pkwy, Secaucus, NJ", "outside", false],
-    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10010", types: ["lodging", "point_of_interest", "establishment"] }), "The New York EDITION, Madison Avenue, New York, NY", "manhattan", false],
-    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10075", types: ["neighborhood", "political"] }), "Upper East Side, New York, NY", "manhattan", false],
-    [details({ state: "NY", county: "Queens County", zip: "11430", types: ["airport", "point_of_interest", "establishment"] }), "JFK Terminal 4, Queens, NY", "jfk", false],
-    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political", "point_of_interest"] }), "Hoboken Terminal, Hoboken, NJ", "outside", false],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", types: ["sublocality_level_1", "sublocality", "political"] }), "Manhattan, New York, NY", "manhattan", 1],
+    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", types: ["locality", "political"] }), "Brooklyn, NY", "brooklyn", 1],
+    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }), "Hoboken, NJ", "outside", 2],
+    [details({ state: "NY", county: "Niagara County", types: ["locality", "political"] }), "Niagara Falls, NY", "outside", 2],
+    [details({ state: "PA", county: "Philadelphia County", types: ["locality", "political"] }), "Philadelphia, PA", "outside", 2],
+    [details({ state: "NY", sub: "Brooklyn", zip: "11201", types: ["postal_code"] }), "11201, Brooklyn Heights, NY", "brooklyn", 1],
+    [details({ state: "NJ", zip: "07030", types: ["postal_code"] }), "Hoboken, NJ 07030", "outside", 1],
+    [details({ state: "NJ", county: "Bergen County", types: ["administrative_area_level_2", "political"] }), "Bergen County, NJ", "outside", 1],
+    [details({ state: "NJ", types: ["administrative_area_level_1", "political"] }), "New Jersey", "outside", 1],
+    [details({ state: "NY", county: "Westchester County", types: ["administrative_area_level_3", "political"] }), "Greenburgh, NY", "outside", 1],
+    [details({ state: "NY", country: "US", types: ["country", "political"] }), "United States", "outside", 1],
+    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", zip: "11211", types: ["street_address"] }), "277 Bedford Avenue, Brooklyn, NY", "brooklyn", 0],
+    [details({ state: "NJ", county: "Hudson County", zip: "07094", types: ["premise"] }), "1 Meadowlands Pkwy, Secaucus, NJ", "outside", 0],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10010", types: ["lodging", "point_of_interest", "establishment"] }), "The New York EDITION, Madison Avenue, New York, NY", "manhattan", 0],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10010", types: ["lodging", "hotel"] }), "A hotel with no place type, New York, NY", "manhattan", 0],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", zip: "10075", types: ["neighborhood", "political"] }), "Upper East Side, New York, NY", "manhattan", 2],
+    [details({ state: "NY", county: "Queens County", sub: "Queens", types: ["sublocality_level_2", "sublocality", "political"] }), "Flushing, Queens, NY", "queens", 2],
+    [details({ state: "NJ", county: "Bergen County", types: ["colloquial_area", "political"] }), "North Jersey, NJ", "outside", 2],
+    [details({ state: "NY", county: "New York County", sub: "Manhattan", types: ["route"] }), "Broadway, New York, NY", "manhattan", 2],
+    [details({ state: "NY", county: "Queens County", zip: "11430", types: ["airport", "point_of_interest", "establishment"] }), "JFK Terminal 4, Queens, NY", "jfk", 0],
+    [details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political", "point_of_interest"] }), "Hoboken Terminal, Hoboken, NJ", "outside", 0],
+    [details({ state: "NY", county: "New York County", types: ["intersection", "geocode"] }), "5th Ave & W 42nd St, New York, NY", "manhattan", 0],
   ];
-  for (const [place, label, zone, area] of cases) {
+  for (const [place, label, zone, level] of cases) {
     reply = answer(200, place);
     const res = await call(pick("ChIJarea", label));
-    assert.deepEqual([res.body.kind, res.body.zone], ["ok", zone], label);
-    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJarea", zone, expired: false, ...(area && { area: true }) }, label);
+    assert.deepEqual([res.body.kind, res.body.zone, res.body.exact], ["ok", zone, level ? false : undefined], label);
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJarea", zone, expired: false, ...(level === 1 && { area: true }), ...(level === 2 && { town: true }) }, label);
+    assert.equal(JSON.parse(Buffer.from(res.body.ticket.split(".")[1], "base64url").toString()).a, level || undefined, label);
+    assert.equal(placeLevel(place.types, zone), level, label);
   }
+});
+
+await test("old tickets with a: 1 verify as before, a: 2 verifies as a town, any other mark is no mark, and a ticket of the longest ID with either mark fits the ticket pattern", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  const label = "Hoboken, NJ, USA";
+  const payload = (a) => Buffer.from(JSON.stringify({ v: 1, id: "ChIJold", z: "outside", h: labelHash(label), t: Math.floor(NOW / 1000), ...(a !== undefined && { a }) })).toString("base64url");
+  const signed = (a) => `v1.${payload(a)}.${createHmac("sha256", ticketKey()).update(`v1.${payload(a)}`).digest("base64url")}`;
+  assert.deepEqual(verifyTicket(signed(1), label, NOW), { id: "ChIJold", zone: "outside", expired: false, area: true });
+  assert.deepEqual(verifyTicket(signed(2), label, NOW), { id: "ChIJold", zone: "outside", expired: false, town: true });
+  for (const a of [undefined, 0, 3, true, "1"]) assert.deepEqual(verifyTicket(signed(a), label, NOW), { id: "ChIJold", zone: "outside", expired: false }, String(a));
+  assert.equal(signTicket("ChIJold", "outside", label, NOW, true), signed(1));
+  assert.equal(signTicket("ChIJold", "outside", label, NOW, 1), signed(1));
+  assert.equal(signTicket("ChIJold", "outside", label, NOW, 2), signed(2));
+  assert.equal(signTicket("ChIJold", "outside", label, NOW, false), signed());
+  assert.equal(signTicket("ChIJold", "outside", label, NOW, 0), signed());
+  const id = `Ei${"x".repeat(298)}`;
+  for (const level of [1, 2]) assert.equal(signTicket(id, "staten-island", label, NOW, level).length, 553);
+  const end = await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: signed(1) }), { now: NOW });
+  assert.deepEqual(end, { text: label, zone: "outside", place: "ChIJold", id: "", area: true });
+  assert.deepEqual(await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: signed(2) }), { now: NOW }), { text: label, zone: "outside", place: "ChIJold", id: "", town: true });
+});
+
+await test("suggest marks a place that is no exact spot with exact false, and the first suggestion with match true only when it clearly matches typed text that would get a request by itself: same start and the same place", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  const prediction = (placeId, main, secondary, types) => ({ placePrediction: { placeId, structuredFormat: { mainText: { text: main }, secondaryText: { text: secondary } }, types } });
+  const LIST = { suggestions: [prediction("ChIJphl", "Philadelphia", "PA, USA", ["locality", "political"]), prediction("ChIJphlair", "Philadelphia International Airport", "Philadelphia, PA, USA", ["airport", "point_of_interest", "establishment"]), prediction("ChIJzip", "19107", "Philadelphia, PA, USA", ["postal_code"]), prediction("ChIJues", "Upper East Side", "New York, NY, USA", ["neighborhood", "political"]), prediction("ChIJbway", "Broadway", "New York, NY, USA", ["route"])] };
+  reply = answer(200, LIST);
+  const res = await call(suggest("philadelphia"));
+  assert.deepEqual(res.body.items.map((item) => [item.id, item.exact, item.match]), [["ChIJphl", false, true], ["ChIJphlair", undefined, undefined], ["ChIJzip", false, undefined], ["ChIJues", false, undefined], ["ChIJbway", false, undefined]]);
+  assert.deepEqual(res.body.typed, { zone: "unknown", area: "ZIP code needed", ask: true });
+  for (const [input, match, typed] of [["Philadelphia, PA, USA", true, { zone: "outside", area: "Outside New York City" }], ["Phila", true, { zone: "unknown", area: "ZIP code needed", ask: true }], ["philadelphia pa", true, { zone: "unknown", area: "ZIP code needed", ask: true }], ["philadelphia airport", undefined, { zone: "unknown", area: "ZIP code needed", ask: true }], ["philadelphia nj", undefined, { zone: "unknown", area: "ZIP code needed", ask: true }], ["Philadelphia, NJ", undefined, { zone: "outside", area: "Outside New York City" }]]) {
+    const body = (await call(suggest(input))).body;
+    assert.deepEqual([body.items[0].match, body.typed], [typed.ask ? match : undefined, typed], input);
+  }
+  reply = answer(200, { suggestions: [prediction("ChIJbed", "277 Bedford Avenue", "Brooklyn, NY, USA", ["street_address"])] });
+  for (const [input, match] of [["277 Bedford", true], ["277 bedford ave", true], ["277 Bedford Ave, Brooklyn", undefined], ["277 Bedford Ave, Brooklyn, NY 11211", undefined], ["277 Bedford Ave, Hoboken", undefined], ["Bedford 277", undefined], ["Manhattan", undefined], ["Brooklyn", undefined], ["27 Bedford", undefined]]) assert.equal((await call(suggest(input))).body.items[0].match, match, input);
+  reply = answer(200, { suggestions: [prediction("ChIJgarden", "300 Garden Street", "Hoboken, NJ, USA", ["street_address"])] });
+  for (const [input, match] of [["300 garden", true], ["3 hoboken", undefined], ["30 Garden", undefined], ["300 hoboken", undefined]]) {
+    const body = (await call(suggest(input))).body;
+    assert.deepEqual([body.items[0].match, body.typed.ask], [match, true], input);
+  }
+  reply = answer(200, { suggestions: [prediction("ChIJbk", "Brooklyn", "NY, USA", ["sublocality_level_1", "sublocality", "political"])] });
+  const borough = (await call(suggest("Brooklyn"))).body;
+  assert.deepEqual([borough.items[0].exact, borough.items[0].match, borough.typed], [false, true, { zone: "brooklyn", area: "Brooklyn", ask: true }]);
+  delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  assert.deepEqual((await call(suggest("philadelphia"))).body, { kind: "ok", google: false, items: [], typed: { zone: "unknown", area: "ZIP code needed" } });
+});
+
+await test("clearMatch: the typed words start the main text with at least one word that is not a number, each the same word and the last of them at least its start unless it begins with a digit, and every later typed word is a word of the secondary text, the last of them at least its start, or a ZIP code, with or without commas", () => {
+  const item = { main: "350 5th Avenue", secondary: "New York, NY, USA" };
+  for (const text of ["350 5th Avenue", "350 5th ave", "350 5th av", "350 5TH AVE", "350 5th Ave, New York", "350 5th Ave, New York, NY 10118", "350 5th Ave, NY, USA", "350 5th Ave, New York, US", "350 5th av new york", "350 5th Ave New York NY 10118"]) assert.equal(clearMatch(text, item), true, text);
+  for (const text of ["5th Ave 350", "350 Fifth Avenue", "350 5th Ave, Brooklyn", "350 5th Ave, New York, NJ", "350 5th Avenue Building", "350 5th Ave Brooklyn", "", ", New York", "   ", "350 5", "350 57 new york", "35 5th Avenue", "350 5th av n york", "350 5th Ave, New York 101", "350 5th"]) assert.equal(clearMatch(text, item), false, text);
+  const garden = { main: "300 Garden Street", secondary: "Hoboken, NJ, USA" };
+  for (const text of ["300 garden", "300 Garden St, Hoboken", "300 garden st hoboken nj 07030"]) assert.equal(clearMatch(text, garden), true, text);
+  for (const text of ["3 hoboken", "30 garden", "300 hoboken"]) assert.equal(clearMatch(text, garden), false, text);
+  assert.equal(clearMatch("12 hoboken", { main: "1200 Washington Street", secondary: "Hoboken, NJ, USA" }), false);
+  assert.equal(clearMatch("27 bedford", { main: "277 Main Street", secondary: "Bedford, NY, USA" }), false);
+  const hoboken = { main: "Hoboken", secondary: "NJ, USA" };
+  for (const text of ["hoboken", "hobo", "Hoboken, NJ", "hoboken nj", "Hoboken NJ USA", "hoboken nj 07030"]) assert.equal(clearMatch(text, hoboken), true, text);
+  for (const text of ["hoboken terminal", "hoboken ny", "boken nj", "nj hoboken", "hoboken 0703", "hoboken n usa"]) assert.equal(clearMatch(text, hoboken), false, text);
+  const falls = { main: "Niagara Falls", secondary: "NY, USA" };
+  for (const text of ["niagara falls ny", "Niagara Falls, NY 14303", "niagara fa"]) assert.equal(clearMatch(text, falls), true, text);
+  for (const text of ["niagara falls nj", "falls ny", "niagara falls park"]) assert.equal(clearMatch(text, falls), false, text);
+  assert.equal(clearMatch("Phila", { main: "Philadelphia", secondary: "PA, USA" }), true);
+  assert.equal(clearMatch("brooklyn bridge", { main: "Brooklyn", secondary: "NY, USA" }), false);
+  assert.equal(clearMatch("edition hotel", { main: "The New York EDITION", secondary: "Madison Avenue, New York, NY, USA" }), false);
+  assert.equal(clearMatch("x", null), false);
 });
 
 await test("pick signs a ticket for the longest place ID of 300 characters, as Google gives for some intersections, and the ticket of that ID with the longest zone and the area mark still passes the ticket pattern, verifies and reaches the trip", async () => {
@@ -672,7 +755,7 @@ await test("GOOGLE_MOCK is refused in production: suggest answers google false, 
   assert.equal(calls.length, 0);
 });
 
-await test("the server resolves a pick itself: a fresh ticket needs no call, an expired one is refreshed with Place Details, a bad one falls back to text rules", async () => {
+await test("the server resolves a pick itself: a fresh ticket needs no call, an expired one is refreshed with Place Details and keeps its area or town mark, also from the zone cache, a bad one falls back to text rules", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
   const label = "277 Bedford Avenue, Brooklyn, NY, USA";
   const fresh = signTicket("ChIJbedford", "brooklyn", label, Date.now());
@@ -696,6 +779,10 @@ await test("the server resolves a pick itself: a fresh ticket needs no call, an 
   const before = calls.length;
   for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: stale }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhoboken", id: "", area: true }, `request ${i + 1}`);
   assert.equal(calls.length, before + 1);
+  const town = signTicket("ChIJhobokentown", "outside", "Hoboken, NJ, USA", Date.now() - (TICKET_TTL + 60) * 1000, 2);
+  const once = calls.length;
+  for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: town }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhobokentown", id: "", town: true }, `town request ${i + 1}`);
+  assert.equal(calls.length, once + 1, "the town mark survives the Place Details refresh and the zone cache, with one call");
   delete process.env.GOOGLE_MAPS_SERVER_KEY;
   calls.length = 0;
   process.env.PLACE_TICKET_SECRET = "p".repeat(40);

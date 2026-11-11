@@ -71,7 +71,7 @@ function vehicleList(trip) {
 }
 
 function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null, draw = false } = {}) {
-  const { group, text, google, short } = REASONS[reason];
+  const { group, text, google, map, short } = REASONS[reason];
   const hourly = HOURLY_START.includes(trip.from);
   return {
     kind: "quote",
@@ -79,7 +79,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     reason,
     group,
     heading: HEADINGS[group],
-    text: google && googleUp() ? google : short && !hourly ? short : text,
+    text: map && draw && googleUp() ? map : google && googleUp() ? google : short && !hourly ? short : text,
     hourly,
     field: reason === "unplaced" || reason === "airport-zip" ? field : "",
     classes: classList(trip, scope === "trip" ? reason : ""),

@@ -76,6 +76,9 @@ const canonical = (text) => (INTEGER.test(text) ? String(Number(text)) : text);
 const tipAmountOk = (amount) => INTEGER.test(amount) && Number(amount) * 100 >= TIP_CUSTOM.min && Number(amount) * 100 <= TIP_CUSTOM.max;
 export const airportZip = (text) => (text.match(/\b\d{5}\b/g) || []).some((zip) => DISTANCE_SKIP_ZIPS.includes(zip));
 const unplaced = (text) => (airportZip(text) ? "airport-zip" : "unplaced");
+const exact = (end) => !end || !(end.area || end.town);
+const marks = (ticket) => ({ ...(ticket.area && { area: true }), ...(ticket.town && { town: true }) });
+const askFor = (trip, ends) => (!exact(ends.from) ? "pickup-address" : trip.trip_type === "one" && trip.return && !exact(ends.to) ? "return-address" : "");
 const line = (label, cents) => ({ label, cents });
 const taxLabel = () => fill(LABELS.tax, { percent: NYC_TAX_PERCENT });
 const bcfLabel = () => fill(LABELS.bcf, { percent: BCF_PERCENT });
@@ -251,10 +254,10 @@ export async function resolveEnd(end, trip, context = {}) {
   if (!text) return null;
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const ticket = trip[`${end}_ticket`] ? verifyTicket(trip[`${end}_ticket`], text, now) : null;
-  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
+  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...marks(ticket) };
   if (ticket && googleOn()) {
     const known = placeZones.get(ticket.id);
-    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
+    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...marks(ticket) };
     const allowed = (!context.request || clientBudget(context.request, "places-pick", PICK_IP)) && instanceBudget("places-pick", PICK_INSTANCE);
     const result = allowed ? await placeDetails(ticket.id, "") : { ok: false, status: 429 };
     if (result.ok) {
@@ -262,7 +265,7 @@ export async function resolveEnd(end, trip, context = {}) {
       placeZones.delete(ticket.id);
       placeZones.set(ticket.id, { zone, until: now + TICKET_TTL * 1000 });
       if (placeZones.size > PLACE_ZONES) placeZones.delete(placeZones.keys().next().value);
-      return { text, zone, place: ticket.id, id: "", ...(ticket.area && { area: true }) };
+      return { text, zone, place: ticket.id, id: "", ...marks(ticket) };
     }
     console.error("places-pick", result.status);
   }
@@ -327,7 +330,7 @@ async function driveTrip(trip, token, context) {
   if (check.kind !== "quote" || !ROUTED.includes(check.reason)) return trip;
   if ([trip.ends.from, trip.ends.to].some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
   if (!googleOn()) return trip;
-  if ([trip.ends.from, trip.ends.to].some((end) => end.area)) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "street-address" })) };
+  if ([trip.ends.from, trip.ends.to].some((end) => end.area) || askFor(trip, trip.ends)) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "street-address" })) };
   const known = readRoute(token, now);
   const ends = [waypointOf(trip.ends.from), waypointOf(trip.ends.to)];
   const rides = await Promise.all(
@@ -371,13 +374,15 @@ function spatialReason(trip) {
     if (!HOURLY_START.includes(trip.from)) return { reason: "outside-hourly", field: "" };
     const hours = Number(trip.hours);
     if (hours < HOURS.min || hours > HOURS.max) return { reason: "hours-range", field: "" };
-    return null;
+    return exact(endsOf(trip).from) ? null : { reason: "pickup-address", field: "" };
   }
   const ends = endsOf(trip);
   for (const name of ENDS) if (ends[name] && ends[name].zone === "unknown") return { reason: unplaced(ends[name].text), field: `${name}_text` };
   const legs = trip.legs || legsOf(trip);
   if (!legs.length) return { reason: "unplaced", field: "from_text" };
   const unpriced = legs.find((item) => item.reason);
+  const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
+  if (ask) return { reason: ask, field: "" };
   if (!unpriced) return null;
   return { reason: ends.stop1 || ends.stop2 ? "stop-leg" : unpriced.reason, field: "" };
 }

@@ -96,6 +96,25 @@ export const lite = (text) =>
     .trim();
 
 export const areaText = (text) => AREA_NAME.test(norm(text).replace(AREA_TAIL, ""));
+export const ADDRESS_TYPES = ["street_address", "premise", "subpremise", "point_of_interest", "establishment", "airport"];
+const AREA_KINDS = /^(?:locality|sublocality(?:_level_\d)?|neighborhood|colloquial_area|postal_town|route|postal_code(?:_prefix|_suffix)?|administrative_area_level_\d|country)$/;
+const BROAD_KINDS = /^(?:postal_code(?:_prefix|_suffix)?|administrative_area_level_\d|country)$/;
+export function placeLevel(types, zone) {
+  const kinds = Array.isArray(types) ? types.filter((type) => typeof type === "string") : [];
+  if (kinds.some((type) => ADDRESS_TYPES.includes(type)) || !kinds.some((type) => AREA_KINDS.test(type))) return 0;
+  const city = !["outside", "abroad"].includes(zone);
+  return kinds.some((type) => BROAD_KINDS.test(type) || (city && (type === "locality" || type === "sublocality_level_1"))) ? 1 : 2;
+}
+export function clearMatch(text, item) {
+  const typed = norm(text).split(" ").filter(Boolean);
+  const main = norm(item && item.main).split(" ");
+  const place = norm(item && item.secondary).split(" ");
+  const start = (part, word, last) => part === word || (last && !/^\d/.test(word) && part.startsWith(word));
+  let at = 0;
+  while (at < typed.length && typed[at] === main[at]) at++;
+  if (at < typed.length && main[at] && start(main[at], typed[at], true)) at++;
+  return typed.slice(0, at).some((word) => !/^\d/.test(word)) && typed.slice(at).every((word, i) => /^\d{5}$/.test(word) || place.some((part) => start(part, word, at + i === typed.length - 1)));
+}
 const cityText = (plain) => CITY_STATE.test(plain) || (plain.match(/[\s,]\d{5}(?!\d)/g) || []).some((zip) => CITY_ZONES.includes(zipBorough(zip.slice(1))));
 const hasBorough = (text) => [...lite(text).matchAll(BOROUGH_WORDS)].length > 0;
 export const routeText = (text, zone) => (!CITY_ZONES.includes(zone) || /\b\d{5}\b|\bny\b|new york|\bnyc\b/i.test(text) ? text : hasBorough(text) ? `${text}, NY` : `${text}, ${AREA_LABELS[zone]}, NY`);

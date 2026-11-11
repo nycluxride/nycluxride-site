@@ -36,10 +36,11 @@ export function proofOk(id, label, proof) {
   return timingSafeEqual(Buffer.from(proof), Buffer.from(proofMac(key, id, label)));
 }
 
-export function signTicket(id, zone, label, now, area = false) {
+export function signTicket(id, zone, label, now, area = 0) {
   const key = ticketKey();
   if (!key) return "";
-  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(area && { a: 1 }) })).toString("base64url");
+  const level = area === 2 ? 2 : area ? 1 : 0;
+  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(level && { a: level }) })).toString("base64url");
   const ticket = `v1.${payload}.${mac(key, payload)}`;
   return TICKET.test(ticket) ? ticket : "";
 }
@@ -60,7 +61,7 @@ export function verifyTicket(ticket, label, now) {
   if (!ZONES.includes(data.z) || data.z === "unknown") return null;
   if (label !== null && data.h !== labelHash(label)) return null;
   const age = Math.floor(Number(now) / 1000) - data.t;
-  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S, ...(data.a === 1 && { area: true }) };
+  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S, ...(data.a === 1 && { area: true }), ...(data.a === 2 && { town: true }) };
 }
 
 const routeMac = (key, payload) => createHmac("sha256", key).update(`r1.${payload}`).digest("base64url");

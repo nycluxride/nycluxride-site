@@ -33,6 +33,46 @@ const FIXTURES = [
     components: [state("NJ", "New Jersey"), county("Hudson County"), zip("07030"), US],
   },
   {
+    trigger: "garden street",
+    item: { id: "mock-garden", main: "300 Garden Street", secondary: "Hoboken, NJ, USA", types: ["street_address"] },
+    address: "300 Garden St, Hoboken, NJ 07030, USA",
+    at: [40.744712, -74.031862],
+    kinds: ["street_address"],
+    components: [state("NJ", "New Jersey"), county("Hudson County"), zip("07030"), US],
+  },
+  {
+    trigger: "williamsburg",
+    item: { id: "mock-williamsburg", main: "Williamsburg", secondary: "Brooklyn, NY, USA", types: ["neighborhood", "political"] },
+    address: "Williamsburg, Brooklyn, NY, USA",
+    at: [40.71355, -73.96274],
+    kinds: ["neighborhood", "political"],
+    components: [state("NY", "New York"), county("Kings County"), borough("Brooklyn"), US],
+  },
+  {
+    trigger: "bronx",
+    item: { id: "mock-bronx", main: "The Bronx", secondary: "Bronx, NY, USA", types: ["sublocality_level_1", "sublocality", "political"] },
+    address: "The Bronx, Bronx, NY, USA",
+    at: [40.854, -73.8885],
+    kinds: ["sublocality_level_1", "sublocality", "political"],
+    components: [state("NY", "New York"), county("Bronx County"), borough("Bronx"), US],
+  },
+  {
+    trigger: "arthur avenue",
+    item: { id: "mock-arthur", main: "2344 Arthur Avenue", secondary: "Bronx, NY, USA", types: ["street_address"] },
+    address: "2344 Arthur Ave, Bronx, NY 10458, USA",
+    at: [40.854924, -73.888711],
+    kinds: ["street_address"],
+    components: [state("NY", "New York"), county("Bronx County"), borough("Bronx"), zip("10458"), US],
+  },
+  {
+    trigger: "faneuil",
+    item: { id: "mock-faneuil", main: "Faneuil Hall", secondary: "Boston, MA, USA", types: ["tourist_attraction", "point_of_interest"] },
+    address: "4 S Market St, Boston, MA 02109, USA",
+    at: [42.360083, -71.05888],
+    kinds: ["establishment", "point_of_interest", "tourist_attraction"],
+    components: [state("MA", "Massachusetts"), county("Suffolk County"), zip("02109"), US],
+  },
+  {
     trigger: "westchester",
     item: { id: "mock-hpn", main: "Westchester County Airport", secondary: "White Plains, NY, USA", types: ["airport"] },
     address: "240 Airport Rd, White Plains, NY 10604, USA",
@@ -128,12 +168,12 @@ const meters = ([a, b], [c, d]) => {
 };
 
 export function mockReverse(lat, lng) {
-  const near = FIXTURES.map((fixture) => [meters([lat, lng], fixture.at), fixture]).filter(([distance]) => distance <= 300).sort((a, b) => a[0] - b[0])[0];
-  if (!near) return [];
-  const { item, address, components, at, kinds } = near[1];
-  const parts = components.map((component) => ({ ...component, types: [...component.types] }));
-  const result = (placeId, formattedAddress, types) => ({ placeId, location: { latitude: at[0], longitude: at[1] }, granularity: "ROOFTOP", formattedAddress, addressComponents: parts, types });
-  return [result(item.id, address, [...kinds]), result(`${item.id}-area`, address.split(", ").slice(1).join(", "), ["postal_code"])];
+  const near = FIXTURES.map((fixture) => [meters([lat, lng], fixture.at), fixture]).filter(([distance]) => distance <= 300).sort((a, b) => a[0] - b[0]);
+  return near.flatMap(([, { item, address, components, at, kinds }]) => {
+    const parts = components.map((component) => ({ ...component, types: [...component.types] }));
+    const result = (placeId, formattedAddress, types) => ({ placeId, location: { latitude: at[0], longitude: at[1] }, granularity: "ROOFTOP", formattedAddress, addressComponents: parts, types });
+    return [result(item.id, address, [...kinds]), result(`${item.id}-area`, address.split(", ").slice(1).join(", "), ["postal_code"])];
+  });
 }
 
 export function mockLocate(text) {
