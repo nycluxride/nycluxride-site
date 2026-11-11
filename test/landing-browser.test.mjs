@@ -531,10 +531,11 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       const run = await p.evaluate(SEATS);
       await p.evaluate(() => Promise.all(document.querySelector(".hero > .seats").getAnimations({ subtree: true }).map((a) => a.finished)));
       const rest = await p.evaluate(SEATS);
-      await check(`${engine} ${viewport.width}x${viewport.height}: the child seats wait below the fold, rise in one after another with a gold ring as they scroll into view while a gold shimmer and a star pass over the heading, and come to rest exactly in place`, () => {
-        assert.deepEqual([at.rv, at.op, at.anims], ["0", ["0", "0", "0", "0", "0"], []]);
+      await check(`${engine} ${viewport.width}x${viewport.height}: the seats, the price and the link stay visible and still as the card scrolls into view, and only the word available shimmers, with a gold star`, () => {
+        assert.deepEqual([at.rv, at.op, at.anims], ["0", ["1", "1", "1", "1", "1"], []]);
         assert.equal(run.rv, "1");
-        assert.deepEqual([...new Set(run.anims)], ["seat-in", "seat-ring", "seat-sheen", "seat-star"]);
+        assert.deepEqual(run.anims, ["seat-sheen", "seat-star"]);
+        assert.deepEqual([run.op, run.tops], [["1", "1", "1", "1", "1"], at.tops]);
         assert.deepEqual([rest.op, rest.anims], [["1", "1", "1", "1", "1"], []]);
         assert.deepEqual(rest.tops, at.tops);
       });
@@ -551,7 +552,7 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       const { ctx, p, at } = await open({ viewport: { width: 1440, height: 900 } });
       await p.emulateMedia({ media: "print" });
       const printed = await p.evaluate(SEATS);
-      await check(`${engine}: printed while the child seats still wait below the fold, every seat, the price and the link print`, () => {
+      await check(`${engine}: printed before the card scrolls into view, every seat, the price and the link print`, () => {
         assert.equal(at.rv, "0");
         assert.deepEqual(printed.op, ["1", "1", "1", "1", "1"]);
       });
