@@ -531,18 +531,19 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       const run = await p.evaluate(SEATS);
       await p.evaluate(() => Promise.all(document.querySelector(".hero > .seats").getAnimations({ subtree: true }).map((a) => a.finished)));
       const rest = await p.evaluate(SEATS);
-      await check(`${engine} ${viewport.width}x${viewport.height}: the child seats wait below the fold, rise in one after another with a gold ring as they scroll into view, and come to rest exactly in place`, () => {
+      await check(`${engine} ${viewport.width}x${viewport.height}: the child seats wait below the fold, rise in one after another with a gold ring as they scroll into view while a gold shimmer and a star pass over the heading, and come to rest exactly in place`, () => {
         assert.deepEqual([at.rv, at.op, at.anims], ["0", ["0", "0", "0", "0", "0"], []]);
         assert.equal(run.rv, "1");
-        assert.deepEqual([...new Set(run.anims)], ["seat-in", "seat-ring"]);
+        assert.deepEqual([...new Set(run.anims)], ["seat-in", "seat-ring", "seat-sheen", "seat-star"]);
         assert.deepEqual([rest.op, rest.anims], [["1", "1", "1", "1", "1"], []]);
         assert.deepEqual(rest.tops, at.tops);
       });
       if (viewport.width === 1440) {
+        const box = await p.evaluate(() => JSON.stringify(document.querySelector(".hero > .seats li:nth-child(2) .seats__art").getBoundingClientRect()));
         await p.hover(".hero > .seats li:nth-child(2)");
-        await p.waitForTimeout(450);
-        const lift = await p.evaluate(() => { const a = getComputedStyle(document.querySelector(".hero > .seats li:nth-child(2) .seats__art")); return [a.translate, a.boxShadow !== "none"]; });
-        await check(`${engine} 1440x900: hovering a child seat lifts its gold medallion 3px with a soft shadow`, () => assert.deepEqual(lift, ["0px -3px", true]));
+        await p.waitForTimeout(120);
+        const spark = await p.evaluate(() => { const li = document.querySelector(".hero > .seats li:nth-child(2)"), a = li.querySelector(".seats__art"), s = getComputedStyle(a); return [[...new Set(li.getAnimations({ subtree: true }).map((x) => x.animationName))].sort(), s.translate, s.boxShadow, JSON.stringify(a.getBoundingClientRect())]; });
+        await check(`${engine} 1440x900: hovering a child seat makes it sparkle, its icon glows and a star twinkles on the ring, and the medallion does not move`, () => assert.deepEqual(spark, [["seat-glow", "seat-star"], "none", "none", box]));
       }
       await ctx.close();
     }
@@ -554,6 +555,14 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
         assert.equal(at.rv, "0");
         assert.deepEqual(printed.op, ["1", "1", "1", "1", "1"]);
       });
+      await ctx.close();
+    }
+    {
+      const { ctx, p } = await open({ viewport: { width: 1440, height: 900 }, forcedColors: "active" });
+      await p.evaluate(() => document.querySelector(".hero > .seats > .seats__list").scrollIntoView({ block: "center" }));
+      await p.waitForTimeout(300);
+      const fc = await p.evaluate(SEATS);
+      await check(`${engine} with forced colors: the child seats show at once and never animate`, () => assert.deepEqual([fc.op, fc.anims], [["1", "1", "1", "1", "1"], []]));
       await ctx.close();
     }
     for (const [name, o] of [["with reduced motion", { viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" }], ["without javascript", { viewport: { width: 1440, height: 900 }, javaScriptEnabled: false }], ["with the seats on screen at load", { viewport: { width: 1024, height: 1366 } }]]) {
