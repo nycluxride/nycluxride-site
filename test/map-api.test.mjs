@@ -7,6 +7,7 @@ import { classifyPlace } from "../api/_places.mjs";
 import { googleUp, reverseGeocode, mapJs } from "../api/_google.mjs";
 import { signTicket, verifyTicket, readRoute, TICKET, TICKET_TTL } from "../api/_ticket.mjs";
 import { readInput, resolveTrip, priceDistance } from "../api/_trip.mjs";
+import { REASONS } from "../api/_copy.mjs";
 
 const SITE = "https://www.nycluxride.com";
 const SERVER_KEY = "test-server-key-SENTINEL";
@@ -113,7 +114,7 @@ await test("U1 probe: the mock map script only under GOOGLE_MOCK and MAP_MOCK, t
   assert.equal(mapJs().src, "/__maps-mock-missing.js?callback=nlrMap");
 });
 
-await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket for that label, JFK Terminal 4 gives jfk, water gives none, a spot outside the New York area gives far with no lookup, bad input gives 400, the 21st call in a minute gives 429", async () => {
+await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket for that label, JFK Terminal 4 gives jfk, water gives none, a spot anywhere in the United States is looked up, Boston gives its street address, a spot outside the United States gives far with no lookup and a place Google puts in Canada gives far, bad input gives 400, the 21st call in a minute gives 429", async () => {
   mock();
   const a = await places({ action: "here", ...BEDFORD });
   assert.equal(a.status, 200);
@@ -123,11 +124,15 @@ await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket 
   const j = await places({ action: "here", lat: 40.6442, lng: -73.7826 });
   assert.deepEqual([j.body.kind, j.body.zone, j.body.airport, j.body.area], ["ok", "jfk", true, "JFK"]);
   assert.deepEqual((await places({ action: "here", lat: 40.68, lng: -74.04 })).body, { kind: "none" });
-  for (const far of [{ lat: 30, lng: -73.9 }, { lat: 40.7, lng: -80 }, { lat: 42.3601, lng: -71.0589 }, { lat: 43.0962, lng: -79.0377 }, { lat: 42.1001, lng: -73.9 }, { lat: 39.4999, lng: -74.5 }, { lat: 40.7, lng: -75.6001 }, { lat: 40.7, lng: -71.6999 }, { lat: -33.9, lng: 151.2 }]) {
+  for (const far of [{ lat: 30, lng: -60 }, { lat: 51.5072, lng: -0.1276 }, { lat: 19.4326, lng: -99.1332 }, { lat: -33.9, lng: 151.2 }, { lat: 49.51, lng: -100 }, { lat: 24.29, lng: -81.8 }, { lat: 40.7, lng: -66.79 }, { lat: 40.7, lng: -125.01 }, { lat: 60, lng: -120 }, { lat: 10, lng: -150 }]) {
     const r = await places({ action: "here", ...far }, { from: "10.9.9.8" });
     assert.deepEqual([r.status, r.body], [200, { kind: "far" }], JSON.stringify(far));
   }
-  for (const edge of [{ lat: 42.1, lng: -73.9 }, { lat: 39.5, lng: -74.5 }, { lat: 40.7, lng: -75.6 }, { lat: 40.7, lng: -71.7 }]) assert.notEqual((await places({ action: "here", ...edge })).body.kind, "far", JSON.stringify(edge));
+  const boston = await places({ action: "here", lat: 42.3601, lng: -71.0589 });
+  assert.deepEqual([boston.body.kind, boston.body.label, boston.body.zone, boston.body.area, boston.body.airport], ["ok", "4 S Market St, Boston, MA 02109", "outside", "Outside New York City", false]);
+  assert.deepEqual(verifyTicket(boston.body.ticket, boston.body.label, Date.now()), { id: "mock-faneuil", zone: "outside", expired: false });
+  assert.deepEqual((await places({ action: "here", lat: 43.642566, lng: -79.387057 })).body, { kind: "far" }, "the CN Tower spot is inside the box, and Google puts it in Canada");
+  for (const spot of [{ lat: 43.0962, lng: -79.0377 }, { lat: 42.1001, lng: -73.9 }, { lat: 39.4999, lng: -74.5 }, { lat: 40.7, lng: -75.6001 }, { lat: 40.7, lng: -71.6999 }, { lat: 30, lng: -73.9 }, { lat: 61.2, lng: -149.9 }, { lat: 21.3, lng: -157.85 }, { lat: 18.45, lng: -66.1 }]) assert.deepEqual((await places({ action: "here", ...spot }, { from: "10.9.9.7" })).body, { kind: "none" }, JSON.stringify(spot));
   for (const bad of [{ lat: "40.7", lng: -73.9 }, { lat: 40.7 }, { lat: null, lng: -73.9 }, {}, { lat: 91, lng: -73.9 }, { lat: 40.7, lng: -181 }, { lat: 40.7, lng: "x" }, { lat: Infinity, lng: -73.9 }]) {
     const r = await places({ action: "here", ...bad });
     assert.deepEqual([r.status, r.body], [400, { kind: "error", code: "bad" }], JSON.stringify(bad));
@@ -154,7 +159,7 @@ await test("U3 classifyPlace reads Geocoding v4 results like Place Details: airp
   assert.equal(classifyPlace(v4("1 Washington St, Hoboken, NJ 07030, USA", [...nj, county("Hudson County"), zip("07030")]), "1 Washington St, Hoboken, NJ 07030"), "outside");
 });
 
-await test("U4 here with Google: the v4 reverse request, the key in the header, the exact field mask, premise before route, intersection last, plus code never, errors set the down window", async () => {
+await test("U4 here with Google: the v4 reverse request, the key in the header, the exact field mask, premise before route, intersection last, plus code never, a spot outside the United States sends no request, a result in Canada gives far, errors set the down window", async () => {
   live();
   const result = (types, formattedAddress, placeId) => ({ ...v4(formattedAddress, [state("NY", "New York"), county("Kings County"), zip("11211")], types, placeId) });
   reply = answer(200, { results: [result(["route"], "Bedford Ave, Brooklyn, NY 11211, USA", "ChIJroute"), result(["premise"], "277 Bedford Ave, Brooklyn, NY 11211, USA", "ChIJpremise"), result(["plus_code"], "PX7Q+P8 Brooklyn, NY, USA", "ChIJplus")] });
@@ -166,8 +171,14 @@ await test("U4 here with Google: the v4 reverse request, the key in the header, 
   assert.ok(calls[0].init.signal instanceof AbortSignal);
   assert.deepEqual([a.body.kind, a.body.label, verifyTicket(a.body.ticket, a.body.label, Date.now()).id], ["ok", "277 Bedford Ave, Brooklyn, NY 11211", "ChIJpremise"]);
   assert.ok(!JSON.stringify(a.body).includes(SERVER_KEY));
-  assert.deepEqual((await places({ action: "here", lat: 42.3601, lng: -71.0589 })).body, { kind: "far" });
-  assert.equal(calls.length, 1, "a spot outside the New York area sends no Geocoding request");
+  assert.deepEqual((await places({ action: "here", lat: 51.5072, lng: -0.1276 })).body, { kind: "far" });
+  assert.equal(calls.length, 1, "a spot outside the United States sends no Geocoding request");
+  reply = answer(200, { results: [v4("1 Beacon St, Boston, MA 02108, USA", [state("MA", "Massachusetts"), county("Suffolk County"), zip("02108")], ["premise"], "ChIJboston")] });
+  const boston = await places({ action: "here", lat: 42.3585, lng: -71.0618 });
+  assert.deepEqual([boston.body.kind, boston.body.label, boston.body.zone, calls.length], ["ok", "1 Beacon St, Boston, MA 02108", "outside", 2]);
+  assert.equal(calls[1].url, "https://geocode.googleapis.com/v4/geocode/location/42.3585,-71.0618?languageCode=en&regionCode=us");
+  reply = answer(200, { results: [v4("290 Bremner Blvd, Toronto, ON M5V 3L9, Canada", [state("ON", "Ontario"), zip("M5V 3L9"), part(["country", "political"], "Canada", "CA")], ["premise"], "ChIJcn")] });
+  assert.deepEqual([(await places({ action: "here", lat: 43.642566, lng: -79.387057 })).body, calls.length], [{ kind: "far" }, 3]);
   reply = answer(200, { results: [result(["route"], "Bedford Ave, Brooklyn, NY 11211, USA", "ChIJroute"), result(["intersection"], "Bedford Ave & N 6th St, Brooklyn, NY 11211, USA", "ChIJcross"), result(["neighborhood", "political"], "Williamsburg, Brooklyn, NY, USA", "ChIJhood")] });
   const b = await places({ action: "here", ...BEDFORD });
   assert.deepEqual([b.body.kind, b.body.label], ["ok", "Bedford Ave & N 6th St, Brooklyn, NY 11211"]);
@@ -326,7 +337,7 @@ await test("U11 while the interactive map is off, here and locate answer off and
   assert.equal(calls.length, 1);
 });
 
-await test("U12 a typed New York City name is drawn and priced on one route, the options price reuses its token with no Routes call, and an area pick drawn on the map gets no distance price from its token", async () => {
+await test("U12 a typed New York City name is drawn and priced on one route, the options price reuses its token with no Routes call, an area pick drawn on the map gets no distance price from its token, as a pickup it asks for the pickup street address, offering the map only to a request sent from a page with the map, and a town drop-off drawn on the map is priced from its token and as a round trip asks for the return pickup", async () => {
   mock();
   const r = await route({ from: { text: "Civic Center" }, to: { text: BEDFORD_LABEL }, stops: [], date: DATE, time: "14:30", draw: 1 });
   assert.deepEqual([r.body.kind, typeof r.body.route], ["ok", "string"]);
@@ -342,8 +353,26 @@ await test("U12 a typed New York City name is drawn and priced on one route, the
   const area = signTicket("ChIJmanhattan", "manhattan", label, Date.now(), true);
   const drawn = await route({ from: { ticket: area }, to: { text: BEDFORD_LABEL }, stops: [], date: DATE, time: "14:30", draw: 1 });
   assert.deepEqual([drawn.body.kind, typeof drawn.body.route], ["ok", "string"]);
-  const q = await book(fields({ from_text: label, from_ticket: area, route: drawn.body.route }));
-  assert.deepEqual([q.body.kind, q.body.reason, q.body.classes.every((c) => c.total_cents === null && c.reason === "street-address"), "route" in q.body], ["quote", "street-address", true, false]);
+  const q = await book(fields({ from_text: label, from_ticket: area, route: drawn.body.route, draw: "1" }));
+  assert.deepEqual([q.body.kind, q.body.reason, q.body.classes.every((c) => c.total_cents === null && c.reason === "pickup-address"), "route" in q.body, q.body.text], ["quote", "pickup-address", true, false, "Add the pickup street address, or choose the spot on the map, to see the price."]);
+  const plain = await book(fields({ from_text: label, from_ticket: area, route: drawn.body.route }));
+  assert.deepEqual([plain.body.reason, plain.body.text], ["pickup-address", REASONS["pickup-address"].text], "a page whose map failed gets no map text");
+  const dropped = await route({ from: { text: BEDFORD_LABEL }, to: { ticket: area }, stops: [], date: DATE, time: "14:30", draw: 1 });
+  const d = await book(fields({ from_text: BEDFORD_LABEL, to_text: label, to_ticket: area, route: dropped.body.route }));
+  assert.deepEqual([d.body.kind, d.body.reason, d.body.classes.every((c) => c.total_cents === null && c.reason === "street-address"), "route" in d.body], ["quote", "street-address", true, false]);
+  const city = "Hoboken, NJ, USA";
+  const town = signTicket("mock-hoboken", "outside", city, Date.now(), 2);
+  const there = await route({ from: { text: BEDFORD_LABEL }, to: { ticket: town }, stops: [], date: DATE, time: "14:30", draw: 1 });
+  assert.deepEqual([there.body.kind, typeof there.body.route], ["ok", "string"]);
+  const t = await book(fields({ from_text: BEDFORD_LABEL, to_text: city, to_ticket: town, route: there.body.route }));
+  assert.deepEqual([t.body.kind, t.body.service, t.body.reason, t.body.ride.minutes, t.body.ride.miles], ["options", "distance", "", there.body.minutes, there.body.miles]);
+  for (const [draw, text] of [["1", REASONS["return-address"].map], ["", REASONS["return-address"].text]]) {
+    const back = await book(fields({ from_text: BEDFORD_LABEL, to_text: city, to_ticket: town, return: "1", return_date: RDATE, return_time: "18:00", ...(draw && { draw }) }));
+    assert.deepEqual([back.body.kind, back.body.reason, back.body.text], ["quote", "return-address", text], draw ? "drawn" : "not drawn");
+  }
+  const from = await route({ from: { ticket: town }, to: { text: BEDFORD_LABEL }, stops: [], date: DATE, time: "14:30", draw: 1 });
+  const f = await book(fields({ from_text: city, from_ticket: town, route: from.body.route }));
+  assert.deepEqual([f.body.kind, f.body.reason, "route" in f.body], ["quote", "pickup-address", false]);
 });
 
 if (failures) {

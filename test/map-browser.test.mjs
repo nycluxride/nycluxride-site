@@ -11,6 +11,7 @@ const api = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
 const { priceDistance } = await api("_trip.mjs");
 const { readRoute } = await api("_ticket.mjs");
 const { AIRPORT_TOTALS } = await api("_rates.mjs");
+const { REASONS } = await api("_copy.mjs");
 
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET", "FLIGHT_API_KEY", "PLACE_TICKET_SECRET", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT"];
 const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + days * 864e5));
@@ -911,7 +912,7 @@ const inked = (page) => page.waitForFunction(() => window.__gmock && __gmock.lin
 const panelOf = (page) => page.evaluate(() => { const m = document.getElementById("bk-mp"); return !m || !m.isConnected ? "none" : m.hidden ? "hidden" : "shown"; });
 const setTrip = (page, names, values) => page.evaluate(([n, v]) => { const f = document.getElementById("book-form").elements; n.forEach((k, i) => { f[k].value = v[i]; f[k].dispatchEvent(new Event("change", { bubbles: true })); }); }, [names, values]);
 
-await check("M28 keyboard pick while the map loads: the list keeps the highlighted row when the map adds Choose on the map, and Enter picks that row", async () => {
+await check("M28 keyboard pick while the map loads: the empty pickup list starts with Use my current location, keeps the highlighted row when the map adds Choose on the map, and Enter picks that row", async () => {
   const ctx = await context(M);
   await ctx.route((u) => u.pathname === "/__maps-mock.js", async (r) => {
     await new Promise((z) => setTimeout(z, 2000));
@@ -919,7 +920,9 @@ await check("M28 keyboard pick while the map loads: the list keeps the highlight
   });
   const p = await open(ctx, M, "/book");
   await p.focus("#bk-from");
-  await p.waitForFunction(() => !document.getElementById("bk-from-pop").hidden && document.querySelectorAll("#bk-from-list [role=option]").length === 4);
+  await p.waitForFunction(() => !document.getElementById("bk-from-pop").hidden && document.querySelectorAll("#bk-from-list [role=option]").length === 5);
+  assert.deepEqual(await p.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => [x.id, x.dataset.kind])), [["bk-from-o0", "here"], ["bk-from-o1", "local"], ["bk-from-o2", "local"], ["bk-from-o3", "local"], ["bk-from-o4", "local"]]);
+  await p.keyboard.press("ArrowDown");
   await p.keyboard.press("ArrowDown");
   await p.keyboard.press("ArrowDown");
   const lit = () => p.evaluate(() => { const i = document.getElementById("bk-from").getAttribute("aria-activedescendant"); return i && document.getElementById(i).textContent; });
@@ -928,7 +931,7 @@ await check("M28 keyboard pick while the map loads: the list keeps the highlight
   assert.equal(await p.evaluate(() => document.getElementById("book-form").classList.contains("bk--live")), false, "the map is still loading");
   await live(p);
   await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
-  assert.deepEqual(await p.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => x.dataset.kind)), ["local", "local", "local", "local", "map"]);
+  assert.deepEqual(await p.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => x.dataset.kind)), ["here", "local", "local", "local", "local", "map"]);
   assert.equal(await lit(), before);
   await p.keyboard.press("Enter");
   assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-from-id")], ["LaGuardia (LGA)", "lga"]);
@@ -1405,7 +1408,7 @@ for (const phone of [false, true]) {
   });
 }
 
-await check("M46 when the map fails, Choose on the map leaves the open list and the other rows stay", async () => {
+await check("M46 when the map fails, Choose on the map leaves the open list and the other rows stay, Use my current location first", async () => {
   const ctx = await context(M);
   const p = await open(ctx, M, "/book");
   await p.click("#bk-from");
@@ -1414,7 +1417,7 @@ await check("M46 when the map fails, Choose on the map leaves the open list and 
   await p.evaluate(() => window.gm_authFailure());
   await settle(p, 300);
   const rows = await p.evaluate(() => [document.getElementById("bk-from-pop").hidden, [...document.querySelectorAll("#bk-from-list [role=option]")].map((o) => o.dataset.kind)]);
-  assert.deepEqual(rows, [false, ["local", "local", "local", "local"]]);
+  assert.deepEqual(rows, [false, ["here", "local", "local", "local", "local"]]);
   await p.keyboard.press("ArrowUp");
   await p.keyboard.press("Enter");
   assert.deepEqual([await p.inputValue("#bk-from-id"), await p.evaluate(() => document.activeElement.id)], ["teb", "bk-to"]);
@@ -1460,9 +1463,11 @@ for (const phone of [true, false]) {
   });
 }
 
-const FAR = "Choose on the map works around New York City. Type the address for a place farther away.";
+const FAR = "Choose on the map works in the United States. Type the address for a place outside it.";
 const BOSTON = [42.3601, -71.0589];
-await check("M48 1440 desktop: a click on the map outside the New York area, here Boston, says that Choose on the map works around New York City and to type the address after one here request, keeps Use this drop-off off, and a click back in New York City finds the address", async () => {
+const ATLANTIC = [38.5, -60];
+const BOSTON_LABEL = "4 S Market St, Boston, MA 02109";
+await check("M48 1440 desktop: a click on the map in Boston, outside New York City, looks up the street address there and Use this drop-off fills the field with a ticket, while a click outside the United States says that Choose on the map works in the United States and to type the address, with no lookup, and Use this drop-off stays off", async () => {
   const ctx = await context(M);
   const p = await open(ctx, M, "/book");
   await start(p);
@@ -1471,25 +1476,30 @@ await check("M48 1440 desktop: a click on the map outside the New York area, her
   await type(p, "to", "bedf");
   await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
   await p.locator("#bk-to-list [data-kind=map]").click();
+  await frame(p, ATLANTIC[0], ATLANTIC[1], 8);
+  const sea = await px(p, ATLANTIC);
+  await p.mouse.click(sea.x, sea.y);
+  await addressIs(p, new RegExp(FAR.replace(/\./g, "\\.")));
+  const b0 = await bar(p);
+  assert.deepEqual([b0.hidden, b0.label, b0.text, b0.use, b0.off], [false, "Choose the drop-off", FAR, "Use this drop-off", "true"]);
+  const here = () => ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here");
+  assert.equal(here().length, 1);
   await frame(p, BOSTON[0], BOSTON[1], 12);
   const center = await p.evaluate(() => __gmock.map.getCenter().toJSON());
   assert.ok(Math.abs(center.lat - BOSTON[0]) < 0.01 && Math.abs(center.lng - BOSTON[1]) < 0.01, `the map can show Boston while choosing, ${JSON.stringify(center)}`);
   const at = await px(p, BOSTON);
   await p.mouse.click(at.x, at.y);
-  await addressIs(p, new RegExp(FAR.replace(/\./g, "\\.")));
-  const b0 = await bar(p);
-  assert.deepEqual([b0.hidden, b0.label, b0.text, b0.use, b0.off], [false, "Choose the drop-off", FAR, "Use this drop-off", "true"]);
-  const here = ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here");
-  assert.equal(here.length, 1);
-  await frame(p, 40.728, -73.975, 12);
-  const bed = await px(p, BEDFORD);
-  await p.mouse.click(bed.x, bed.y);
-  await addressIs(p, /277 Bedford Ave/);
-  assert.equal((await bar(p)).off, null);
+  await addressIs(p, /4 S Market St, Boston, MA 02109/);
+  const b1 = await bar(p);
+  assert.deepEqual([b1.text, b1.use, b1.off, here().length], [`${BOSTON_LABEL} Outside New York City`, "Use this drop-off", null, 2]);
+  await p.click(".bk-mc .bk-mc__u");
+  await p.waitForFunction((l) => document.getElementById("bk-to").value === l, BOSTON_LABEL);
+  assert.match(await p.inputValue("#bk-to-ticket"), /^v1\./);
+  assert.equal((await bar(p)).hidden, true);
   assert.deepEqual(p.errors, []);
   await ctx.close();
 });
-await check("M48 390 phone: a tap on the map sheet outside the New York area says that Choose on the map works around New York City and to type the address, and Use this drop-off stays off", async () => {
+await check("M48 390 phone: a tap on the map sheet in Boston looks up the street address there, and a tap outside the United States says that Choose on the map works in the United States and to type the address, and Use this drop-off stays off", async () => {
   const ctx = await context(M, PHONE);
   const p = await open(ctx, M, "/book");
   await start(p);
@@ -1499,11 +1509,605 @@ await check("M48 390 phone: a tap on the map sheet outside the New York area say
   await p.waitForFunction(() => document.querySelector("#bk-to-list [data-kind=map]"));
   await p.locator("#bk-to-list [data-kind=map]").click();
   await p.waitForFunction(() => document.querySelector(".bk-mapd").open);
-  await p.evaluate(([a, b2]) => (__gmock.map.setZoom(12), __gmock.map.setCenter({ lat: a, lng: b2 })), BOSTON);
-  const t = await px(p, BOSTON);
+  await p.evaluate(([a, b2]) => (__gmock.map.setZoom(8), __gmock.map.setCenter({ lat: a, lng: b2 })), ATLANTIC);
+  const t = await px(p, ATLANTIC);
   await p.touchscreen.tap(t.x, t.y);
   await addressIs(p, new RegExp(FAR.replace(/\./g, "\\.")), ".bk-mapd .bk-mc__a");
   assert.equal(await p.getAttribute(".bk-mapd .bk-mc__u", "aria-disabled"), "true");
+  await p.evaluate(([a, b2]) => (__gmock.map.setZoom(12), __gmock.map.setCenter({ lat: a, lng: b2 })), BOSTON);
+  const u = await px(p, BOSTON);
+  await p.touchscreen.tap(u.x, u.y);
+  await addressIs(p, /4 S Market St, Boston, MA 02109/, ".bk-mapd .bk-mc__a");
+  assert.equal(await p.getAttribute(".bk-mapd .bk-mc__u", "aria-disabled"), null);
+  await p.locator(".bk-mapd .bk-mc__u").tap();
+  await p.waitForFunction((l) => document.getElementById("bk-to").value === l && !document.querySelector(".bk-mapd").open, BOSTON_LABEL);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+const HOBOKEN = [40.743991, -74.032363];
+const GARDEN = [40.744712, -74.031862];
+const GARDEN_LABEL = "300 Garden St, Hoboken, NJ 07030";
+const CONFIRM = "Move the pin to the exact pickup spot";
+const chooser = (page, phone) => page.evaluate((ph) => {
+  const root = ph ? document.querySelector(".bk-mapd") : document.querySelector(".bk-mc"), cap = document.querySelector(".bk-mp__c"), u = root.querySelector(".bk-mc__u"), a = document.activeElement;
+  return { open: ph ? root.open : !root.hidden, name: ph ? document.getElementById(root.getAttribute("aria-labelledby")).textContent : root.getAttribute("aria-label"), caption: ph ? "" : cap.hidden ? null : cap.textContent, use: u.textContent, off: u.getAttribute("aria-disabled"), address: root.querySelector(".bk-mc__a").textContent, live: root.querySelector(".bk-mc__a").getAttribute("aria-live"), focus: a.getAttribute("role") || a.tagName, hint: (a.getAttribute("aria-describedby") || "").split(" ").includes("bk-mc-k"), center: __gmock.map.getCenter().toJSON(), zoom: __gmock.map.getZoom() };
+}, phone);
+const at = (a, [lat, lng], d = 1e-4) => Math.abs(a.lat - lat) < d && Math.abs(a.lng - lng) < d;
+const KEYS_HINT = "Move the map with the arrow keys and press Enter to put the pin in the middle.";
+const described = (page) => page.evaluate(() => { const g = document.querySelector("#bk-live [role=region]"); return (g.getAttribute("aria-describedby") || "").split(" ").filter(Boolean).map((id) => document.getElementById(id).textContent); });
+for (const [name, b] of ENGINES) {
+  for (const phone of name === "chromium" ? [false, true] : [true]) {
+    await check(`M49 ${name} ${phone ? "390 phone" : "1440 desktop"}: a picked city as the pickup opens Choose on the map at once, centered on the city with the pin in the middle, the caption Move the pin to the exact pickup spot and Use this pickup, the street address there is looked up, one tap uses it and the trip is priced, with focus and screen reader text right and nothing moving`, async () => {
+      const ctx = await context(M, phone ? { ...PHONE, engine: name } : {}, b);
+      const p = await open(ctx, M, "/book");
+      await start(p);
+      await type(p, "from", "hoboken");
+      await p.waitForSelector("#bk-from-list [data-kind=google]");
+      const pick = p.locator("#bk-from-list [data-kind=google]").first();
+      phone ? await pick.tap() : await pick.click();
+      await p.waitForFunction((ph) => (ph ? document.querySelector(".bk-mapd").open : !document.querySelector(".bk-mc").hidden), phone);
+      const first = await chooser(p, phone);
+      assert.deepEqual([first.open, first.name, first.caption, first.use, first.live], [true, CONFIRM, phone ? "" : `${CONFIRM}.`, "Use this pickup", "polite"]);
+      assert.deepEqual(phone ? [first.focus] : [first.focus, first.hint], phone ? ["H2"] : ["region", true]);
+      if (!phone) assert.deepEqual(await described(p), [`${CONFIRM}.`, KEYS_HINT], "the map region that takes focus says why");
+      await addressIs(p, /300 Garden St, Hoboken, NJ 07030/, phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a");
+      const ready = await chooser(p, phone);
+      assert.deepEqual([ready.address, ready.off, ready.zoom, at(ready.center, HOBOKEN)], [`${GARDEN_LABEL} Outside New York City`, null, 16, true], JSON.stringify(ready));
+      const pin = (await pins(p)).find((x) => /bk-pin--c/.test(x.c));
+      assert.ok(pin && !pin.hidden && near(pin, GARDEN), JSON.stringify(await pins(p)));
+      const here = ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here");
+      assert.deepEqual(here.map((x) => [JSON.parse(x.body).lat, JSON.parse(x.body).lng]), [HOBOKEN], "the lookup is at the city's center");
+      const use = p.locator(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+      phone ? await use.tap() : await use.click();
+      await p.waitForFunction((l) => document.getElementById("bk-from").value === l, GARDEN_LABEL);
+      assert.deepEqual([await p.inputValue("#bk-from-ticket").then((t) => t.slice(0, 3)), await p.textContent("#bk-status"), (await chooser(p, phone)).open], ["v1.", `Pickup set to ${GARDEN_LABEL}.`, false]);
+      assert.ok(!(await described(p)).includes(`${CONFIRM}.`), "the reason leaves the map region with the chooser");
+      await place(p, "to", ...BEDFORD_ROW);
+      await ticket(p, "to");
+      await view(p);
+      assert.equal(await p.isVisible("#q-pickup-address"), false);
+      const cards = await p.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent));
+      assert.ok(cards.slice(0, 4).every((c) => /^\$\d/.test(c)), cards.join(" | "));
+      const options = JSON.parse(ctx.api.filter((x) => x.path === "book").map((x) => x.body).find((x) => JSON.parse(x).action === "options"));
+      assert.equal(options.from_text, GARDEN_LABEL);
+      const [value, shifts] = await cls(p);
+      assert.equal(value, 0, shifts.join(" | "));
+      assert.deepEqual(p.errors, []);
+      await ctx.close();
+    });
+  }
+}
+
+await check("M50 a picked neighborhood or borough as the pickup also asks to confirm the pin, Cancel keeps the pick and goes back to the field, a hotel and an airport do not ask, a picked city drop-off on a one way trip opens nothing, and on a round trip a picked city drop-off asks for the exact return pickup", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  for (const [text, label, address] of [["williamsburg", "Williamsburg", /277 Bedford Ave, Brooklyn, NY 11211/], ["the bronx", "The Bronx", /2344 Arthur Ave, Bronx, NY 10458/]]) {
+    await type(p, "from", text);
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.locator("#bk-from-list [data-kind=google]").first().click();
+    await addressIs(p, address);
+    const c = await chooser(p, false);
+    assert.deepEqual([c.open, c.name, c.caption, c.use], [true, CONFIRM, `${CONFIRM}.`, "Use this pickup"], label);
+    await p.click(".bk-mc .bk-mc__c");
+    assert.deepEqual([(await chooser(p, false)).open, await p.inputValue("#bk-from"), await p.evaluate(() => document.activeElement.id)], [false, `${label}, ${label === "Williamsburg" ? "Brooklyn, NY" : "Bronx, NY"}`, "bk-from"], label);
+  }
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  assert.equal((await chooser(p, false)).open, false, "a hotel is an exact spot");
+  await place(p, "from", ...JFK_ROW);
+  assert.equal((await chooser(p, false)).open, false, "an airport is an exact spot");
+  await type(p, "to", "hoboken");
+  await p.waitForSelector("#bk-to-list [data-kind=google]");
+  await p.locator("#bk-to-list [data-kind=google]").first().click();
+  await ticket(p, "to");
+  await settle(p, 300);
+  assert.equal((await chooser(p, false)).open, false, "a city drop-off on a one way trip needs no exact spot");
+  await p.click("#bk-addret");
+  await type(p, "to", "hoboken");
+  await p.waitForSelector("#bk-to-list [data-kind=google]");
+  await p.locator("#bk-to-list [data-kind=google]").first().click();
+  await addressIs(p, /300 Garden St, Hoboken, NJ 07030/);
+  const r = await chooser(p, false);
+  assert.deepEqual([r.open, r.name, r.caption, r.use], [true, "Move the pin to the exact return pickup spot", "Move the pin to the exact return pickup spot.", "Use this drop-off"]);
+  await p.click(".bk-mc .bk-mc__u");
+  await p.waitForFunction((l) => document.getElementById("bk-to").value === l, GARDEN_LABEL);
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+const BEDFORD_LABEL = "277 Bedford Ave, Brooklyn, NY 11211";
+const LOCATED = { geolocation: { latitude: BEDFORD[0], longitude: BEDFORD[1] }, permissions: ["geolocation"] };
+const geoRows = (page) => page.$$eval("#bk-from-list [role=option]", (o) => o.map((x) => [x.dataset.kind, x.textContent]));
+const GEO_SPY = () => {
+  window.__geo = [];
+  const g = navigator.geolocation;
+  if (!g) return;
+  for (const name of ["getCurrentPosition", "watchPosition"]) {
+    const real = g[name].bind(g);
+    g[name] = (ok, fail, options) => (window.__geo.push([name, options]), real(ok, fail, options));
+  }
+};
+for (const phone of [false, true]) {
+  await check(`M51 ${phone ? "390 phone" : "1440 desktop"} current location, permission granted: Use my current location is the first row of the empty pickup list, the browser asks for the position only after the tap, once and for a precise fix, the position turns into its street address with a ticket and moves on, the map shows the pickup pin, and nothing moves`, async () => {
+    const ctx = await context(M, { ...(phone ? PHONE : {}), ...LOCATED });
+    await ctx.addInitScript(GEO_SPY);
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+    assert.deepEqual(await p.evaluate(() => window.__geo), [], "no position is asked for before the tap");
+    const rows = await geoRows(p);
+    assert.deepEqual(rows[0], ["here", "Use my current location"]);
+    assert.equal(await p.getAttribute("#bk-from-list [data-kind=here]", "id"), "bk-from-o0");
+    assert.equal(await p.evaluate(() => document.querySelector("#bk-from-list [data-kind=here]").closest("[role=group]").getAttribute("aria-label")), "Your location");
+    const row = p.locator("#bk-from-list [data-kind=here]");
+    phone ? await row.tap() : await row.click();
+    await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+    assert.deepEqual(await p.evaluate(() => window.__geo), [["getCurrentPosition", { timeout: 10000, enableHighAccuracy: true }]]);
+    assert.deepEqual([await p.inputValue("#bk-from-ticket").then((t) => t.slice(0, 3)), await p.textContent("#bk-status"), await p.evaluate(() => document.activeElement.id)], ["v1.", `Pickup set to ${BEDFORD_LABEL}.`, "bk-to"]);
+    const here = ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here").map((x) => JSON.parse(x.body));
+    assert.deepEqual(here.map((x) => [x.lat, x.lng]), [BEDFORD]);
+    await p.waitForFunction(() => __gmock.overlays().some((o) => /bk-pin--a/.test(o.className) && !o.hidden));
+    assert.ok(near((await pins(p)).find((x) => x.c === "bk-pin--a"), BEDFORD), JSON.stringify(await pins(p)));
+    assert.equal(ctx.api.filter((x) => x.path === "places" && /"locate"/.test(x.body)).length, 0, "the position needs no second lookup for its pin");
+    await place(p, "to", ...EDITION_ROW);
+    await ticket(p, "to");
+    await view(p);
+    assert.equal(await p.isVisible("#q-pickup-address"), false);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M52 current location, permission denied, position unavailable, a timeout, a spot outside the United States, a browser with no geolocation: the row says what happened in the open list and the status, the pickup stays empty, and the row shows only in an empty pickup list", async () => {
+  const DENIED = "Location access is off. Type the address.";
+  const MISSED = "We couldn't find your location. Type the address.";
+  const cases = [
+    ["denied", {}, null, DENIED],
+    ["unavailable", LOCATED, () => (navigator.geolocation.getCurrentPosition = (ok, fail) => setTimeout(() => fail({ code: 2, message: "unavailable" }), 50)), MISSED],
+    ["timeout", LOCATED, () => (navigator.geolocation.getCurrentPosition = (ok, fail) => setTimeout(() => fail({ code: 3, message: "timeout" }), 50)), MISSED],
+    ["outside the United States", { geolocation: { latitude: 51.5072, longitude: -0.1276 }, permissions: ["geolocation"] }, null, "Your location is outside the United States. Type the address."],
+  ];
+  for (const [label, options, init, text] of cases) {
+    const ctx = await context(M, options);
+    if (init) await ctx.addInitScript(init);
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+    await p.locator("#bk-from-list [data-kind=here]").click();
+    await p.waitForFunction((t) => document.querySelector("#bk-from-list [data-kind=here] .bk-opt__main")?.textContent === t, text);
+    assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-from-ticket"), await p.textContent("#bk-status"), await p.isVisible("#bk-from-pop"), await p.evaluate(() => document.activeElement.id)], ["", "", text, true, "bk-from"], label);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, `${label} ${shifts.join(" | ")}`);
+    assert.deepEqual(p.errors, [], label);
+    await ctx.close();
+  }
+  const ctx = await context(M, LOCATED);
+  await ctx.addInitScript(() => delete Object.getPrototypeOf(navigator).geolocation);
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+  assert.equal(await p.$("#bk-from-list [data-kind=here]"), null, "no row without geolocation");
+  await ctx.close();
+  const qx = await context(M, LOCATED);
+  const q = await open(qx, M, "/book");
+  await start(q);
+  await q.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+  await q.keyboard.press("Enter");
+  const asked = () => qx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here").length;
+  assert.deepEqual([await q.inputValue("#bk-from-id"), asked()], ["jfk", 0], "Enter with no highlighted row picks the first airport as before and never asks for the location");
+  await type(q, "from", "bedf");
+  await q.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=google]"));
+  assert.equal(await q.$("#bk-from-list [data-kind=here]"), null, "typed text hides the row");
+  await place(q, "from", ...EDITION_ROW);
+  await q.click("#bk-to");
+  await q.waitForFunction(() => !document.getElementById("bk-to-pop").hidden);
+  assert.equal(await q.$("#bk-to-list [data-kind=here]"), null, "the drop-off list has no row");
+  await q.fill("#bk-from", "");
+  await q.click("#bk-from");
+  await q.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+  await q.keyboard.press("ArrowDown");
+  assert.equal(await q.evaluate(() => document.getElementById(document.getElementById("bk-from").getAttribute("aria-activedescendant")).dataset.kind), "here");
+  await q.keyboard.press("Enter");
+  await q.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+  assert.equal(asked(), 1);
+  assert.deepEqual(q.errors, []);
+  await qx.close();
+});
+
+const chooserOpen = (page, phone, open = true) => page.waitForFunction(([ph, o]) => (ph ? document.querySelector(".bk-mapd").open : !document.querySelector(".bk-mc").hidden) === o, [phone, open]);
+const priceShown = (page) => page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && !document.getElementById("bk-wait").textContent.startsWith("Finding") && /\d/.test(document.getElementById("bk-p-suv").textContent));
+for (const [phone, typedTo, path = "/book"] of [[false, true], [false, false], [true, true], [true, false], [false, false, "/"]]) {
+  await check(`M53 ${phone ? "390 phone" : "1440 desktop"}${path === "/" ? " on the home page" : ""} typed but not picked with the map, ${typedTo ? "both ends typed" : "a typed pickup and a picked drop-off"}: Book your ride uses the first suggestion of a typed city that clearly matches, the city pickup opens Choose on the map at once and the trip waits on the search step with no price request, and one tap on Use this pickup goes on to the prices with no second press, one options request and the picked labels in the trip summary`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, path);
+    const tap = (sel) => (phone ? p.locator(sel).tap() : p.click(sel));
+    await start(p);
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    if (typedTo) {
+      await type(p, "to", "277 Bedford");
+      await p.waitForSelector("#bk-to-list [data-kind=google]");
+      await p.keyboard.press("Escape");
+    } else {
+      await place(p, "to", ...BEDFORD_ROW);
+      await ticket(p, "to");
+    }
+    const options = () => ctx.api.filter((x) => x.path === "book").map((x) => JSON.parse(x.body)).filter((x) => x.action === "options");
+    await tap("#bk-view");
+    await chooserOpen(p, phone);
+    assert.deepEqual([await p.inputValue("#bk-from"), await p.inputValue("#bk-to"), await p.getAttribute("#book-form", "data-step"), (await chooser(p, phone)).name], ["Hoboken, NJ", "277 Bedford Avenue, Brooklyn, NY", "search", CONFIRM]);
+    await addressIs(p, /300 Garden St, Hoboken, NJ 07030/, phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a");
+    await ticket(p, "to");
+    assert.equal(options().length, 0, "no price request while the pin waits");
+    await tap(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    if (path !== "/book") await p.waitForURL(/\/book#options$/);
+    await priceShown(p);
+    assert.deepEqual([await p.inputValue("#bk-from"), (await p.inputValue("#bk-from-ticket")).slice(0, 3), await p.isVisible("#q-pickup-address"), path === "/book" && (await chooser(p, phone)).open, await p.evaluate(() => document.activeElement.id)], [GARDEN_LABEL, "v1.", false, false, "bk-opt-h"]);
+    assert.deepEqual(options().map((x) => [x.from_text, x.to_text, x.from_ticket.slice(0, 3), x.to_ticket.slice(0, 3)]), [[GARDEN_LABEL, "277 Bedford Avenue, Brooklyn, NY", "v1.", "v1."]], "one options request after the tap");
+    const cards = await p.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent));
+    assert.ok(cards.slice(0, 4).every((c) => /^\$\d/.test(c)), cards.join(" | "));
+    const chip = await p.textContent("#bk-sum .bk-chip");
+    assert.ok(chip.includes("300 Garden St") && chip.includes("277 Bedford Avenue"), chip);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+for (const phone of [false, true]) {
+  await check(`M54 ${phone ? "390 phone" : "1440 desktop"}: when the pin that Book your ride asked for is closed without a choice, the picked city stays, Book your ride then asks for the pickup street address with the map text alone in the quote, no price and the pickup line in the bar, and a later Choose on the map for the pickup moves on as before and waits for Book your ride to price the trip`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    const tap = (sel) => (phone ? p.locator(sel).tap() : p.click(sel));
+    const address = phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a";
+    const books = () => ctx.api.filter((x) => x.path === "book" && JSON.parse(x.body).action === "options").length;
+    await start(p);
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    await place(p, "to", ...EDITION_ROW);
+    await ticket(p, "to");
+    await tap("#bk-view");
+    await chooserOpen(p, phone);
+    await addressIs(p, /300 Garden St, Hoboken, NJ 07030/, address);
+    await tap(phone ? ".bk-mapd__x" : ".bk-mc .bk-mc__c");
+    await chooserOpen(p, phone, false);
+    await settle(p, 300);
+    assert.deepEqual([await p.inputValue("#bk-from"), (await p.inputValue("#bk-from-ticket")).slice(0, 3), await p.getAttribute("#book-form", "data-step"), books()], ["Hoboken, NJ", "v1.", "search", 0]);
+    await tap("#bk-view");
+    await p.waitForSelector("#q-pickup-address", { state: "visible" });
+    await settle(p, 600);
+    const shown = await p.evaluate(() => [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => [e.id, e.querySelector("p").textContent]));
+    assert.deepEqual([shown, await p.isHidden("#price"), await p.textContent("#bk-bar-q")], [[["q-pickup-address", REASONS["pickup-address"].map]], true, "Add the pickup street address to see the price"]);
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
+    await tap("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    const sent = books();
+    await type(p, "from", "hobo");
+    await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=map]"));
+    await tap("#bk-from-list [data-kind=map]");
+    await chooserOpen(p, phone);
+    assert.equal((await chooser(p, phone)).name, "Choose the pickup");
+    if (phone) await p.evaluate(([a, b]) => (__gmock.map.setZoom(16), __gmock.map.setCenter({ lat: a, lng: b })), GARDEN);
+    else await frame(p, GARDEN[0], GARDEN[1], 16);
+    const spot = await px(p, GARDEN);
+    phone ? await p.touchscreen.tap(spot.x, spot.y) : await p.mouse.click(spot.x, spot.y);
+    await addressIs(p, /300 Garden St, Hoboken, NJ 07030/, address);
+    await tap(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    await p.waitForFunction((l) => document.getElementById("bk-from").value === l, GARDEN_LABEL);
+    await settle(p, 600);
+    assert.deepEqual([await p.getAttribute("#book-form", "data-step"), books()], ["search", sent], "a map choice of its own waits for Book your ride");
+    await view(p);
+    assert.equal(await p.isVisible("#q-pickup-address"), false);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M55 a slow pick answer never moves a spot the customer already chose: the chooser says Finding the place… until the place is found, a click on the map sets the spot, and the late answer leaves the map, the pin and the address there", async () => {
+  const ctx = await context(M);
+  await ctx.route((u) => u.pathname === "/api/places", async (r) => {
+    const body = JSON.parse(r.request().postData() || "{}");
+    if (body.action === "pick" && body.id === "mock-hoboken") await new Promise((z) => setTimeout(z, 2500));
+    await r.continue();
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await type(p, "from", "hoboken");
+  await p.waitForSelector("#bk-from-list [data-kind=google]");
+  await p.locator("#bk-from-list [data-kind=google]").first().click();
+  await chooserOpen(p, false);
+  const wait = await chooser(p, false);
+  assert.deepEqual([wait.name, wait.address, wait.off], [CONFIRM, "Finding the place…", "true"]);
+  await frame(p, BEDFORD[0], BEDFORD[1], 16);
+  const spot = await px(p, BEDFORD);
+  await p.mouse.click(spot.x, spot.y);
+  await addressIs(p, /277 Bedford Ave, Brooklyn, NY 11211/);
+  await ticket(p, "from");
+  await settle(p, 400);
+  const after = await chooser(p, false);
+  assert.deepEqual([after.open, after.address, after.zoom, at(after.center, BEDFORD)], [true, `${BEDFORD_LABEL} Brooklyn`, 16, true], JSON.stringify(after));
+  assert.ok(near((await pins(p)).find((x) => /bk-pin--c/.test(x.c)), BEDFORD), JSON.stringify(await pins(p)));
+  await p.click(".bk-mc .bk-mc__u");
+  await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+const RETURN_PIN = "Move the pin to the exact return pickup spot";
+for (const phone of [false, true]) {
+  await check(`M56 ${phone ? "390 phone" : "1440 desktop"}: a round trip whose pickup and drop-off are both typed towns, Book your ride confirms the pickup pin and then the return pickup pin, and the price follows the second tap with one options request and both street addresses`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    const tap = (sel) => (phone ? p.locator(sel).tap() : p.click(sel));
+    const address = phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a";
+    const options = () => ctx.api.filter((x) => x.path === "book").map((x) => JSON.parse(x.body)).filter((x) => x.action === "options");
+    await start(p);
+    await type(p, "from", "hoboken");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    await type(p, "to", "williamsburg");
+    await p.waitForSelector("#bk-to-list [data-kind=google]");
+    await p.keyboard.press("Escape");
+    await tap("#bk-addret");
+    await setTrip(p, ["return_date", "return_time"], [RDATE, "18:00"]);
+    await tap("#bk-view");
+    await chooserOpen(p, phone);
+    assert.equal((await chooser(p, phone)).name, CONFIRM);
+    await addressIs(p, /300 Garden St, Hoboken, NJ 07030/, address);
+    await tap(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    await p.waitForFunction((l) => document.getElementById("bk-from").value === l, GARDEN_LABEL);
+    await chooserOpen(p, phone);
+    await addressIs(p, /277 Bedford Ave, Brooklyn, NY 11211/, address);
+    const second = await chooser(p, phone);
+    assert.deepEqual([second.name, second.use, second.zoom, await p.getAttribute("#book-form", "data-step"), options().length], [RETURN_PIN, "Use this drop-off", 16, "search", 0]);
+    await tap(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    await priceShown(p);
+    assert.deepEqual([await p.isVisible("#q-return-address"), await p.isVisible("#q-pickup-address"), (await chooser(p, phone)).open], [false, false, false]);
+    assert.deepEqual(options().map((x) => [x.from_text, x.to_text, x.from_ticket.slice(0, 3), x.to_ticket.slice(0, 3), x.return]), [[GARDEN_LABEL, BEDFORD_LABEL, "v1.", "v1.", "1"]], "one options request after the second tap");
+    const cards = await p.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent));
+    assert.ok(cards.slice(0, 4).every((c) => /^\$\d/.test(c)), cards.join(" | "));
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M57 an end that turns into one that must be exact after its pick: a picked city drop-off after Add the return trip, and a picked city drop-off swapped to the pickup, opens Choose on the map at Book your ride and one tap goes on to the prices, while Cancel there leaves the next Book your ride with the request", async () => {
+  const ctx = await context(M);
+  const city = async (page) => {
+    await type(page, "to", "hoboken");
+    await page.waitForSelector("#bk-to-list [data-kind=google]");
+    await page.locator("#bk-to-list [data-kind=google]").first().click();
+    await ticket(page, "to");
+    await settle(page, 300);
+    assert.equal((await chooser(page, false)).open, false, "a one way city drop-off needs no pin");
+  };
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await place(p, "from", ...EDITION_ROW);
+  await ticket(p, "from");
+  await city(p);
+  await p.click("#bk-addret");
+  await setTrip(p, ["return_date", "return_time"], [RDATE, "18:00"]);
+  await p.click("#bk-view");
+  await chooserOpen(p, false);
+  await addressIs(p, /300 Garden St, Hoboken, NJ 07030/);
+  const back = await chooser(p, false);
+  assert.deepEqual([back.name, back.caption, back.use, back.zoom, at(back.center, HOBOKEN), await p.getAttribute("#book-form", "data-step")], [RETURN_PIN, `${RETURN_PIN}.`, "Use this drop-off", 16, true, "search"]);
+  await p.click(".bk-mc .bk-mc__u");
+  await priceShown(p);
+  assert.deepEqual([await p.inputValue("#bk-to"), await p.isVisible("#q-return-address")], [GARDEN_LABEL, false]);
+  await ctx.close();
+  const qx = await context(M);
+  const q = await open(qx, M, "/book");
+  const books = () => qx.api.filter((x) => x.path === "book" && JSON.parse(x.body).action === "options").length;
+  await start(q);
+  await place(q, "from", ...EDITION_ROW);
+  await ticket(q, "from");
+  await city(q);
+  await q.click(".bk-swap");
+  await q.click("#bk-view");
+  await chooserOpen(q, false);
+  await addressIs(q, /300 Garden St, Hoboken, NJ 07030/);
+  assert.deepEqual([(await chooser(q, false)).name, await q.inputValue("#bk-from")], [CONFIRM, "Hoboken, NJ"]);
+  await q.click(".bk-mc .bk-mc__c");
+  await chooserOpen(q, false, false);
+  await settle(q, 300);
+  assert.deepEqual([await q.getAttribute("#book-form", "data-step"), books(), await q.evaluate(() => document.activeElement.id)], ["search", 0, "bk-from"]);
+  await q.click("#bk-view");
+  await q.waitForSelector("#q-pickup-address", { state: "visible" });
+  await settle(q, 300);
+  assert.deepEqual([await q.textContent("#q-pickup-address p"), (await chooser(q, false)).open], [REASONS["pickup-address"].map, false]);
+  const [value, shifts] = await cls(q);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual([p.errors, q.errors], [[], []]);
+  await qx.close();
+});
+
+await check("M58 when the map fails to load or Google refuses the key, a pickup that is no exact spot gets the request with no word of the map, since the page offers no Choose on the map", async () => {
+  for (const [server, label] of [[LD, "load"], [M, "auth"]]) {
+    const ctx = await context(server);
+    const p = await open(ctx, server, "/book");
+    await p.click("#bk-from");
+    if (label === "auth") {
+      await live(p);
+      await p.evaluate(() => window.gm_authFailure());
+    }
+    await p.waitForFunction(() => sessionStorage.getItem("nlr-map-off") === "1");
+    await type(p, "from", "Brooklyn");
+    await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=typed]"));
+    assert.deepEqual([await p.$("#bk-from-list [data-kind=map]"), await p.evaluate(() => document.getElementById("book-form").classList.contains("bk--live"))], [null, false], label);
+    await place(p, "to", ...JFK_ROW);
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-pickup-address", { state: "visible" });
+    const body = JSON.parse(ctx.api.filter((x) => x.path === "book").pop().body);
+    assert.deepEqual([await p.textContent("#q-pickup-address p"), "draw" in body], [REASONS["pickup-address"].text, false], label);
+    assert.deepEqual(p.errors, [], label);
+    await ctx.close();
+  }
+});
+
+const COARSE = { geolocation: { latitude: BEDFORD[0], longitude: BEDFORD[1], accuracy: 3000 }, permissions: ["geolocation"] };
+for (const phone of [false, true]) {
+  await check(`M59 ${phone ? "390 phone" : "1440 desktop"} current location from a coarse position: Use my current location opens Choose on the map at the position with the pin in the middle and the reason, the lookup there finds the street address, and one tap uses it, with no lookup of its own`, async () => {
+    const ctx = await context(M, { ...(phone ? PHONE : {}), ...COARSE });
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+    const row = p.locator("#bk-from-list [data-kind=here]");
+    phone ? await row.tap() : await row.click();
+    await chooserOpen(p, phone);
+    await addressIs(p, /277 Bedford Ave, Brooklyn, NY 11211/, phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a");
+    const c = await chooser(p, phone);
+    assert.deepEqual([c.name, c.use, c.zoom, at(c.center, BEDFORD), await p.inputValue("#bk-from")], [CONFIRM, "Use this pickup", 16, true, ""], JSON.stringify(c));
+    assert.deepEqual(phone ? [c.focus] : [c.focus, c.hint, ...(await described(p))], phone ? ["H2"] : ["region", true, `${CONFIRM}.`, KEYS_HINT]);
+    const here = ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "here").map((x) => JSON.parse(x.body));
+    assert.deepEqual(here.map((x) => [x.lat, x.lng]), [BEDFORD], "one lookup, the chooser's own");
+    const use = p.locator(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    phone ? await use.tap() : await use.click();
+    await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+    assert.deepEqual([(await p.inputValue("#bk-from-ticket")).slice(0, 3), await p.textContent("#bk-status"), (await chooser(p, phone)).open], ["v1.", `Pickup set to ${BEDFORD_LABEL}.`, false]);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M59 current location from a coarse position with no map: the row and the status say we couldn't find the location and the pickup stays empty, while a position within 100 meters still fills the street address", async () => {
+  for (const [accuracy, filled] of [[3000, false], [100, true]]) {
+    const ctx = await context(LD, { geolocation: { latitude: BEDFORD[0], longitude: BEDFORD[1], accuracy }, permissions: ["geolocation"] });
+    const p = await open(ctx, LD, "/book");
+    await p.click("#bk-from");
+    await p.waitForFunction(() => sessionStorage.getItem("nlr-map-off") === "1" && document.querySelector("#bk-from-list [data-kind=here]"));
+    await p.locator("#bk-from-list [data-kind=here]").click();
+    if (filled) await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+    else await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here] .bk-opt__main")?.textContent === "We couldn't find your location. Type the address.");
+    assert.deepEqual([await p.inputValue("#bk-from"), await p.textContent("#bk-status")], filled ? [BEDFORD_LABEL, `Pickup set to ${BEDFORD_LABEL}.`] : ["", "We couldn't find your location. Type the address."], String(accuracy));
+    assert.deepEqual(p.errors, [], String(accuracy));
+    await ctx.close();
+  }
+});
+
+await check("M60 a current location answer that lands after the customer moved on fills the pickup without taking focus: the typing goes on in the drop-off", async () => {
+  const ctx = await context(M, LOCATED);
+  await ctx.addInitScript(() => {
+    const g = navigator.geolocation, real = g.getCurrentPosition.bind(g);
+    g.getCurrentPosition = (ok, fail, o) => real((pos) => setTimeout(() => ok(pos), 2500), fail, o);
+  });
+  const p = await open(ctx, M, "/book");
+  await start(p);
+  await p.waitForFunction(() => document.querySelector("#bk-from-list [data-kind=here]"));
+  await p.locator("#bk-from-list [data-kind=here]").click();
+  await p.click("#bk-to");
+  await p.keyboard.type("27");
+  await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL, { timeout: 8000 });
+  await p.keyboard.type("7 Bed");
+  assert.deepEqual([await p.inputValue("#bk-to"), await p.evaluate(() => document.activeElement.id), await p.isHidden("#bk-from-pop"), (await p.inputValue("#bk-from-ticket")).slice(0, 3)], ["277 Bed", "bk-to", true, "v1."]);
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+for (const phone of [false, true]) {
+  await check(`M61 ${phone ? "390 phone" : "1440 desktop"} by the hour: a picked neighborhood as the pickup opens Choose on the map at once with the reason, one tap uses the street address and the hourly price shows`, async () => {
+    const ctx = await context(M, phone ? PHONE : {});
+    const p = await open(ctx, M, "/book");
+    await start(p);
+    phone ? await p.locator("label[for=bk-hour]").tap() : await p.click("label[for=bk-hour]");
+    await type(p, "from", "williamsburg");
+    await p.waitForSelector("#bk-from-list [data-kind=google]");
+    const pick = p.locator("#bk-from-list [data-kind=google]").first();
+    phone ? await pick.tap() : await pick.click();
+    await chooserOpen(p, phone);
+    await addressIs(p, /277 Bedford Ave, Brooklyn, NY 11211/, phone ? ".bk-mapd .bk-mc__a" : ".bk-mc .bk-mc__a");
+    const c = await chooser(p, phone);
+    assert.deepEqual([c.open, c.name, c.caption, c.use, c.zoom], [true, CONFIRM, phone ? "" : `${CONFIRM}.`, "Use this pickup", 16]);
+    const use = p.locator(phone ? ".bk-mapd .bk-mc__u" : ".bk-mc .bk-mc__u");
+    phone ? await use.tap() : await use.click();
+    await p.waitForFunction((l) => document.getElementById("bk-from").value === l, BEDFORD_LABEL);
+    assert.equal((await p.inputValue("#bk-from-ticket")).slice(0, 3), "v1.");
+    phone ? await p.locator("#bk-view").tap() : await p.click("#bk-view");
+    await priceShown(p);
+    assert.equal(await p.isVisible("#q-pickup-address"), false);
+    const options = JSON.parse(ctx.api.filter((x) => x.path === "book").map((x) => x.body).find((x) => JSON.parse(x).action === "options"));
+    assert.deepEqual([options.trip_type, options.from_text, options.from_ticket.slice(0, 3)], ["hour", BEDFORD_LABEL, "v1."]);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    assert.deepEqual(p.errors, []);
+    await ctx.close();
+  });
+}
+
+await check("M62 with the map, a pick that could not be looked up puts the typed text back with a message, the chooser it opened says to click the map, and after Cancel Book your ride asks for the ZIP code with no second pick", async () => {
+  const ctx = await context(M);
+  await ctx.route((u) => u.pathname === "/api/places", (r) => {
+    const body = JSON.parse(r.request().postData() || "{}");
+    return body.action === "pick" && body.id === "mock-hoboken" ? r.fulfill({ status: 200, contentType: "application/json", body: '{"kind":"error"}' }) : r.continue();
+  });
+  const p = await open(ctx, M, "/book");
+  const picks = () => ctx.api.filter((x) => x.path === "places" && JSON.parse(x.body).action === "pick" && JSON.parse(x.body).id === "mock-hoboken").length;
+  await start(p);
+  await place(p, "to", ...EDITION_ROW);
+  await ticket(p, "to");
+  await type(p, "from", "hoboken");
+  await p.waitForSelector("#bk-from-list [data-kind=google]");
+  await p.locator("#bk-from-list [data-kind=google]").first().click();
+  await chooserOpen(p, false);
+  await p.waitForFunction(() => document.getElementById("bk-from").value === "hoboken");
+  await addressIs(p, /^Click the map or drag the pin\.$/);
+  const c = await chooser(p, false);
+  assert.deepEqual([c.name, c.off, await p.textContent("#bk-status"), await p.inputValue("#bk-from-ticket")], [CONFIRM, "true", "We couldn't look up this place. Type the address.", ""]);
+  await p.click(".bk-mc .bk-mc__c");
+  await chooserOpen(p, false, false);
+  await p.click("#bk-view");
+  await p.waitForSelector("#q-unplaced", { state: "visible" });
+  assert.deepEqual([await p.inputValue("#bk-from"), await p.textContent("#q-unplaced p"), (await chooser(p, false)).open, picks()], ["hoboken", REASONS.unplaced.google, false, 1]);
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
+  assert.deepEqual(p.errors, []);
+  await ctx.close();
+});
+
+await check("M63 a second press of Book your ride while the pin it asked for is open keeps that chooser and the spot the customer chose there, sends no price request, and Use this pickup then goes on to the prices from that spot", async () => {
+  const ctx = await context(M);
+  const p = await open(ctx, M, "/book");
+  const books = () => ctx.api.filter((x) => x.path === "book" && JSON.parse(x.body).action === "options").length;
+  await start(p);
+  await type(p, "from", "hoboken");
+  await p.waitForSelector("#bk-from-list [data-kind=google]");
+  await p.keyboard.press("Escape");
+  await place(p, "to", ...EDITION_ROW);
+  await ticket(p, "to");
+  await p.click("#bk-view");
+  await chooserOpen(p, false);
+  await addressIs(p, /300 Garden St, Hoboken, NJ 07030/);
+  await frame(p, BEDFORD[0], BEDFORD[1], 16);
+  const spot = await px(p, BEDFORD);
+  await p.mouse.click(spot.x, spot.y);
+  await addressIs(p, /277 Bedford Ave, Brooklyn, NY 11211/);
+  await p.click("#bk-view");
+  await settle(p, 600);
+  const c = await chooser(p, false);
+  assert.deepEqual([c.open, c.name, c.address, c.zoom, at(c.center, BEDFORD), await p.getAttribute("#book-form", "data-step"), books()], [true, CONFIRM, `${BEDFORD_LABEL} Brooklyn`, 16, true, "search", 0]);
+  await p.click(".bk-mc .bk-mc__u");
+  await priceShown(p);
+  assert.deepEqual([await p.inputValue("#bk-from"), (await p.inputValue("#bk-from-ticket")).slice(0, 3), books()], [BEDFORD_LABEL, "v1.", 1]);
+  const [value, shifts] = await cls(p);
+  assert.equal(value, 0, shifts.join(" | "));
   assert.deepEqual(p.errors, []);
   await ctx.close();
 });

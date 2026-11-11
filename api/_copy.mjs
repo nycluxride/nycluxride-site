@@ -5,6 +5,8 @@ export const HEADINGS = {
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
   "street-address": { group: "price", text: "Add the street address to see the price.", google: "Add the street address, or pick it from the list, to see the price." },
+  "pickup-address": { group: "price", text: "Add the pickup street address to see the price.", map: "Add the pickup street address, or choose the spot on the map, to see the price." },
+  "return-address": { group: "price", text: "The drop-off is also your return pickup. Add its street address to see the price.", map: "The drop-off is also your return pickup. Add its street address, or choose the spot on the map, to see the price." },
   "airport-zip": { group: "price", text: "This address is in an airport ZIP code. For the airport itself, type its name, like JFK or Newark Liberty (EWR), to see the price. Our dispatch team prices other trips here." },
   "stop-leg": { group: "price", text: "Our dispatch team prices trips with stops, unless each part is between JFK, LaGuardia, Newark or Teterboro and a New York City address." },
   "airport-to-airport": { group: "price", text: "Our dispatch team prices trips between two airports." },

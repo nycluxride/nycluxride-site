@@ -26,7 +26,7 @@ import {
 import { ERRORS, REASONS, NOTES, POLICY } from "../api/_copy.mjs";
 import { MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS, AIRPORT_FARES, AIRPORT_PLACES, CLASSES } from "../api/_rates.mjs";
 import * as RATES from "../api/_rates.mjs";
-import { ROUTE, routeKey, signRoute, readRoute, signTicket } from "../api/_ticket.mjs";
+import { ROUTE, routeKey, signRoute, readRoute, signTicket, TICKET_TTL } from "../api/_ticket.mjs";
 import { localById } from "../api/_places.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
@@ -965,49 +965,131 @@ await test("an airport trip to or from text that names a New York City ZIP code 
   });
 });
 
-await test("an end that names only an area gets no distance price: a borough, New York, a ZIP code or a state, typed or picked, asks for the street address on a trip with no airport end and on an airport trip to or from an address outside New York City, with no route lookup", async () => {
+await test("an end that names only an area gets no distance price: a pickup that names a borough, New York, a ZIP code, a county or a state, typed or picked, asks for the pickup street address on every trip type, a round trip asks for the return pickup, and a drop-off area asks for the street address on a trip priced by distance, with no route lookup", async () => {
   await withMock(async () => {
-    for (const [from_text, to_text] of [["Manhattan", "Brooklyn"], ["10001", "11201"], ["New York, NY", BROOKLYN], [MANHATTAN, "Queens"], ["Staten Island", "Manhattan"], ["Brooklyn 11201", "The Bronx"]]) {
-      await isQuote({ ...RIDE, from_text, to_text }, "street-address");
-      await isQuote({ ...RIDE, from_text, to_text, ...ROUND_TRIP }, "street-address");
+    for (const [from_text, to_text] of [["Manhattan", "Brooklyn"], ["10001", "11201"], ["New York, NY", BROOKLYN], ["Staten Island", "Manhattan"], ["Brooklyn 11201", "The Bronx"]]) {
+      await isQuote({ ...RIDE, from_text, to_text }, "pickup-address");
+      await isQuote({ ...RIDE, from_text, to_text, ...ROUND_TRIP }, "pickup-address");
+    }
+    for (const to_text of ["Queens", "Brooklyn", "11201", "New York, NY"]) {
+      await isQuote({ ...RIDE, to_text }, "street-address");
+      await isQuote({ ...RIDE, to_text, ...ROUND_TRIP }, "return-address");
     }
     const { trip } = await run({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn" });
     assert.deepEqual([trip.route, trip.ends.from.area, trip.ends.to.area, trip.legs.map((leg) => [leg.reason, leg.ride])], ["", true, true, [["street-address", undefined]]]);
     for (const text of ["07030", "07030, NJ", "NJ 07094", "New Jersey 07030"]) {
       await isQuote({ ...JFK_NJ, to_text: text }, "street-address");
-      await isQuote({ ...NJ_JFK, from_text: text }, "street-address");
-      await isQuote({ ...NJ_JFK, from_text: text, ...ROUND_TRIP }, "street-address");
+      await isQuote({ ...JFK_NJ, to_text: text, ...ROUND_TRIP }, "return-address");
+      await isQuote({ ...NJ_JFK, from_text: text }, "pickup-address");
+      await isQuote({ ...NJ_JFK, from_text: text, ...ROUND_TRIP }, "pickup-address");
     }
     const picked = (id, zone, label, area) => signTicket(id, zone, label, NOW, area);
     await isQuote({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", true) }, "street-address");
-    await isQuote({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", true) }, "street-address");
+    await isQuote({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", true) }, "pickup-address");
     assert.equal((await priced({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", false) })).service, "distance");
+    assert.equal((await priced({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", 2) })).service, "distance");
     assert.equal((await priced({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", false) })).service, "distance");
     for (const [from_text, to_text] of [["Upper East Side, New York, NY", "Williamsburg, Brooklyn, NY"], ["Times Square, New York, NY", BROOKLYN], [MANHATTAN, "Hoboken, NJ 07030"], [MANHATTAN, GREENWICH]]) assert.equal((await priced({ ...RIDE, from_text, to_text })).service, "distance", `${from_text} to ${to_text}`);
     assert.equal((await priced(NJ_JFK)).total, 18253);
-    assert.equal((await priced({ ...BASE, from_text: "Manhattan" })).total, AIRPORT_TOTALS.suv.jfk);
+    await isQuote({ ...BASE, from_text: "Manhattan" }, "pickup-address");
+    await isQuote({ ...BASE, from_text: "Manhattan", ...ROUND_TRIP }, "pickup-address");
+    assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
     assert.equal((await priced({ ...FROM_JFK, to_text: "Brooklyn" })).total, AIRPORT_TOTALS.suv.jfk);
-    assert.equal((await priced({ ...HOURLY, from_text: "Manhattan" })).total, 28337);
-    for (const fields of [{ ...JFK_NJ, to_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP }, { ...JFK_NJ, to_text: "Fairfield County, CT" }, { ...RIDE, from_text: "Queens County" }, { ...RIDE, from_text: "Borough of Manhattan" }, { ...RIDE, from_text: "Manhattan Borough" }]) await isQuote(fields, "street-address");
-    await isQuote({ ...RIDE, from_text: "07030", to_text: GREENWICH }, "street-address");
+    await isQuote({ ...FROM_JFK, to_text: "Brooklyn", ...ROUND_TRIP }, "return-address");
+    await isQuote({ ...HOURLY, from_text: "Manhattan" }, "pickup-address");
+    assert.equal((await priced(HOURLY)).total, 28337);
+    for (const fields of [{ ...JFK_NJ, to_text: "Bergen County, NJ" }, { ...JFK_NJ, to_text: "Fairfield County, CT" }]) await isQuote(fields, "street-address");
+    for (const fields of [{ ...NJ_JFK, from_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP }, { ...RIDE, from_text: "Queens County" }, { ...RIDE, from_text: "Borough of Manhattan" }, { ...RIDE, from_text: "Manhattan Borough" }, { ...HOURLY, from_text: "Queens County" }]) await isQuote(fields, "pickup-address");
+    await isQuote({ ...RIDE, from_text: "07030", to_text: GREENWICH }, "pickup-address");
     await isQuote({ ...RIDE, from_text: "07114" }, "airport-zip");
   });
   await isQuote({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn" }, "no-airport");
   await isQuote({ ...JFK_NJ, to_text: "07030" }, "outside-city");
+  await isQuote({ ...BASE, from_text: "Manhattan" }, "pickup-address");
+  await isQuote({ ...HOURLY, from_text: "Manhattan" }, "pickup-address");
   const fetch = globalThis.fetch;
   process.env.GOOGLE_MAPS_SERVER_KEY = "route-test-key";
   const calls = [];
   globalThis.fetch = async (url) => (calls.push(String(url)), new Response("{}", { status: 503 }));
   try {
-    await isQuote({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn", date: "2026-10-21" }, "street-address");
+    await isQuote({ ...RIDE, from_text: "Manhattan", to_text: "Brooklyn", date: "2026-10-21" }, "pickup-address");
+    await isQuote({ ...RIDE, to_text: "Brooklyn", date: "2026-10-21" }, "street-address");
     await isQuote({ ...JFK_NJ, to_text: "07030", date: "2026-10-21" }, "street-address");
     await isQuote({ ...JFK_NJ, to_text: "Bergen County, NJ", date: "2026-10-21" }, "street-address");
-    await isQuote({ ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP, date: "2026-10-16" }, "street-address");
-    await isQuote({ ...RIDE, from_text: "Queens County", date: "2026-10-21" }, "street-address");
+    await isQuote({ ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP, date: "2026-10-16" }, "pickup-address");
+    await isQuote({ ...RIDE, from_text: "Queens County", date: "2026-10-21" }, "pickup-address");
+    await isQuote({ ...RIDE, to_text: "Queens", ...ROUND_TRIP, date: "2026-10-16" }, "return-address");
     assert.deepEqual(calls, []);
   } finally {
     globalThis.fetch = fetch;
     delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  }
+});
+
+await test("the pickup must be an exact spot: a picked city, borough, neighborhood or ZIP code as the pickup of a one way trip priced by distance, an airport trip at the flat rate, an airport trip priced by distance, a trip with a stop priced online and an hourly booking asks for the pickup street address with no route lookup, also when its ticket has expired, while a map spot, a street address, a hotel, an airport and an intersection are exact and priced", async () => {
+  await withMock(async () => {
+    const t = (id, zone, label, level) => signTicket(id, zone, label, NOW, level);
+    const PICKS = [
+      ["Hoboken, NJ, USA", t("mock-hoboken", "outside", "Hoboken, NJ, USA", 2)],
+      ["New York, NY, USA", t("ChIJnyc", "manhattan", "New York, NY, USA", 1)],
+      ["Brooklyn, NY, USA", t("ChIJbrooklyn", "brooklyn", "Brooklyn, NY, USA", 1)],
+      ["Upper East Side, New York, NY, USA", t("ChIJues", "manhattan", "Upper East Side, New York, NY, USA", 2)],
+      ["New York, NY 10001, USA", t("ChIJ10001", "manhattan", "New York, NY 10001, USA", 1)],
+    ];
+    for (const [from_text, from_ticket] of PICKS) {
+      const end = { from_text, from_ticket };
+      await isQuote({ ...RIDE, ...end }, "pickup-address");
+      await isQuote({ ...RIDE, ...end, ...ROUND_TRIP }, "pickup-address");
+      await isQuote({ ...NJ_JFK, ...end }, "pickup-address");
+      if (!from_text.startsWith("Hoboken")) {
+        await isQuote({ ...BASE, ...end }, "pickup-address");
+        await isQuote({ ...HOURLY, ...end }, "pickup-address");
+      }
+      const { trip } = await run({ ...RIDE, ...end });
+      assert.deepEqual([trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["", [["street-address", undefined]]], from_text);
+    }
+    const STOP = { stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk" };
+    await isQuote({ ...RIDE, from_text: "Manhattan", ...STOP }, "pickup-address");
+    for (const [from_text, from_ticket] of PICKS) await isQuote({ ...RIDE, from_text, from_ticket, ...STOP }, from_text.startsWith("Hoboken") ? "stop-leg" : "pickup-address");
+    assert.equal((await priced({ ...RIDE, ...STOP })).total, 2 * AIRPORT_TOTALS.suv.jfk);
+    const town = "Hoboken, NJ, USA";
+    const old = signTicket("mock-hoboken", "outside", town, NOW - (TICKET_TTL + 60) * 1000, 2);
+    for (let i = 0; i < 2; i++) await isQuote({ ...RIDE, from_text: town, from_ticket: old }, "pickup-address");
+    await isQuote({ ...RIDE, to_text: town, to_ticket: old, ...ROUND_TRIP }, "return-address");
+    assert.equal((await priced({ ...RIDE, to_text: town, to_ticket: old })).service, "distance");
+    await isQuote({ ...HOURLY, from_text: "Hoboken, NJ, USA", from_ticket: PICKS[0][1] }, "outside-hourly");
+    await isQuote({ ...BASE, from_text: PICKS[3][0], from_ticket: PICKS[3][1], to_text: "Westchester County (HPN)", to_id: "hpn" }, "other-airport");
+    await isQuote({ ...BASE, from_text: PICKS[3][0], from_ticket: PICKS[3][1], to_text: "CN Tower, 290 Bremner Blvd, Toronto, ON M5V 3L9", to_id: "" }, "outside-us");
+    const EXACT = [
+      ["277 Bedford Ave, Brooklyn, NY 11211", t("mock-bedford", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211", 0)],
+      ["The New York EDITION, Madison Avenue, New York, NY", t("mock-edition", "manhattan", "The New York EDITION, Madison Avenue, New York, NY", 0)],
+      ["Central Park Ave & Tuckahoe Rd, Yonkers, NY", t("ChIJcorner", "outside", "Central Park Ave & Tuckahoe Rd, Yonkers, NY", 0)],
+    ];
+    for (const [from_text, from_ticket] of EXACT) {
+      assert.equal((await priced({ ...RIDE, from_text, from_ticket })).service, "distance", from_text);
+      assert.equal((await priced({ ...NJ_JFK, from_text, from_ticket })).service, from_text.includes("Yonkers") ? "distance" : "airport", from_text);
+    }
+    assert.equal((await priced({ ...HOURLY, from_text: EXACT[0][0], from_ticket: EXACT[0][1] })).service, "hourly");
+    assert.equal((await priced({ ...BASE, from_text: EXACT[1][0], from_ticket: EXACT[1][1] })).total, AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced(FROM_JFK)).total, AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced({ ...FROM_JFK, ...ROUND_TRIP })).total, 2 * AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced({ ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk" })).service, "hourly");
+    await isQuote({ ...RIDE, stop1_text: "Hoboken, NJ, USA", stop1_ticket: PICKS[0][1] }, "stop-leg");
+  });
+  const fetch = globalThis.fetch;
+  process.env.GOOGLE_MAPS_SERVER_KEY = "route-test-key";
+  const calls = [];
+  globalThis.fetch = async (url) => (calls.push(String(url)), new Response("{}", { status: 503 }));
+  try {
+    process.env.PLACE_TICKET_SECRET = "p".repeat(40);
+    const label = "Hoboken, NJ, USA";
+    await isQuote({ ...RIDE, from_text: label, from_ticket: signTicket("mock-hoboken", "outside", label, NOW, 2), date: "2026-10-21" }, "pickup-address");
+    await isQuote({ ...NJ_JFK, from_text: label, from_ticket: signTicket("mock-hoboken", "outside", label, NOW, 2), date: "2026-10-21" }, "pickup-address");
+    assert.deepEqual(calls, []);
+  } finally {
+    globalThis.fetch = fetch;
+    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+    delete process.env.PLACE_TICKET_SECRET;
   }
 });
 
@@ -1101,6 +1183,23 @@ await test("the owner's trip from 806 6th Street, Secaucus, NJ to Niagara Falls,
     await isQuote({ ...OWNER, to_text: "Niagara Falls, NY" }, "unplaced", "to_text");
     await isQuote({ ...OWNER, to_text: "Niagara Falls, NY, USA", to_ticket: signTicket("ChIJniagara", "outside", "Niagara Falls, NY, USA", NOW, true) }, "street-address");
     assert.equal((await priced({ ...OWNER, to_text: "Niagara Falls State Park, Niagara Falls, NY, USA", to_ticket: signTicket("ChIJniagarapark", "outside", "Niagara Falls State Park, Niagara Falls, NY, USA", NOW) })).service, "distance");
+  });
+});
+
+await test("a round trip to a picked city asks for the exact return pickup, a one way trip to the same city is priced, and the street address pickup to a picked Niagara Falls, NY city still gets its price", async () => {
+  await withMock(async () => {
+    const city = "Niagara Falls, NY, USA";
+    const town = signTicket("ChIJniagara", "outside", city, NOW, 2);
+    const one = await priced({ ...OWNER, to_text: city, to_ticket: town, class: "sedan" });
+    assert.equal(one.service, "distance");
+    assert.ok(one.total > 0);
+    await isQuote({ ...OWNER, to_text: city, to_ticket: town, ...ROUND_TRIP }, "return-address");
+    const hoboken = signTicket("mock-hoboken", "outside", "Hoboken, NJ, USA", NOW, 2);
+    assert.equal((await priced({ ...RIDE, to_text: "Hoboken, NJ, USA", to_ticket: hoboken })).service, "distance");
+    await isQuote({ ...RIDE, to_text: "Hoboken, NJ, USA", to_ticket: hoboken, ...ROUND_TRIP }, "return-address");
+    await isQuote({ ...FROM_JFK, to_text: "Upper East Side, New York, NY, USA", to_ticket: signTicket("ChIJues", "manhattan", "Upper East Side, New York, NY, USA", NOW, 2), ...ROUND_TRIP }, "return-address");
+    assert.equal((await priced({ ...FROM_JFK, to_text: "Upper East Side, New York, NY, USA", to_ticket: signTicket("ChIJues", "manhattan", "Upper East Side, New York, NY, USA", NOW, 2) })).total, AIRPORT_TOTALS.suv.jfk);
+    assert.equal((await priced({ ...OWNER, ...ROUND_TRIP, class: "sedan" })).service, "distance");
   });
 });
 

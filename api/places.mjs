@@ -1,5 +1,5 @@
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
-import { AREA_LABELS, AIRPORT_ZONES, classifyText, classifyPlace, localById } from "./_places.mjs";
+import { AREA_LABELS, AIRPORT_ZONES, ADDRESS_TYPES, classifyText, classifyPlace, localById, areaText, placeLevel, clearMatch } from "./_places.mjs";
 import { googleOn, mapOn, mapJsOn, autocomplete, placeDetails, reverseGeocode, geocodeAddress, geocodePlace, spot } from "./_google.mjs";
 import { signTicket, verifyTicket, placeProof, proofOk } from "./_ticket.mjs";
 import { airportZip } from "./_trip.mjs";
@@ -18,8 +18,15 @@ const HERE_INSTANCE = 300;
 const LOCATE_IP = 30;
 const LOCATE_INSTANCE = 300;
 const LOCATE_KEEP = 64;
-const AREA = { north: 42.1, south: 39.5, west: -75.6, east: -71.7 };
-const ADDRESS_TYPES = ["street_address", "premise", "subpremise", "point_of_interest", "establishment", "airport"];
+const US_BOXES = [
+  [24.3, 49.5, -125, -66.8],
+  [51, 71.6, -180, -129.9],
+  [51, 53.1, 172, 180],
+  [18.8, 22.4, -160.4, -154.7],
+  [17.6, 18.6, -67.4, -64.5],
+  [13.2, 20.6, 144.6, 146.1],
+  [-14.6, -11, -171.2, -168.1],
+];
 const AREA_TYPES = ["plus_code", "route", "postal_code", "political", "neighborhood", "locality"];
 const located = new Map();
 
@@ -32,7 +39,7 @@ const PRICED = ["jfk", "lga", "ewr", "teb"];
 const OUTSIDE_OK = ["outside", "ewr", "teb", "airport-other", "abroad"];
 const conflicts = (text, zone) => (PRICED.includes(text) || text === "airport-other" || text === "abroad" ? text !== zone : text === "outside" && !OUTSIDE_OK.includes(zone));
 const onEarth = (lat, lng) => [lat, lng].every((n) => typeof n === "number" && Number.isFinite(n)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
-const inArea = (lat, lng) => lat >= AREA.south && lat <= AREA.north && lng >= AREA.west && lng <= AREA.east;
+const inArea = (lat, lng) => US_BOXES.some(([south, north, west, east]) => lat >= south && lat <= north && lng >= west && lng <= east);
 const kinds = (item) => (Array.isArray(item.types) ? item.types : []);
 
 async function suggest(request, data) {
@@ -42,12 +49,14 @@ async function suggest(request, data) {
   const typed = zone === "unknown" && airportZip(input) ? { zone, area: LABELS.airportZip, hint: REASONS["airport-zip"].text } : { zone, area: AREA_LABELS[zone] };
   if (!googleOn()) return json(200, { kind: "ok", google: false, items: [], typed });
   if (!clientBudget(request, "places-suggest", SUGGEST_IP) || !instanceBudget("places-suggest", SUGGEST_INSTANCE)) return busy();
+  const ask = zone === "unknown" || areaText(input);
+  const asked = { ...typed, ...(ask && { ask: true }) };
   const result = await autocomplete(input, data.session);
   if (!result.ok) {
     console.error("places-suggest", result.status);
-    return json(200, { kind: "error", google: true, items: [], typed });
+    return json(200, { kind: "error", google: true, items: [], typed: asked });
   }
-  return json(200, { kind: "ok", google: true, items: result.items.map((item) => ({ ...item, proof: placeProof(item.id, labelOf(item)) })), typed });
+  return json(200, { kind: "ok", google: true, items: result.items.map((item, i) => ({ ...item, proof: placeProof(item.id, labelOf(item)), ...(placeLevel(item.types, "outside") && { exact: false }), ...(ask && !i && clearMatch(input, item) && { match: true }) })), typed: asked });
 }
 
 async function pick(request, data) {
@@ -70,16 +79,14 @@ async function pick(request, data) {
     console.error("places-pick", "label");
     return json(200, { kind: "error" });
   }
-  const types = kinds(result.details);
-  const town = !["outside", "abroad"].includes(zone);
-  const area = types.some((type) => /^administrative_area_level_/.test(type) || type === "postal_code" || (town && (/^sublocality/.test(type) || type === "locality"))) && !types.some((type) => ADDRESS_TYPES.includes(type));
-  const ticket = signTicket(id, zone, label, Date.now(), area);
+  const level = placeLevel(kinds(result.details), zone);
+  const ticket = signTicket(id, zone, label, Date.now(), level);
   if (!ticket) {
     console.error("places-pick", "ticket");
     return json(200, { kind: "error" });
   }
   const location = spot(result.details.location);
-  return json(200, { kind: "ok", zone, area: AREA_LABELS[zone], airport: AIRPORT_ZONES.includes(zone), ticket, map: mapOn(), ...(location && { location }) });
+  return json(200, { kind: "ok", zone, area: AREA_LABELS[zone], airport: AIRPORT_ZONES.includes(zone), ticket, map: mapOn(), ...(level && { exact: false }), ...(location && { location }) });
 }
 
 async function here(request, data) {
@@ -101,6 +108,7 @@ async function here(request, data) {
     console.error("places-here", "label");
     return json(200, { kind: "error" });
   }
+  if (zone === "abroad") return json(200, { kind: "far" });
   const ticket = signTicket(found.placeId, zone, label, Date.now());
   if (!ticket) {
     console.error("places-here", "ticket");
