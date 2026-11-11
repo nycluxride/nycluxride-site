@@ -531,10 +531,10 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       const run = await p.evaluate(SEATS);
       await p.evaluate(() => Promise.all(document.querySelector(".hero > .seats").getAnimations({ subtree: true }).map((a) => a.finished)));
       const rest = await p.evaluate(SEATS);
-      await check(`${engine} ${viewport.width}x${viewport.height}: the seats, the price and the link stay visible and still as the card scrolls into view, and only the word available shimmers, with a gold star`, () => {
+      await check(`${engine} ${viewport.width}x${viewport.height}: the seats, the price and the link stay visible and still as the card scrolls into view, each seat sends out a gold ring, and only the word available shimmers, with a gold star`, () => {
         assert.deepEqual([at.rv, at.op, at.anims], ["0", ["1", "1", "1", "1", "1"], []]);
         assert.equal(run.rv, "1");
-        assert.deepEqual(run.anims, ["seat-sheen", "seat-star"]);
+        assert.deepEqual(run.anims, ["seat-ring", "seat-ring", "seat-ring", "seat-sheen", "seat-star"]);
         assert.deepEqual([run.op, run.tops], [["1", "1", "1", "1", "1"], at.tops]);
         assert.deepEqual([rest.op, rest.anims], [["1", "1", "1", "1", "1"], []]);
         assert.deepEqual(rest.tops, at.tops);
