@@ -12,7 +12,7 @@ import { readInput, resolveTrip, priceTrip, readSettings, receipt, money, fill }
 import { metadataFor } from "../api/_stripe.mjs";
 import { MAIL, CHECKOUT, NOTES, POLICY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
-import { bookingLetters as lettersAt, mailSettings } from "../api/_mail.mjs";
+import { bookingLetters as lettersAt, mailSettings, bookingText } from "../api/_mail.mjs";
 import { GET } from "../api/book.mjs";
 import { POST } from "../api/stripe-webhook.mjs";
 
@@ -26,7 +26,14 @@ const SECRET = ["whsec", "NlrMailTestSigningSecret01"].join("_");
 const USER = "info@nycluxride.com";
 const PASS = "test-app-password-9137";
 const OWNERS = ["info@nycluxride.com", "nycluxride@gmail.com"];
-const ENV_KEYS = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PORT", "MAIL_FROM", "OWNER_EMAILS", "VERCEL_ENV", "BOOK_MOCK", "PAYMENTS_ENABLED", "GOOGLE_MOCK", "BOOKING_REF_SECRET", "PAY_BLACKOUT_DATES", "FLIGHT_MOCK"];
+const ENV_KEYS = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PORT", "MAIL_FROM", "OWNER_EMAILS", "VERCEL_ENV", "BOOK_MOCK", "PAYMENTS_ENABLED", "GOOGLE_MOCK", "BOOKING_REF_SECRET", "PAY_BLACKOUT_DATES", "FLIGHT_MOCK", "TWILIO_ACCOUNT_SID", "TWILIO_API_KEY", "TWILIO_API_SECRET", "TWILIO_FROM", "OWNER_SMS"];
+const sid = (prefix, seed) => `${prefix}${createHash("sha256").update(seed).digest("hex").slice(0, 32)}`;
+const ACCOUNT_SID = sid("AC", "mail test account");
+const API_KEY_SID = sid("SK", "mail test key");
+const API_SECRET = sid("", "mail test secret");
+const SENDER = "+12125550199";
+const OWNER_PHONE = "+16467750556";
+const SMS = { TWILIO_ACCOUNT_SID: ACCOUNT_SID, TWILIO_API_KEY: API_KEY_SID, TWILIO_API_SECRET: API_SECRET, TWILIO_FROM: SENDER };
 const CONTEXT = Symbol.for("@vercel/request-context");
 const ME = { name: "Ana Lopez", email: "ana.lopez@example.com", phone: "+1 212 555 0100" };
 const MANHATTAN = "350 5th Ave, New York, NY 10118";
@@ -140,7 +147,7 @@ function fakeSmtp() {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(Object.assign(state, { server, port: server.address().port }))));
 }
 
-const stripe = { sessions: new Map(), intents: new Map(), keys: new Map(), calls: [], intentAccess: "write", sessionUpdates: "allow", delay: 0, fail: null };
+const stripe = { sessions: new Map(), intents: new Map(), keys: new Map(), calls: [], intentAccess: "write", sessionUpdates: "allow", delay: 0, lose: null, fail: null };
 const answer = (status, body, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "request-id": "req_fake0001", ...headers } });
 const forbidden = () => answer(403, { error: { type: "invalid_request_error", message: "The provided key does not have the required permissions for this endpoint." } });
 const missing = () => answer(404, { error: { type: "invalid_request_error", code: "resource_missing" } });
@@ -154,24 +161,44 @@ function apply(metadata, body) {
   }
 }
 
-async function idempotent(key, body, run) {
+async function keyed(key, body, run) {
   const saved = key ? stripe.keys.get(key) : null;
   if (saved && saved.body !== body) return answer(400, { error: { type: "idempotency_error", message: "Keys for idempotent requests can only be used with the same parameters they were first used with." } });
   if (saved && saved.pending) return answer(409, { error: { type: "idempotency_error", message: "There is currently another in-progress request using this Idempotent Key." } });
   if (saved) return answer(saved.status, saved.result, { "idempotent-replayed": "true" });
   const entry = { body, pending: true };
   if (key) stripe.keys.set(key, entry);
-  if (stripe.delay) await new Promise((resolve) => setTimeout(resolve, stripe.delay));
+  const ms = typeof stripe.delay === "function" ? stripe.delay(key) : stripe.delay;
+  if (ms) await new Promise((resolve) => setTimeout(resolve, ms));
   const [status, result] = run();
   Object.assign(entry, { pending: false, status, result });
   return answer(status, result);
 }
+
+function idempotent(key, body, run) {
+  const reply = keyed(key, body, run);
+  if (!stripe.lose || !stripe.lose(key)) return reply;
+  reply.catch(() => {});
+  return Promise.reject(new TypeError("fetch failed"));
+}
+
+const twilio = { calls: [], replies: [] };
+const twilioAnswer = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Twilio-Request-Id": sid("RQ", `request ${twilio.calls.length}`) } });
+const texted = (call) => twilioAnswer(201, { sid: sid("SM", `message ${twilio.calls.length}`), status: "queued", to: call.form.get("To"), body: call.form.get("Body") });
+const turnedDown = (status, code) => () => twilioAnswer(status, { code, message: `Twilio could not send to ${OWNER_PHONE}`, more_info: `https://www.twilio.com/docs/errors/${code}`, status });
+const dropped = (code) => () => Promise.reject(new TypeError("fetch failed", { cause: Object.assign(new Error(`connect ${code} 203.0.113.9:443`), { code }) }));
+const silent = (call) => new Promise((resolve, reject) => call.signal.addEventListener("abort", () => reject(call.signal.reason), { once: true }));
 
 globalThis.fetch = async (url, init = {}) => {
   const target = new URL(String(url));
   const method = init.method || "GET";
   const headers = new Headers(init.headers);
   const body = String(init.body || "");
+  if (target.origin === "https://api.twilio.com") {
+    const call = { url: target.href, method, auth: headers.get("authorization"), form: new URLSearchParams(body), signal: init.signal, mails: smtp.sessions.reduce((n, session) => n + session.messages.length, 0) };
+    twilio.calls.push(call);
+    return (twilio.replies.shift() || texted)(call);
+  }
   stripe.calls.push({ method, path: target.pathname, idempotency: headers.get("idempotency-key") || "", body, auth: headers.get("authorization") });
   if (target.origin !== "https://api.stripe.com") return answer(599, {});
   if (stripe.fail && stripe.fail(method, target.pathname)) return answer(500, { error: { type: "api_error" } });
@@ -235,9 +262,12 @@ function setEnv(vars = {}) {
   stripe.intentAccess = "write";
   stripe.sessionUpdates = "allow";
   stripe.delay = 0;
+  stripe.lose = null;
   stripe.fail = null;
   smtp.sessions.length = 0;
   smtp.behavior = {};
+  twilio.calls.length = 0;
+  twilio.replies = [];
   withoutContext();
 }
 const mailEnv = (extra = {}) => ({ STRIPE_SECRET_KEY: KEY, STRIPE_WEBHOOK_SECRET: SECRET, SMTP_USER: USER, SMTP_PASS: PASS, SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtp.port), ...extra });
@@ -900,7 +930,7 @@ await test("the confirmation check sends both emails once a session is paid, set
   assert.ok(Object.keys(marker).length <= 50);
   assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET /v1/payment_intents/${session.payment_intent} `, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1`, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1-done`]);
   assert.ok(stripe.calls.every((c) => c.auth === `Bearer ${KEY}`));
-  assert.deepEqual(noted, ["mail-sent 83558982 customer owner"]);
+  assert.deepEqual(noted, ["sms-off 83558982", "mail-sent 83558982 customer owner"]);
   assert.deepEqual(logged, []);
   for (let i = 0; i < 3; i++) {
     assert.deepEqual(await (await lookup(session)).json(), sessionBodyOf(session));
@@ -1046,7 +1076,7 @@ await test("a customer email the mail server refuses never holds back the owner 
   assert.deepEqual([res.status, await res.json()], [200, sessionBodyOf(session)]);
   assert.deepEqual(await settled(), ["failed"]);
   assert.deepEqual(delivered().map((m) => [m.to, m.mail.headers.get("message-id").split(".")[0]]), [[OWNERS, "<owner"]]);
-  assert.deepEqual([logged, noted], [["mail-fail 83558982 customer message 554"], ["mail-sent 83558982 owner"]]);
+  assert.deepEqual([logged, noted], [["mail-fail 83558982 customer message 554"], ["sms-off 83558982", "mail-sent 83558982 owner"]]);
   const tried = JSON.parse(intentOf(session).metadata.email_attempt);
   assert.deepEqual([tried.n, tried.failed, tried.sent, intentOf(session).metadata.emailed_at], [1, true, ["owner"], undefined]);
   smtp.behavior = {};
@@ -1330,11 +1360,330 @@ await test("a live session on Production sends from the live key without [TEST],
   assert.ok(stripe.calls.every((c) => c.auth === `Bearer ${LIVE_KEY}`));
 });
 
+await test("texting off: with no Twilio setting, or one missing or malformed, both emails still go out, Twilio is never asked, the claim carries no text marker and one line says why", async () => {
+  const cases = [
+    [{}, "sms-off 83558982"],
+    [{ ...SMS, TWILIO_API_SECRET: "" }, "sms-config 83558982"],
+    [{ ...SMS, TWILIO_FROM: undefined }, "sms-config 83558982"],
+    [{ ...SMS, TWILIO_ACCOUNT_SID: API_KEY_SID }, "sms-config 83558982"],
+    [{ ...SMS, TWILIO_API_KEY: ACCOUNT_SID }, "sms-config 83558982"],
+    [{ ...SMS, TWILIO_FROM: "212 555 0199" }, "sms-config 83558982"],
+    [{ ...SMS, OWNER_SMS: "646-775-0556" }, "sms-config 83558982"],
+  ];
+  for (const [env, line] of cases) {
+    setEnv(mailEnv(Object.fromEntries(Object.entries(env).filter(([, value]) => value !== undefined))));
+    const session = paid(ONE_WAY);
+    const res = await hook(completed(session));
+    assert.deepEqual([res.status, await res.json()], [200, { received: true }], line);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+    assert.ok(intentOf(session).metadata.emailed_at);
+    assert.equal(twilio.calls.length, 0);
+    const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-1`);
+    assert.equal(JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]")).texted_at, undefined);
+    const [said, quiet] = line.startsWith("sms-off") ? [noted, logged] : [logged, noted];
+    assert.deepEqual([said.filter((l) => l.startsWith("sms-")), quiet.filter((l) => l.startsWith("sms-"))], [[line], []], JSON.stringify(env));
+  }
+});
+
+await test("with Twilio set, the confirmation check texts the owner once as the emails go out, under the same claim and with no extra Stripe call, and later checks and the webhook text nothing more", async () => {
+  setEnv(mailEnv(SMS));
+  withContext();
+  const session = paid(ROUND);
+  await lookup(session);
+  assert.deepEqual(await settled(), ["sent"]);
+  assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+  assert.equal(twilio.calls.length, 1);
+  const [call] = twilio.calls;
+  assert.equal(call.url, `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`);
+  assert.equal(call.auth, `Basic ${Buffer.from(`${API_KEY_SID}:${API_SECRET}`).toString("base64")}`);
+  assert.deepEqual([...call.form.keys()], ["To", "From", "Body"]);
+  assert.deepEqual([call.form.get("To"), call.form.get("From"), call.form.get("Body")], [OWNER_PHONE, SENDER, bookingText(session)]);
+  assert.ok(call.form.get("Body").startsWith("[TEST] NYC LUX RIDE booking\nAna Lopez, +1 212 555 0100\nThu Nov 12, 7:30 AM\nJFK to 350 5th Ave, return Sun Nov 15, 6:00 PM\n"));
+  assert.equal(call.mails, 0, "the text starts with the emails, not after them");
+  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-1`);
+  const attempt = JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]"));
+  assert.equal(attempt.texted_at, attempt.at);
+  assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
+  assert.ok(Object.keys(intentOf(session).metadata).length <= 50);
+  assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET /v1/payment_intents/${session.payment_intent} `, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1`, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1-done`]);
+  assert.deepEqual([noted.filter((l) => l.startsWith("sms-")), logged], [[`sms-sent 83558982 201 ${sid("RQ", "request 1")}`], []]);
+  for (let i = 0; i < 3; i++) {
+    await lookup(session);
+    assert.deepEqual(await settled(), ["done"]);
+  }
+  assert.equal((await hook(completed(session))).status, 200);
+  assert.equal((await hook(thin(session))).status, 200);
+  assert.deepEqual([twilio.calls.length, delivered().length], [1, 2]);
+});
+
+await test("with Twilio set, a confirmation check and a webhook that arrive together send one text", async () => {
+  for (const delay of [0, 40]) {
+    setEnv(mailEnv(SMS));
+    stripe.delay = delay;
+    withContext();
+    const session = paid(HOURLY);
+    const [page, hooked] = await Promise.all([lookup(session), hook(completed(session))]);
+    assert.equal(page.status, 200);
+    const results = await settled();
+    assert.equal(hooked.status, 200);
+    assert.ok(["sent", "busy", "done"].includes(results[0]), results[0]);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+    assert.equal(twilio.calls.length, 1, `delay ${delay}`);
+    assert.equal(twilio.calls[0].form.get("Body"), bookingText(session));
+    assert.ok(intentOf(session).metadata.emailed_at);
+  }
+  assert.equal(stripe.calls.filter((c) => c.method === "POST" && c.idempotency.endsWith("-1")).length, 2, "both triggers tried the claim");
+});
+
+await test("with Twilio set, a webhook retry after the mail server failed sends the emails and no second text, and so does a confirmation check after one email failed", async () => {
+  setEnv(mailEnv(SMS));
+  smtp.behavior = { auth: "535 5.7.8 Username and Password not accepted" };
+  const session = paid(ONE_WAY);
+  assert.equal((await hook(completed(session))).status, 503);
+  assert.equal(twilio.calls.length, 1);
+  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  assert.deepEqual([tried.failed, tried.sent, tried.texted_at === tried.at], [true, [], true]);
+  assert.equal((await hook(completed(session))).status, 503);
+  const again = JSON.parse(intentOf(session).metadata.email_attempt);
+  assert.deepEqual([again.n, again.failed, again.texted_at], [2, true, tried.texted_at]);
+  assert.equal(twilio.calls.length, 1);
+  smtp.behavior = {};
+  for (let i = 0; i < 2; i++) assert.equal((await hook(completed(session))).status, 200);
+  assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.equal(twilio.calls.length, 1);
+  setEnv(mailEnv(SMS));
+  withContext();
+  smtp.behavior = { refuse: (mail) => (mail.to.includes("ana.lopez@example.com") ? "554 5.7.0 Message rejected" : "") };
+  const other = paid(ROUND);
+  await lookup(other);
+  assert.deepEqual(await settled(), ["failed"]);
+  assert.deepEqual(JSON.parse(intentOf(other).metadata.email_attempt).sent, ["owner"]);
+  smtp.behavior = {};
+  await lookup(other);
+  assert.deepEqual(await settled(), ["sent"]);
+  assert.equal((await hook(completed(other))).status, 200);
+  assert.deepEqual(delivered().map((m) => m.mail.headers.get("message-id").split(".")[0]), ["<owner", "<customer"]);
+  assert.equal(twilio.calls.length, 1);
+});
+
+await test("with Twilio set, a text Twilio refused before the emails failed is tried again with the email retry, and a text still on its way when the failure is marked, or one that may have reached Twilio, never is", async () => {
+  const runs = [
+    [[turnedDown(400, 21211)], undefined, 2],
+    [[turnedDown(429, 20429), turnedDown(429, 20429)], "kept", 2],
+    [[dropped("ECONNRESET")], "kept", 1],
+    [[turnedDown(503, 20503), dropped("ECONNRESET")], "kept", 2],
+  ];
+  for (const [replies, marker, asked] of runs) {
+    setEnv(mailEnv(SMS));
+    smtp.behavior = { auth: "535 5.7.8 Username and Password not accepted" };
+    twilio.replies = [...replies];
+    const session = paid(NEW_JERSEY);
+    assert.equal((await hook(completed(session))).status, 503);
+    const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+    assert.deepEqual([tried.failed, marker ? tried.texted_at === tried.at : tried.texted_at], [true, marker ? true : undefined], JSON.stringify(logged));
+    smtp.behavior = {};
+    assert.equal((await hook(completed(session))).status, 200);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+    assert.equal(twilio.calls.length, asked, JSON.stringify(logged));
+    if (!marker) assert.equal(twilio.calls.at(-1).form.get("Body"), bookingText(session));
+    assert.equal((await hook(completed(session))).status, 200);
+    assert.equal(twilio.calls.length, asked);
+  }
+});
+
+await test("with Twilio set, a Twilio that fails never holds back the emails or turns the webhook into an error, and is asked at most twice", async () => {
+  const cases = [
+    [[turnedDown(500, 20500), turnedDown(503, 20503)], 2, "sms-fail 83558982 503 20503"],
+    [[dropped("ECONNREFUSED"), dropped("ECONNREFUSED")], 2, "sms-fail 83558982 ECONNREFUSED"],
+    [[turnedDown(401, 20003)], 1, "sms-fail 83558982 401 20003"],
+    [[dropped("ECONNRESET")], 1, "sms-fail 83558982 ECONNRESET"],
+    [[turnedDown(429, 20429), texted], 2, "sms-retry 83558982 429 20429"],
+  ];
+  for (const [replies, asked, line] of cases) {
+    setEnv(mailEnv(SMS));
+    twilio.replies = [...replies];
+    const session = paid(ONE_WAY);
+    const res = await hook(completed(session));
+    assert.deepEqual([res.status, await res.json()], [200, { received: true }], line);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+    assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
+    assert.equal(twilio.calls.length, asked, line);
+    assert.ok(logged.some((l) => l.startsWith(line)), `${line} | ${logged.join(" | ")}`);
+    assert.equal((await hook(completed(session))).status, 200);
+    assert.equal(twilio.calls.length, asked);
+  }
+});
+
+await test("with Twilio set, a Twilio that never answers holds a webhook only for the 8 second text timeout, never holds back the emails or their marker, and is never asked again", async () => {
+  setEnv(mailEnv(SMS));
+  smtp.behavior = { reject: ["ben.ortiz@example.com"] };
+  twilio.replies = [silent, silent];
+  const fine = paid(ONE_WAY);
+  const failing = paid(ONE_WAY, { metadata: { email: "ben.ortiz@example.com" }, customer: { email: "ben.ortiz@example.com" } });
+  const started = Date.now();
+  const answers = Promise.all([hook(completed(fine)), hook(completed(failing))]);
+  await until(() => intentOf(fine).metadata.emailed_at && twilio.calls.length === 2);
+  assert.ok(twilio.calls.every((c) => !c.signal.aborted), "the emails and their marker never wait for the text");
+  assert.deepEqual(delivered().filter((m) => m.to.includes("ana.lopez@example.com")).length, 1);
+  const [first, second] = await answers;
+  const took = Date.now() - started;
+  assert.deepEqual([first.status, second.status], [200, 503]);
+  assert.ok(took >= 7900 && took < 9500, `took ${took} ms`);
+  assert.ok(twilio.calls.every((c) => c.signal.aborted));
+  assert.deepEqual(logged.filter((l) => l.startsWith("sms-")), ["sms-fail 83558982 timeout", "sms-fail 83558982 timeout"]);
+  const kept = JSON.parse(intentOf(failing).metadata.email_attempt);
+  assert.deepEqual([kept.failed, kept.sent, kept.texted_at === kept.at], [true, ["owner"], true]);
+  smtp.behavior = {};
+  assert.equal((await hook(completed(failing))).status, 200);
+  assert.ok(intentOf(failing).metadata.emailed_at);
+  assert.equal(delivered().filter((m) => m.to.includes("ben.ortiz@example.com")).length, 1);
+  assert.equal(twilio.calls.length, 2);
+});
+
+await test("with Twilio set but no marker Stripe will keep, the confirmation check sends nothing and the webhook sends the emails without a text, since only the claim holder may text", async () => {
+  setEnv(mailEnv(SMS));
+  stripe.intentAccess = "none";
+  stripe.sessionUpdates = "refuse";
+  withContext();
+  const session = paid(ONE_WAY);
+  await lookup(session);
+  assert.deepEqual(await settled(), ["unmarked"]);
+  assert.equal((await hook(completed(session))).status, 200);
+  assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+  assert.equal(twilio.calls.length, 0);
+  assert.deepEqual(logged.filter((l) => l.startsWith("sms-")), ["sms-unmarked 83558982"]);
+});
+
+await test("with Twilio set and no PaymentIntent the key can write, the claim and its text marker live on the Checkout Session: one text, and a webhook retry after the mail server failed sends the emails and no second text", async () => {
+  for (const access of ["none", "read"]) {
+    setEnv(mailEnv(SMS));
+    stripe.intentAccess = access;
+    smtp.behavior = { auth: "535 5.7.8 Username and Password not accepted" };
+    const session = paid(ONE_WAY);
+    assert.equal((await hook(completed(session))).status, 503, access);
+    assert.equal(twilio.calls.length, 1, access);
+    const tried = JSON.parse(stripe.sessions.get(session.id).metadata.email_attempt);
+    assert.deepEqual([tried.failed, tried.texted_at === tried.at, intentOf(session).metadata.email_attempt], [true, true, undefined], access);
+    smtp.behavior = {};
+    for (let i = 0; i < 2; i++) assert.equal((await hook(completed(session))).status, 200, access);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS], access);
+    assert.ok(stripe.sessions.get(session.id).metadata.emailed_at, access);
+    assert.equal(twilio.calls.length, 1, access);
+  }
+});
+
+await test("with Twilio set, a claim left by a run that died is taken over after two minutes with its text marker: the emails go out, no second text, and one line says the text may be lost, which a failed try never needs", async () => {
+  setEnv(mailEnv(SMS));
+  const at = new Date(Date.now() - 130000).toISOString();
+  const session = paid(ONE_WAY);
+  intentOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: [], tries: 0, texted_at: at });
+  assert.equal((await hook(completed(session))).status, 200);
+  assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+  assert.equal(twilio.calls.length, 0);
+  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-2`);
+  assert.equal(JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]")).texted_at, at);
+  assert.deepEqual(logged, ["sms-inherited 83558982"]);
+  setEnv(mailEnv(SMS));
+  const failed = paid(ONE_WAY);
+  intentOf(failed).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: ["owner"], tries: 1, failed: true, texted_at: at });
+  assert.equal((await hook(completed(failed))).status, 200);
+  assert.deepEqual([delivered().map((m) => m.to), twilio.calls.length, logged], [[["ana.lopez@example.com"]], 0, []]);
+});
+
+await test("with Twilio set, a claim whose answer never comes back is read back once, and when Stripe holds the run's own claim the run texts and sends the emails at once", async () => {
+  for (const [delay, lost] of [[0, 2], [1000, 1]]) {
+    setEnv(mailEnv(SMS));
+    const session = paid(ONE_WAY);
+    const claimKey = `nlr-mail-${session.payment_intent}-1`;
+    let left = lost;
+    stripe.delay = (key) => (key === claimKey ? delay : 0);
+    stripe.lose = (key) => key === claimKey && left-- > 0;
+    assert.equal((await hook(completed(session))).status, 200, `delay ${delay}`);
+    assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+    assert.ok(intentOf(session).metadata.emailed_at);
+    assert.equal(twilio.calls.length, 1);
+    const intent = `/v1/payment_intents/${session.payment_intent}`;
+    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET ${intent} `, `POST ${intent} ${claimKey}`, `POST ${intent} ${claimKey}`, `GET ${intent} `, `POST ${intent} ${claimKey}-done`]);
+    assert.deepEqual(logged, []);
+  }
+});
+
+await test("with Twilio set, a claim read back after lost answers counts only when Stripe holds the run's own claim, so a webhook that lost its answers while the confirmation check claimed sends nothing", async () => {
+  setEnv(mailEnv(SMS));
+  withContext();
+  const session = paid(ONE_WAY);
+  const claimKey = `nlr-mail-${session.payment_intent}-1`;
+  stripe.delay = (key) => (key === claimKey ? 1000 : key === `${claimKey}-done` ? 3000 : 0);
+  const page = lookup(session);
+  await until(() => stripe.calls.some((c) => c.idempotency === claimKey));
+  stripe.lose = (key) => key === claimKey;
+  assert.equal((await hook(completed(session))).status, 503);
+  assert.deepEqual(logged, ["mail-stripe 83558982 0"]);
+  assert.equal((await page).status, 200);
+  assert.deepEqual(await settled(), ["sent"]);
+  assert.equal(twilio.calls.length, 1);
+  assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
+  assert.equal(stripe.calls.filter((c) => c.idempotency === claimKey).length, 3);
+});
+
+await test("with Twilio set, a slow text never holds back the mark of a failed email, so a webhook that arrives meanwhile sends that email at once and no second text", async () => {
+  setEnv(mailEnv(SMS));
+  withContext();
+  let refusals = 1;
+  smtp.behavior = { refuse: (mail) => (mail.to.includes("ana.lopez@example.com") && refusals-- > 0 ? "451 4.3.0 Try again later" : "") };
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  twilio.replies = [(call) => Promise.race([gate.then(() => texted(call)), silent(call)])];
+  const session = paid(ONE_WAY);
+  const page = lookup(session);
+  await until(() => /"failed":true/.test(intentOf(session).metadata.email_attempt || ""), 3000);
+  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  assert.deepEqual([tried.sent, tried.texted_at === tried.at], [["owner"], true]);
+  assert.equal((await hook(completed(session))).status, 200);
+  assert.deepEqual(delivered().map((m) => m.to), [OWNERS, ["ana.lopez@example.com"]]);
+  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(twilio.calls.length === 1 && !twilio.calls[0].signal.aborted, "the text is still on its way");
+  release();
+  assert.equal((await page).status, 200);
+  assert.deepEqual(await settled(), ["failed"]);
+  assert.equal(twilio.calls.length, 1);
+  assert.deepEqual(noted.filter((l) => l.startsWith("sms-")), [`sms-sent 83558982 201 ${sid("RQ", "request 1")}`]);
+});
+
+await test("with Twilio set, a trigger that cannot see the other trigger's slow claim on the PaymentIntent and falls back to the Checkout Session sends the emails but never a second text", async () => {
+  setEnv(mailEnv(SMS));
+  withContext();
+  const session = paid(HOURLY);
+  const claimKey = `nlr-mail-${session.payment_intent}-1`;
+  stripe.delay = (key) => (key === claimKey ? 3000 : 0);
+  const [page, hooked] = await Promise.all([lookup(session), hook(completed(session))]);
+  assert.deepEqual([page.status, hooked.status], [200, 200]);
+  assert.deepEqual(await settled(), ["sent"]);
+  assert.equal(twilio.calls.length, 1);
+  assert.equal(twilio.calls[0].form.get("Body"), bookingText(session));
+  assert.ok(intentOf(session).metadata.emailed_at && stripe.sessions.get(session.id).metadata.emailed_at);
+  assert.deepEqual(logged, ["mail-marker 83558982 payment_intents 400", "sms-unmarked 83558982"]);
+  const fallback = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.id}-1`);
+  assert.equal(JSON.parse(new URLSearchParams(fallback.body).get("metadata[email_attempt]")).texted_at, undefined);
+  assert.ok(["customer", "owner"].every((kind) => byKind(delivered(), kind).length), "both emails went out");
+});
+
 await test("no log line holds the SMTP password, the AUTH string, an address, a name, a phone number or any part of an email", () => {
   assert.ok(history.length > 40, `${history.length} log lines`);
   const all = history.join("\n");
   const secrets = [PASS, Buffer.from(`\u0000${USER}\u0000${PASS}`).toString("base64"), "ana.lopez@example.com", "Ana Lopez", "Ben Ortiz", "Zo\u00eb", "212 555", "2125550100", "917 555", "7946", "Main Street", "72nd", "Secaucus", "Infant", "toddler", "Subject", "Payment received", "@"];
   for (const secret of secrets) assert.ok(!all.includes(secret), secret);
+});
+
+await test("no log line holds the Twilio secret, the Basic auth string, a Twilio SID, the owner or sender number, Twilio's error text or any line of a text", () => {
+  const all = history.join("\n");
+  assert.ok(["sms-off ", "sms-config ", "sms-sent ", "sms-retry ", "sms-fail ", "sms-unmarked ", "sms-inherited "].every((start) => history.some((line) => line.startsWith(start))));
+  const secrets = [API_SECRET, Buffer.from(`${API_KEY_SID}:${API_SECRET}`).toString("base64"), API_KEY_SID, ACCOUNT_SID, "6467750556", "2125550199", "NYC LUX RIDE", "Reference 83558982", "Paid $", "could not send", "203.0.113.9", "twilio.com"];
+  for (const secret of secrets) assert.ok(!all.includes(secret), secret);
+  for (const line of history.filter((l) => l.startsWith("sms-"))) assert.match(line, /^sms-(off|config|sent|retry|fail|unmarked|inherited) 83558982( [A-Za-z0-9_]+){0,3}$/);
 });
 
 smtp.server.close();

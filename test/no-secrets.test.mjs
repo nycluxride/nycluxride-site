@@ -14,7 +14,7 @@ const NEEDLES = [
   ["whsec", ""],
 ].map((parts) => parts.join("_"));
 NEEDLES.push(["AI", "za"].join(""));
-const SECRET_NAMES = ["STRIPE_SECRET_KEY", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET", "FLIGHT_API_KEY", "PLACE_TICKET_SECRET", "STRIPE_WEBHOOK_SECRET", "SMTP_USER", "SMTP_PASS"];
+const SECRET_NAMES = ["STRIPE_SECRET_KEY", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET", "FLIGHT_API_KEY", "PLACE_TICKET_SECRET", "STRIPE_WEBHOOK_SECRET", "SMTP_USER", "SMTP_PASS", "TWILIO_API_KEY", "TWILIO_API_SECRET"];
 
 const skipEnv = (name) => /^\.env/.test(name) && !/^\.env\.(example|sample)$/.test(name);
 
@@ -54,8 +54,13 @@ test(`the repository holds no Stripe key, webhook secret or Google API key (${al
   assert.deepEqual(hits, []);
 });
 
+test("the repository holds no Twilio account, API key or Messaging Service SID", () => {
+  const hits = all.filter((file) => /\b(AC|SK|MG)[0-9a-fA-F]{32}\b/.test(readFileSync(join(ROOT, file), "latin1")));
+  assert.deepEqual(hits, []);
+});
+
 test("the walk covers api/, test/ and scripts/", () => {
-  for (const file of ["api/book.mjs", "api/_stripe.mjs", "api/_mail.mjs", "api/_smtp.mjs", "api/stripe-webhook.mjs", "test/book-params.test.mjs", "test/mail.test.mjs", "scripts/serve.mjs"]) assert.ok(all.includes(file), file);
+  for (const file of ["api/book.mjs", "api/_stripe.mjs", "api/_mail.mjs", "api/_smtp.mjs", "api/_sms.mjs", "api/stripe-webhook.mjs", "test/book-params.test.mjs", "test/mail.test.mjs", "test/sms.test.mjs", "scripts/serve.mjs"]) assert.ok(all.includes(file), file);
 });
 
 test("the walk skips local .env files but scans .env.example and .env.sample", () => {
