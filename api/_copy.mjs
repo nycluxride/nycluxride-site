@@ -111,6 +111,7 @@ export const MAIL = {
   brand: "NYC LUX RIDE",
   subject: "Your NYC LUX RIDE booking {ref}",
   ownerSubject: "New booking {ref}",
+  textHeading: "NYC LUX RIDE booking",
   route: "{from} to {to}",
   routeReturn: "{from} to {to}, return {when}",
   routeHourly: "{hours} hours from {from}",
