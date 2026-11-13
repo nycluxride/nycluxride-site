@@ -1003,7 +1003,7 @@ main:has(:is(#airport-suv,#business-suv):target) :is(#airport-suv,#business-suv)
 
 
 
-@media (pointer:coarse){.home .seats .lnk{padding-block:10px}}
+.home .rev{display:grid;gap:16px;margin:0;padding:0}.home .rev__card{display:flex;flex-direction:column;gap:16px;block-size:100%;margin:0;padding:24px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--white)}.home .rev__stars{display:flex;gap:2px;margin:0;color:var(--gold-700)}.home .rev__stars .icon{inline-size:16px;block-size:16px;fill:currentColor;stroke:none}.home .rev blockquote{flex:1;margin:0}.home .rev blockquote p{max-inline-size:none;margin:0;font:400 18px/28px var(--font-display);color:var(--ink)}.home .rev figcaption{display:flex;align-items:center;gap:12px}.home .rev__by{display:grid;place-items:center;flex:none;inline-size:40px;aspect-ratio:1;border:1px solid var(--gold-300);border-radius:50%;background:var(--gold-50);font:600 13px/1 var(--font-sans);letter-spacing:.06em;color:var(--gold-700)}.home .rev__who{display:grid;font:600 15px/20px var(--font-sans);color:var(--ink)}.home .rev__who small{font:500 11px/16px var(--font-sans);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}@media (min-width:600px){.home .rev{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:1200px){.home .rev{grid-template-columns:repeat(4,minmax(0,1fr))}}@media (pointer:coarse){.home :is(.seats,.rev) .lnk{padding-block:10px}}
 .home .perks__note+.btn-row{column-gap:32px}
 .home .perks__note{margin:32px auto 0;color:var(--ink-2);text-align:center;text-wrap:balance}
 @media (max-width:389px){.home :is(.amen__list,.seats__list){margin-inline:-8px}.home .seats__list{column-gap:12px}.home .seats__n{font-size:13px}}

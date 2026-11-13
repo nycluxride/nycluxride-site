@@ -214,6 +214,17 @@ const HEADER = () => {
   return { meet, out };
 };
 
+const REV = () => {
+  const r = (v) => Math.round(v), rows = new Map();
+  for (const li of document.querySelectorAll(".home .rev > li")) { const b = li.getBoundingClientRect(); rows.set(r(b.top), [...(rows.get(r(b.top)) || []), b]); }
+  const all = [...rows.values()];
+  return {
+    cols: Math.max(...all.map((x) => x.length)),
+    even: all.every((x) => Math.max(...x.map((b) => b.height)) - Math.min(...x.map((b) => b.height)) <= 1),
+    spill: [...document.querySelectorAll(".home .rev__card")].filter((f) => f.scrollWidth > f.clientWidth + 1 || f.scrollHeight > f.clientHeight + 1).length,
+  };
+};
+
 const NO_GUTTER = () => {
   const s = new CSSStyleSheet();
   s.replaceSync("html{scrollbar-gutter:auto}");
@@ -250,6 +261,12 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     await p.waitForTimeout(200);
     const s = await p.evaluate(SHAPE);
     const phone = width < 600, wide = width >= 1024, L = s.L;
+    const rv = await p.evaluate(REV);
+    await check(`${engine} ${width}px: the reviews are ${width < 600 ? "one column" : width < 1200 ? "two columns" : "four columns"} of cards of equal height per row with nothing spilling out`, () => {
+      assert.equal(rv.cols, width < 600 ? 1 : width < 1200 ? 2 : 4);
+      assert.ok(rv.even, "cards in one row differ in height");
+      assert.equal(rv.spill, 0);
+    });
     await check(`${engine} ${width}px: the waiting band, child seats and amenities fit the screen with no sideways scroll and no clipped text`, () => {
       assert.ok(s.page[0] <= s.page[1], `the page is ${s.page[0]}px wide in ${s.page[1]}px`);
       assert.deepEqual(s.out, []);

@@ -62,6 +62,26 @@ const answer = (question) => {
   const d = [...faq.querySelectorAll("main details")].find((x) => norm(x.querySelector("summary").textContent) === question);
   return d ? norm(d.textContent.replace(d.querySelector("summary").textContent, "")) : "";
 };
+const REVIEWS = [
+  ["The service was beyond five star, and the drivers are professional and extremely reliable. I will use this car service every time without hesitation and highly recommend them.", "Francesca K.", "FK"],
+  ["Always reliable, clean cars, and smooth rides.", "Haroon I.", "HI"],
+  ["It was a comfortable ride and chauffeur was very professional. Definitely use this service again.", "Sameer V.", "SV"],
+  ["Great company. Great service and amazing drivers", "Greg G.", "GG"],
+];
+check("index.html: a reviews band sits between From booking to pickup and Where we pick up, with four five star Google reviews quoted word for word, links to leave a review and read them all on Google, and no overall rating or count", () => {
+  const rev = doc.querySelector('main section[aria-labelledby="how-h"]')?.nextElementSibling;
+  assert.ok(rev?.matches('section.section.section--band.frame[aria-labelledby="rev-h"]'), "no reviews band right after From booking to pickup");
+  assert.ok(rev.nextElementSibling?.matches('section[aria-labelledby="areas-h"]'), "Where we pick up does not follow the reviews");
+  assert.deepEqual([norm(rev.querySelector("h2#rev-h").textContent), norm(rev.querySelector("h2#rev-h + p").textContent)], ["What riders say", "Real reviews from our riders on Google."]);
+  const cards = [...rev.querySelectorAll(":scope > ul.rev[role=list] > li > figure.rev__card")];
+  assert.deepEqual(cards.map((f) => [norm(f.querySelector("blockquote").textContent), norm(f.querySelector(".rev__who").firstChild.textContent), f.querySelector(".rev__by").textContent]), REVIEWS);
+  assert.deepEqual(cards.map((f) => [f.querySelector(".rev__stars").getAttribute("role"), f.querySelector(".rev__stars").getAttribute("aria-label"), [...f.querySelectorAll(".rev__stars use")].map((u) => u.getAttribute("href")).join(" "), f.querySelector(".rev__by").getAttribute("aria-hidden"), norm(f.querySelector(".rev__who small").textContent)]), Array(4).fill(["img", "5 out of 5 stars", "#i-star #i-star #i-star #i-star #i-star", "true", "Google review"]));
+  assert.ok(doc.querySelector("svg symbol#i-star"), "the sprite has no star");
+  const links = [...rev.querySelectorAll(":scope > p.btn-row > a")].map((a) => [norm(a.textContent), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]);
+  assert.deepEqual(links, [["Leave a review on Google (opens in a new tab)", "https://search.google.com/local/writereview?placeid=ChIJd2fKeAwPQKYRUi7uSFuSzNY", "_blank", "noopener"], ["Read all reviews on Google (opens in a new tab)", "https://www.google.com/maps?cid=15477906940128800338", "_blank", "noopener"]]);
+  assert.ok(!/\d(\.\d)?\s*(out of 5|stars?)|\d+\s+reviews/i.test(norm(rev.textContent)), "the band shows an overall rating or a review count");
+  assert.equal(rev.querySelectorAll("img, form, input, textarea, script").length, 0);
+});
 const hero = doc.querySelector("main > section.hero");
 const band = hero?.nextElementSibling;
 const perks = band?.nextElementSibling;

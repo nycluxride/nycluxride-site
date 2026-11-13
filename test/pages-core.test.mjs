@@ -665,8 +665,8 @@ function selectors(body) {
 }
 const cssFile = readdirSync(join(ROOT, "assets")).find((f) => /^lux\.[A-Za-z0-9_-]+\.css$/.test(f));
 const pagesBlock = block(readFileSync(join(ROOT, "assets", cssFile), "utf8"), "@layer pages{");
-check(`assets/${cssFile}: the @layer pages block is at most 13000 bytes, with the waiting band, child seats, amenities and the homepage booking card (${Buffer.byteLength(pagesBlock)})`, () => {
-  assert.ok(Buffer.byteLength(pagesBlock) <= 13000);
+check(`assets/${cssFile}: the @layer pages block is at most 14000 bytes, with the waiting band, child seats, amenities and the homepage booking card (${Buffer.byteLength(pagesBlock)})`, () => {
+  assert.ok(Buffer.byteLength(pagesBlock) <= 14000);
 });
 check(`assets/${cssFile}: every selector of the @layer pages block starts with .home`, () => {
   const list = selectors(pagesBlock.slice("@layer pages{".length, -1));
