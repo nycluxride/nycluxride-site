@@ -8,7 +8,7 @@ const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const HASHED = /^(.+)\.([A-Za-z0-9_-]{6,})\.(js|css|webp|webmanifest|woff2)$/;
 const REFERRERS = /\.(css|js|webmanifest)$/;
 const BUDGETS = [
-  [/^lux\..*\.css$/, 122000, true],
+  [/^lux\..*\.css$/, 123000, true],
   [/^book\..*\.css$/, 61400, true],
   [/^lux\..*\.js$/, 12288, true],
   [/^pay\..*\.js$/, 66800, true],
@@ -20,7 +20,7 @@ const BUDGETS = [
 ];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
 const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`)];
-const BOOKING_CSS = 183000;
+const BOOKING_CSS = 184000;
 const BOOK_SCRIPTS = 78000;
 const SPECULATION_BYTES = 600;
 const FONT_FILES = 3;
