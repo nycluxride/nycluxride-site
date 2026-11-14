@@ -70,7 +70,7 @@ const REVIEWS = [
   ["Always reliable, clean cars, and smooth rides.", "Haroon I.", "HI"],
   ["Great service.", "Javier A.", "JA"],
 ];
-check("index.html: a reviews band sits between From booking to pickup and Where we pick up, with a 5.0 Google rating banner, a scrollable row of six five star Google reviews quoted word for word with previous and next buttons, links to leave a review and read them all on Google, and no review count", () => {
+check("index.html: a reviews band sits between From booking to pickup and Where we pick up, with a 5.0 Google rating banner, a scrollable row of six five star Google reviews quoted word for word, each card a link to the reviews on Google, with previous and next buttons, links to leave a review and read them all on Google, and no review count", () => {
   const rev = doc.querySelector('main section[aria-labelledby="how-h"]')?.nextElementSibling;
   assert.ok(rev?.matches('section.section.section--band.frame[aria-labelledby="rev-h"]'), "no reviews band right after From booking to pickup");
   assert.ok(rev.nextElementSibling?.matches('section[aria-labelledby="areas-h"]'), "Where we pick up does not follow the reviews");
@@ -81,7 +81,8 @@ check("index.html: a reviews band sits between From booking to pickup and Where 
   assert.ok(region, "the reviews row is not a focusable region named by the heading");
   const cards = [...region.querySelectorAll(":scope > ul.rev[role=list] > li > figure.rev__card")];
   assert.deepEqual(cards.map((f) => [norm(f.querySelector("blockquote").textContent), norm(f.querySelector(".rev__who").firstChild.textContent), f.querySelector(".rev__by").textContent]), REVIEWS);
-  assert.deepEqual(cards.map((f) => [f.querySelector(".rev__stars").getAttribute("role"), f.querySelector(".rev__stars").getAttribute("aria-label"), [...f.querySelectorAll(".rev__stars use")].map((u) => u.getAttribute("href")).join(" "), f.querySelector(".rev__by").getAttribute("aria-hidden"), norm(f.querySelector(".rev__who small").textContent)]), Array(6).fill(["img", "5 out of 5 stars", "#i-star #i-star #i-star #i-star #i-star", "true", "Google review"]));
+  assert.deepEqual(cards.map((f) => [f.querySelector(".rev__stars").getAttribute("role"), f.querySelector(".rev__stars").getAttribute("aria-label"), [...f.querySelectorAll(".rev__stars use")].map((u) => u.getAttribute("href")).join(" "), f.querySelector(".rev__by").getAttribute("aria-hidden")]), Array(6).fill(["img", "5 out of 5 stars", "#i-star #i-star #i-star #i-star #i-star", "true"]));
+  assert.deepEqual(cards.map((f) => { const a = f.querySelector(".rev__who > a.rev__link"); return [norm(a?.textContent), a?.getAttribute("href"), a?.getAttribute("target"), a?.getAttribute("rel"), !!a?.querySelector('svg[aria-hidden="true"] use[href="#i-external"]')]; }), REVIEWS.map(([, n]) => [`Google review by ${n} (opens in a new tab)`, "https://search.google.com/local/reviews?placeid=ChIJd2fKeAwPQKYRUi7uSFuSzNY", "_blank", "noopener", true]));
   assert.ok(doc.querySelector("svg symbol#i-star") && doc.querySelector("svg symbol#i-chevron"), "the sprite lacks the star or the chevron");
   const nav = [...rev.querySelectorAll(":scope > p.rev__nav > button")].map((b) => [b.getAttribute("type"), b.getAttribute("aria-label"), b.dataset.rev, b.getAttribute("aria-disabled")]);
   assert.deepEqual(nav, [["button", "Previous reviews", "-1", "true"], ["button", "Next reviews", "1", "false"]]);

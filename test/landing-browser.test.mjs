@@ -222,6 +222,9 @@ const REV = () => {
     shown: lis.filter((b) => b.left >= box.left - 0.5 && b.right <= box.right + 0.5).length,
     spill: [...sc.querySelectorAll(".rev__card")].filter((f) => f.scrollWidth > f.clientWidth + 1 || f.scrollHeight > f.clientHeight + 1).length,
     nav: getComputedStyle(document.querySelector(".home .rev__nav")).display,
+    first: Math.round(lis[0].left),
+    gutter: parseFloat(getComputedStyle(sc).paddingLeft),
+    cover: [...sc.querySelectorAll(".rev__card")].every((f) => { const l = f.querySelector(".rev__link"); return l && getComputedStyle(l, "::after").position === "absolute" && getComputedStyle(f).position === "relative"; }),
   };
 };
 
@@ -262,10 +265,13 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     const s = await p.evaluate(SHAPE);
     const phone = width < 600, wide = width >= 1024, L = s.L;
     const rv = await p.evaluate(REV);
-    await check(`${engine} ${width}px: the reviews are one row of cards of equal height with ${width < 600 ? "one" : width < 1024 ? "two" : "three"} fully in view, the next one peeking, nothing spilling out, and the previous and next buttons shown`, () => {
-      assert.deepEqual([rv.rows, rv.shown, rv.spill], [1, width < 600 ? 1 : width < 1024 ? 2 : 3, 0]);
+    await check(`${engine} ${width}px: the reviews are one row of cards of equal height starting at the page margin with ${width < 600 ? "one" : width < 1024 ? "two" : "at least three"} fully in view, the next one peeking, each card one link to Google, nothing spilling out, and the previous and next buttons shown`, () => {
+      assert.deepEqual([rv.rows, rv.spill], [1, 0]);
+      assert.ok(width < 1024 ? rv.shown === (width < 600 ? 1 : 2) : rv.shown >= 3, `${rv.shown} cards fully in view`);
       assert.ok(rv.even, "the cards differ in height");
       assert.notEqual(rv.nav, "none");
+      assert.ok(Math.abs(rv.first - rv.gutter) <= 1 && rv.gutter <= 48, `the first card starts at ${rv.first}, the page margin is ${rv.gutter}`);
+      assert.ok(rv.cover, "a card is not one link to the reviews on Google");
     });
     await check(`${engine} ${width}px: the waiting band, child seats and amenities fit the screen with no sideways scroll and no clipped text`, () => {
       assert.ok(s.page[0] <= s.page[1], `the page is ${s.page[0]}px wide in ${s.page[1]}px`);
