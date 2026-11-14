@@ -215,13 +215,13 @@ const HEADER = () => {
 };
 
 const REV = () => {
-  const r = (v) => Math.round(v), rows = new Map();
-  for (const li of document.querySelectorAll(".home .rev > li")) { const b = li.getBoundingClientRect(); rows.set(r(b.top), [...(rows.get(r(b.top)) || []), b]); }
-  const all = [...rows.values()];
+  const sc = document.querySelector(".home .rev-scroll"), box = sc.getBoundingClientRect(), lis = [...sc.querySelectorAll(".rev > li")].map((li) => li.getBoundingClientRect());
   return {
-    cols: Math.max(...all.map((x) => x.length)),
-    even: all.every((x) => Math.max(...x.map((b) => b.height)) - Math.min(...x.map((b) => b.height)) <= 1),
-    spill: [...document.querySelectorAll(".home .rev__card")].filter((f) => f.scrollWidth > f.clientWidth + 1 || f.scrollHeight > f.clientHeight + 1).length,
+    rows: new Set(lis.map((b) => Math.round(b.top))).size,
+    even: Math.max(...lis.map((b) => b.height)) - Math.min(...lis.map((b) => b.height)) <= 1,
+    shown: lis.filter((b) => b.left >= box.left - 0.5 && b.right <= box.right + 0.5).length,
+    spill: [...sc.querySelectorAll(".rev__card")].filter((f) => f.scrollWidth > f.clientWidth + 1 || f.scrollHeight > f.clientHeight + 1).length,
+    nav: getComputedStyle(document.querySelector(".home .rev__nav")).display,
   };
 };
 
@@ -262,10 +262,10 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     const s = await p.evaluate(SHAPE);
     const phone = width < 600, wide = width >= 1024, L = s.L;
     const rv = await p.evaluate(REV);
-    await check(`${engine} ${width}px: the reviews are ${width < 600 ? "one column" : width < 1200 ? "two columns" : "four columns"} of cards of equal height per row with nothing spilling out`, () => {
-      assert.equal(rv.cols, width < 600 ? 1 : width < 1200 ? 2 : 4);
-      assert.ok(rv.even, "cards in one row differ in height");
-      assert.equal(rv.spill, 0);
+    await check(`${engine} ${width}px: the reviews are one row of cards of equal height with ${width < 600 ? "one" : width < 1024 ? "two" : "three"} fully in view, the next one peeking, nothing spilling out, and the previous and next buttons shown`, () => {
+      assert.deepEqual([rv.rows, rv.shown, rv.spill], [1, width < 600 ? 1 : width < 1024 ? 2 : 3, 0]);
+      assert.ok(rv.even, "the cards differ in height");
+      assert.notEqual(rv.nav, "none");
     });
     await check(`${engine} ${width}px: the waiting band, child seats and amenities fit the screen with no sideways scroll and no clipped text`, () => {
       assert.ok(s.page[0] <= s.page[1], `the page is ${s.page[0]}px wide in ${s.page[1]}px`);
@@ -526,6 +526,37 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     }
     await check(`${engine}: resized at the top of the page across 1024px, the header takes the state of a fresh load at each size`, () =>
       assert.deepEqual(seen, [[1023, true], [1331, false], [390, true], [1440, false], [1023, true], [1331, false]]));
+    await ctx.close();
+  }
+  for (const [viewport, js] of [[{ width: 1440, height: 900 }, true], [{ width: 390, height: 844 }, true], [{ width: 1440, height: 900 }, false]]) {
+    const ctx = await browser.newContext({ viewport, javaScriptEnabled: js });
+    const p = await ctx.newPage();
+    await p.goto(`${base}/`, { waitUntil: "load" });
+    const read = () => p.evaluate(() => { const sc = document.querySelector(".home .rev-scroll"), b = [...document.querySelectorAll(".home .rev__nav button")], last = [...sc.querySelectorAll(".rev > li")].at(-1).getBoundingClientRect(); return { x: Math.round(sc.scrollLeft), more: sc.scrollWidth > sc.clientWidth, off: b.map((x) => x.getAttribute("aria-disabled")), nav: getComputedStyle(b[0].parentElement).display, end: last.right <= sc.getBoundingClientRect().right + 0.5 }; });
+    if (!js) {
+      const s = await read();
+      await check(`${engine} without javascript: the reviews row still scrolls sideways and the previous and next buttons are hidden`, () => assert.deepEqual([s.more, s.nav], [true, "none"]));
+      await ctx.close();
+      continue;
+    }
+    await p.evaluate(() => document.querySelector(".home .rev-scroll").scrollIntoView({ block: "center" }));
+    await p.waitForTimeout(300);
+    const start = await read();
+    await p.click('.home .rev__nav button[data-rev="1"]');
+    await p.waitForTimeout(900);
+    const next = await read();
+    await p.evaluate(() => { const sc = document.querySelector(".home .rev-scroll"); sc.scrollLeft = sc.scrollWidth; });
+    await p.waitForTimeout(400);
+    const end = await read();
+    await p.click('.home .rev__nav button[data-rev="-1"]');
+    await p.waitForTimeout(900);
+    const back = await read();
+    await check(`${engine} ${viewport.width}x${viewport.height}: Next moves the reviews on by one card, the end turns Next off and shows the last card whole, and Previous moves back`, () => {
+      assert.deepEqual([start.x, start.off], [0, ["true", "false"]]);
+      assert.ok(next.x > 0 && next.off[0] === "false", `after Next the row is at ${next.x}, Previous ${next.off[0]}`);
+      assert.deepEqual([end.off[1], end.end], ["true", true]);
+      assert.ok(back.x < end.x && back.off[1] === "false", `after Previous the row is at ${back.x} from ${end.x}, Next ${back.off[1]}`);
+    });
     await ctx.close();
   }
   {
