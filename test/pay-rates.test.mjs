@@ -292,12 +292,12 @@ test("the distance worked example is base plus miles plus minutes from api/_trip
   assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808]);
 });
 
-test("the distance section says how the price is built and that tolls and parking are charged after the ride, as on hourly bookings", () => {
+test("the distance section says how the price is built, that trips with stops are priced over the whole route at no less than the airport fare of an airport on it, and that tolls and parking are charged after the ride, as on hourly bookings", () => {
   const prose = squash(page.querySelector("#distance .prose"));
   assert.ok(prose.includes("One-way trips anywhere in the United States that don't start or end at an airport are priced by distance and time."), prose);
   assert.ok(!/five boroughs|New York City address|60 miles|180 minutes/.test(prose), prose);
   assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
-  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
+  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Trips with stops are priced by distance and time for the whole route, from the pickup through each stop to the drop-off, and the fare is never less than the airport fare when the route starts, stops or ends at one of these airports. When every part is an airport transfer, each part keeps its flat airport rate. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
   assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
   const note = squash(page.querySelector("#distance-caption .rate-table__note"));
   assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));

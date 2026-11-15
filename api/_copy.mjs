@@ -7,8 +7,9 @@ export const REASONS = {
   "street-address": { group: "price", text: "Add the street address to see the price.", google: "Add the street address, or pick it from the list, to see the price." },
   "pickup-address": { group: "price", text: "Add the pickup street address to see the price.", map: "Add the pickup street address, or choose the spot on the map, to see the price." },
   "return-address": { group: "price", text: "The drop-off is also your return pickup. Add its street address to see the price.", map: "The drop-off is also your return pickup. Add its street address, or choose the spot on the map, to see the price." },
+  "stop-address": { group: "price", text: "Add the street address of each stop to see the price.", google: "Add the street address of each stop, or pick it from the list, to see the price." },
   "airport-zip": { group: "price", text: "This address is in an airport ZIP code. For the airport itself, type its name, like JFK or Newark Liberty (EWR), to see the price. Our dispatch team prices other trips here." },
-  "stop-leg": { group: "price", text: "Our dispatch team prices trips with stops, unless each part is between JFK, LaGuardia, Newark or Teterboro and a New York City address." },
+  "stop-leg": { group: "price", text: "Trips with stops are priced online for the whole route by distance and time, never below the flat airport rate when they start, stop or end at JFK, LaGuardia, Newark or Teterboro. We can't price this one online. Our dispatch team prices it." },
   "airport-to-airport": { group: "price", text: "Our dispatch team prices trips between two airports." },
   "no-airport": { group: "price", text: "We can't price this trip online right now. Our dispatch team prices it. You can also book by the hour and pay now.", short: "We can't price this trip online right now. Our dispatch team prices it." },
   "outside-us": { group: "price", text: "Our dispatch team prices trips that start or end outside the United States." },
@@ -20,6 +21,7 @@ export const REASONS = {
   "sprinter-hourly": { group: "price", text: "Our dispatch team prices Luxury Sprinter bookings by the hour." },
   "sprinter-distance": { group: "price", text: "Our dispatch team prices Luxury Sprinter trips that don't start or end at an airport." },
   "sprinter-outside": { group: "price", text: "Our dispatch team prices Luxury Sprinter trips between an airport and an address outside New York City." },
+  "sprinter-stops": { group: "price", text: "Our dispatch team prices Luxury Sprinter trips with stops, unless each part is between JFK, LaGuardia, Newark or Teterboro and a New York City address." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
   "clock-change": { group: "phone", text: "The clocks change at this hour. A pickup or return at this time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
@@ -58,6 +60,8 @@ export const POLICY = {
     airport: "After the ride, only waiting beyond the free window, extra stops and parking are charged to your card, each on an itemized receipt.",
     hourly: "After the ride, tolls and parking are charged to your card, each on an itemized receipt.",
     outside: "After the ride, waiting beyond the free window, tolls and parking are charged to your card, each on an itemized receipt.",
+    returnFlat: "After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to your card, each on an itemized receipt.",
+    outFlat: "After the ride, waiting beyond the free window, tolls for the return and parking are charged to your card, each on an itemized receipt.",
   },
 };
 const INCLUDED = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included.";
@@ -67,6 +71,8 @@ export const NOTES = {
   included: INCLUDED,
   airport: INCLUDED + " " + POLICY.later.airport,
   hourly: POLICY.later.hourly,
+  returnFlat: "Tolls and airport fees for the return are included.",
+  outFlat: "Tolls and airport fees for the ride out are included.",
 };
 export const LABELS = {
   fare: "Fare",
@@ -94,6 +100,8 @@ export const LABELS = {
   legs: "{class}, {legs} airport transfers",
   distance: "{class}, {miles} miles and {minutes} min",
   distanceLegs: "{class}, {legs} rides, {miles} miles and {minutes} min",
+  returnFlat: "{class}, {miles} miles and {minutes} min, return at the flat airport rate",
+  outFlat: "{class}, {transfers} airport transfers, return {miles} miles and {minutes} min",
   airportZip: "Airport ZIP code",
 };
 export const CHECKOUT = {
@@ -102,6 +110,8 @@ export const CHECKOUT = {
   submitHourly: "Today you pay the hourly fare, taxes and fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
   submitDistance: "Today you pay the fare, taxes and fees, child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
   submitOutside: "Today you pay the fare, taxes and fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.",
+  submitReturnFlat: "Today you pay the fare, taxes and fees, tolls and airport fees for the return, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.",
+  submitOutFlat: "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.",
   license: "Licensed by the NYC Taxi and Limousine Commission, base license {license}.",
   afterSubmit: `${CONFIRM} ${CHANGE}`,
 };

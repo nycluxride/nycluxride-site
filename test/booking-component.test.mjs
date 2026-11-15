@@ -404,6 +404,7 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.ok($("price-total").closest("tfoot"));
   assert.ok($("price-notes").matches("ul.bk-later"));
   assert.deepEqual([$("price-notes").dataset.airport, $("price-notes").dataset.hourly, $("price-notes").dataset.outside, $("price-notes").textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, ""]);
+  assert.deepEqual([$("price-notes").dataset.returnFlat, $("price-notes").dataset.outFlat], [NOTES.returnFlat + "|" + POLICY.later.returnFlat, NOTES.outFlat + "|" + POLICY.later.outFlat], "the notes of a round trip with stops whose return, or whose ride out, is at the flat airport rate");
   assert.equal($("quote").getAttribute("aria-label"), "Booking request");
   const blocks = [...$("quote").querySelectorAll("div.bk-q")];
   assert.deepEqual(blocks.map((b) => b.id), [...Object.keys(REASONS).flatMap((r) => (REASONS[r].short ? [`q-${r}`, `q-${r}-short`] : [`q-${r}`])), "q-error"]);

@@ -38,6 +38,7 @@ const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", 
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 const ROUTED = ["no-airport", "outside-city"];
+const ROUTE_REASONS = ["street-address", "stop-address", "airport-zip", "long-trip"];
 const NONCE = /^[A-Za-z0-9-]{16,64}$/;
 const FLIGHT = /^[A-Za-z0-9 -]{1,20}$/;
 const EMAIL = /^[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
@@ -83,6 +84,7 @@ const line = (label, cents) => ({ label, cents });
 const taxLabel = () => fill(LABELS.tax, { percent: NYC_TAX_PERCENT });
 const bcfLabel = () => fill(LABELS.bcf, { percent: BCF_PERCENT });
 const tipLabel = (rate) => fill(LABELS.gratuity, { rate });
+const flatNotes = (part) => (part === "return" ? [NOTES.returnFlat, POLICY.later.returnFlat] : part === "out" ? [NOTES.outFlat, POLICY.later.outFlat] : null);
 
 export function fill(template, values) {
   return template.replace(/\{(\w+)\}/g, (match, name) => (has(values, name) ? String(values[name]) : match));
@@ -306,13 +308,13 @@ function waypointOf(end) {
   return end.place ? { placeId: end.place } : { address: routeText(end.text, end.zone) };
 }
 
-async function rideOf(from, to, departure, known, context, now) {
-  const key = routeKey(from, to, departure.toISOString());
+async function rideOf(points, departure, known, context, now) {
+  const key = routeKey(points[0], points[points.length - 1], departure.toISOString(), points.slice(1, -1));
   const saved = known.get(key) || routeRides.get(key);
   const fresh = Boolean(saved) && saved.at + TICKET_TTL * 1000 > now;
   if (fresh && !context.map) return { key, ...saved };
   const allowed = (!context.request || clientBudget(context.request, "book-route", PICK_IP)) && instanceBudget("book-route", PICK_INSTANCE);
-  const result = allowed ? await computeRoute([from, to], departure, context.map || null) : { ok: false, status: 429 };
+  const result = allowed ? await computeRoute(points, departure, context.map || null) : { ok: false, status: 429 };
   if (!result.ok) {
     console.error("book-route", result.status);
     return fresh ? { key, ...saved } : null;
@@ -327,32 +329,39 @@ async function rideOf(from, to, departure, known, context, now) {
 async function driveTrip(trip, token, context) {
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const check = checkTrip(trip, now, OPEN);
-  if (check.kind !== "quote" || !ROUTED.includes(check.reason)) return trip;
-  if ([trip.ends.from, trip.ends.to].some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
+  const stops = [trip.ends.stop1, trip.ends.stop2].filter(Boolean);
+  const routed = stops.length ? check.reason === "stop-leg" && trip.legs.every((item) => !item.reason || ROUTED.includes(item.reason)) : ROUTED.includes(check.reason);
+  if (check.kind !== "quote" || !routed) return trip;
+  const points = [trip.ends.from, ...stops, trip.ends.to];
+  if (points.some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" || stops.length ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
   if (!googleOn()) return trip;
-  if ([trip.ends.from, trip.ends.to].some((end) => end.area) || askFor(trip, trip.ends)) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "street-address" })) };
+  const ask = [trip.ends.from, trip.ends.to].some((end) => end.area) || askFor(trip, trip.ends) ? "street-address" : stops.every(exact) ? "" : "stop-address";
+  if (ask) return { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: ask })) };
   const known = readRoute(token, now);
-  const ends = [waypointOf(trip.ends.from), waypointOf(trip.ends.to)];
-  const rides = await Promise.all(
-    trip.legs.map((item) => {
-      const [from, to] = item.back ? [ends[1], ends[0]] : ends;
-      return rideOf(from, to, item.back ? nycToUtc(trip.return_date, trip.return_time) : nycToUtc(trip.date, trip.time), known, context, now);
-    }),
-  );
+  const ends = points.map(waypointOf);
+  const zones = points.map((end) => end.zone);
+  const out = trip.legs.filter((item) => !item.back);
+  const back = trip.legs.filter((item) => item.back).map((item) => (item.reason ? item : { ...item, flat: true }));
+  const whole = { ...leg(zones[0], zones[zones.length - 1], false), airport: zones.find((zone) => AIRPORT_PLACES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
+  const legs = !stops.length ? trip.legs : out.every((item) => !item.reason) ? [...out.map((item) => ({ ...item, flat: true })), ...back] : [whole, ...back];
+  const routes = legs.filter((item) => item.back || !item.flat);
+  const rides = await Promise.all(routes.map((item) => (item.back ? rideOf([ends[ends.length - 1], ends[0]], nycToUtc(trip.return_date, trip.return_time), known, context, now) : rideOf(ends, nycToUtc(trip.date, trip.time), known, context, now))));
   if (rides.some((ride) => !ride)) return trip;
   const long = rides.some((ride) => !withinLimits(ride));
+  const rideFor = (item) => rides[routes.indexOf(item)];
   return {
     ...trip,
     route: signRoute(rides.map(({ key, tenths, minutes }) => [key, tenths, minutes]), Math.min(...rides.map((ride) => ride.at))),
-    legs: trip.legs.map((item, i) => ({ ...item, reason: long ? "long-trip" : "", ride: { tenths: rides[i].tenths, minutes: rides[i].minutes } })),
+    legs: legs.map((item) => (rideFor(item) ? { ...item, reason: long ? "long-trip" : "", ride: { tenths: rideFor(item).tenths, minutes: rideFor(item).minutes } } : item)),
     paths: rides.map((ride) => ride.path),
   };
 }
 
 export const withinLimits = ({ tenths, minutes }) => tenths <= DISTANCE_LIMITS.miles * 10 && minutes <= DISTANCE_LIMITS.minutes;
-const distanceTrip = (trip) => trip.trip_type === "one" && Array.isArray(trip.legs) && trip.legs.length > 0 && trip.legs.every((item) => item.ride && !item.reason);
+const distanceTrip = (trip) => trip.trip_type === "one" && Array.isArray(trip.legs) && trip.legs.length > 0 && trip.legs.every((item) => (item.ride || item.flat) && !item.reason);
 export const serviceOf = (trip) => (trip.trip_type === "hour" ? "hourly" : distanceTrip(trip) ? "distance" : "airport");
 export const airportDistance = (trip) => distanceTrip(trip) && trip.legs.some((item) => item.airport);
+export const flatPart = (trip) => (distanceTrip(trip) && trip.legs.some((item) => item.flat) ? (trip.legs.some((item) => item.flat && item.back) ? "return" : "out") : "");
 
 function vehicleFor(trip, cls) {
   if (cls === trip.class && has(VEHICLES, trip.vehicle)) return trip.vehicle;
@@ -363,7 +372,7 @@ function vehicleFor(trip, cls) {
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
   if (trip.trip_type === "hour" && VEHICLES[vehicleFor(trip, cls)].hourly === null) return "sprinter-hourly";
-  if (distanceTrip(trip) && !has(DISTANCE_RATES, cls)) return trip.legs[0].airport ? "sprinter-outside" : "sprinter-distance";
+  if (distanceTrip(trip) && !has(DISTANCE_RATES, cls)) return trip.legs.some((item) => item.stops || item.flat) ? "sprinter-stops" : trip.legs[0].airport ? "sprinter-outside" : "sprinter-distance";
   if (Number(trip.passengers) > CLASSES[cls].seats) return "seats";
   return "";
 }
@@ -384,7 +393,7 @@ function spatialReason(trip) {
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
   if (ask) return { reason: ask, field: "" };
   if (!unpriced) return null;
-  return { reason: ends.stop1 || ends.stop2 ? "stop-leg" : unpriced.reason, field: "" };
+  return { reason: (ends.stop1 || ends.stop2) && !ROUTE_REASONS.includes(unpriced.reason) ? "stop-leg" : unpriced.reason, field: "" };
 }
 
 function holdFor(trip, current, settings) {
@@ -488,8 +497,8 @@ export function distanceFare(cls, tenths, minutes) {
   return Math.max(rate.minimum, rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute);
 }
 
-export function priceDistance(cls, { tenths, minutes }, airport) {
-  const fare = Math.max(distanceFare(cls, tenths, minutes), airport ? AIRPORT_FARES[cls][airport] : 0);
+export function priceDistance(cls, { tenths, minutes }, ...airports) {
+  const fare = Math.max(distanceFare(cls, tenths, minutes), ...airports.filter((airport) => has(AIRPORT_FARES[cls], airport)).map((airport) => AIRPORT_FARES[cls][airport]));
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { fare, tax, bcf, tolls: 0, total: fare + tax + bcf };
@@ -513,7 +522,7 @@ export function priceTrip(trip, settings) {
   const tipPercent = Number(trip.tip) || 0;
   const service = serviceOf(trip);
   const plain = service === "airport";
-  const legs = hourly ? [] : (trip.legs || legsOf(trip)).map((item) => (item.ride ? priceDistance(trip.class, item.ride, item.airport) : priceLeg(trip.class, item.airport)));
+  const legs = hourly ? [] : (trip.legs || legsOf(trip)).map((item) => (item.ride && !item.flat ? priceDistance(trip.class, item.ride, item.from, ...(item.via || []), item.to) : priceLeg(trip.class, item.airport)));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
   const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
   const tax = hourly ? percentCents(fare, NYC_TAX_PERCENT) : sum("tax");
@@ -524,7 +533,7 @@ export function priceTrip(trip, settings) {
   const seats = seatCount * CHILD_SEAT_CENTS;
   const tip = custom ? Number(trip.tip_amount) * 100 || 0 : tipPercent ? percentCents(fare, String(tipPercent)) : 0;
   const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), line(taxLabel(), tax), line(bcfLabel(), bcf)];
-  if (plain) lines.push(line(LABELS.tolls, tolls));
+  if (plain || tolls) lines.push(line(LABELS.tolls, tolls));
   if (meet) lines.push(line(LABELS.meet, meet));
   if (seats) lines.push(line(seatLabel(seatCount, seats), seats));
   if (tip) lines.push(line(custom ? LABELS.gratuityAmount : tipLabel(tipPercent), tip));
@@ -543,7 +552,7 @@ export function priceTrip(trip, settings) {
     total: fare + tax + bcf + tolls + meet + seats + tip,
     value: fare + meet + seats,
     lines,
-    notes: plain ? [NOTES.included, POLICY.later.airport] : [airportDistance(trip) ? POLICY.later.outside : POLICY.later.hourly],
+    notes: plain ? [NOTES.included, POLICY.later.airport] : flatNotes(flatPart(trip)) || [airportDistance(trip) ? POLICY.later.outside : POLICY.later.hourly],
     service,
   };
 }
@@ -565,10 +574,10 @@ export function vehicleLabel(key) {
   return model ? `${model} (${CLASSES[cls].name})` : CLASSES[cls].name;
 }
 
-export function describe({ hourly, cls, vehicle, hours, count, direction, airport, tenths, minutes }) {
+export function describe({ hourly, cls, vehicle, hours, count, direction, airport, tenths, minutes, flat }) {
   if (hourly) return has(VEHICLES, vehicle) ? fill(LABELS.hourlyLine, { vehicle: vehicleLabel(vehicle), hours }) : "";
   if (!has(CLASSES, cls)) return "";
-  if (Number.isInteger(tenths) && Number.isInteger(minutes)) return fill(count > 1 ? LABELS.distanceLegs : LABELS.distance, { class: CLASSES[cls].name, legs: count, miles: (tenths / 10).toFixed(1), minutes });
+  if (Number.isInteger(tenths) && Number.isInteger(minutes)) return fill(flat === "return" ? LABELS.returnFlat : flat === "out" ? LABELS.outFlat : count > 1 ? LABELS.distanceLegs : LABELS.distance, { class: CLASSES[cls].name, legs: count, transfers: count - 1, miles: (tenths / 10).toFixed(1), minutes });
   if (count > 1) return fill(LABELS.legs, { class: CLASSES[cls].name, legs: count });
   if (!AIRPORT_PLACES.includes(airport) || (direction !== "to-airport" && direction !== "from-airport")) return "";
   return fill(direction === "to-airport" ? LABELS.to : LABELS.from, { airport: PLACES[airport], class: CLASSES[cls].name });
@@ -576,13 +585,13 @@ export function describe({ hourly, cls, vehicle, hours, count, direction, airpor
 
 export function rideTotals(trip) {
   if (!distanceTrip(trip)) return null;
-  return trip.legs.reduce((sum, item) => ({ tenths: sum.tenths + item.ride.tenths, minutes: sum.minutes + item.ride.minutes }), { tenths: 0, minutes: 0 });
+  return trip.legs.filter((item) => !item.flat).reduce((sum, item) => ({ tenths: sum.tenths + item.ride.tenths, minutes: sum.minutes + item.ride.minutes }), { tenths: 0, minutes: 0 });
 }
 
 export function serviceLabel(trip) {
   const legs = trip.legs || legsOf(trip);
   const first = legs[0] || {};
-  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, ...rideTotals(trip) });
+  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, flat: flatPart(trip), ...rideTotals(trip) });
 }
 
 export const REF = /^[1-9]\d{7}$/;
@@ -672,14 +681,17 @@ export function receipt(metadata, settings, taxCents) {
   const hourly = data.service === "hourly";
   const distance = data.service === "distance";
   const ride = distance && MILES.test(data.miles || "") && INTEGER.test(data.minutes || "") ? { tenths: Math.round(Number(data.miles) * 10), minutes: Number(data.minutes) } : null;
+  const count = INTEGER.test(data.legs || "") ? Number(data.legs) : 1;
+  const flat = distance && cents("tolls_cents") ? (count === 2 ? "return" : "out") : "";
   const service = describe({
     hourly,
     cls: data.class,
     vehicle: data.vehicle,
     hours: data.hours,
-    count: INTEGER.test(data.legs || "") ? Number(data.legs) : 1,
+    count,
     direction: data.direction,
     airport: data.airport,
+    flat,
     ...ride,
   });
   const known = validDate(data.date || "") && TIME.test(data.time || "") && Boolean(service);
@@ -701,6 +713,6 @@ export function receipt(metadata, settings, taxCents) {
     summary: !known ? "" : validDate(data.return_date || "") && TIME.test(data.return_time || "") ? fill(LABELS.summaryReturn, { date: formatDate(data.date), time: formatTime(data.time), rdate: formatDate(data.return_date), rtime: formatTime(data.return_time), service }) : fill(LABELS.summary, { date: formatDate(data.date), time: formatTime(data.time), service }),
     lines,
     value: cents("fare_cents") + cents("meet_cents") + cents("seats_cents"),
-    notes: distance && AIRPORT_PLACES.includes(data.airport) ? [POLICY.later.outside] : hourly || distance ? [POLICY.later.hourly] : [NOTES.included, POLICY.later.airport],
+    notes: flatNotes(flat) || (distance && AIRPORT_PLACES.includes(data.airport) ? [POLICY.later.outside] : hourly || distance ? [POLICY.later.hourly] : [NOTES.included, POLICY.later.airport]),
   };
 }

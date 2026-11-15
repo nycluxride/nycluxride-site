@@ -249,7 +249,9 @@ check("the pickup that fills in by itself (owner request 2) is the first slot MI
 });
 
 check("the price box and the confirmation receipt (owner change 2) hold the Taxes and fees and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
-  assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(ap\(\)\?\["Tolls"\]:\[\]\)\)/);
+  assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(tl\(\)\?\["Tolls"\]:\[\]\)\)/);
+  assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\?"airport":ou\(\)\?"outFlat":tl\(\)\?"returnFlat":AP\(\)\?"outside":"hourly"\]/, "the placeholder notes of a round trip with stops at the flat airport rate one way are those its answer brings");
+  assert.match(PAY, /"stop-address":aq\("stop "\)/);
   assert.match(PAY, /x\[0\]=="Tolls"&&one\(\)\?h\(" bk-hint--same","The same in every class\."\):""/);
   assert.match(DONE, /"Taxes and fees",\.\.\.!f\|\|y\?\["Tolls"\]:\[\]/);
   assert.match(DONE, /y=o&&\(b\.ln\|\|\["Tolls"\]\)\.some\(l=>\/\^Tolls\/\.test\(l\)\)/, "a saved Taxes and fees line never counts as a tolls line");

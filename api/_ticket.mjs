@@ -66,8 +66,8 @@ export function verifyTicket(ticket, label, now) {
 
 const routeMac = (key, payload) => createHmac("sha256", key).update(`r1.${payload}`).digest("base64url");
 
-export function routeKey(from, to, departure) {
-  return createHash("sha256").update(JSON.stringify([from, to, departure])).digest("base64url").slice(0, 22);
+export function routeKey(from, to, departure, stops = []) {
+  return createHash("sha256").update(JSON.stringify([from, ...stops, to, departure])).digest("base64url").slice(0, 22);
 }
 
 export function signRoute(rides, now) {

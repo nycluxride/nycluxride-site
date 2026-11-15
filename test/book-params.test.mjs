@@ -4,12 +4,12 @@ import { createServer } from "node:net";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
-import { readInput, readSettings, resolveTrip, priceTrip, bookingRef, requestRef, composeMessage, contactLinks, formatDate, receipt, firstSlot, REF } from "../api/_trip.mjs";
+import { readInput, readSettings, resolveTrip, priceTrip, priceDistance, priceLeg, bookingRef, requestRef, composeMessage, contactLinks, formatDate, receipt, firstSlot, REF } from "../api/_trip.mjs";
 import { clientKey, clean } from "../api/_http.mjs";
 import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY } from "../api/_copy.mjs";
-import { DESCRIPTOR_CODES, AIRPORT_PLACES, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES } from "../api/_rates.mjs";
+import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES } from "../api/_rates.mjs";
 import { ROUTE, signTicket } from "../api/_ticket.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
@@ -1041,7 +1041,7 @@ await test("handler: a picked city, borough, neighborhood or ZIP code as the pic
   for (const pick of PICKS) {
     for (const [name, base] of TRIPS) {
       const fields = trip({ ...base, ...pick, ...ME, reach: "phone" });
-      const want = pick.from_text.startsWith("Hoboken") && name === "hourly" ? "outside-hourly" : pick.from_text.startsWith("Hoboken") && name === "stop" ? "stop-leg" : "pickup-address";
+      const want = pick.from_text.startsWith("Hoboken") && name === "hourly" ? "outside-hourly" : "pickup-address";
       assertRedirect(await formPost(fields), `/book#q-${want}`);
       for (const action of ["options", "quote", "pay"]) {
         const body = await readJson(await post({ ...fields, action }), 200);
@@ -2520,6 +2520,136 @@ await test("handler: the dispatch quote path keeps the seats in the WhatsApp and
   assert.equal(sprinter.reason, "sprinter-hourly");
   assert.ok(decodeURIComponent(sprinter.whatsapp).includes("\nBooster seats: 2"), sprinter.whatsapp);
   assert.equal(calls.length, 0);
+});
+
+const ANN = "26 Ann St, New York, NY 10038";
+const WALL = "40 Wall St, New York, NY 10005";
+const CHURCH = "55 Church St, New York, NY 10007";
+const LGA_ADDRESS = "LaGuardia Airport, East Elmhurst, NY 11371";
+
+await test("handler: a stop that names only a borough on a trip priced over the whole route asks for the street address of each stop, by JSON and by form post, with no route lookup", async () => {
+  setEnv({ ...LIVE, GOOGLE_MAPS_SERVER_KEY: "test-server-key-SENTINEL" });
+  const sent = [];
+  stripe = (url, init) => (url.startsWith("https://routes.googleapis.com/") ? (sent.push(url), new Response("{}", { status: 503 })) : STRIPE_OK(url, init));
+  const fields = trip({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "Brooklyn", to_text: CHURCH, passengers: "2", class: "suv", ...ME, reach: "phone" });
+  const body = await readJson(await post({ ...fields, action: "options" }), 200);
+  assert.deepEqual([body.kind, body.reason, body.text, body.field, body.classes.every((c) => c.total_cents === null && c.reason === "stop-address")], ["quote", "stop-address", REASONS["stop-address"].google, "", true]);
+  assertRedirect(await formPost(fields), "/book#q-stop-address");
+  assert.deepEqual(sent, []);
+});
+
+await test("handler: the owner's trip from LaGuardia with stops at 26 Ann St and 40 Wall St to 55 Church St gets distance prices for the whole route on the cards, pays the same total with its route token, Stripe gets the line items and metadata of a trip priced by distance, the receipt rebuilds its lines, and a changed or reordered stop at pay can't reuse the signed route", async () => {
+  setEnv({ ...LIVE, GOOGLE_MAPS_SERVER_KEY: "test-server-key-SENTINEL" });
+  let down = false;
+  const sent = [];
+  stripe = (url, init) => {
+    if (!url.startsWith("https://routes.googleapis.com/")) return STRIPE_OK(url, init);
+    sent.push(JSON.parse(init.body));
+    return down ? new Response("{}", { status: 503 }) : new Response(JSON.stringify({ routes: [{ duration: "4200s", distanceMeters: 40234 }] }), { status: 200 });
+  };
+  const stripeCalls = () => calls.filter((c) => c.url.startsWith("https://api.stripe.com"));
+  const fields = trip({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: ANN, stop2_text: WALL, to_text: CHURCH, passengers: "2", class: "suv", ...ME, reach: "phone" });
+  const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-stops-options-0001" }), 200);
+  const totals = ["suv", "premium", "first", "sedan"].map((cls) => priceDistance(cls, { tenths: 250, minutes: 70 }, "lga").total);
+  assert.deepEqual(totals, [20058, 24419, 27698, 15002]);
+  assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet], ["options", "distance", 1, true, "", "", true]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 20058, ""], ["premium", 24419, ""], ["first", 27698, ""], ["sedan", 15002, ""], ["sprinter", null, "sprinter-stops"]]);
+  assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 18050 }, { label: FEES, cents: 2008 }], total_cents: 20058, currency: "usd", notes: [OUTSIDE_NOTE] });
+  assert.deepEqual(options.ride, { kind: "ok", minutes: 70, miles: 25, attribution: "Google Maps" });
+  assert.deepEqual(sent.map((body) => [body.origin, body.intermediates, body.destination]), [[{ address: LGA_ADDRESS }, [{ address: ANN }, { address: WALL }], { address: CHURCH }]]);
+  assert.match(options.route, ROUTE);
+  assert.match(decodeURIComponent(options.whatsapp.split("?text=")[1]), /\nStop 1: 26 Ann St, New York, NY 10038 \(Manhattan\)\nStop 2: 40 Wall St, New York, NY 10005 \(Manhattan\)\nDrop-off: 55 Church St[\s\S]*\nTotal shown: \$200\.58$/);
+  down = true;
+  const paid = await readJson(await post({ ...fields, route: options.route, nonce: "nonce-stops-pay-000001" }), 200);
+  assert.deepEqual([paid.kind, paid.url, sent.length, stripeCalls().length], ["pay", CHECKOUT_URL, 1, 1]);
+  const form = Object.fromEntries(formOf(stripeCalls()[0]));
+  assert.deepEqual([0, 1, 2].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`], form[`line_items[${i}][quantity]`]]), [["Fare", "18050", "1"], [TAX, "1602", "1"], [BCF, "406", "1"]]);
+  assert.equal(form["line_items[3][quantity]"], undefined);
+  assert.equal(stripeTotal(stripeCalls()[0].init.body), 20058);
+  const metadata = Object.fromEntries(Object.entries(form).filter(([key]) => key.startsWith("metadata[")).map(([key, value]) => [key.slice(9, -1), value]));
+  assert.deepEqual(["service", "direction", "airport", "legs", "miles", "minutes", "from_zone", "stop1_text", "stop1_zone", "stop2_text", "stop2_zone", "to_zone", "fare_cents", "tolls_cents", "total_cents"].map((key) => metadata[key]), ["distance", "from-airport", "lga", "1", "25.0", "70", "lga", ANN, "manhattan", WALL, "manhattan", "manhattan", "18050", "0", "20058"]);
+  assert.deepEqual([form["custom_text[submit][message]"], form["custom_text[terms_of_service_acceptance][message]"]], [SUBMIT_OUTSIDE, TERMS]);
+  assert.equal(form["line_items[0][price_data][product_data][description]"].split(". ")[0], "Business SUV, 25.0 miles and 70 min");
+  assert.ok(form["payment_intent_data[description]"].includes(`Business SUV, 25.0 miles and 70 min. Pickup "LaGuardia (LGA)". Stop 1 "${ANN}". Stop 2 "${WALL}". Drop-off "${CHURCH}".`), form["payment_intent_data[description]"]);
+  assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^RIDE [A-Z]{3}\d\d$/);
+  assert.deepEqual(receipt(metadata, ON), {
+    summary: `${formatDate(SOON)}, 10:00 AM. Business SUV, 25.0 miles and 70 min.`,
+    lines: [{ label: "Fare", cents: 18050 }, { label: TAX, cents: 1602 }, { label: BCF, cents: 406 }],
+    value: 18050,
+    notes: [OUTSIDE_NOTE],
+  });
+  assertRedirect(await formPost({ ...fields, route: options.route }), CHECKOUT_URL);
+  assert.deepEqual([sent.length, stripeCalls().length, stripeTotal(stripeCalls()[1].init.body)], [1, 2, 20058]);
+  for (const [name, change] of [["changed", { stop1_text: "30 Ann St, New York, NY 10038" }], ["reordered", { stop1_text: WALL, stop2_text: ANN }], ["dropped", { stop2_text: "" }], ["added", { stop2_text: WALL, stop1_text: ANN, to_text: "1 Liberty St, New York, NY 10006" }]]) {
+    const before = sent.length;
+    const body = await readJson(await post({ ...fields, ...change, route: options.route, nonce: `nonce-stops-${name}-0001` }), 200);
+    assert.deepEqual([body.kind, body.reason, body.text, "route" in body, body.classes.every((c) => c.total_cents === null && c.reason === "stop-leg"), sent.length, stripeCalls().length], ["quote", "stop-leg", REASONS["stop-leg"].text, false, true, before + 1, 2], name);
+    assertRedirect(await formPost({ ...fields, ...change, route: options.route }), "/book#q-stop-leg");
+  }
+  const sprinter = await readJson(await post({ ...fields, class: "sprinter", route: options.route }), 200);
+  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.group, sprinter.text], ["quote", "sprinter-stops", "price", REASONS["sprinter-stops"].text]);
+  assertRedirect(await formPost({ ...fields, class: "sprinter", route: options.route }), "/book#q-sprinter-stops");
+  assert.equal(stripeCalls().length, 2);
+});
+
+await test("builder: a round trip with a stop, LaGuardia to 26 Ann St then 55 Church St and back to LaGuardia, sends Stripe the whole route ride by distance and the flat return with its tolls line, says the return's tolls and airport fees are paid today and only the ride out's tolls come after the ride, and the receipt rebuilds the same lines and notes", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const fields = { trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: ANN, to_text: CHURCH, date: "2026-10-14", time: "09:00", passengers: "2", class: "suv", return: "1", return_date: "2026-10-18", return_time: "18:00", rider: "me", ...ME, reach: "phone" };
+    const built = await build(fields, ON, "nonce-stops-round-00001");
+    const out = priceDistance("suv", { tenths: 168, minutes: 43 }, "lga");
+    const home = priceLeg("suv", "lga");
+    assert.deepEqual([out.total, home.total], [15225, 16500]);
+    const form = Object.fromEntries(built.params);
+    const service = "Business SUV, 16.8 miles and 43 min, return at the flat airport rate";
+    assert.deepEqual([0, 1, 2, 3].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(out.fare + home.fare)], [TAX, String(out.tax + home.tax)], [BCF, String(out.bcf + home.bcf)], [TOLLS, String(home.tolls)]]);
+    assert.deepEqual([form["line_items[4][quantity]"], stripeTotal(built.params.toString()), form["custom_text[submit][message]"]], [undefined, 31725, CHECKOUT.submitReturnFlat]);
+    assert.equal(CHECKOUT.submitReturnFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the return, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.");
+    assert.equal(form["line_items[0][price_data][product_data][description]"], `${service}. Reference ${built.ref}. Wed, Oct 14, 2026, 9:00 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers.`);
+    const metadata = metadataFor(built.trip, built.price, built.ref);
+    assert.deepEqual(["service", "legs", "miles", "minutes", "fare_cents", "tax_cents", "bcf_cents", "tolls_cents", "total_cents", "stop1_text"].map((key) => metadata[key]), ["distance", "2", "16.8", "43", "27402", "2432", "616", "1275", "31725", ANN]);
+    assert.deepEqual(receipt(metadata, ON), {
+      summary: `Wed, Oct 14, 2026, 9:00 AM. Return Sun, Oct 18, 2026, 6:00 PM. ${service}.`,
+      lines: [{ label: "Fare", cents: 27402 }, { label: TAX, cents: 2432 }, { label: BCF, cents: 616 }, { label: TOLLS, cents: 1275 }],
+      value: 27402,
+      notes: [NOTES.returnFlat, POLICY.later.returnFlat],
+    });
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+await test("builder: a round trip from 350 5th Ave by a JFK stop to 277 Bedford Ave keeps its two airport transfers with their tolls line, prices the return by distance, says the ride out's tolls and airport fees are paid today and the return's tolls come after the ride, and the receipt rebuilds the same lines and notes", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const fields = { trip_type: "one", from_text: MANHATTAN, stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk", to_text: "277 Bedford Ave, Brooklyn, NY 11211", date: "2026-10-14", time: "09:00", passengers: "2", class: "suv", return: "1", return_date: "2026-10-18", return_time: "18:00", rider: "me", ...ME, reach: "phone" };
+    const built = await build(fields, ON, "nonce-stops-turn-000001");
+    const flat = priceLeg("suv", "jfk");
+    const back = priceDistance("suv", { tenths: 48, minutes: 31 });
+    const form = Object.fromEntries(built.params);
+    const service = "Business SUV, 2 airport transfers, return 4.8 miles and 31 min";
+    assert.deepEqual([0, 1, 2, 3].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(2 * flat.fare + back.fare)], [TAX, String(2 * flat.tax + back.tax)], [BCF, String(2 * flat.bcf + back.bcf)], [TOLLS, String(2 * flat.tolls)]]);
+    assert.deepEqual([form["line_items[4][quantity]"], stripeTotal(built.params.toString()), form["custom_text[submit][message]"]], [undefined, 2 * flat.total + back.total, CHECKOUT.submitOutFlat]);
+    assert.equal(CHECKOUT.submitOutFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.");
+    assert.ok(form["line_items[0][price_data][product_data][description]"].startsWith(`${service}. Reference ${built.ref}.`));
+    assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^JFK OCT14$/);
+    const metadata = metadataFor(built.trip, built.price, built.ref);
+    assert.deepEqual(["service", "legs", "miles", "minutes", "tolls_cents", "total_cents"].map((key) => metadata[key]), ["distance", "3", "4.8", "31", "2550", String(2 * flat.total + back.total)]);
+    assert.deepEqual(receipt(metadata, ON), {
+      summary: `Wed, Oct 14, 2026, 9:00 AM. Return Sun, Oct 18, 2026, 6:00 PM. ${service}.`,
+      lines: [{ label: "Fare", cents: 2 * flat.fare + back.fare }, { label: TAX, cents: 2 * flat.tax + back.tax }, { label: BCF, cents: 2 * flat.bcf + back.bcf }, { label: TOLLS, cents: 2 * flat.tolls }],
+      value: 2 * flat.fare + back.fare,
+      notes: [NOTES.outFlat, POLICY.later.outFlat],
+    });
+    const past = await build({ ...fields, return: "", to_text: "1 Hudson Pl, Hoboken, NJ 07030" }, ON, "nonce-stops-past-000001");
+    const pastForm = Object.fromEntries(past.params);
+    assert.deepEqual([past.price.fare, pastForm["custom_text[submit][message]"]], [AIRPORT_FARES.suv.jfk, SUBMIT_OUTSIDE]);
+    const pastMeta = metadataFor(past.trip, past.price, past.ref);
+    assert.deepEqual(["service", "airport", "direction", "legs", "tolls_cents"].map((key) => pastMeta[key]), ["distance", "jfk", undefined, "1", "0"]);
+    assert.deepEqual(receipt(pastMeta, ON).notes, [OUTSIDE_NOTE]);
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
 });
 
 await test("budgets: IPv6 clients share one key per /64 and mapped IPv4 reads as IPv4", () => {

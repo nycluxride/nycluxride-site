@@ -68,8 +68,8 @@ export async function POST(request) {
     const map = routeMap(legs, size);
     const draw = data.draw === 1;
     const [first, last] = [waypoints[0], waypoints[waypoints.length - 1]];
-    const keys = [routeKey(first, last, departure.toISOString()), legs[1] && routeKey(last, first, back.toISOString())];
-    const token = draw && !stops.length ? signRoute(legs.map((item, i) => [keys[i], Math.round(item.miles * 10), item.minutes]), now) : "";
+    const keys = [routeKey(first, last, departure.toISOString(), waypoints.slice(1, -1)), legs[1] && routeKey(last, first, back.toISOString())];
+    const token = draw ? signRoute(legs.map((item, i) => [keys[i], Math.round(item.miles * 10), item.minutes]), now) : "";
     const points = draw && Array.isArray(result.points) && result.points.every(Array.isArray) ? result.points : null;
     return json(200, { kind: "ok", ...leg(result, draw), ...(points && { points }), ...(legs[1] && { back: leg(home, draw) }), ...(token && { route: token }), ...(map ? { map } : { attribution: "Google Maps" }) });
   } catch {

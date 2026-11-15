@@ -48,7 +48,7 @@ function rideBody(trip, size, draw) {
   if (!legs.length || !legs.every((item) => item.ride)) return {};
   const leg = (item) => {
     const path = draw && Array.isArray(trip.paths) && trip.paths[legs.indexOf(item)];
-    return { minutes: item.ride.minutes, miles: item.ride.tenths / 10, ...(path && path.polyline && { path: path.polyline }) };
+    return { minutes: item.ride.minutes, miles: item.ride.tenths / 10, ...(path && path.polyline && { path: path.polyline }), ...(path && item.stops && Array.isArray(path.points) && path.points.every(Array.isArray) && { points: path.points }) };
   };
   const back = legs.find((item) => item.back);
   const map = Array.isArray(trip.paths) && trip.paths.every(Boolean) ? routeMap(trip.paths, size) : null;

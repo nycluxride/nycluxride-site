@@ -617,7 +617,7 @@ await check("M17 by the hour: only the pickup pin, no route request, the side ma
   await ctx.close();
 });
 
-await check("M18 a stop: one line through three points, three pins, the dispatch quote stays and no token is signed", async () => {
+await check("M18 a stop: one line through three points, three pins, and the vehicle step prices the whole route by distance from the token the drawn route signed over the stop, with the whole route on the note and no second route request", async () => {
   const ctx = await context(M);
   const p = await open(ctx, M, "/book");
   await start(p);
@@ -634,11 +634,13 @@ await check("M18 a stop: one line through three points, three pins, the dispatch
   assert.deepEqual((await pins(p)).map((x) => x.c).sort(), ["bk-pin--a", "bk-pin--b", "bk-pin--s"]);
   const r = routes(ctx).at(-1);
   assert.equal(JSON.parse(r.body).stops.length, 1);
-  await p.click("#bk-view");
-  await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && document.getElementById("q-stop-leg").classList.contains("is-on"));
+  await view(p);
   await settle(p);
   const opt = ctx.api.filter((x) => x.path === "book").map((x) => JSON.parse(x.body)).find((b) => b.action === "options");
-  assert.ok(!opt.route, "no token for a trip with a stop");
+  assert.deepEqual([...readRoute(opt.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[168, 43]]);
+  assert.equal(routes(ctx).length, 1, "no second route request");
+  assert.deepEqual([await p.isVisible("#q-stop-leg"), await p.evaluate(() => document.getElementById("bk-p-suv").querySelector(".bk-fig").textContent), await p.textContent("#bk-route-n")], [false, cash(priceDistance("suv", { tenths: 168, minutes: 43 }, "jfk").total), "16.8 miles, about 43 min by car. Google Maps"]);
+  assert.deepEqual((await pins(p)).map((x) => x.c).sort(), ["bk-pin--a", "bk-pin--b", "bk-pin--s"]);
   assert.deepEqual(p.errors, []);
   await ctx.close();
 });

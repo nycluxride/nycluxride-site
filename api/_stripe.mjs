@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk, seatCounts, seatText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText } from "./_trip.mjs";
 import { production } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -185,7 +185,7 @@ export function sessionParams(trip, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: hourly ? CHECKOUT.submitHourly : airportDistance(trip) ? CHECKOUT.submitOutside : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
+      submit: { message: hourly ? CHECKOUT.submitHourly : flatPart(trip) === "return" ? CHECKOUT.submitReturnFlat : flatPart(trip) === "out" ? CHECKOUT.submitOutFlat : airportDistance(trip) ? CHECKOUT.submitOutside : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,

@@ -231,7 +231,7 @@ await test("U6 locate: a local row answers a location and is cached, an unknown 
   assert.equal(calls.length, 2);
 });
 
-await test("U7 one route: the drawn route answers path, points and a token whose ride the options price reuses with no Routes call, for one way and return trips, and stops get no token", async () => {
+await test("U7 one route: the drawn route answers path, points and a token whose ride the options price reuses with no Routes call, for one way and return trips, and a stop is part of the key of its token", async () => {
   mock();
   const [from, to] = await pickTickets();
   const r = await route({ from: { ticket: from }, to: { ticket: to }, stops: [], date: DATE, time: "14:30", draw: 1 });
@@ -266,10 +266,32 @@ await test("U7 one route: the drawn route answers path, points and a token whose
   mock();
   const stop = await route({ from: { ticket: from }, to: { ticket: to }, stops: [{ id: "lga" }], date: DATE, time: "14:30", draw: 1 });
   assert.equal(stop.body.kind, "ok");
-  assert.equal(stop.body.route, undefined);
+  const stopRides = [...readRoute(stop.body.route, Date.now())];
+  assert.deepEqual([stopRides.length, stopRides[0][0] === rides[0][0]], [1, false], "the stop is part of the route key");
   assert.equal(stop.body.points.length, 3);
   const plain = await route({ from: { ticket: from }, to: { ticket: to }, stops: [], date: DATE, time: "14:30" });
   assert.deepEqual(plain.body, { kind: "ok", minutes: 27, miles: 4.6, attribution: "Google Maps" }, "without the draw flag the answer keeps the release shape");
+});
+
+await test("U13 a trip with a stop priced by distance: the drawn route through the stop signs a token the options price reuses with no Routes call, the drawn options answer carries the path and a point for each end, and another stop or order computes afresh", async () => {
+  mock();
+  const [from, to] = await pickTickets();
+  const PARK = "200 Park Ave, New York, NY 10166";
+  const r = await route({ from: { ticket: from }, to: { ticket: to }, stops: [{ text: PARK }], date: DATE, time: "14:30", draw: 1 });
+  assert.deepEqual([r.body.kind, r.body.minutes, r.body.miles, r.body.points.length, readRoute(r.body.route, Date.now()).size], ["ok", 43, 16.8, 3, 1]);
+  const drawn = await book(fields({ from_ticket: from, to_ticket: to, stop1_text: PARK, draw: "1" }));
+  assert.deepEqual([drawn.body.kind, drawn.body.service, drawn.body.legs, drawn.body.ride.minutes, drawn.body.ride.miles, typeof drawn.body.ride.path, drawn.body.ride.points.length], ["options", "distance", 1, 43, 16.8, "string", 3]);
+  const plain = await book(fields({ from_ticket: from, to_ticket: to, draw: "1" }));
+  assert.ok(typeof plain.body.ride.path === "string" && !("points" in plain.body.ride), "a trip with no stop keeps the release shape");
+  for (const key of ENV_KEYS) delete process.env[key];
+  live();
+  reply = answer(500, {});
+  const o = await book(fields({ from_ticket: from, to_ticket: to, stop1_text: PARK, route: r.body.route }));
+  assert.equal(calls.filter((c) => c.url.startsWith("https://routes.googleapis.com")).length, 0, "no Routes call");
+  assert.deepEqual([o.body.kind, o.body.classes.find((c) => c.class === "suv").total_cents], ["options", priceDistance("suv", { tenths: 168, minutes: 43 }).total]);
+  const moved = await book(fields({ from_ticket: from, to_ticket: to, stop1_text: "350 5th Ave, New York, NY 10118", route: r.body.route }));
+  assert.deepEqual([moved.body.kind, moved.body.reason, calls.filter((c) => c.url.startsWith("https://routes.googleapis.com")).length], ["quote", "stop-leg", 1]);
+  assert.equal(JSON.parse(calls.at(-1).init.body).intermediates[0].address, "350 5th Ave, New York, NY 10118");
 });
 
 await test("U8 a token for another time is not reused: the options request computes once, prices from the new numbers and answers the path", async () => {
