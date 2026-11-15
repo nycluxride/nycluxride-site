@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceLeg, legLines, hourlyLines, bookingRef, classTotal } from "../api/_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceLeg, legLines, hourlyLines, bookingRef, classTotal, shownLines } from "../api/_trip.mjs";
 import { sessionParams } from "../api/_stripe.mjs";
 import { AIRPORT_FARES, AIRPORT_TOTALS, AIRPORT_PLACES, CLASSES, MEET_AND_GREET, percentCents, NYC_TAX_PERCENT, BCF_PERCENT, TIP_PERCENTS, TIP_CUSTOM } from "../api/_rates.mjs";
 import { PLACE_LIST } from "../api/_places.mjs";
@@ -19,7 +19,7 @@ const TABLE = {
 const figures = (cls, zone) => TABLE[cls][zone === "lga" ? "lga" : "far"];
 const legOf = (cls, zone) => {
   const [fare, tax, bcf] = figures(cls, zone);
-  return [["Fare", fare], ["NYC sales tax (8.875%)", tax], ["Black Car Fund (2.25%)", bcf], ["Tolls and airport fees", TOLLS]];
+  return [["Fare", fare], ["NYC sales tax", tax], ["Black Car Fund", bcf], ["Tolls and airport fees", TOLLS]];
 };
 const totalOf = (cls, zone) => figures(cls, zone)[3];
 const LEG = legOf("suv", "jfk");
@@ -167,7 +167,7 @@ await test("a custom gratuity of 1 and of 500 passes, and 0, 501, 40.5, -1, empt
 await test("a custom gratuity by the hour adds the same fixed amount and the same checks", async () => {
   const hourly = { ...BASE, trip_type: "hour", from_text: MANHATTAN, hours: "3", class: "sedan", tip: "custom" };
   const { price } = await priced({ ...hourly, tip_amount: "40" });
-  assert.deepEqual(pairs(price.lines), [["Fare, 3 hours", 25500], ["NYC sales tax (8.875%)", 2263], ["Black Car Fund (2.25%)", 574], ["Gratuity for your chauffeur", 4000]]);
+  assert.deepEqual(pairs(price.lines), [["Fare, 3 hours", 25500], ["NYC sales tax", 2263], ["Black Car Fund", 574], ["Gratuity for your chauffeur", 4000]]);
   assert.deepEqual([price.total, price.tipPercent, price.value], [28337 + 4000, 0, 25500]);
   for (const tip_amount of ["0", "501", "40.5", "-1", "", "abc"]) assert.deepEqual((await build({ ...hourly, tip_amount })).check, { kind: "invalid", code: "tip_amount" }, tip_amount);
 });
@@ -226,7 +226,7 @@ for (const [cls, vehicle, hours, [fare, tax, bcf], total] of HOURLY) {
   await test(`hourly ${vehicle} for ${hours} hours: ${fare} + ${tax} + ${bcf} = ${total}`, async () => {
     const { trip, price } = await priced({ ...BASE, trip_type: "hour", from_text: MANHATTAN, hours, class: cls, vehicle });
     assert.equal(trip.vehicle, vehicle);
-    assert.deepEqual(pairs(price.lines), [["Fare, " + hours + " hours", fare], ["NYC sales tax (8.875%)", tax], ["Black Car Fund (2.25%)", bcf]]);
+    assert.deepEqual(pairs(price.lines), [["Fare, " + hours + " hours", fare], ["NYC sales tax", tax], ["Black Car Fund", bcf]]);
     assert.equal(price.total, total);
     assert.equal(price.tolls, 0);
     assert.equal(price.service, "hourly");
@@ -245,7 +245,7 @@ await test("the return example: Fare 31000, tax 2752, Black Car Fund 698, tolls 
   const fields = fromAirport("jfk", { return: "1", return_date: "2026-10-18", return_time: "18:00" });
   const { trip, price } = await priced(fields);
   assert.equal(trip.legs.length, 2);
-  assert.deepEqual(pairs(price.lines), [["Fare", 31000], ["NYC sales tax (8.875%)", 2752], ["Black Car Fund (2.25%)", 698], ["Tolls and airport fees", 2550]]);
+  assert.deepEqual(pairs(price.lines), [["Fare", 31000], ["NYC sales tax", 2752], ["Black Car Fund", 698], ["Tolls and airport fees", 2550]]);
   assert.equal(price.total, 37000);
   assert.deepEqual(price.legs.map((leg) => leg.total), [18500, 18500]);
   const tipped = await priced({ ...fields, tip: "15" });
@@ -257,7 +257,7 @@ await test("a stop trip whose legs are all airport transfers prices as the sum o
   const { trip, price } = await priced({ ...BASE, from_text: AIRPORT_ROW.jfk.label, from_id: "jfk", stop1_text: MANHATTAN, to_text: AIRPORT_ROW.lga.label, to_id: "lga" });
   assert.equal(trip.legs.length, 2);
   assert.deepEqual(price.legs.map((leg) => leg.total), [18500, 16500]);
-  assert.deepEqual(pairs(price.lines), [["Fare", 15500 + 13701], ["NYC sales tax (8.875%)", 1376 + 1216], ["Black Car Fund (2.25%)", 349 + 308], ["Tolls and airport fees", 2 * TOLLS]]);
+  assert.deepEqual(pairs(price.lines), [["Fare", 15500 + 13701], ["NYC sales tax", 1376 + 1216], ["Black Car Fund", 349 + 308], ["Tolls and airport fees", 2 * TOLLS]]);
   assert.equal(price.total, 35000);
 });
 
@@ -266,15 +266,17 @@ await test("a stop trip with a non-airport leg is stop-leg", async () => {
   assert.deepEqual(check, { kind: "quote", reason: "stop-leg", field: "" });
 });
 
-await test("the Stripe params of an airport trip: one line item per line, amounts summing to 18500, names equal to the labels, no tax_rates", async () => {
+await test("the Stripe params of an airport trip: one line item per shown line, Fare, Taxes and fees and Tolls, amounts summing to 18500, names equal to the labels the site shows, no tax_rates", async () => {
   const { trip, price } = await priced(toAirport("jfk"));
   const params = sessionParams(trip, price, bookingRef("airport-total-0001"), ON, NOW, "https://www.nycluxride.com");
   const keys = [...params.keys()];
   assert.ok(!keys.some((key) => key.includes("tax_rates")), keys.filter((key) => key.includes("tax")).join(","));
   const count = new Set(keys.filter((key) => key.startsWith("line_items[")).map((key) => key.split("]")[0])).size;
-  assert.equal(count, price.lines.length);
+  const shown = shownLines(price.lines);
+  assert.deepEqual(pairs(shown), [["Fare", 15500], ["Taxes and fees", 1376 + 349], ["Tolls", TOLLS]]);
+  assert.equal(count, shown.length);
   let total = 0;
-  price.lines.forEach((entry, i) => {
+  shown.forEach((entry, i) => {
     assert.equal(params.get(`line_items[${i}][quantity]`), "1");
     assert.equal(params.get(`line_items[${i}][price_data][product_data][name]`), entry.label);
     assert.equal(Number(params.get(`line_items[${i}][price_data][unit_amount]`)), entry.cents);

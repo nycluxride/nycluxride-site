@@ -49,6 +49,7 @@ export const DISTANCE_RATES = {
   premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
   first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
+  sprinter: { base: 8000, mile: 900, minute: 145, minimum: 25000 },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];

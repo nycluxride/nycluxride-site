@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines } from "./_trip.mjs";
 import { production } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -162,7 +162,7 @@ function lineDescription(entry, i, trip, price, ref) {
 
 export function sessionParams(trip, price, ref, settings, now, origin) {
   const hourly = trip.trip_type === "hour";
-  const lineItems = price.lines.map((entry, i) => ({
+  const lineItems = shownLines(price.lines).map((entry, i) => ({
     quantity: 1,
     price_data: { currency: "usd", unit_amount: entry.cents, product_data: { name: entry.label, description: lineDescription(entry, i, trip, price, ref) } },
   }));

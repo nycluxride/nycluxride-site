@@ -99,12 +99,12 @@ const FAQ_OUTSIDE = "Yes. A one-way trip anywhere in the United States is priced
 const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
 const RATES_DESCRIPTION = "Airport transfers between New York City and JFK, Newark and Teterboro from $170 and LaGuardia from $145, with tolls, airport fees and taxes included. Hourly from $85 by vehicle class, 3-hour minimum.";
 const RATES_LEDE = "Airport transfers are one total price by vehicle class from any New York City address, with tolls, airport fees and taxes included. Hourly work is billed by vehicle class with a three hour minimum. There is no meter and no surge multiplier, so the price does not move with demand.";
-const RATES_HOURLY_CAPTION = "Prices are before NYC sales tax (8.875%) and the Black Car Fund (2.25%), which are added at booking. Tolls and parking are charged after the ride.";
+const RATES_HOURLY_CAPTION = "Prices are before NYC sales tax and the Black Car Fund, which are added at booking. Tolls and parking are charged after the ride.";
 const RATES_FACTS = {
   "Meet and greet": "Inside the terminal with a name sign, $25 charged at booking, plus any airport parking charged after the ride",
   Gratuity: "Optional, none, a dollar amount you choose, or 10%, 15% or 20% of the fare, chosen before you pay",
   "Tolls and airport fees": "Included on airport transfers to or from a New York City address. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking",
-  Taxes: "NYC sales tax (8.875%) and the Black Car Fund (2.25%) are charged at booking on every fare",
+  Taxes: "NYC sales tax and the Black Car Fund are charged at booking on every fare",
   "Extra stops": "On airport transfers, charged after the ride to the card saved at booking",
   "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip",
 };
@@ -223,6 +223,12 @@ for (const [file, p] of pages) {
     assert.deepEqual(hits, []);
   });
 
+  check(`${file}: no NYC sales tax or Black Car Fund percentage in text, attributes or json-ld`, () => {
+    const tax = /\b(?:8\.875|2\.25)\s*(?:%|percent)|(?:sales tax|Black Car Fund)\s*\(\s*\d/i;
+    const hits = [p.title, p.text, ...p.attrs.map(([, v]) => v), ...p.strings].filter((v) => tax.test(v)).map((v) => v.slice(Math.max(0, v.search(tax) - 40), v.search(tax) + 40));
+    assert.deepEqual(hits, []);
+  });
+
   check(`${file}: the fleet size is never written as a word in text, attributes or json-ld (seat counts stay)`, () => {
     const fleet = /\btwelve (vehicles|cars)\b|\ball twelve\b(?! service areas)|\b(four )?of the twelve\b/i;
     const hits = [p.title, p.text, ...p.attrs.map(([, v]) => v), ...p.strings].filter((v) => fleet.test(v)).map((v) => v.slice(Math.max(0, v.search(fleet) - 40), v.search(fleet) + 40));
@@ -281,6 +287,14 @@ check("faq.html: the outside New York City answer prices one-way trips anywhere 
   const question = "Do you drive outside New York City?";
   assert.equal(visibleAnswer(p, question), FAQ_OUTSIDE);
   assert.equal(faqAnswer(p, question), FAQ_OUTSIDE);
+});
+
+check("faq.html: the family answer prices the Luxury Sprinter like every class, a flat rate to the airports and distance and time for other one-way trips, and leaves only hourly bookings to dispatch, exact, visible and in json-ld", () => {
+  const p = pages.get("faq.html");
+  const question = "Which car fits a family of 6 or more?";
+  const want = "Book a Luxury Sprinter. It seats up to 12. Airport transfers in a Sprinter have a flat rate, and other one-way trips are priced by distance and time. Our dispatch team prices Luxury Sprinter bookings by the hour.";
+  assert.equal(visibleAnswer(p, question), want);
+  assert.equal(faqAnswer(p, question), want);
 });
 
 check("about.html: What we do says other one-way trips anywhere in the United States are priced by distance and time, linked to the distance rates", () => {
@@ -353,7 +367,7 @@ check("rates.html: #airport-total follows the airport table with the exact lines
   assert.equal(first.nextElementSibling, table.closest(".table-scroll"), "#airport-total does not follow the airport table");
   assert.equal(squash(table.querySelector("caption").textContent), "What a $185 Business SUV total includes");
   const rows = [...table.querySelectorAll("tr")].filter((tr) => tr.querySelector("th[scope=row]")).map((tr) => [squash(tr.querySelector("th").textContent), squash(tr.querySelector("td").textContent)]);
-  assert.deepEqual(rows, [["Fare", "$155.00"], ["NYC sales tax (8.875%)", "$13.76"], ["Black Car Fund (2.25%)", "$3.49"], ["Tolls and airport fees", "$12.75"], ["Total", "$185.00"]]);
+  assert.deepEqual(rows, [["Fare", "$155.00"], ["NYC sales tax", "$13.76"], ["Black Car Fund", "$3.49"], ["Tolls and airport fees", "$12.75"], ["Total", "$185.00"]]);
   assert.equal(squash(table.querySelector("tfoot td[colspan]").textContent), "Every class adds NYC sales tax and the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Meet and greet, child seats and a gratuity, if chosen, are added at booking.");
 });
 

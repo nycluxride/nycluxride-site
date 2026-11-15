@@ -81,8 +81,6 @@ const exact = (end) => !end || !(end.area || end.town);
 const marks = (ticket) => ({ ...(ticket.area && { area: true }), ...(ticket.town && { town: true }) });
 const askFor = (trip, ends) => (!exact(ends.from) ? "pickup-address" : trip.trip_type === "one" && trip.return && !exact(ends.to) ? "return-address" : "");
 const line = (label, cents) => ({ label, cents });
-const taxLabel = () => fill(LABELS.tax, { percent: NYC_TAX_PERCENT });
-const bcfLabel = () => fill(LABELS.bcf, { percent: BCF_PERCENT });
 const tipLabel = (rate) => fill(LABELS.gratuity, { rate });
 const flatNotes = (part) => (part === "return" ? [NOTES.returnFlat, POLICY.later.returnFlat] : part === "out" ? [NOTES.outFlat, POLICY.later.outFlat] : null);
 
@@ -372,7 +370,6 @@ function vehicleFor(trip, cls) {
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
   if (trip.trip_type === "hour" && VEHICLES[vehicleFor(trip, cls)].hourly === null) return "sprinter-hourly";
-  if (distanceTrip(trip) && !has(DISTANCE_RATES, cls)) return trip.legs.some((item) => item.stops || item.flat) ? "sprinter-stops" : trip.legs[0].airport ? "sprinter-outside" : "sprinter-distance";
   if (Number(trip.passengers) > CLASSES[cls].seats) return "seats";
   return "";
 }
@@ -475,14 +472,14 @@ export function priceLeg(cls, airport) {
 
 export function legLines(cls, airport) {
   const { fare, tax, bcf, tolls, total } = priceLeg(cls, airport);
-  return { lines: [line(LABELS.fare, fare), line(taxLabel(), tax), line(bcfLabel(), bcf), line(LABELS.tolls, tolls)], total };
+  return { lines: [line(LABELS.fare, fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf), line(LABELS.tolls, tolls)], total };
 }
 
 export function hourlyLines(vehicle, hours) {
   const fare = VEHICLES[vehicle].hourly * Number(hours);
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
-  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), line(taxLabel(), tax), line(bcfLabel(), bcf)], total: fare + tax + bcf };
+  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf)], total: fare + tax + bcf };
 }
 
 for (const cls of Object.keys(CLASSES)) {
@@ -506,7 +503,7 @@ export function priceDistance(cls, { tenths, minutes }, ...airports) {
 
 for (const cls of Object.keys(CLASSES)) {
   const rate = has(DISTANCE_RATES, cls) ? DISTANCE_RATES[cls] : null;
-  const ok = rate ? ["base", "mile", "minute", "minimum"].every((key) => Number.isInteger(rate[key]) && rate[key] >= 0) && rate.minimum > 0 : cls === "sprinter";
+  const ok = rate && ["base", "mile", "minute", "minimum"].every((key) => Number.isInteger(rate[key]) && rate[key] >= 0) && rate.minimum > 0;
   if (!ok) throw new Error(`distance-config ${cls}`);
 }
 if (Object.keys(DISTANCE_RATES).some((cls) => !has(CLASSES, cls)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
@@ -532,7 +529,7 @@ export function priceTrip(trip, settings) {
   const seatCount = seatTotal(trip);
   const seats = seatCount * CHILD_SEAT_CENTS;
   const tip = custom ? Number(trip.tip_amount) * 100 || 0 : tipPercent ? percentCents(fare, String(tipPercent)) : 0;
-  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), line(taxLabel(), tax), line(bcfLabel(), bcf)];
+  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf)];
   if (plain || tolls) lines.push(line(LABELS.tolls, tolls));
   if (meet) lines.push(line(LABELS.meet, meet));
   if (seats) lines.push(line(seatLabel(seatCount, seats), seats));
@@ -558,7 +555,7 @@ export function priceTrip(trip, settings) {
 }
 
 export function shownLines(lines) {
-  const fees = [taxLabel(), bcfLabel()];
+  const fees = [LABELS.tax, LABELS.bcf];
   const shown = [];
   for (const item of lines) {
     const merged = shown.find((entry) => entry.label === LABELS.taxes);
@@ -703,7 +700,7 @@ export function receipt(metadata, settings, taxCents) {
     lines.push(line(tipLabel(20), cents("gratuity_cents")));
     if (tax) lines.push(line(LABELS.legacyTax, tax));
   } else if (known) {
-    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), line(taxLabel(), cents("tax_cents")), line(bcfLabel(), cents("bcf_cents")));
+    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), line(LABELS.tax, cents("tax_cents")), line(LABELS.bcf, cents("bcf_cents")));
     if (cents("tolls_cents")) lines.push(line(LABELS.tolls, cents("tolls_cents")));
     if (cents("meet_cents")) lines.push(line(LABELS.meet, cents("meet_cents")));
     if (cents("seats_cents")) lines.push(line(seatLabel(cents("child_seats"), cents("seats_cents")), cents("seats_cents")));

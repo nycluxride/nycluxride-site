@@ -828,7 +828,7 @@ await test("a Manhattan place labeled Hoboken, NJ never yields a ticket, and JFK
   assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "price", reason: "", hold: "" });
   assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.reason, leg.ride]), [["jfk", "outside", "", { tenths: 168, minutes: 43 }]]);
   const price = priceTrip(trip);
-  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", AIRPORT_FARES.suv.jfk], ["NYC sales tax (8.875%)", 1376], ["Black Car Fund (2.25%)", 349]], 17225]);
+  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", AIRPORT_FARES.suv.jfk], ["NYC sales tax", 1376], ["Black Car Fund", 349]], 17225]);
 });
 
 await test("pick refuses a label whose own words contradict Place Details, and keeps genuine airport and FBO labels", async () => {
