@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, HOURLY_START } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -109,7 +109,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
     meet_cents: trip.meetOffered ? MEET_AND_GREET : null,
     seat_cents: CHILD_SEAT_CENTS,
     selected: { class: trip.class, vehicle: hourly ? trip.vehicle : "", tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
-    price: price ? { lines: price.lines, total_cents: price.total, currency: "usd", notes: price.notes } : null,
+    price: price ? { lines: shownLines(price.lines), total_cents: price.total, currency: "usd", notes: price.notes } : null,
     reason: check.reason,
     pay: Boolean(price) && !check.hold,
     hold: check.hold,
@@ -167,7 +167,7 @@ function sessionBody(session) {
     payment_status,
     ref: metadata.ref || session.client_reference_id || "",
     summary,
-    lines,
+    lines: shownLines(lines),
     total_cents: session.amount_total,
     value_cents: value,
     currency: session.currency || "usd",

@@ -302,7 +302,7 @@ for (const [file, fields] of Object.entries(FORMS)) {
     const dl = [...main.querySelectorAll("dl.facts")];
     assert.equal(dl.length, 1);
     assert.deepEqual([...dl[0].querySelectorAll("dt")].map((dt) => [norm(dt.textContent), norm(dt.nextElementSibling.textContent)]), [
-      ["Booking ahead", "Online at least 1 hour before pickup. Sooner by email or WhatsApp when a car is free."],
+      ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."],
       ["Free waiting", "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup."],
       ["By the hour", "Any class, with a 3-hour minimum."],
       ["First booking", "We may ask for a card authorization."],
@@ -318,8 +318,8 @@ for (const [file, fields] of Object.entries(FORMS)) {
     assert.equal(norm(d.querySelector(":scope > summary").textContent), "Send the details by email");
     assert.deepEqual([...main.querySelectorAll("a.btn:not(.btn--ghost)")].map((a) => [a.closest("section").className, a.getAttribute("href")]), [["banner", "/book"], ["section section--close frame", "/book"]]);
   });
-  check("schedule.html: the email form's date hint sends a pickup within the next hour to WhatsApp, not back to email", () => {
-    assert.equal(norm(main.querySelector('form[aria-labelledby="enquiry-heading"] #s-date-hint').textContent), "Send the trip at least 1 hour before pickup. For a pickup within the next hour, message us on WhatsApp.");
+  check("schedule.html: the email form's date hint sends a pickup within the next 90 minutes to WhatsApp, not back to email", () => {
+    assert.equal(norm(main.querySelector('form[aria-labelledby="enquiry-heading"] #s-date-hint').textContent), "Send the trip at least 90 minutes before pickup. For a pickup within the next 90 minutes, message us on WhatsApp.");
   });
 }
 

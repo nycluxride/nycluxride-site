@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { CLASSES, VEHICLES, PLACES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL } from "./_copy.mjs";
-import { receipt, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText } from "./_trip.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveIntent, retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk, headerText } from "./_smtp.mjs";
@@ -174,7 +174,7 @@ function told(b) {
 }
 
 function payment(b) {
-  return [{ prices: b.receipt.lines.map((line) => [line.label, money(line.cents)]), total: b.total === null ? null : [MAIL.paid, money(b.total)] }, ...b.receipt.notes.map((note) => ({ p: note })), ...(b.receipt.summary ? [{ p: b.receipt.summary }] : [])];
+  return [{ prices: shownLines(b.receipt.lines).map((line) => [line.label, money(line.cents)]), total: b.total === null ? null : [MAIL.paid, money(b.total)] }, ...b.receipt.notes.map((note) => ({ p: note })), ...(b.receipt.summary ? [{ p: b.receipt.summary }] : [])];
 }
 
 function textOf(blocks) {

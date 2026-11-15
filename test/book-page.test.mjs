@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES } = await load("_rates.mjs");
+const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES } = await load("_rates.mjs");
 const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
@@ -232,20 +232,31 @@ check("the pay and done scripts carry no comment, hold no price figure, and pay.
   assert.equal(SRC.match(/\$\d|8\.875|2\.25/g), null);
   assert.match(SRC, new RegExp(`${MAX_ADVANCE_DAYS}\\*864e5`));
   const notice = SRC.match(/NW=\(\)=>ny\(Date\.now\(\)\+([\de.]+)\+59999\)/);
-  assert.equal(notice && Number(notice[1]), MIN_NOTICE_HOURS * 36e5, "the browser notice window is MIN_NOTICE_HOURS");
+  assert.equal(notice && Number(notice[1]), MIN_NOTICE_MINUTES * 6e4, "the browser notice window is MIN_NOTICE_MINUTES");
   assert.doesNotMatch(SRC, /next 24 hours|24 hours (ahead|away)/);
   assert.doesNotMatch(SRC, /moovs/i);
 });
 
-check("the pickup that fills in by itself (owner request 2) is the first slot MIN_NOTICE_HOURS plus AUTO_LEAD_MINUTES ahead, it moves once it is less than MIN_NOTICE_HOURS plus AUTO_GUARD_MINUTES away, and the scripts hold no NLR- reference (owner request 5)", () => {
+check("the pickup that fills in by itself (owner request 2) is the first slot MIN_NOTICE_MINUTES plus AUTO_LEAD_MINUTES ahead, it moves once it is less than MIN_NOTICE_MINUTES plus AUTO_GUARD_MINUTES away, and the scripts hold no NLR- reference (owner request 5)", () => {
   const slot = SRC.match(/AQ=\(\)=>\{for\(let t=Math\.ceil\(\(Date\.now\(\)\+AO\+([\de.]+)\+([\de.]+)\)\/6e5\)\*6e5/);
   assert.ok(slot, "no auto slot");
-  assert.deepEqual([Number(slot[1]), Number(slot[2])], [MIN_NOTICE_HOURS * 36e5, AUTO_LEAD_MINUTES * 6e4]);
+  assert.deepEqual([Number(slot[1]), Number(slot[2])], [MIN_NOTICE_MINUTES * 6e4, AUTO_LEAD_MINUTES * 6e4]);
   const guard = SRC.match(/ED\.value\+" "\+ET\.value<ny\(Date\.now\(\)\+AO\+([\de.]+)\+([\de.]+)\)/);
   assert.ok(guard, "no guard");
-  assert.deepEqual([Number(guard[1]), Number(guard[2])], [MIN_NOTICE_HOURS * 36e5, AUTO_GUARD_MINUTES * 6e4]);
-  assert.match(SRC, /NW=\(\)=>ny\(Date\.now\(\)\+36e5\+59999\)/);
+  assert.deepEqual([Number(guard[1]), Number(guard[2])], [MIN_NOTICE_MINUTES * 6e4, AUTO_GUARD_MINUTES * 6e4]);
+  assert.match(SRC, /NW=\(\)=>ny\(Date\.now\(\)\+54e5\+59999\)/);
   assert.doesNotMatch(SRC, /NLR-/);
+});
+
+check("the price box and the confirmation receipt (owner change 2) hold the Taxes and fees and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
+  assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(ap\(\)\?\["Tolls"\]:\[\]\)\)/);
+  assert.match(PAY, /x\[0\]=="Tolls"&&one\(\)\?h\(" bk-hint--same","The same in every class\."\):""/);
+  assert.match(DONE, /"Taxes and fees",\.\.\.!f\|\|y\?\["Tolls"\]:\[\]/);
+  assert.match(DONE, /y=o&&\(b\.ln\|\|\["Tolls"\]\)\.some\(l=>\/\^Tolls\/\.test\(l\)\)/, "a saved Taxes and fees line never counts as a tolls line");
+  for (const s of [SRC, DONE]) assert.doesNotMatch(s, /sales tax|Black Car Fund|airport fees|workers' compensation|next hour|an hour away/i);
+  assert.ok(PAY.includes('"short-notice":["Less than 90 minutes away","Change the time"]'));
+  assert.ok(PAY.includes('"For a pickup within the next 90 minutes, email or WhatsApp us."'));
+  assert.ok(SRC.includes('<p class="bk-cal__note">For a pickup within the next 90 minutes, email or WhatsApp us.</p>'));
 });
 
 check("pay.js, done.js and lux.js store only the booking state in sessionStorage and never use localStorage or cookies", () => {

@@ -279,7 +279,7 @@ for (const file of ["services.html", "locations.html", "blog.html"]) {
 const FREE = ["Free waiting", "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup."];
 const HOUR = ["By the hour", "Any class, with a 3-hour minimum."];
 const CHILD = ["Child seats", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`];
-const AHEAD = ["Booking ahead", "Online at least 1 hour before pickup. Sooner by email or WhatsApp when a car is free."];
+const AHEAD = ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."];
 const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
 const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
 const RAILS = {};

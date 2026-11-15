@@ -22,9 +22,10 @@ import {
   withinLimits,
   serviceLabel,
   classTotal,
+  shownLines,
 } from "../api/_trip.mjs";
-import { ERRORS, REASONS, NOTES, POLICY } from "../api/_copy.mjs";
-import { MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS, AIRPORT_FARES, AIRPORT_PLACES, CLASSES } from "../api/_rates.mjs";
+import { ERRORS, REASONS, NOTES, POLICY, LABELS } from "../api/_copy.mjs";
+import { MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS, AIRPORT_FARES, AIRPORT_PLACES, CLASSES } from "../api/_rates.mjs";
 import * as RATES from "../api/_rates.mjs";
 import { ROUTE, routeKey, signRoute, readRoute, signTicket, TICKET_TTL } from "../api/_ticket.mjs";
 import { localById } from "../api/_places.mjs";
@@ -278,16 +279,26 @@ await test("in the second pass of the repeated hour when the clocks go back, a p
   for (const [now, date, time] of [["2026-11-01T06:10:00.000Z", "2026-11-01", "01:05"], ["2026-11-01T06:10:00.000Z", "2026-11-01", "00:50"], ["2027-03-14T07:40:00.000Z", "2027-03-14", "02:30"], ["2026-11-02T06:10:00.000Z", "2026-11-02", "01:05"]]) await isError({ ...BASE, date, time }, "date-past", ON, new Date(now));
 });
 
-await test("short-notice within 1 hour of the earliest pickup, far-ahead beyond 365 days", async () => {
+await test("short-notice within 90 minutes of the earliest pickup, 89 minutes away is short notice and 90 or 91 is priced, far-ahead beyond 365 days", async () => {
   await isHold({ ...BASE, date: "2026-10-01", time: "12:10" }, "short-notice");
-  await isHold({ ...BASE, date: "2026-10-01", time: "12:59" }, "short-notice");
-  await isHold({ ...BASE, date: "2026-10-01", time: "13:00" }, "");
+  await isHold({ ...BASE, date: "2026-10-01", time: "13:00" }, "short-notice");
+  await isHold({ ...BASE, date: "2026-10-01", time: "13:29" }, "short-notice");
+  await isHold({ ...BASE, date: "2026-10-01", time: "13:30" }, "");
+  await isHold({ ...BASE, date: "2026-10-01", time: "13:31" }, "");
   await isHold({ ...BASE, date: "2026-10-01", time: "18:00" }, "");
   await isHold({ ...BASE, date: "2026-10-02", time: "11:00" }, "");
   await isHold({ ...BASE, date: "2027-10-01", time: "12:00" }, "");
   await isHold({ ...BASE, date: "2027-10-01", time: "12:01" }, "far-ahead");
-  await isHold({ ...HOURLY, date: "2026-10-01", time: "12:50" }, "short-notice");
-  await isHold({ ...HOURLY, date: "2026-10-01", time: "13:00" }, "");
+  await isHold({ ...HOURLY, date: "2026-10-01", time: "13:29" }, "short-notice");
+  await isHold({ ...HOURLY, date: "2026-10-01", time: "13:31" }, "");
+  await isHold({ ...BASE, date: "2026-10-01", time: "13:31", return: "1", return_date: "2026-10-01", return_time: "18:00" }, "");
+});
+
+await test("the online notice is MIN_NOTICE_MINUTES, 90 minutes, checked against the instant: 89 minutes 59 seconds away is short notice, 90 and 91 minutes are priced", async () => {
+  assert.equal(MIN_NOTICE_MINUTES, 90);
+  assert.equal("MIN_NOTICE_HOURS" in RATES, false);
+  const pickup = Date.parse("2026-10-14T11:30:00.000Z");
+  for (const [ahead, hold] of [[89 * 60000, "short-notice"], [90 * 60000 - 1000, "short-notice"], [90 * 60000, ""], [91 * 60000, ""]]) await isHold(BASE, hold, ON, new Date(pickup - ahead));
 });
 
 await test("readSettings reads payments and blackout dates only, the old tax settings are gone", () => {
@@ -305,24 +316,24 @@ await test("the New York time helper gives the recorded instants", () => {
   assert.equal(nycToUtc("2027-03-14", "02:30").toISOString(), "2027-03-14T07:30:00.000Z");
 });
 
-await test("firstSlot gives the R1 examples: the first New York 10-minute slot at least 1 hour and 5 minutes ahead, skipping the clock-change hour", () => {
+await test("firstSlot gives the R1 examples: the first New York 10-minute slot at least 90 minutes and 5 minutes ahead, skipping the clock-change hour", () => {
   const slot = (at) => firstSlot(new Date(at));
-  assert.deepEqual([MIN_NOTICE_HOURS, AUTO_LEAD_MINUTES], [1, 5]);
-  assert.deepEqual(slot("2026-10-19T10:46:20-04:00"), { date: "2026-10-19", time: "12:00" });
-  assert.deepEqual(slot("2026-10-19T10:55:00-04:00"), { date: "2026-10-19", time: "12:00" });
-  assert.deepEqual(slot("2026-10-19T10:55:01-04:00"), { date: "2026-10-19", time: "12:10" });
-  assert.deepEqual(slot("2026-10-19T22:46:00-04:00"), { date: "2026-10-20", time: "00:00" });
-  assert.deepEqual(slot("2026-12-31T23:30:00-05:00"), { date: "2027-01-01", time: "00:40" });
+  assert.deepEqual([MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES], [90, 5]);
+  assert.deepEqual(slot("2026-10-19T10:46:20-04:00"), { date: "2026-10-19", time: "12:30" });
+  assert.deepEqual(slot("2026-10-19T10:25:00-04:00"), { date: "2026-10-19", time: "12:00" });
+  assert.deepEqual(slot("2026-10-19T10:25:01-04:00"), { date: "2026-10-19", time: "12:10" });
+  assert.deepEqual(slot("2026-10-19T22:16:00-04:00"), { date: "2026-10-20", time: "00:00" });
+  assert.deepEqual(slot("2026-12-31T23:00:00-05:00"), { date: "2027-01-01", time: "00:40" });
   assert.equal(`${formatDate("2027-01-01")}, ${formatTime("00:40")}`, "Fri, Jan 1, 2027, 12:40 AM");
-  assert.deepEqual(slot("2026-11-01T00:30:00-04:00"), { date: "2026-11-01", time: "02:00" });
+  assert.deepEqual(slot("2026-11-01T00:00:00-04:00"), { date: "2026-11-01", time: "02:00" });
   assert.deepEqual(slot("2026-10-31T23:58:00-04:00"), { date: "2026-11-01", time: "02:00" });
-  assert.deepEqual(slot("2026-11-01T01:20:00-05:00"), { date: "2026-11-01", time: "02:30" });
-  assert.deepEqual(slot("2027-03-14T00:30:00-05:00"), { date: "2027-03-14", time: "01:40" });
-  assert.deepEqual(slot("2027-03-14T00:58:00-05:00"), { date: "2027-03-14", time: "03:10" });
-  assert.deepEqual(firstSlot(Date.parse("2026-10-19T14:46:20Z")), { date: "2026-10-19", time: "12:00" });
+  assert.deepEqual(slot("2026-11-01T00:50:00-05:00"), { date: "2026-11-01", time: "02:30" });
+  assert.deepEqual(slot("2027-03-14T00:00:00-05:00"), { date: "2027-03-14", time: "01:40" });
+  assert.deepEqual(slot("2027-03-14T00:28:00-05:00"), { date: "2027-03-14", time: "03:10" });
+  assert.deepEqual(firstSlot(Date.parse("2026-10-19T14:46:20Z")), { date: "2026-10-19", time: "12:30" });
 });
 
-await test("firstSlot is always bookable online: a 10-minute slot 65 to 75 minutes ahead, or 2:00 AM after the fall-back hour, never short notice and never in a clock-change hour", async () => {
+await test("firstSlot is always bookable online: a 10-minute slot 95 to 105 minutes ahead, or 2:00 AM after the fall-back hour, never short notice and never in a clock-change hour", async () => {
   const { trip } = await run(BASE);
   let count = 0;
   for (const start of ["2026-10-19T00:00:00Z", "2026-10-31T16:00:00Z", "2027-03-13T16:00:00Z", "2026-12-31T16:00:00Z"]) {
@@ -331,8 +342,8 @@ await test("firstSlot is always bookable online: a 10-minute slot 65 to 75 minut
       const at = `${new Date(now).toISOString()} gives ${date} ${time}`;
       const ahead = nycToUtc(date, time).getTime() - now;
       assert.match(time, /^([01]\d|2[0-3]):[0-5]0$/, at);
-      assert.ok(ahead >= (MIN_NOTICE_HOURS * 60 + AUTO_LEAD_MINUTES) * 60000, at);
-      assert.ok(ahead < 75 * 60000 || (date === "2026-11-01" && time === "02:00"), at);
+      assert.ok(ahead >= (MIN_NOTICE_MINUTES + AUTO_LEAD_MINUTES) * 60000, at);
+      assert.ok(ahead < 105 * 60000 || (date === "2026-11-01" && time === "02:00"), at);
       assert.deepEqual(checkTrip({ ...trip, date, time }, now, ON), { kind: "price", reason: "", hold: "" }, at);
     }
   }
@@ -522,6 +533,26 @@ await test("receipt: new sessions rebuild the checkout lines, legacy sessions ke
   assert.deepEqual(pairs(receipt({ ...legacy, tax_cents: "0" }, ON, 1700).lines).at(-1), ["Sales tax", 1700]);
   assert.deepEqual(pairs(receipt({ ...legacy, tax_cents: "0" }, ON).lines).length, 3);
   assert.deepEqual(receipt({}, ON), { summary: "", lines: [], value: 0, notes: [NOTES.included, POLICY.later.airport] });
+});
+
+await test("shownLines, the display of the price box, the confirmation page and the emails: one Taxes and fees line, the sales tax plus the Black Car Fund, in the place of the tax, Tolls for the tolls, every other line and the total as charged, the charged lines untouched", async () => {
+  assert.deepEqual([LABELS.taxes, LABELS.tollsShort, LABELS.tax, LABELS.bcf, LABELS.tolls], ["Taxes and fees", "Tolls", "NYC sales tax ({percent}%)", "Black Car Fund ({percent}%)", "Tolls and airport fees"]);
+  const price = await priced({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", booster_seats: "1" });
+  const charged = JSON.parse(JSON.stringify(price.lines));
+  const shown = shownLines(price.lines);
+  assert.deepEqual(pairs(shown), [["Fare", 15500], ["Taxes and fees", 1725], ["Tolls", 1275], ["Meet and greet", 2500], ["Child seats (2 x $15.00)", 3000], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.equal(1725, price.tax + price.bcf);
+  assert.deepEqual(price.lines, charged);
+  for (const lines of [price.lines, (await priced(HOURLY)).lines, receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines]) {
+    const sum = (list) => list.reduce((total, item) => total + item.cents, 0);
+    assert.equal(sum(shownLines(lines)), sum(lines));
+    assert.equal(shownLines(lines).filter((item) => item.label === "Taxes and fees").length, 1);
+    assert.ok(!shownLines(lines).some((item) => /sales tax|Black Car Fund|airport fees|%\)$/.test(item.label) && !item.label.startsWith("Gratuity")), JSON.stringify(shownLines(lines)));
+  }
+  assert.deepEqual(pairs(shownLines((await priced(HOURLY)).lines)), [["Fare, 3 hours", 25500], ["Taxes and fees", 2837]]);
+  const legacy = receipt({ ref: "10000001", service: "transfer", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", fare_cents: "16500", meet_cents: "2500", gratuity_cents: "3300", tax_cents: "1686", total_cents: "23986" }, ON);
+  assert.deepEqual(shownLines(legacy.lines), legacy.lines);
+  assert.deepEqual(shownLines([]), []);
 });
 
 await test("fill replaces every named placeholder and leaves unknown ones", () => {

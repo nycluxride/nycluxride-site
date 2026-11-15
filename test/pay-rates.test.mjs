@@ -16,7 +16,7 @@ import {
   MEET_AND_GREET,
   CHILD_SEAT_CENTS,
   HOURS,
-  MIN_NOTICE_HOURS,
+  MIN_NOTICE_MINUTES,
   MAX_ADVANCE_DAYS,
   ADDRESS_PLACES,
   CONSENT_TERMS_LIVE,
@@ -375,9 +375,9 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   assert.deepEqual(unknown, [], unknown.join("\n"));
 });
 
-test("the reason sentences agree with MIN_NOTICE_HOURS, HOURS and MAX_ADVANCE_DAYS", () => {
-  assert.equal(MIN_NOTICE_HOURS, 1);
-  assert.ok(REASONS["short-notice"].text.startsWith("For a pickup within the next hour,"), REASONS["short-notice"].text);
+test("the reason sentences agree with MIN_NOTICE_MINUTES, HOURS and MAX_ADVANCE_DAYS", () => {
+  assert.equal(MIN_NOTICE_MINUTES, 90);
+  assert.ok(REASONS["short-notice"].text.startsWith(`For a pickup within the next ${MIN_NOTICE_MINUTES} minutes,`), REASONS["short-notice"].text);
   assert.ok(REASONS["hours-range"].text.includes(`${HOURS.min} to ${HOURS.max} hours`), REASONS["hours-range"].text);
   assert.equal(MAX_ADVANCE_DAYS, 365);
   assert.match(REASONS["far-ahead"].text, /\b(1|a|one) year\b/);

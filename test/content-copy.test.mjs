@@ -402,6 +402,76 @@ check("rates.html: the OfferCatalog has an airport offer per class for JFK, Newa
   assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "175", undefined]]);
 });
 
+const { MIN_NOTICE_MINUTES } = await import(join(ROOT, "api/_rates.mjs"));
+const COPY = await import(join(ROOT, "api/_copy.mjs"));
+const NOTICE = {
+  N1: `Book online at least ${MIN_NOTICE_MINUTES} minutes before pickup.`,
+  N2: `For a pickup within the next ${MIN_NOTICE_MINUTES} minutes, email or WhatsApp us.`,
+  N3: `Online at least ${MIN_NOTICE_MINUTES} minutes before pickup. Sooner by email or WhatsApp when a car is free.`,
+  N4: `For a pickup within the next ${MIN_NOTICE_MINUTES} minutes, email info@nycluxride.com or message us on WhatsApp.`,
+  N5: `For a pickup within the next ${MIN_NOTICE_MINUTES} minutes, message us on WhatsApp.`,
+  N6: `Send the trip at least ${MIN_NOTICE_MINUTES} minutes before pickup. For a pickup within the next ${MIN_NOTICE_MINUTES} minutes, message us on WhatsApp.`,
+  N7: `For a pickup before the markets open, book online at least ${MIN_NOTICE_MINUTES} minutes ahead.`,
+  N8: `Send us the trip at least ${MIN_NOTICE_MINUTES} minutes before pickup.`,
+};
+const NOTICE_USED = {
+  N1: ["about.html", "chauffeur-service-nyc.html", "corporate-car-service-nyc.html", "faq.html", "index.html", "locations/manhattan.html", "locations/brooklyn.html", "locations/bronx.html", "locations/staten-island.html", "blog/corporate-black-car-nyc-april-3.html"],
+  N2: ["about.html", "chauffeur-service-nyc.html", "index.html", "locations/manhattan.html", "locations/staten-island.html"],
+  N3: ["contact.html", "schedule.html", "limousine-service-nyc.html", "chauffeur-service-nyc.html", "black-car-service-brooklyn.html", "locations/jfk-airport.html", "locations/queens.html"],
+  N4: ["book.html", "index.html", "faq.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"],
+  N5: ["corporate-car-service-nyc.html"],
+  N6: ["schedule.html"],
+  N7: ["locations/financial-district.html"],
+  N8: ["limousine-service-nyc.html"],
+};
+const OLD_NOTICE = [/\b(at least|within|less than|under)( the next)? (an?|one|1)[ -]hours?\b/i, /\bnext hour\b/i, /\b(an?|one|1)[ -]hours? (before|ahead of) (the |your )?pickup\b/i, /\b(an?|one|1)[ -]hours? away\b/i];
+const HOUR_ELSEWHERE = [
+  "A message an hour ahead gives us time to keep the car for you.",
+  "If your day might run late, tell us an hour ahead.",
+  "If you'll spend an hour or more at one address, keeping the car by the hour usually costs less than two one-way bookings.",
+  "An hour in the park with the photographer, and the Sprinter comes back to the same gate at the end.",
+];
+const HOUR = /\b(an?|one|1)[ -]hours?\b(?!-)/gi;
+const hourHits = (value) => {
+  let rest = String(value);
+  for (const s of HOUR_ELSEWHERE) rest = rest.split(s).join(" ");
+  return [...rest.matchAll(HOUR)].map((m) => rest.slice(Math.max(0, m.index - 50), m.index + 40));
+};
+const copyStrings = [];
+const walkCopy = (v) => (Array.isArray(v) ? v.forEach(walkCopy) : v && typeof v === "object" ? Object.values(v).forEach(walkCopy) : typeof v === "string" && copyStrings.push(v));
+walkCopy({ ...COPY });
+
+check(`the online cutoff is MIN_NOTICE_MINUTES, ${MIN_NOTICE_MINUTES} minutes (owner change 1), and api/_copy.mjs has no hour notice wording`, () => {
+  assert.equal(MIN_NOTICE_MINUTES, 90);
+  assert.equal(COPY.REASONS["short-notice"].text, NOTICE.N4);
+  assert.deepEqual(copyStrings.filter((v) => OLD_NOTICE.some((re) => re.test(v))), []);
+  assert.deepEqual(copyStrings.flatMap(hourHits), []);
+});
+
+for (const [file, p] of pages) {
+  check(`${file}: no "1 hour" or "within the next hour" notice wording in text, attributes or json-ld, and an hour appears only about extending an hourly booking, waiting at one address or a wedding photo stop`, () => {
+    const all = [p.title, p.text, ...p.attrs.map(([, v]) => v), ...p.strings];
+    assert.deepEqual(all.filter((v) => OLD_NOTICE.some((re) => re.test(v))).map((v) => v.slice(0, 160)), []);
+    assert.deepEqual(all.flatMap(hourHits), []);
+  });
+  check(`${file}: every online notice sentence says ${MIN_NOTICE_MINUTES} minutes and is an approved form`, () => {
+    const notice = /\b(at least|within the next) (\d+) (minutes|hours?)\b(?= before pickup| ahead|,)/g;
+    for (const v of [p.text, ...p.strings]) for (const m of v.matchAll(notice)) assert.equal(Number(m[2]), MIN_NOTICE_MINUTES, v.slice(Math.max(0, m.index - 60), m.index + 60));
+    const forms = Object.values(NOTICE);
+    for (const b of p.blocks.filter((x) => /at least \d+ minutes (before pickup|ahead)|within the next \d+ minutes/.test(x))) assert.ok(forms.some((f) => b.includes(f)) || b.includes(NOTICE.N1.replace(" before pickup.", "")), b.slice(0, 200));
+  });
+}
+
+for (const [id, files] of Object.entries(NOTICE_USED)) {
+  for (const file of files) {
+    check(`${file}: carries the ${MIN_NOTICE_MINUTES} minute notice sentence ${id}`, () => {
+      const p = pages.get(file);
+      assert.ok(p, `${file} is missing`);
+      assert.ok(p.blocks.some((b) => b.includes(NOTICE[id])), `${id} not found`);
+    });
+  }
+}
+
 const listing = pages.get("blog.html");
 const listed = new Map();
 for (const s of listing.document.querySelectorAll('script[type="application/ld+json"]')) {

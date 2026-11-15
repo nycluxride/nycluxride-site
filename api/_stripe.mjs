@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, MIN_NOTICE_HOURS, CHILD_SEATS } from "./_rates.mjs";
+import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
 import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, rideTotals, emailOk, seatCounts, seatText } from "./_trip.mjs";
 import { production } from "./_http.mjs";
@@ -169,7 +169,8 @@ export function sessionParams(trip, price, ref, settings, now, origin) {
   const d = trip.details || {};
   const afterSubmit = [TLC_BASE_LICENSE ? fill(CHECKOUT.license, { license: TLC_BASE_LICENSE }) : "", fill(CHECKOUT.afterSubmit, { ref })].filter(Boolean).join(" ");
   const metadata = metadataFor(trip, price, ref);
-  const short = nycToUtc(trip.date, trip.time).getTime() < Number(now) + (MIN_NOTICE_HOURS * 3600 + EXPIRES_AFTER_S) * 1000;
+  const expires = Math.floor(Number(now) / 1000) + EXPIRES_AFTER_S;
+  const short = nycToUtc(trip.date, trip.time).getTime() < (expires + PAID_NOTICE_MINUTES * 60) * 1000;
   if (short) metadata.short_notice = "1";
   return encodeForm({
     mode: "payment",
@@ -198,7 +199,7 @@ export function sessionParams(trip, price, ref, settings, now, origin) {
     client_reference_id: ref,
     success_url: `${origin}/booking-confirmed?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/book#resume`,
-    expires_at: Math.floor(Number(now) / 1000) + EXPIRES_AFTER_S,
+    expires_at: expires,
   });
 }
 

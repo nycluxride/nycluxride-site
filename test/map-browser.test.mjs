@@ -287,7 +287,7 @@ await check("M5 an airport trip keeps the flat rate: the JFK cards and lines sho
   await settle(p);
   const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
   assert.deepEqual(cards.slice(0, 4), ["suv", "premium", "first", "sedan"].map((c) => cash(AIRPORT_TOTALS[c].jfk)));
-  assert.ok(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls and airport fees")));
+  assert.ok(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls")));
   assert.equal(routes(ctx).length, 1, "the vehicle step reuses the drawn route");
   assert.equal(await p.evaluate(() => getComputedStyle(document.getElementById("bk-live")).display), "block");
   assert.deepEqual(p.errors, []);
@@ -908,7 +908,7 @@ await check("M27 a New Jersey address to JFK: the caption reads 25.0 miles, abou
   const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
   assert.deepEqual(cards, [...["suv", "premium", "first", "sedan"].map((c) => cash(priceDistance(c, { tenths: 250, minutes: 45 }, "jfk").total)), "Price on request"]);
   assert.deepEqual(cards.slice(0, 4), ["$182.53", "$221.97", "$297.25", "$157.25"]);
-  assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls and airport fees"))));
+  assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls"))));
   const [value, shifts] = await cls(p);
   assert.equal(value, 0, shifts.join(" | "));
   assert.deepEqual(p.errors, []);

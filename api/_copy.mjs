@@ -23,7 +23,7 @@ export const REASONS = {
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
   "clock-change": { group: "phone", text: "The clocks change at this hour. A pickup or return at this time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
-  "short-notice": { group: "phone", text: "For a pickup within the next hour, email info@nycluxride.com or message us on WhatsApp." },
+  "short-notice": { group: "phone", text: "For a pickup within the next 90 minutes, email info@nycluxride.com or message us on WhatsApp." },
   "far-ahead": { group: "phone", text: "For a pickup or return more than a year from now, email info@nycluxride.com or message us on WhatsApp." },
 };
 export const ERROR_BLOCK = { group: "phone", text: "Online payment isn't available right now. Send us the trip and we'll reply with a payment link." };
@@ -74,6 +74,8 @@ export const LABELS = {
   tax: "NYC sales tax ({percent}%)",
   bcf: "Black Car Fund ({percent}%)",
   tolls: "Tolls and airport fees",
+  taxes: "Taxes and fees",
+  tollsShort: "Tolls",
   meet: "Meet and greet",
   meetDescription: "Inside the terminal with a name sign. Airport parking is charged after the ride.",
   seats: "Child seats ({count} x {price})",
@@ -96,10 +98,10 @@ export const LABELS = {
 };
 export const CHECKOUT = {
   terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, extra stops, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.",
-  submit: "Today you pay the total shown: the fare, NYC sales tax, the Black Car Fund, tolls and airport fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, extra stops and parking are charged to this card, with an itemized receipt.",
-  submitHourly: "Today you pay the hourly fare, NYC sales tax, the Black Car Fund, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
-  submitDistance: "Today you pay the fare, NYC sales tax, the Black Car Fund, child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
-  submitOutside: "Today you pay the fare, NYC sales tax, the Black Car Fund, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.",
+  submit: "Today you pay the total shown: the fare, taxes and fees, tolls, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, extra stops and parking are charged to this card, with an itemized receipt.",
+  submitHourly: "Today you pay the hourly fare, taxes and fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
+  submitDistance: "Today you pay the fare, taxes and fees, child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
+  submitOutside: "Today you pay the fare, taxes and fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.",
   license: "Licensed by the NYC Taxi and Limousine Commission, base license {license}.",
   afterSubmit: `${CONFIRM} ${CHANGE}`,
 };

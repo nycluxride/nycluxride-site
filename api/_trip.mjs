@@ -21,7 +21,7 @@ import {
   CHILD_SEATS,
   HOURS,
   PASSENGERS,
-  MIN_NOTICE_HOURS,
+  MIN_NOTICE_MINUTES,
   AUTO_LEAD_MINUTES,
   MAX_ADVANCE_DAYS,
   CONTACT,
@@ -207,7 +207,7 @@ function clockChange(date, time) {
 }
 
 export function firstSlot(now) {
-  for (let at = Math.ceil((Number(now) + MIN_NOTICE_HOURS * HOUR_MS + AUTO_LEAD_MINUTES * MINUTE_MS) / SLOT_MS) * SLOT_MS; ; at += SLOT_MS) {
+  for (let at = Math.ceil((Number(now) + MIN_NOTICE_MINUTES * MINUTE_MS + AUTO_LEAD_MINUTES * MINUTE_MS) / SLOT_MS) * SLOT_MS; ; at += SLOT_MS) {
     const [date, time] = wallTime(at).split(" ");
     if (!clockChange(date, time)) return { date, time };
   }
@@ -394,7 +394,7 @@ function holdFor(trip, current, settings) {
   if (!settings.paymentsEnabled || settings.blackoutBad || times.some(([date]) => blackout.includes(date))) return "paused";
   if (times.some(([date, time]) => clockChange(date, time))) return "clock-change";
   const pickups = times.map(([date, time]) => nycToUtc(date, time).getTime());
-  if (Math.min(...pickups) < current + MIN_NOTICE_HOURS * HOUR_MS) return "short-notice";
+  if (Math.min(...pickups) < current + MIN_NOTICE_MINUTES * MINUTE_MS) return "short-notice";
   if (Math.max(...pickups) > current + MAX_ADVANCE_DAYS * DAY_MS) return "far-ahead";
   return "";
 }
@@ -546,6 +546,18 @@ export function priceTrip(trip, settings) {
     notes: plain ? [NOTES.included, POLICY.later.airport] : [airportDistance(trip) ? POLICY.later.outside : POLICY.later.hourly],
     service,
   };
+}
+
+export function shownLines(lines) {
+  const fees = [taxLabel(), bcfLabel()];
+  const shown = [];
+  for (const item of lines) {
+    const merged = shown.find((entry) => entry.label === LABELS.taxes);
+    if (!fees.includes(item.label)) shown.push(item.label === LABELS.tolls ? line(LABELS.tollsShort, item.cents) : item);
+    else if (merged) merged.cents += item.cents;
+    else shown.push(line(LABELS.taxes, item.cents));
+  }
+  return shown;
 }
 
 export function vehicleLabel(key) {

@@ -335,7 +335,7 @@ for (const route of ["/faq", "/fleet", "/"]) {
     });
     const answers = await p.evaluate(() => document.body.textContent);
     check(`/faq: answers are in the static html, not javascript`, () => {
-      assert.match(answers, /Book online at least 1 hour before pickup/);
+      assert.match(answers, /Book online at least 90 minutes before pickup/);
     });
   }
   if (route === "/fleet") {
