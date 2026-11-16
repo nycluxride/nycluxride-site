@@ -1464,7 +1464,7 @@ for (const phone of [true, false]) {
     assert.deepEqual([...readRoute(body.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[4000, 420]]);
     assert.equal(routes(ctx).length, 1, "no second route request");
     const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
-    assert.deepEqual(cards, [...["suv", "premium", "first", "sedan"].map((c) => cash(priceDistance(c, { tenths: 4000, minutes: 420 }).total)), "Price on request"]);
+    assert.deepEqual(cards, ["suv", "premium", "first", "sedan", "sprinter"].map((c) => cash(priceDistance(c, { tenths: 4000, minutes: 420 }).total)));
     assert.deepEqual(cards.slice(0, 4), ["$2,120.27", "$2,534.76", "$2,814.79", "$1,594.65"]);
     await p.waitForTimeout(300);
     const [value, shifts] = await cls(p);
