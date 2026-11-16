@@ -8,7 +8,8 @@ import { createServer as createNetServer } from "node:net";
 import { createHash, createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill } from "../api/_trip.mjs";
+import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc } from "../api/_trip.mjs";
+import { routeKey, signRoute } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
 import { MAIL, CHECKOUT, NOTES, POLICY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
@@ -283,7 +284,10 @@ const ROUND = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK)
 const HOURLY = await booked({ trip_type: "hour", from_text: "1 Main Street, Brooklyn, NY 11201", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", tip: "custom", tip_amount: "40", rider: "me", ...ME, reach: "phone", notes: "A toddler seat, please" });
 const NEW_JERSEY = await booked({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-20", time: "05:15", passengers: "2", class: "sedan", tip: "20", rider: "me", ...ME, reach: "phone" });
 const STOPS = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "277 Bedford Ave, Brooklyn, NY 11211", stop2_text: "John F. Kennedy (JFK)", stop2_id: "jfk", to_text: MANHATTAN, date: "2026-11-21", time: "09:00", passengers: "2", class: "suv", flight: "AA 100", tip: "0", rider: "me", ...ME, reach: "phone" });
-const STOPS_ROUND = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "26 Ann St, New York, NY 10038", to_text: "55 Church St, New York, NY 10007", date: "2026-11-21", time: "09:00", return: "1", return_date: "2026-11-23", return_time: "18:00", passengers: "2", class: "suv", flight: "AA 100", tip: "0", rider: "me", ...ME, reach: "phone" });
+const STOPS_ROUND_FIELDS = { trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "26 Ann St, New York, NY 10038", to_text: "55 Church St, New York, NY 10007", date: "2026-11-21", time: "09:00", return: "1", return_date: "2026-11-23", return_time: "18:00", passengers: "2", class: "suv", flight: "AA 100", tip: "0", rider: "me", ...ME, reach: "phone" };
+const STOPS_ROUND = await booked(STOPS_ROUND_FIELDS);
+const STOPS_FAR = await booked({ ...STOPS_ROUND_FIELDS, route: signRoute([[routeKey({ address: "LaGuardia Airport, East Elmhurst, NY 11371" }, { address: "55 Church St, New York, NY 10007" }, nycToUtc("2026-11-21", "09:00").toISOString(), [{ address: "26 Ann St, New York, NY 10038" }]), 250, 70]], NOW) });
+const STOP_ONE_WAY = await booked({ ...STOPS_ROUND_FIELDS, return: "", stop2_text: "40 Wall St, New York, NY 10005" });
 const TERMINAL = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 5", to_id: "jfk-t5", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", return_flight: "B6 1234", passengers: "2", class: "suv", tip: "0", rider: "other", ...ME, reach: "phone", pname: "Ben Ortiz", pphone: "+44 20 7946 0958" });
 const NO_FLIGHT = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const NO_RETURN_FLIGHT = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 4", to_id: "jfk-t4", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
@@ -635,15 +639,36 @@ await test("a trip with two stops: Stop 1 and Stop 2 in order between the pickup
   }
 });
 
-await test("a round trip with a stop priced over the whole route and a flat return: both emails say the return's tolls and airport fees are paid and only the ride out's tolls come after the ride, with the tolls line and the miles of the ride out", async () => {
+await test("a round trip with a stop a few blocks away and a flat return: both emails show two flat airport totals with their tolls and the Extra stop line, and say tolls and airport fees are included", async () => {
   setEnv();
   const [customer, owner] = bookingLetters(paid(STOPS_ROUND), SETTINGS);
-  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $274.02", "Taxes and fees: $30.48", "Tolls: $12.75", "Paid: $317.25"]);
+  assert.deepEqual(STOPS_ROUND.metadata.stops_cents, "2000");
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $274.02", "Taxes and fees: $30.48", "Tolls: $25.50", "Extra stop: $20.00", "Paid: $350.00"]);
+  assert.deepEqual(sectionOf(owner.text, "Payment"), sectionOf(customer.text, "Your payment"));
+  for (const letter of [customer, owner]) {
+    assert.ok(letter.text.includes(`\n${NOTES.included}\n\n${POLICY.later.airport}\n`), letter.kind);
+    assert.ok(!letter.text.includes(POLICY.later.returnFlat), letter.kind);
+  }
+  assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. Return Mon, Nov 23, 2026, 6:00 PM. Business SUV, 2 airport transfers.\n"));
+});
+
+await test("a one way trip with two stops a few blocks apart: both emails, text and HTML, carry the Extra stops line with its count and the price per stop", async () => {
+  setEnv();
+  const [customer, owner] = bookingLetters(paid(STOP_ONE_WAY), SETTINGS);
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $137.01", "Taxes and fees: $15.24", "Tolls: $12.75", "Extra stops (2 x $20.00): $40.00", "Paid: $205.00"]);
+  assert.deepEqual(sectionOf(owner.text, "Payment"), sectionOf(customer.text, "Your payment"));
+  for (const letter of [customer, owner]) assert.ok(letter.html.includes("Extra stops (2 x $20.00)") && letter.html.includes("$40.00"), letter.kind);
+});
+
+await test("a round trip with a stop priced over the whole route and a flat return: both emails say the return's tolls and airport fees are paid and only the ride out's tolls come after the ride, with the tolls line and the miles of the ride out", async () => {
+  setEnv();
+  const [customer, owner] = bookingLetters(paid(STOPS_FAR), SETTINGS);
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $317.51", "Taxes and fees: $35.32", "Tolls: $12.75", "Paid: $365.58"]);
   for (const letter of [customer, owner]) {
     assert.ok(letter.text.includes(`\n${NOTES.returnFlat}\n\n${POLICY.later.returnFlat}\n`), letter.kind);
     assert.ok(!letter.text.includes(POLICY.later.outside), letter.kind);
   }
-  assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. Return Mon, Nov 23, 2026, 6:00 PM. Business SUV, 16.8 miles and 43 min, return at the flat airport rate.\n"));
+  assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. Return Mon, Nov 23, 2026, 6:00 PM. Business SUV, 25.0 miles and 70 min, return at the flat airport rate.\n"));
 });
 
 await test("an airport pickup, or a return pickup at an airport, with no flight number asks for it in both emails, on WhatsApp with the reference, where the confirmation page shows its flight number link", async () => {

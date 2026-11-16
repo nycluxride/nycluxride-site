@@ -140,9 +140,9 @@ await test("tip 0, an empty tip and no tip add no line", async () => {
   }
 });
 
-await test("TIP_PERCENTS is 0, 10, 15 and 20, and any other tip is the invalid code tip", async () => {
-  assert.deepEqual(TIP_PERCENTS, [0, 10, 15, 20]);
-  for (const tip of ["5", "25", "abc", "15.5", "-10"]) assert.deepEqual((await build(toAirport("jfk", { tip }))).check, { kind: "invalid", code: "tip" });
+await test("TIP_PERCENTS is 0, 10, 15, 20 and 25, and any other tip is the invalid code tip", async () => {
+  assert.deepEqual(TIP_PERCENTS, [0, 10, 15, 20, 25]);
+  for (const tip of ["5", "30", "abc", "15.5", "-10"]) assert.deepEqual((await build(toAirport("jfk", { tip }))).check, { kind: "invalid", code: "tip" });
 });
 
 await test("TIP_CUSTOM is $1 to $500 in cents, and a custom 40 on a JFK Business SUV adds Gratuity for your chauffeur 4000 for a total of 22500", async () => {

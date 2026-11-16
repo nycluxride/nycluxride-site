@@ -21,6 +21,7 @@ import {
   ADDRESS_PLACES,
   CONSENT_TERMS_LIVE,
   DISTANCE_RATES,
+  STOP_FEE_CENTS,
 } from "../api/_rates.mjs";
 import * as copy from "../api/_copy.mjs";
 import * as trip from "../api/_trip.mjs";
@@ -232,7 +233,7 @@ test("the taxes line and the hourly caption name NYC sales tax and the Black Car
 
 test("tolls and airport fees are included on airport transfers to or from a New York City address and billed after hourly rides and trips priced by distance and time", () => {
   assert.equal(facts["Tolls and airport fees"], "Included on airport transfers to or from a New York City address. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking");
-  assert.equal(facts["Extra stops"], "On airport transfers, charged after the ride to the card saved at booking");
+  assert.equal(facts["Extra stops"], `$${STOP_FEE_CENTS / 100} per stop booked with a one-way trip, charged at booking, unless the whole route by distance and time costs more, every part is an airport transfer or the trip goes from one airport to another. A stop added during an airport transfer is charged after the ride to the card saved at booking`);
   assert.equal(facts.Tolls, undefined);
 });
 
@@ -305,7 +306,7 @@ test("the distance section says how the price is built, that trips with stops ar
   assert.ok(prose.includes("One-way trips anywhere in the United States that don't start or end at an airport are priced by distance and time."), prose);
   assert.ok(!/five boroughs|New York City address|60 miles|180 minutes/.test(prose), prose);
   assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
-  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Trips with stops are priced by distance and time for the whole route, from the pickup through each stop to the drop-off, and the fare is never less than the airport fare when the route starts, stops or ends at one of these airports. When every part is an airport transfer, each part keeps its flat airport rate. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
+  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Each stop is $20 on top of the price of the same trip without it. If a stop takes the car out of the way and the whole route, from the pickup through each stop to the drop-off, costs more by distance and time, you pay that instead, never below the airport fare when the route starts, stops or ends at one of these airports. When every part is an airport transfer, each part keeps its flat airport rate. Any other trip with stops from one airport to another is priced by distance and time over the whole route. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
   assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
   const note = squash(page.querySelector("#distance-caption .rate-table__note"));
   assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));

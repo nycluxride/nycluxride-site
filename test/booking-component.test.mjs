@@ -313,6 +313,8 @@ check("step 3: the child seats fieldset follows meet and greet and the sign name
   assert.ok($("e-child_seats").matches("p.bk-e.field__hint") && nt($("e-child_seats").textContent) === ERRORS.child_seats.text);
   assert.doesNotMatch(f.textContent, /\$|\bfree\b|included/i);
   assert.equal($("bk-kids-p").textContent, "");
+  const bookCss = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((f) => /^book\..*\.css$/.test(f))), "utf8");
+  assert.ok(bookCss.includes(".bk:has(#q-error.is-on) #bk-kids:has(#bk-kids-p:empty) #bk-kids-n{display:block}"), "when prices fail and the seat price is missing, the See the child seat price link shows");
   const at = parts["book.html"].indexOf('<fieldset class="bk-kids"');
   const src = parts["book.html"].slice(at, parts["book.html"].indexOf("</fieldset>", at) + 11);
   assert.ok(at > 0 && src.endsWith("</fieldset>") && src.includes("e-child_seats"));

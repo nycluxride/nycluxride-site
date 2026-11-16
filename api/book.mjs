@@ -1,7 +1,7 @@
-import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, HOURLY_START } from "./_rates.mjs";
+import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, STOP_FEE_CENTS, HOURLY_START } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -86,6 +86,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
     seat_cents: CHILD_SEAT_CENTS,
+    stop_cents: STOP_FEE_CENTS,
     earliest: firstSlot(now),
     ...(trip.route && { route: trip.route }),
     ...rideBody(trip, size, draw),
@@ -99,7 +100,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
   return {
     kind: "options",
     ref,
-    service: serviceOf(trip),
+    service: serviceOf(chargedTrip(trip)),
     legs: hourly ? 0 : trip.legs.length,
     classes: classList(trip, ""),
     vehicles: vehicleList(trip),
@@ -108,6 +109,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
     meet: trip.meetOffered,
     meet_cents: trip.meetOffered ? MEET_AND_GREET : null,
     seat_cents: CHILD_SEAT_CENTS,
+    stop_cents: STOP_FEE_CENTS,
     selected: { class: trip.class, vehicle: hourly ? trip.vehicle : "", tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
     price: price ? { lines: shownLines(price.lines), total_cents: price.total, currency: "usd", notes: price.notes } : null,
     reason: check.reason,

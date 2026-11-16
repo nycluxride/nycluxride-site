@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES } = await load("_rates.mjs");
+const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES } = await load("_rates.mjs");
 const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
@@ -227,7 +227,7 @@ check("the done script repeats the rider's notes on the trip card as Your notes,
 check("the pay and done scripts carry no comment, hold no price figure, and pay.js uses the config advance limit and notice window", () => {
   for (const s of [SRC, DONE.replace('"PRODID:-//NYC LUX RIDE//Booking//EN"', '""')]) assert.doesNotMatch(s, /\/\*|(^|[^:"'\\])\/\/(?![\\/]|wa\.me)/m);
   assert.equal(DONE.match(/\$\d|8\.875|2\.25/g), null);
-  const figures = [...new Set([...Object.values(AIRPORT_FARES), ...Object.values(AIRPORT_TOTALS)].flatMap((o) => Object.values(o)).concat(MEET_AND_GREET, ...Object.values(VEHICLES).map((v) => v.hourly).filter(Boolean)))];
+  const figures = [...new Set([...Object.values(AIRPORT_FARES), ...Object.values(AIRPORT_TOTALS)].flatMap((o) => Object.values(o)).concat(MEET_AND_GREET, STOP_FEE_CENTS, ...Object.values(VEHICLES).map((v) => v.hourly).filter(Boolean)))];
   assert.deepEqual(figures.filter((c) => new RegExp(`(^|[^\\d.])${c}(?![\\d])`).test(SRC)), []);
   assert.equal(SRC.match(/\$\d|8\.875|2\.25/g), null);
   assert.match(SRC, new RegExp(`${MAX_ADVANCE_DAYS}\\*864e5`));
@@ -250,7 +250,8 @@ check("the pickup that fills in by itself (owner request 2) is the first slot MI
 
 check("the price box and the confirmation receipt (owner change 2) hold the Taxes and fees and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
   assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(tl\(\)\?\["Tolls"\]:\[\]\)\)/);
-  assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\?"airport":ou\(\)\?"outFlat":tl\(\)\?"returnFlat":AP\(\)\?"outside":"hourly"\]/, "the placeholder notes of a round trip with stops at the flat airport rate one way are those its answer brings");
+  assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\|\|sq\(\)&&tl\(\)\?"airport":ou\(\)\?"outFlat":tl\(\)\?"returnFlat":\(sq\(\)\?za\("from"\)\|\|za\("to"\):AP\(\)\)\?"outside":"hourly"\]/, "the placeholder notes of a round trip with stops at the flat airport rate one way are those its answer brings, and a trip whose stops take the stop fee has the notes of the same trip without the stops");
+  assert.match(PAY, /sq=\(\)=>one\(\)&&ns&&!ap\(\)&&!ou\(\)&&!\(za\("from"\)&&za\("to"\)\),tl=\(\)=>ap\(\)\|\|ou\(\)\|\|one\(\)&&ns&&\(rt\|\|sq\(\)\)&&za\("to"\)!=za\("from"\)/, "before the first answer a trip with stops expects the stop fee unless every part is an airport transfer or it runs between two airports, with the tolls line when the trip without the stops is an airport transfer");
   assert.match(PAY, /"stop-address":aq\("stop "\)/);
   assert.match(PAY, /x\[0\]=="Tolls"&&one\(\)\?h\(" bk-hint--same","The same in every class\."\):""/);
   assert.match(DONE, /"Taxes and fees",\.\.\.!f\|\|y\?\["Tolls"\]:\[\]/);
@@ -306,12 +307,17 @@ check("child seats: pay.js reprices on a change of any seat count, keys the pric
   assert.match(PAY, /WM2="";uk\(\$\("e-child_seats"\)\);su\(\);n=="passengers"&&\(fs\(\),ps\(\),pz\(\),V\(\)\);/);
   assert.match(PAY, /GO\|\|\(n=>n\.previousElementSibling==KF\|\|n\.before\(KF\)\)\(\$\(c\.details\?"bk-check":"bk-qnotes-f"\)\);/);
   assert.match(PAY, /r\.seat_cents&&T\("bk-kids-p",\(KC=M\(r\.seat_cents\)\)\+" each"\)/);
-  assert.match(PAY, /filter\(x=>!\/\^\(Meet\|Gratuity\|Child\)\/\.test\(x\)\)/);
+  assert.match(PAY, /filter\(x=>!\/\^\(Meet\|Gratuity\|Child\|Extra\)\/\.test\(x\)\)/);
+  assert.match(PAY, /r\.stop_cents&&\(KZ=M\(r\.stop_cents\)\);/);
+  assert.match(PAY, /e=one\(\)&&ns&&\(PLN\?PLN\.some\(x=>x\[0\]=="E"\):sq\(\)\)/);
+  assert.match(PAY, /N\("meet"\)\.checked&&r\.push\(\["Meet and greet",LV\["Meet and greet"\]\|\|"\.\.\."\]\);e&&r\.push\(\[e=ns>1\?"Extra stops"\+\(KZ\?" \("\+ns\+" x "\+KZ\+"\)":""\):"Extra stop",LV\[e\]\|\|"\.\.\."\]\);n&&r\.push/, "the pending Extra stop line sits after meet and greet and before the child seats, as the answer puts it");
   assert.match(PAY, /n&&r\.push\(\[n=KC\?"Child seats \("\+n\+" x "\+KC\+"\)":"Child seats",LV\[n\]\|\|"\.\.\."\]\)/);
   assert.match(PAY, /GO\|\|KS\(\)\.map\(x=>\+x\.value&&l\.push\(x\.labels\[0\]\.textContent\+" seats: "\+x\.value\)\)/);
   assert.match(PAY, /if\(k=="invalid"\)return LD=CW=0,bz\(0\),iv\(r\);uk\(\$\("e-child_seats"\)\);/);
   assert.doesNotMatch(SRC, /15\.00|\$15|seat_cents[:=]\d/);
-  assert.match(DONE, /\.\.\.f&&f\.meet=="1"\?\["Meet and greet"\]:\[\],\.\.\.\(f&&b\.ln\|\|\[\]\)\.filter\(l=>l\[0\]=="C"\),/);
+  assert.doesNotMatch(SRC, /20\.00|\$20|stop_cents[:=]\d/);
+  assert.match(DONE, /\.\.\.f&&f\.meet=="1"\?\["Meet and greet"\]:\[\],\.\.\.\(f&&b\.ln\|\|\[\]\)\.filter\(l=>\/\^\[EC\]\/\.test\(l\)\),/, "the receipt skeleton keeps the Extra stop and child seat lines of the price box after meet and greet, in the order of the answer");
+  assert.doesNotMatch(DONE, /20\.00|\$20|2000/);
   assert.doesNotMatch(DONE, /15\.00|\$15|1500/);
 });
 

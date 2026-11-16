@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines, chargedTrip } from "./_trip.mjs";
 import { production } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -84,7 +84,8 @@ function descriptorSuffix(trip) {
   return `${code} ${MONTHS[Number(month) - 1]}${day}`;
 }
 
-export function metadataFor(trip, price, ref) {
+export function metadataFor(input, price, ref) {
+  const trip = chargedTrip(input);
   const hourly = trip.trip_type === "hour";
   const legs = legsFor(trip);
   const first = legs[0] || {};
@@ -128,6 +129,7 @@ export function metadataFor(trip, price, ref) {
     tax_cents: price.tax,
     bcf_cents: price.bcf,
     tolls_cents: price.tolls,
+    stops_cents: price.stops || "",
     meet_cents: price.meet,
     seats_cents: price.seats || "",
     child_seats: price.seats ? price.seatCount : "",
@@ -160,7 +162,8 @@ function lineDescription(entry, i, trip, price, ref) {
   return undefined;
 }
 
-export function sessionParams(trip, price, ref, settings, now, origin) {
+export function sessionParams(input, price, ref, settings, now, origin) {
+  const trip = chargedTrip(input);
   const hourly = trip.trip_type === "hour";
   const lineItems = shownLines(price.lines).map((entry, i) => ({
     quantity: 1,

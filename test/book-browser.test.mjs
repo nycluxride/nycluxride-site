@@ -9,7 +9,7 @@ import { chromium, webkit, firefox } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const api = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, DISTANCE_RATES } = await api("_rates.mjs");
+const { AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, DISTANCE_RATES } = await api("_rates.mjs");
 const { readPhone } = await api("_phone.mjs");
 const { HEADINGS, NOTES, REASONS, POLICY } = await api("_copy.mjs");
 
@@ -642,7 +642,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual([(await page.textContent("#price-lines")).includes(L_TAX), (await page.textContent("#price-lines")).includes(L_BCF), TAX + BCF + TOLLS + FARE], [false, false, TOTAL], "one Taxes and fees line, the sales tax plus the Black Car Fund, and the same total (owner change 2)");
     assert.deepEqual(await page.$$eval("#price-notes li", (l) => l.map((x) => [x.querySelector("use").getAttribute("href"), x.textContent])), [["#i-check", NOTES.included], ["#i-clock", POLICY.later.airport]]);
     assert.deepEqual(await page.$$eval("#price-lines tr.bk-hint", (r) => r.map((x) => [x.cells.length, x.cells[0].colSpan, x.textContent])), [[1, 2, "The same in every class."]]);
-    assert.deepEqual(await page.$$eval("#bk-tip-opts label", (l) => l.map((x) => [...x.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(""))), ["None", "Other", "20%", "15%", "10%"], "None, Other, then the percents from the highest (owner request 1)");
+    assert.deepEqual(await page.$$eval("#bk-tip-opts label", (l) => l.map((x) => [...x.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(""))), ["None", "Other", "25%", "20%", "15%", "10%"], "None, Other, then the percents from the highest (owner request 1)");
     assert.deepEqual(await page.$$eval("#bk-tip-opts input", (l) => l.map((x) => x.value)), ["0", "custom", ...TIP_PERCENTS.filter(Boolean).sort((a, b) => b - a).map(String)]);
     assert.equal(await page.isChecked("#bk-t-0"), true);
     assert.deepEqual([await page.isVisible("#bk-bar-go"), await page.isEnabled("#bk-bar-go"), await page.isVisible("#bk-next"), await page.isVisible("#bk-submit"), await page.isVisible("#bk-tip"), await page.isVisible("#bk-meet-f")], [true, true, true, false, false, false], "step 2 shows Book and pay online in the bar and under the rows, meet and greet waits for step 3");
@@ -4939,7 +4939,7 @@ const lastGratuity = (p) => panel(p).then((x) => x.lines.filter(([l]) => /^Gratu
 for (const [width, height] of [[390, 844], [1440, 900]]) {
   const touch = width < 1024;
   const ctx = await context(P, { viewport: { width, height }, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
-  await check(`B101 at ${width}, the gratuity Other (owner request 1): the five chips in order, Other read as Other amount, a ${touch ? "tap" : "click"} on Other opens the whole dollar amount with its hint and focus while the arrows stay in the chips, the price follows 400 ms after the last key, $40, 40.00 and 040 read as 40 and show as 40 once the field is left, 0 counts as None, and every request carries the chosen tip even while the price is hidden`, async () => {
+  await check(`B101 at ${width}, the gratuity Other (owner request 1): the six chips in order, Other read as Other amount, a ${touch ? "tap" : "click"} on Other opens the whole dollar amount with its hint and focus while the arrows stay in the chips, the price follows 400 ms after the last key, $40, 40.00 and 040 read as 40 and show as 40 once the field is left, 0 counts as None, and every request carries the chosen tip even while the price is hidden`, async () => {
     const p = await open(ctx, P, "/book");
     const sent = posts(p);
     await trip(p);
@@ -4947,7 +4947,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await priced(p);
     await next(p);
     await priced(p);
-    assert.deepEqual(await chipText(p), ["None", "Other", "20%", "15%", "10%"]);
+    assert.deepEqual(await chipText(p), ["None", "Other", "25%", "20%", "15%", "10%"]);
     assert.deepEqual([await p.getByRole("radio", { name: "Other amount" }).count(), await p.isChecked("#bk-t-0"), await p.isVisible("#bk-tipamt")], [1, true, false]);
     await p.focus("#bk-t-0");
     await p.keyboard.press("ArrowRight");
@@ -5190,7 +5190,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 for (const width of [320, 340, 359, 360, 375, 390]) {
   const ctx = await context(P, { viewport: { width, height: 844 } });
-  await check(`B103 at ${width}, the five gratuity chips stay in one row with targets of at least 44 by 44 px, the mobile row and the amount fit with no sideways scroll`, async () => {
+  await check(`B103 at ${width}, the six gratuity chips sit in two even rows of three with targets of at least 44 by 44 px, the mobile row and the amount fit with no sideways scroll`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -5200,8 +5200,9 @@ for (const width of [320, 340, 359, 360, 375, 390]) {
     await p.click('label[for="bk-t-custom"]');
     await p.check("#bk-r-other");
     await p.waitForTimeout(200);
-    const rows = await p.$$eval("#bk-tip-opts label", (l) => new Set(l.map((x) => Math.round(x.getBoundingClientRect().top))).size);
-    assert.equal(rows, 1, `${rows} rows`);
+    const rows = await p.$$eval("#bk-tip-opts label", (l) => { const m = new Map(); for (const x of l) { const t = Math.round(x.getBoundingClientRect().top); m.set(t, (m.get(t) || 0) + 1); } return [...m.values()]; });
+    assert.deepEqual(rows, [3, 3], `${rows.join(" + ")} chips per row`);
+    assert.ok(await p.$$eval("#bk-tip-opts label", (l) => Math.max(...l.map((x) => x.getBoundingClientRect().width)) - Math.min(...l.map((x) => x.getBoundingClientRect().width)) <= 1), "the chips share one width");
     assert.ok(await p.$$eval("#bk-tip-opts label", (l) => l.every((x) => x.getBoundingClientRect().width >= 44 && x.getBoundingClientRect().height >= 44)), "every chip is at least 44 by 44 px");
     assert.ok((await overflow(p)) <= 0, `overflow ${await overflow(p)}`);
     assert.ok(await p.evaluate(() => [...document.querySelectorAll(".bk-tel")].every((r) => r.scrollWidth <= r.clientWidth + 1 && r.getBoundingClientRect().right <= document.documentElement.clientWidth)), "the country face and the number fit their row");
@@ -7171,9 +7172,12 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   const CHURCH = "55 Church St, New York, NY 10007";
   const OWNER_STOPS = { trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: ANN, to_text: CHURCH, date: DATE, time: "09:00", passengers: "1", class: "suv" };
   const out = (cls) => { const fare = AIRPORT_FARES[cls].lga; return fare + percentCents(fare, NYC_TAX_PERCENT) + percentCents(fare, BCF_PERCENT); };
+  const near = (cls) => AIRPORT_TOTALS[cls].lga + STOP_FEE_CENTS;
+  const LGA_TOLLS = AIRPORT_TOTALS.suv.lga - out("suv");
+  const AIRPORT_NOTE = NOTES.included + POLICY.later.airport;
   for (const width of [390, 1440]) {
     const ctx = await context(G, { viewport: { width, height: width < 1024 ? 844 : 900 } });
-    await check(`B206 at ${width} the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St, is priced online for the whole route: the cards show prices in every class, the Luxury Sprinter at $337.25, the price box has no tolls line and the after the ride note of an airport trip priced by distance, the stop has no dispatch hint, the note gives the miles and minutes of the whole route, nothing moves, and the mock payment lands on the receipt with the same lines`, async () => {
+    await check(`B206 at ${width} the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St a few blocks apart, costs the LaGuardia flat total plus the stop fee: the cards show $185.00 to $370.00 in every class, the Luxury Sprinter at $370.00, the price box has the tolls line, the Extra stop line and the notes of an airport transfer, the placeholders already hold them, the stop has no dispatch hint, the note gives the miles and minutes of the whole route, nothing moves, and the mock payment lands on the receipt with the same lines`, async () => {
       const p = await open(ctx, G, "/book");
       await place(p, "from", "lga", "LaGuardia (LGA)");
       await place(p, "to", CHURCH);
@@ -7191,11 +7195,11 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       release();
       await priced(p);
       await p.unroute("**/api/book");
-      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes, waiting.sprinter.startsWith("..."), waiting.sprinter === waiting.suv], [["Fare", L_FEES], POLICY.later.outside, true, true], "the placeholders are those of an airport trip priced by distance");
-      assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(out(cls))));
-      assert.deepEqual(await cards(p), ["$152.25", "$177.25", "$237.25", "$132.25", "$337.25"]);
+      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes, waiting.sprinter.startsWith("..."), waiting.sprinter === waiting.suv], [["Fare", L_FEES, L_TOLLS, "Extra stop"], AIRPORT_NOTE, true, true], "the placeholders are those of the airport transfer without the stop plus the stop line");
+      assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(near(cls))));
+      assert.deepEqual(await cards(p), ["$185.00", "$210.00", "$270.00", "$165.00", "$370.00"]);
       const box = await panel(p);
-      assert.deepEqual([box.lines, box.total, box.notes], [[["Fare", cash(AIRPORT_FARES.suv.lga)], [L_FEES, cash(out("suv") - AIRPORT_FARES.suv.lga)]], cash(out("suv")), POLICY.later.outside]);
+      assert.deepEqual([box.lines, box.total, box.notes], [[["Fare", cash(AIRPORT_FARES.suv.lga)], [L_FEES, cash(out("suv") - AIRPORT_FARES.suv.lga)], [L_TOLLS, cash(LGA_TOLLS)], ["Extra stop", cash(STOP_FEE_CENTS)]], "$185.00", AIRPORT_NOTE]);
       assert.equal(await p.isVisible("#q-stop-leg"), false);
       assert.equal(await p.textContent("#bk-route-n"), DRIVE_N);
       assert.deepEqual((await p.$$eval("#bk-route li", (l) => l.map((x) => x.textContent))).map((t) => t.includes("26 Ann St")), [false, true, false]);
@@ -7203,7 +7207,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       assert.equal(value, 0, shifts.join(" | "));
       await p.click('label[for="bk-c-sprinter"]');
       await priced(p);
-      assert.deepEqual(await panel(p), { lines: [["Fare", "$303.49"], [L_FEES, "$33.76"]], total: "$337.25", notes: POLICY.later.outside });
+      assert.deepEqual(await panel(p), { lines: [["Fare", "$303.49"], [L_FEES, "$33.76"], [L_TOLLS, "$12.75"], ["Extra stop", "$20.00"]], total: "$370.00", notes: AIRPORT_NOTE });
       await p.click('label[for="bk-c-suv"]');
       await priced(p);
       assert.deepEqual((await panel(p)).lines, box.lines);
@@ -7212,12 +7216,12 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
       await p.waitForSelector("#cf-receipt", { state: "visible" });
       const r = await p.evaluate(() => ({ summary: document.getElementById("cf-summary").textContent, lines: [...document.querySelectorAll("#cf-lines tr")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]), total: document.getElementById("cf-total").textContent, notes: document.getElementById("cf-notes").textContent }));
-      assert.deepEqual([r.lines, r.total, r.notes], [box.lines, box.total, POLICY.later.outside]);
-      assert.ok(r.summary.includes("Business SUV, 16.8 miles and 43 min"), r.summary);
+      assert.deepEqual([r.lines, r.total, r.notes], [box.lines, box.total, AIRPORT_NOTE]);
+      assert.ok(r.summary.includes("From LaGuardia (LGA), Business SUV"), r.summary);
       assert.deepEqual([p.errors, p.failed], [[], []]);
       await p.close();
     });
-    await check(`B206 at ${width} the owner's trip with a stop and a return to LaGuardia: the ride out is priced over the whole route and the return at its flat total with its tolls line, the placeholder lines and notes already hold that tolls line and say the return's tolls are included and the ride out's come after the ride, nothing moves, and the note gives both rides`, async () => {
+    await check(`B206 at ${width} the owner's trip with a stop and a return to LaGuardia: both rides cost their flat airport totals plus one stop fee, the placeholder lines and notes already hold the tolls line, the Extra stop line and the notes of an airport transfer, nothing moves, and the note gives both rides`, async () => {
       const p = await open(ctx, G, "/book");
       await place(p, "from", "lga", "LaGuardia (LGA)");
       await place(p, "to", CHURCH);
@@ -7237,19 +7241,18 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       release();
       await priced(p);
       await p.unroute("**/api/book");
-      assert.deepEqual(waiting.lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS], "the placeholder lines hold the tolls line of the flat return");
-      assert.equal(waiting.notes, NOTES.returnFlat + POLICY.later.returnFlat, "the placeholder notes are those of a flat return");
-      assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(out(cls) + AIRPORT_TOTALS[cls].lga)));
+      assert.deepEqual(waiting.lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS, "Extra stop"], "the placeholder lines hold the tolls line of both flat rides and the stop line");
+      assert.equal(waiting.notes, AIRPORT_NOTE, "the placeholder notes are those of a round trip airport transfer");
+      assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(near(cls) + AIRPORT_TOTALS[cls].lga)));
       const box = await panel(p);
-      const tolls = AIRPORT_TOTALS.suv.lga - AIRPORT_FARES.suv.lga - percentCents(AIRPORT_FARES.suv.lga, NYC_TAX_PERCENT) - percentCents(AIRPORT_FARES.suv.lga, BCF_PERCENT);
-      assert.deepEqual([box.lines.map(([label]) => label), box.lines.at(-1)[1], box.total, box.notes], [["Fare", L_FEES, L_TOLLS], cash(tolls), cash(out("suv") + AIRPORT_TOTALS.suv.lga), NOTES.returnFlat + POLICY.later.returnFlat]);
+      assert.deepEqual([box.lines.map(([label]) => label), box.lines[2][1], box.lines[3][1], box.total, box.notes], [["Fare", L_FEES, L_TOLLS, "Extra stop"], cash(2 * LGA_TOLLS), cash(STOP_FEE_CENTS), cash(near("suv") + AIRPORT_TOTALS.suv.lga), AIRPORT_NOTE]);
       await p.waitForFunction(() => document.getElementById("bk-route-n").textContent.includes("Return"), null, { timeout: 5000 }).catch(() => 0);
       assert.equal(await p.textContent("#bk-route-n"), "16.8 miles, about 43 min by car. Return: 16.8 miles, about 43 min by car. Google Maps");
       const [value, shifts] = await cls(p);
       assert.equal(value, 0, shifts.join(" | "));
       await p.click('label[for="bk-c-premium"]');
-      await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, cash(out("premium") + AIRPORT_TOTALS.premium.lga));
-      assert.deepEqual((await panel(p)).lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS]);
+      await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, cash(near("premium") + AIRPORT_TOTALS.premium.lga));
+      assert.deepEqual((await panel(p)).lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS, "Extra stop"]);
       assert.deepEqual([p.errors, p.failed], [[], []]);
       await p.close();
     });
@@ -7303,7 +7306,46 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await place(p, "stop1", ANN);
     await view(p);
     await priced(p);
-    assert.deepEqual([await p.isVisible("#q-stop-address"), (await cards(p))[0]], [false, cash(out("suv"))]);
+    assert.deepEqual([await p.isVisible("#q-stop-address"), (await cards(p))[0]], [false, cash(near("suv"))]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B210 two stops a few blocks apart, LaGuardia to 26 Ann St and 40 Wall St then 55 Church St: the cards add two stop fees to the LaGuardia flat totals, the price box has the Extra stops (2 x $20.00) line from the answer, a class change keeps that line in the placeholder so nothing moves, and the receipt has the same lines", async () => {
+    const p = await open(ctx, G, "/book");
+    await place(p, "from", "lga", "LaGuardia (LGA)");
+    await place(p, "to", CHURCH);
+    await p.click("#bk-addstop");
+    await place(p, "stop1", ANN);
+    await p.click("#bk-addstop");
+    await place(p, "stop2", "40 Wall St, New York, NY 10005");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "09:00");
+    await view(p);
+    await priced(p);
+    const two = (cls) => AIRPORT_TOTALS[cls].lga + 2 * STOP_FEE_CENTS;
+    assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(two(cls))));
+    const box = await panel(p);
+    assert.deepEqual([box.lines.map(([label]) => label), box.lines.at(-1)[1], box.total, box.notes], [["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], cash(2 * STOP_FEE_CENTS), cash(two("suv")), AIRPORT_NOTE]);
+    let release;
+    const held = new Promise((r) => (release = r));
+    await p.route("**/api/book", async (route) => (await held, route.continue().catch(() => {})));
+    await p.click('label[for="bk-c-sprinter"]');
+    await p.waitForFunction(() => document.getElementById("price-total").getAttribute("aria-busy") === "true");
+    const waiting = await panel(p);
+    release();
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t && !document.getElementById("price-total").getAttribute("aria-busy"), cash(two("sprinter")));
+    await p.unroute("**/api/book");
+    assert.deepEqual(waiting.lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], "the pending lines keep the stop line with its count and price per stop");
+    const van = await panel(p);
+    assert.deepEqual([van.lines.map(([label]) => label), van.lines.at(-1)[1], van.total], [["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], "$40.00", "$390.00"]);
+    const [value, shifts] = await cls(p);
+    assert.equal(value, 0, shifts.join(" | "));
+    await next(p);
+    await details(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    await p.waitForSelector("#cf-receipt", { state: "visible" });
+    const r = await p.evaluate(() => ({ lines: [...document.querySelectorAll("#cf-lines tr")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]), total: document.getElementById("cf-total").textContent }));
+    assert.deepEqual([r.lines, r.total], [van.lines, van.total]);
     assert.deepEqual([p.errors, p.failed], [[], []]);
     await p.close();
   });

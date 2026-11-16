@@ -3,7 +3,7 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DISTANCE_RATES, CHILD_SEAT_CENTS } from "../api/_rates.mjs";
+import { DISTANCE_RATES, CHILD_SEAT_CENTS, STOP_FEE_CENTS } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RATES = "rates.html";
@@ -140,6 +140,13 @@ if (rates) {
   check(`${RATES}: carries the published airport and hourly rates`, () => {
     for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$400", "$350", "$155.00", "$13.76", "$3.49", "$12.75", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
     assert.match(rates.title, /\$145(?!\d)/);
+  });
+  check(`${RATES}: the stop fee is STOP_FEE_CENTS / 100 from api/_rates.mjs, in the distance section and the Extra stops fact, and no other price per stop appears`, () => {
+    const fee = `$${STOP_FEE_CENTS / 100}`;
+    assert.ok(rates.text.includes(`Each stop is ${fee} on top of the price of the same trip without it.`), "distance section");
+    assert.ok(rates.text.includes(`${fee} per stop booked with a one-way trip, charged at booking`), "Extra stops fact");
+    const found = [...rates.text.matchAll(/\$\s*(\d+(?:\.\d+)?)\s+(?:per stop|on top of the price)/g)].map((m) => Number(m[1]));
+    assert.deepEqual([...new Set(found)], [STOP_FEE_CENTS / 100]);
   });
   check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total and the old First Class $125 an hour and $375 for three hours, apart from the Business Premium SUV distance minimum of api/_rates.mjs`, () => {
     const minimum = [...rates.document.querySelectorAll("#distance-premium td span")].map((s) => s.textContent).find((t) => t.endsWith(" minimum"));
