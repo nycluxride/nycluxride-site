@@ -123,7 +123,7 @@ function fakeSmtp() {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(Object.assign(state, { server, port: server.address().port }))));
 }
 
-const stripe = { sessions: new Map(), keys: new Map(), calls: [], refuse: false };
+const stripe = { sessions: new Map(), keys: new Map(), calls: [], refuse: false, list: null };
 const twilio = { calls: [] };
 const google = { calls: [], events: new Map(), fail: null, delay: 0, custom: null };
 const answer = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "request-id": "req_fake0001" } });
@@ -147,6 +147,20 @@ function googleAnswer(target, method, headers, body, init) {
   if (failed) return answer(failed, { error: { code: failed, message: `${stage} said no`, status: "PERMISSION_DENIED" } });
   if (stage === "sts") return answer(200, { access_token: STS_TOKEN, issued_token_type: "urn:ietf:params:oauth:token-type:access_token", token_type: "Bearer", expires_in: 3599 });
   if (stage === "iam") return answer(200, { accessToken: ACCESS_TOKEN, expireTime: "2026-11-01T15:05:00Z" });
+  const one = /\/events\/([^/]+)$/.exec(target.pathname);
+  if (one) {
+    const id = decodeURIComponent(one[1]);
+    const held = google.events.get(id);
+    if (!held) return answer(404, { error: { code: 404, message: "Not Found", status: "NOT_FOUND" } });
+    const etag = held.etag || '"1"';
+    if (method === "GET") return answer(200, { kind: "calendar#event", status: "confirmed", ...held, etag });
+    if (headers.get("if-match") && headers.get("if-match") !== etag) return answer(412, { error: { code: 412, message: "Precondition Failed", status: "FAILED_PRECONDITION" } });
+    const change = JSON.parse(body);
+    const extendedProperties = { private: { ...(held.extendedProperties && held.extendedProperties.private), ...(change.extendedProperties && change.extendedProperties.private) } };
+    const next = { ...held, ...change, extendedProperties, etag: `"${Number(etag.replace(/"/g, "")) + 1}"` };
+    google.events.set(id, next);
+    return answer(200, { kind: "calendar#event", status: "confirmed", ...next });
+  }
   const event = JSON.parse(body);
   if (google.events.has(event.id)) return answer(409, { error: { code: 409, message: "The requested identifier already exists.", status: "ALREADY_EXISTS" } });
   google.events.set(event.id, event);
@@ -167,7 +181,14 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response(JSON.stringify({ sid: sid("SM", String(twilio.calls.length)), status: "queued" }), { status: 201, headers: { "Content-Type": "application/json", "Twilio-Request-Id": sid("RQ", String(twilio.calls.length)) } });
   }
   if (target.origin !== "https://api.stripe.com") throw new Error(`a request went to ${target.origin}`);
-  stripe.calls.push({ method, path: target.pathname, idempotency: headers.get("idempotency-key") || "", body });
+  stripe.calls.push({ method, path: target.pathname, search: target.search, idempotency: headers.get("idempotency-key") || "", body });
+  if (target.pathname === "/v1/checkout/sessions" && method === "GET") {
+    const refused = stripe.list && stripe.list();
+    if (refused) return answer(refused, { error: { type: refused === 403 ? "invalid_request_error" : "api_error", message: "list said no" } });
+    const intent = target.searchParams.get("payment_intent");
+    const data = [...stripe.sessions.values()].filter((session) => session.payment_intent === intent).map((session) => structuredClone(session));
+    return answer(200, { object: "list", data, has_more: false, url: "/v1/checkout/sessions" });
+  }
   const match = /^\/v1\/checkout\/sessions\/([^/]+)$/.exec(target.pathname);
   const session = match && stripe.sessions.get(decodeURIComponent(match[1]));
   if (!session) return answer(404, { error: { type: "invalid_request_error", code: "resource_missing" } });
@@ -202,6 +223,7 @@ function setEnv(vars = {}) {
   google.delay = 0;
   google.custom = null;
   stripe.refuse = false;
+  stripe.list = null;
 }
 const fullEnv = (extra = {}) => ({ STRIPE_SECRET_KEY: KEY, STRIPE_WEBHOOK_SECRET: SECRET, SMTP_USER: "info@nycluxride.com", SMTP_PASS: "test-app-password-5521", SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtp.port), ...SMS, ...GCAL, ...extra });
 
@@ -793,6 +815,470 @@ await test("daylight saving time: a July pickup starts at UTC minus 4, and round
   const [springOut, springBack] = bookingEvents(paid({ ...ROUND, metadata: { ...ROUND.metadata, date: "2027-03-12", return_date: "2027-03-15" } }));
   assert.deepEqual([springOut.start.dateTime, springBack.start.dateTime], ["2027-03-12T12:30:00.000Z", "2027-03-15T22:00:00.000Z"]);
   assert.ok([july, fallOut, fallBack, springOut, springBack].every((event) => event.start.timeZone === "America/New_York"));
+});
+
+const NOV17 = Date.parse("2026-11-17T15:00:00.000Z") / 1000;
+const NOV18 = Date.parse("2026-11-18T16:00:00.000Z") / 1000;
+const PRICED = { ...ONE_WAY, total: 24798 };
+const signed = (body, headers = withToken(), secret = SECRET) => {
+  const at = Math.floor(Date.now() / 1000);
+  const signature = `t=${at},v1=${createHmac("sha256", secret).update(`${at}.${body}`).digest("hex")}`;
+  return POST(new Request("https://www.nycluxride.com/api/stripe-webhook", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature, ...headers }, body }));
+};
+function refundBody(session, { refunded = session.amount_total, amount = session.amount_total, full = refunded === amount, created = NOV17, intent = session.payment_intent } = {}) {
+  const charge = { id: `ch_${session.payment_intent.slice(3)}`, object: "charge", amount, amount_captured: amount, amount_refunded: refunded, refunded: full, paid: true, status: "succeeded", currency: "usd", livemode: session.livemode, payment_intent: intent };
+  return JSON.stringify({ id: `evt_Refund${created}${refunded}`, object: "event", type: "charge.refunded", created, livemode: session.livemode, data: { object: charge } });
+}
+const refund = (session, options, headers) => signed(refundBody(session, options), headers);
+const held = (session) => {
+  for (const event of bookingEvents(session)) google.events.set(event.id, structuredClone(event));
+  return bookingEvents(session);
+};
+const eventPath = (id) => `${EVENTS_URL}/${id}`;
+const refundCalls = () => google.calls.map((c) => (c.url === STS_URL ? "sts" : c.url === IAM_URL ? "iam" : c.url.startsWith(`${EVENTS_URL}/`) ? `${c.method} ${c.url.slice(EVENTS_URL.length + 1)}` : c.url));
+const patches = () => google.calls.filter((c) => c.method === "PATCH").map((c) => [c.url.slice(EVENTS_URL.length + 1), JSON.parse(c.body)]);
+const lookups = () => stripe.calls.filter((c) => c.path === "/v1/checkout/sessions");
+const untouched = () => assert.deepEqual([smtp.messages.length, twilio.calls.length, writes().length], [0, 0, 0]);
+const NOTE_FULL = "Cancelled and refunded $247.98 on Nov 17, 2026.";
+
+await test("refund: an unsigned or wrongly signed charge.refunded is refused with 400 and asks Stripe and Google nothing", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  held(session);
+  const body = refundBody(session);
+  assert.equal((await signed(body, withToken(), ["whsec", "SomeoneElsesSecret01"].join("_"))).status, 400);
+  assert.equal((await POST(new Request("https://www.nycluxride.com/api/stripe-webhook", { method: "POST", headers: { "content-type": "application/json", ...withToken() }, body }))).status, 400);
+  const at = Math.floor(Date.now() / 1000);
+  const stale = `t=${at - 600},v1=${createHmac("sha256", SECRET).update(`${at - 600}.${body}`).digest("hex")}`;
+  assert.equal((await POST(new Request("https://www.nycluxride.com/api/stripe-webhook", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": stale, ...withToken() }, body }))).status, 400);
+  assert.deepEqual([stripe.calls.length, google.calls.length], [0, 0]);
+  assert.equal(logged.filter((line) => line === "webhook-signature").length, 3);
+  assert.deepEqual(bookingEvents(session).map((event) => google.events.get(event.id)), bookingEvents(session));
+});
+
+await test("refund: a full refund of a one way trip finds the session from the payment intent and patches the event title and description, nothing else", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = held(session);
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual(lookups().map((c) => [c.method, c.search]), [["GET", `?payment_intent=${session.payment_intent}`]]);
+  assert.deepEqual(refundCalls(), ["sts", "iam", `GET ${event.id}`, `PATCH ${event.id}`]);
+  const patch = google.calls.find((c) => c.method === "PATCH");
+  assert.equal(patch.headers.get("authorization"), `Bearer ${ACCESS_TOKEN}`);
+  assert.equal(patch.headers.get("content-type"), "application/json");
+  assert.equal(patch.headers.get("if-match"), '"1"');
+  assert.equal(patch.url, eventPath(event.id));
+  assert.deepEqual(JSON.parse(patch.body), {
+    summary: "[TEST] CANCELLED: 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)",
+    description: [NOTE_FULL, "Test booking. No real payment was taken.", "Reference: 83558982", "Customer: Ana Lopez", "Phone: +1 212 555 0100", "Email: ana.lopez@example.com", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "Paid: $247.98"].join("\n"),
+    extendedProperties: { private: { nlrRefundedCents: "24798" } },
+  });
+  const now = google.events.get(event.id);
+  assert.deepEqual([now.start, now.end, now.location, now.reminders], [event.start, event.end, event.location, event.reminders]);
+  untouched();
+  assert.ok(noted.includes("calendar-refunded 83558982 1 0"), noted.join(" | "));
+  assert.deepEqual(logged, []);
+});
+
+await test("refund: a full refund of a round trip renames and notes both legs, the return keeping its Return title after CANCELLED", async () => {
+  setEnv(fullEnv());
+  const session = paid(ROUND);
+  const [out, back] = held(session);
+  assert.equal((await refund(session)).status, 200);
+  const done = patches();
+  assert.deepEqual(done.map(([id]) => id).sort(), [out.id, back.id].sort());
+  const byId = Object.fromEntries(done);
+  assert.equal(byId[out.id].summary, "[TEST] CANCELLED: 83558982 Business Premium SUV: JFK to 350 5th Ave");
+  assert.equal(byId[back.id].summary, "[TEST] CANCELLED: Return: 83558982 Business Premium SUV: 350 5th Ave to JFK");
+  for (const event of [out, back]) {
+    assert.equal(byId[event.id].description, `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`);
+    assert.deepEqual(byId[event.id].extendedProperties, { private: { nlrRefundedCents: "52095" } });
+  }
+  untouched();
+  assert.ok(noted.includes("calendar-refunded 83558982 2 0"));
+});
+
+await test("refund: a partial refund keeps the title and starts the description with how much of the total went back", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = held(session);
+  assert.equal((await refund(session, { refunded: 5000 })).status, 200);
+  const [[id, body]] = patches();
+  assert.equal(id, event.id);
+  assert.deepEqual(body, { summary: event.summary, description: `Partly refunded $50.00 of $247.98 on Nov 17, 2026.\n${event.description}`, extendedProperties: { private: { nlrRefundedCents: "5000" } } });
+  assert.equal(google.events.get(event.id).summary, "[TEST] 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)");
+  untouched();
+});
+
+await test("refund: a charge counts as fully refunded when Stripe marks it refunded or when the refunded amount reaches the charge amount", async () => {
+  for (const options of [{ full: false }, { full: true, refunded: 24798 }]) {
+    setEnv(fullEnv());
+    const session = paid(PRICED);
+    const [event] = held(session);
+    assert.equal((await refund(session, options)).status, 200);
+    assert.deepEqual(patches()[0][1].summary, `[TEST] CANCELLED: ${event.summary.slice("[TEST] ".length)}`, JSON.stringify(options));
+    assert.ok(patches()[0][1].description.startsWith(`${NOTE_FULL}\n`));
+  }
+});
+
+await test("refund: a full refund after a partial one replaces the partial note, and the earlier partial event arriving late changes nothing", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = held(session);
+  assert.equal((await refund(session, { refunded: 5000 })).status, 200);
+  assert.equal((await refund(session, { refunded: 15000, created: NOV17 + 3600 })).status, 200);
+  assert.ok(google.events.get(event.id).description.startsWith(`Partly refunded $150.00 of $247.98 on Nov 17, 2026.\n${event.description.split("\n")[0]}`));
+  assert.equal((await refund(session, { created: NOV18 })).status, 200);
+  const final = google.events.get(event.id);
+  assert.equal(final.summary, "[TEST] CANCELLED: 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)");
+  assert.equal(final.description, `Cancelled and refunded $247.98 on Nov 18, 2026.\n${event.description}`);
+  assert.ok(!final.description.includes("Partly"));
+  assert.equal(final.extendedProperties.private.nlrRefundedCents, "24798");
+  const snapshot = structuredClone(final);
+  google.calls.length = 0;
+  for (const late of [{ refunded: 5000 }, { refunded: 15000, created: NOV17 + 3600 }]) assert.equal((await refund(session, late)).status, 200);
+  assert.deepEqual(google.events.get(event.id), snapshot);
+  assert.equal(patches().length, 0);
+  untouched();
+});
+
+await test("refund: the same delivery twice leaves the event exactly as the first one did, and a fresh copy of the event patched by the second delivery gets the same body", async () => {
+  setEnv(fullEnv());
+  const session = paid(ROUND);
+  const events = held(session);
+  assert.equal((await refund(session)).status, 200);
+  const first = events.map((event) => structuredClone(google.events.get(event.id)));
+  const bodies = Object.fromEntries(patches());
+  google.calls.length = 0;
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual(events.map((event) => google.events.get(event.id)), first);
+  assert.equal(patches().length, 0);
+  assert.ok(noted.includes("calendar-refunded 83558982 0 2"));
+  held(session);
+  google.calls.length = 0;
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual(Object.fromEntries(patches()), bodies);
+  assert.deepEqual(events.map((event) => ({ ...google.events.get(event.id), etag: "" })), first.map((event) => ({ ...event, etag: "" })));
+});
+
+await test("refund: a charge with no Checkout Session, a session that is not a booking, a charge with no payment intent or nothing refunded all answer 200 and touch no event", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  held(session);
+  assert.equal((await refund(session, { intent: "pi_NoSuchIntent01" })).status, 200);
+  assert.equal(lookups().length, 1);
+  const link = paid({ ...PRICED, metadata: {} });
+  stripe.sessions.get(link.id).client_reference_id = null;
+  assert.equal((await refund(link)).status, 200);
+  const undated = paid({ ...PRICED, metadata: { ...PRICED.metadata, date: "", time: "" } });
+  assert.equal((await refund(undated)).status, 200);
+  assert.equal(lookups().length, 3);
+  for (const options of [{ intent: null }, { intent: "not an intent" }, { refunded: 0 }, { refunded: 30000 }, { created: 0 }]) assert.equal((await refund(session, options)).status, 200, JSON.stringify(options));
+  assert.equal((await signed(JSON.stringify({ id: "evt_NotACharge", object: "event", type: "charge.refunded", created: NOV17, data: { object: { id: session.id, object: "checkout.session" } } }))).status, 200);
+  assert.equal(lookups().length, 3);
+  assert.deepEqual(google.calls.length, 0);
+  assert.equal(google.events.get(bookingEvents(session)[0].id).summary, bookingEvents(session)[0].summary);
+  untouched();
+  assert.deepEqual(logged, []);
+});
+
+await test("refund: an event that is not in the calendar yet is added already cancelled, one that was deleted from it is skipped without an error while the other leg is still patched", async () => {
+  setEnv(fullEnv());
+  const session = paid(ROUND);
+  assert.equal((await refund(session)).status, 200);
+  const [out, back] = bookingEvents(session);
+  assert.deepEqual(refundCalls().filter((c) => c.startsWith("GET")).sort(), [`GET ${out.id}`, `GET ${back.id}`].sort());
+  assert.equal(patches().length, 0);
+  const added = inserted();
+  assert.deepEqual(added.map((event) => event.id).sort(), [out.id, back.id].sort());
+  for (const event of [out, back]) {
+    const now = google.events.get(event.id);
+    assert.deepEqual(added.find((one) => one.id === event.id), now);
+    assert.deepEqual(now, { ...event, summary: `[TEST] CANCELLED: ${event.summary.slice("[TEST] ".length)}`, description: `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`, extendedProperties: { private: { nlrRefundedCents: "52095" } } });
+  }
+  assert.ok(noted.includes("calendar-refunded 83558982 2 0"), noted.join(" | "));
+  assert.deepEqual(logged, []);
+  google.calls.length = 0;
+  google.events.set(back.id, structuredClone(back));
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual(patches().map(([id]) => id), [back.id]);
+  assert.equal(inserted().length, 0);
+  google.calls.length = 0;
+  google.events.set(out.id, { ...structuredClone(out), status: "cancelled" });
+  assert.equal((await refund(session, { refunded: 60000, amount: 60000 })).status, 200);
+  assert.deepEqual(patches().map(([id]) => id), [back.id]);
+  assert.equal(google.events.get(out.id).summary, out.summary);
+  google.calls.length = 0;
+  google.custom = (at, init) => (at === "events" && init.method === "PATCH" ? answer(410, { error: { code: 410, message: "Resource has been deleted" } }) : null);
+  assert.equal((await refund(session, { refunded: 70000, amount: 70000 })).status, 200);
+  google.calls.length = 0;
+  google.events.clear();
+  google.custom = (at, init) => (at === "events" && (init.method || "GET") === "GET" ? answer(410, { error: { code: 410, message: "Resource has been deleted" } }) : null);
+  assert.equal((await refund(session, { refunded: 80000, amount: 80000 })).status, 200);
+  assert.deepEqual([inserted().length, patches().length, google.events.size], [0, 0, 0]);
+  assert.deepEqual(logged, []);
+  untouched();
+});
+
+await test("refund: a full refund before the event was added, then the payment notice again, leaves one cancelled event and adds no second one", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = bookingEvents(session);
+  google.fail = (at) => (at === "sts" ? 503 : 0);
+  assert.equal((await hook(session)).status, 503);
+  assert.deepEqual([smtp.messages.length, twilio.calls.length, google.events.size], [2, 1, 0]);
+  assert.ok(waiting(session));
+  google.fail = null;
+  google.calls.length = 0;
+  logged.length = 0;
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual(refundCalls(), ["sts", "iam", `GET ${event.id}`, EVENTS_URL]);
+  const cancelled = { ...event, summary: "[TEST] CANCELLED: 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)", description: `${NOTE_FULL}\n${event.description}`, extendedProperties: { private: { nlrRefundedCents: "24798" } } };
+  assert.deepEqual(google.events.get(event.id), cancelled);
+  assert.ok(noted.includes("calendar-refunded 83558982 1 0"), noted.join(" | "));
+  assert.deepEqual(logged, []);
+  aged(session);
+  google.calls.length = 0;
+  let answered = 0;
+  google.custom = (at, init) => {
+    if (at !== "events" || init.method !== "POST") return null;
+    const sent = JSON.parse(init.body);
+    if (!google.events.has(sent.id)) return null;
+    answered++;
+    return answer(409, { error: { code: 409, message: "The requested identifier already exists.", status: "ALREADY_EXISTS" } });
+  };
+  assert.equal((await hook(session)).status, 200);
+  assert.deepEqual(inserted().map((one) => one.summary), [event.summary]);
+  assert.equal(answered, 1);
+  assert.deepEqual([google.events.size, google.events.get(event.id)], [1, cancelled]);
+  assert.ok(doneOf(session));
+  assert.equal((await lookup(session)).status, 200);
+  await settled();
+  assert.deepEqual(google.events.get(event.id), cancelled);
+  assert.deepEqual([smtp.messages.length, twilio.calls.length], [2, 1]);
+});
+
+await test("refund: an event added by the payment notice between the refund's look and its insert is found again and patched", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = bookingEvents(session);
+  let raced = false;
+  google.custom = (at, init) => {
+    if (at !== "events" || init.method !== "POST" || raced) return null;
+    raced = true;
+    google.events.set(event.id, structuredClone(event));
+    return answer(409, { error: { code: 409, message: "The requested identifier already exists.", status: "ALREADY_EXISTS" } });
+  };
+  assert.equal((await refund(session, { refunded: 5000 })).status, 200);
+  assert.deepEqual(refundCalls(), ["sts", "iam", `GET ${event.id}`, EVENTS_URL, `GET ${event.id}`, `PATCH ${event.id}`]);
+  const now = google.events.get(event.id);
+  assert.deepEqual([now.summary, now.description, now.extendedProperties], [event.summary, `Partly refunded $50.00 of $247.98 on Nov 17, 2026.\n${event.description}`, { private: { nlrRefundedCents: "5000" } }]);
+  assert.ok(noted.includes("calendar-refunded 83558982 1 0"), noted.join(" | "));
+  assert.deepEqual(logged, []);
+  untouched();
+});
+
+await test("refund: what the owner typed into the event stays through a partial and then a full refund, and only the refund line and CANCELLED change", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = held(session);
+  const notes = `${event.description}\nDriver: Sam, plate T123`;
+  google.events.set(event.id, { ...structuredClone(event), summary: "[TEST] 83558982 Sam to EWR", description: notes });
+  assert.equal((await refund(session, { refunded: 5000 })).status, 200);
+  let now = google.events.get(event.id);
+  assert.deepEqual([now.summary, now.description], ["[TEST] 83558982 Sam to EWR", `Partly refunded $50.00 of $247.98 on Nov 17, 2026.\n${notes}`]);
+  now.description = `${now.description}\nPickup moved to door 4`;
+  assert.equal((await refund(session, { created: NOV18 })).status, 200);
+  now = google.events.get(event.id);
+  assert.equal(now.summary, "[TEST] CANCELLED: 83558982 Sam to EWR");
+  assert.equal(now.description, `Cancelled and refunded $247.98 on Nov 18, 2026.\n${notes}\nPickup moved to door 4`);
+  assert.equal(now.description.split("\n").filter((line) => /^(Partly|Cancelled)/.test(line)).length, 1);
+  assert.deepEqual([now.start, now.end, now.location, now.reminders], [event.start, event.end, event.location, event.reminders]);
+  setEnv(fullEnv());
+  const live = paid(PRICED, { live: true });
+  const [mine] = held(live);
+  google.events.set(mine.id, { ...structuredClone(mine), summary: "Sam: JFK run", description: undefined });
+  assert.equal((await refund(live)).status, 200);
+  now = google.events.get(mine.id);
+  assert.deepEqual([now.summary, now.description], ["CANCELLED: Sam: JFK run", NOTE_FULL]);
+  setEnv(fullEnv());
+  const twice = paid(PRICED);
+  const [again] = held(twice);
+  google.events.set(again.id, { ...structuredClone(again), summary: `CANCELLED: ${again.summary}` });
+  assert.equal((await refund(twice)).status, 200);
+  assert.equal(google.events.get(again.id).summary, "[TEST] CANCELLED: 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)");
+  untouched();
+});
+
+await test("refund: Google failing for a moment answers 503 so Stripe sends it again, and the retry patches the events", async () => {
+  for (const [stage, status] of [["sts", 503], ["iam", 429], ["events", 500], ["events", 0]]) {
+    setEnv(fullEnv());
+    const session = paid(ROUND);
+    held(session);
+    google.fail = (at) => (at === stage ? status || 503 : 0);
+    assert.equal((await refund(session)).status, 503, `${stage} ${status}`);
+    assert.ok(logged.some((line) => line.startsWith(`calendar-fail 83558982 ${stage === "events" ? "refund" : stage}`)), logged.join(" | "));
+    assert.ok(!logged.includes("calendar-gave-up 83558982"));
+    assert.ok(bookingEvents(session).every((event) => !google.events.get(event.id).summary.includes("CANCELLED")));
+    google.fail = null;
+    assert.equal((await refund(session)).status, 200, `${stage} ${status}`);
+    assert.ok(bookingEvents(session).every((event) => google.events.get(event.id).summary.startsWith("[TEST] CANCELLED: ")), stage);
+    untouched();
+  }
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  held(session);
+  google.custom = (at) => (at === "events" ? Promise.reject(new TypeError("fetch failed")) : null);
+  assert.equal((await refund(session)).status, 503);
+  google.custom = null;
+  let raced = false;
+  google.custom = (at, init) => (at === "events" && init.method === "PATCH" && !raced ? ((raced = true), answer(412, { error: { code: 412, message: "Precondition Failed" } })) : null);
+  assert.equal((await refund(session)).status, 503);
+  assert.ok(logged.includes("calendar-fail 83558982 refund 412"), logged.join(" | "));
+  assert.equal((await refund(session)).status, 200);
+  assert.ok(google.events.get(bookingEvents(session)[0].id).summary.startsWith("[TEST] CANCELLED: "));
+});
+
+await test("refund: Stripe failing for a moment answers 503 and asks Google nothing, and a Stripe refusal that will not fix itself answers 200", async () => {
+  for (const status of [500, 429, 0, 401, 403]) {
+    setEnv(fullEnv());
+    const session = paid(PRICED);
+    held(session);
+    stripe.list = () => status;
+    if (!status) {
+      stripe.list = null;
+      const real = globalThis.fetch;
+      globalThis.fetch = async (url, init) => (String(url).startsWith("https://api.stripe.com/") ? Promise.reject(new TypeError("fetch failed")) : real(url, init));
+      try {
+        assert.equal((await refund(session)).status, 503);
+      } finally {
+        globalThis.fetch = real;
+      }
+    } else assert.equal((await refund(session)).status, 503, String(status));
+    assert.equal(google.calls.length, 0);
+    assert.ok(!logged.some((line) => line.startsWith("refund-gave-up")), logged.join(" | "));
+    stripe.list = null;
+    assert.equal((await refund(session)).status, 200);
+    assert.equal(patches().length, 1);
+    assert.ok(google.events.get(bookingEvents(session)[0].id).summary.startsWith("[TEST] CANCELLED: "), String(status));
+  }
+  for (const status of [400, 404]) {
+    setEnv(fullEnv());
+    const session = paid(PRICED);
+    held(session);
+    stripe.list = () => status;
+    assert.equal((await refund(session)).status, 200, String(status));
+    assert.ok(logged.includes(`refund-gave-up stripe ${status}`), logged.join(" | "));
+    assert.equal(google.calls.length, 0);
+  }
+  setEnv(fullEnv({ STRIPE_SECRET_KEY: "" }));
+  assert.equal((await refund(paid(PRICED))).status, 503);
+  assert.equal(google.calls.length, 0);
+});
+
+await test("refund: a thin v1.charge.refunded with no charge snapshot answers 200, logs one unreadable line and changes no event", async () => {
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  const [event] = held(session);
+  const thin = { id: "evt_ThinRefund01", object: "v2.core.event", type: "v1.charge.refunded", created: "2026-11-17T15:00:00.000Z", livemode: false, related_object: { id: `ch_${session.payment_intent.slice(3)}`, type: "charge", url: `/v1/charges/ch_${session.payment_intent.slice(3)}` } };
+  assert.equal((await signed(JSON.stringify(thin))).status, 200);
+  assert.deepEqual(logged, ["refund-unreadable"]);
+  assert.deepEqual([stripe.calls.length, google.calls.length], [0, 0]);
+  assert.deepEqual(google.events.get(event.id), event);
+  untouched();
+  setEnv(fullEnv(Object.fromEntries(Object.keys(GCAL).map((k) => [k, ""]))));
+  assert.equal((await signed(JSON.stringify(thin))).status, 200);
+  assert.deepEqual([logged.length, stripe.calls.length, google.calls.length], [0, 0, 0]);
+});
+
+await test("refund: a Google refusal that will not fix itself answers 200 with a gave-up line, and a missing OIDC token gives up at once", async () => {
+  for (const [stage, status] of [["sts", 400], ["sts", 401], ["iam", 403], ["events", 403], ["events", 400], ["events", 401]]) {
+    setEnv(fullEnv());
+    const session = paid(ROUND);
+    held(session);
+    google.fail = (at) => (at === stage ? status : 0);
+    assert.equal((await refund(session)).status, 200, `${stage} ${status}`);
+    assert.ok(logged.some((line) => line.startsWith(`calendar-fail 83558982 ${stage === "events" ? "refund" : stage} ${status}`)), logged.join(" | "));
+    assert.equal(logged.filter((line) => line === "calendar-gave-up 83558982").length, 1, `${stage} ${status}`);
+    untouched();
+  }
+  setEnv(fullEnv());
+  google.fail = (at, call) => (at === "events" && call.method === "PATCH" ? (call.url.includes("83558982a") ? 403 : 500) : 0);
+  const mixed = paid(ROUND);
+  held(mixed);
+  assert.equal((await refund(mixed)).status, 503);
+  assert.ok(logged.some((line) => /^calendar-fail 83558982 refund (403 500|500 403)$/.test(line)), logged.join(" | "));
+  setEnv(fullEnv());
+  const session = paid(PRICED);
+  held(session);
+  assert.equal((await refund(session, {}, {})).status, 200);
+  assert.equal(google.calls.length, 0);
+  assert.ok(logged.includes("calendar-token 83558982"));
+  assert.ok(logged.includes("calendar-gave-up 83558982"));
+});
+
+await test("refund: with the calendar settings off the webhook answers 200 and calls nobody, and with them misconfigured it answers 200 with one config line", async () => {
+  setEnv(fullEnv(Object.fromEntries(Object.keys(GCAL).map((k) => [k, ""]))));
+  const session = paid(PRICED);
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual([stripe.calls.length, google.calls.length], [0, 0]);
+  assert.deepEqual(logged, []);
+  untouched();
+  setEnv(fullEnv({ GCAL_WIF_AUDIENCE: "" }));
+  assert.equal((await refund(paid(PRICED))).status, 200);
+  assert.equal(google.calls.length, 0);
+  assert.ok(logged.includes("calendar-config 83558982"));
+  untouched();
+});
+
+await test("refund: a live booking is renamed CANCELLED with no [TEST], a test booking reads [TEST] CANCELLED, and the date is the New York day of the refund", async () => {
+  setEnv(fullEnv());
+  const live = paid(PRICED, { live: true });
+  const [event] = held(live);
+  assert.equal((await refund(live, { created: Date.parse("2026-11-18T03:30:00.000Z") / 1000 })).status, 200);
+  const [[, body]] = patches();
+  assert.equal(body.summary, "CANCELLED: 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)");
+  assert.equal(body.description, `${NOTE_FULL}\n${event.description}`);
+  assert.ok(!body.description.includes("Test booking"));
+  setEnv(fullEnv());
+  const test = paid(HOURLY);
+  held(test);
+  assert.equal((await refund(test, { created: Date.parse("2026-07-04T03:30:00.000Z") / 1000 })).status, 200);
+  const [[, hourly]] = patches();
+  assert.equal(hourly.summary, "[TEST] CANCELLED: 83558982 Business Premium SUV: 4 hours from 1 Main Street");
+  assert.ok(hourly.description.startsWith(`Cancelled and refunded ${"$"}${(HOURLY.total / 100).toFixed(2)} on Jul 3, 2026.\nTest booking.`), hourly.description);
+});
+
+await test("checkout.session.completed is untouched by refunds: emails, text and events go out as before, a refund then renames the events, and the next payment notice adds and sends nothing", async () => {
+  setEnv(fullEnv());
+  const session = paid(ROUND);
+  assert.equal((await hook(session)).status, 200);
+  assert.deepEqual(stages(), ["sts", "iam", "events", "events"]);
+  assert.deepEqual([smtp.messages.length, twilio.calls.length, google.events.size], [2, 1, 2]);
+  assert.ok(doneOf(session));
+  const marks = writes().length;
+  const metadata = structuredClone(markersOf(session));
+  const added = inserted();
+  google.calls.length = 0;
+  assert.equal((await refund(session, { refunded: 2000 })).status, 200);
+  assert.equal((await refund(session)).status, 200);
+  assert.deepEqual([smtp.messages.length, twilio.calls.length, writes().length], [2, 1, marks]);
+  assert.deepEqual(markersOf(session), metadata);
+  for (const event of added) {
+    const now = google.events.get(event.id);
+    assert.ok(now.summary.startsWith("[TEST] CANCELLED: "), now.summary);
+    assert.equal(now.description, `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`);
+  }
+  google.calls.length = 0;
+  assert.equal((await hook(session)).status, 200);
+  assert.deepEqual([google.calls.length, smtp.messages.length, twilio.calls.length], [0, 2, 1]);
+  setEnv(fullEnv());
+  const fresh = paid(ONE_WAY);
+  assert.equal((await hook(fresh)).status, 200);
+  assert.deepEqual(stages(), ["sts", "iam", "events"]);
+  assert.deepEqual([smtp.messages.length, twilio.calls.length, google.events.size], [2, 1, 1]);
+  assert.equal(lookups().length, 0);
+  assert.ok(doneOf(fresh));
 });
 
 await test("no log line holds the OIDC token, the STS token, the access token, the calendar id or the service account", () => {

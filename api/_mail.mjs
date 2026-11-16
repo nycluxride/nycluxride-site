@@ -6,7 +6,7 @@ import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
 import { smsSettings, sendText, fitText } from "./_sms.mjs";
-import { calendarSettings, addEvents } from "./_calendar.mjs";
+import { calendarSettings, addEvents, updateEvents } from "./_calendar.mjs";
 
 const DEFAULTS = { host: "smtp.gmail.com", port: "465", from: "NYC LUX RIDE <info@nycluxride.com>", owners: "info@nycluxride.com,nycluxride@gmail.com" };
 const HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
@@ -27,6 +27,10 @@ const REQUEST_CONTEXT = Symbol.for("@vercel/request-context");
 const ZONE = "America/New_York";
 const EVENT_MINUTES = 60;
 const REMINDERS = [1440, 120];
+const REFUND_DAY = new Intl.DateTimeFormat("en-US", { timeZone: ZONE, month: "short", day: "numeric", year: "numeric" });
+const literal = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const NOTE_LINE = new RegExp(`^(?:${[CALENDAR.refunded, CALENDAR.partlyRefunded].map((copy) => literal(copy.slice(0, copy.indexOf("{")))).join("|")})[^\\n]*(?:\\n|$)`);
+const PREFIXES = new RegExp(`^(?:${literal(MAIL.test)}|${literal(CALENDAR.cancelled)})*`);
 const STYLE = {
   body: "margin:0;padding:0;background-color:#ffffff;color:#14181f",
   wrap: "max-width:600px;margin:0 auto;padding:24px 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#14181f;background-color:#ffffff",
@@ -306,6 +310,45 @@ export function bookingEvents(session) {
       reminders: { useDefault: false, overrides: REMINDERS.map((before) => ({ method: "popup", minutes: before })) },
     };
   });
+}
+
+export function refundChanges(session, charge, created) {
+  const data = metadataOf(session);
+  if (!refOf(session) || !validDate(text(data.date)) || !TIME.test(text(data.time))) return [];
+  const refunded = charge.amount_refunded;
+  const full = charge.refunded === true || refunded === charge.amount;
+  const date = REFUND_DAY.format(new Date(created * 1000));
+  const note = full ? fill(CALENDAR.refunded, { amount: money(refunded), date }) : fill(CALENDAR.partlyRefunded, { amount: money(refunded), total: money(charge.amount), date });
+  const cancelled = (summary) => {
+    const lead = PREFIXES.exec(summary)[0];
+    return `${lead.includes(MAIL.test) ? MAIL.test : ""}${CALENDAR.cancelled}${summary.slice(lead.length)}`;
+  };
+  const edit = (current) => {
+    const summary = typeof current.summary === "string" ? current.summary : "";
+    const rest = (typeof current.description === "string" ? current.description : "").replace(NOTE_LINE, "");
+    return { summary: full ? cancelled(summary) : summary, description: rest ? `${note}\n${rest}` : note };
+  };
+  return bookingEvents(session).map((event) => ({ id: event.id, refunded, event, edit }));
+}
+
+export async function refundBooking(session, charge, created, oidc) {
+  const ref = refOf(session);
+  try {
+    const changes = refundChanges(session, charge, created);
+    if (!changes.length) return "skip";
+    const calendar = calendarSettings();
+    if (calendar.off) return "off";
+    if (calendar.bad) {
+      console.error("calendar-config", ref);
+      return "off";
+    }
+    const state = await updateEvents(calendar, changes, oidc, ref);
+    if (state === "permanent") console.error("calendar-gave-up", ref);
+    return state;
+  } catch {
+    console.error("calendar-fail", ref, "handler");
+    return "failed";
+  }
 }
 
 function attemptOf(metadata) {

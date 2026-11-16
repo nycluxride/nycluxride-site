@@ -201,4 +201,7 @@ export const MAIL = {
 export const CALENDAR = {
   back: "Return: ",
   passengerPhone: "Passenger phone",
+  cancelled: "CANCELLED: ",
+  refunded: "Cancelled and refunded {amount} on {date}.",
+  partlyRefunded: "Partly refunded {amount} of {total} on {date}.",
 };

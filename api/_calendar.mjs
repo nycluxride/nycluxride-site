@@ -14,6 +14,8 @@ const ACCOUNT = /^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam
 const AUDIENCE = /^\/\/iam\.googleapis\.com\/projects\/\d{1,20}\/locations\/global\/workloadIdentityPools\/[a-z0-9-]{4,32}\/providers\/[a-z0-9-]{4,32}$/;
 const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const PERMANENT = [400, 401, 403, 404];
+const GONE = [404, 410];
+const REFUNDED = "nlrRefundedCents";
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 const tokenOk = (value) => typeof value === "string" && value.length > 0 && value.length <= MAX_TOKEN && !/\s/.test(value);
@@ -75,29 +77,83 @@ async function insert(settings, token, event) {
   return result.ok || result.status === 409 ? "" : String(result.status);
 }
 
+async function authorized(settings, oidc, ref, refused) {
+  const subject = oidcToken(oidc);
+  if (!subject) {
+    console.error("calendar-token", ref);
+    return { state: refused };
+  }
+  if (!instanceBudget("google-calendar", CALLS_PER_WINDOW)) {
+    console.error("calendar-budget", ref);
+    return { state: "failed" };
+  }
+  const access = await accessToken(settings, subject);
+  if (!access.token) {
+    console.error("calendar-fail", ref, access.stage, access.status);
+    return { state: PERMANENT.includes(access.status) ? refused : "failed" };
+  }
+  return { token: access.token };
+}
+
+const outcome = (failed) => (failed.every((status) => PERMANENT.includes(Number(status))) ? "permanent" : "failed");
+
 export async function addEvents(settings, events, oidc, ref, untrusted = false) {
   try {
-    const refused = untrusted ? "rejected" : "permanent";
-    const subject = oidcToken(oidc);
-    if (!subject) {
-      console.error("calendar-token", ref);
-      return refused;
-    }
-    if (!instanceBudget("google-calendar", CALLS_PER_WINDOW)) {
-      console.error("calendar-budget", ref);
-      return "failed";
-    }
-    const access = await accessToken(settings, subject);
-    if (!access.token) {
-      console.error("calendar-fail", ref, access.stage, access.status);
-      return PERMANENT.includes(access.status) ? refused : "failed";
-    }
+    const access = await authorized(settings, oidc, ref, untrusted ? "rejected" : "permanent");
+    if (!access.token) return access.state;
     const failed = (await Promise.all(events.map((event) => insert(settings, access.token, event)))).filter(Boolean);
     if (failed.length) {
       console.error("calendar-fail", ref, "events", ...failed);
-      return failed.every((status) => PERMANENT.includes(Number(status))) ? "permanent" : "failed";
+      return outcome(failed);
     }
     console.log("calendar-added", ref, events.length);
+    return "done";
+  } catch {
+    console.error("calendar-fail", ref, "handler");
+    return "failed";
+  }
+}
+
+async function patch(settings, token, change, missing = true) {
+  const events = `${API}/${encodeURIComponent(settings.calendar)}/events`;
+  const url = `${events}/${encodeURIComponent(change.id)}`;
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const marked = { extendedProperties: { private: { [REFUNDED]: String(change.refunded) } } };
+  const current = await call(url, { method: "GET", headers });
+  if (current.status === 404 && missing) {
+    const added = await call(events, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...change.event, ...change.edit(change.event), ...marked }),
+    });
+    if (added.status === 409) return patch(settings, token, change, false);
+    return added.ok ? {} : { failed: String(added.status) };
+  }
+  if (GONE.includes(current.status) || (current.ok && current.body && current.body.status === "cancelled")) return { skipped: true };
+  if (!current.ok || !current.body) return { failed: String(current.status) };
+  const stored = current.body.extendedProperties && current.body.extendedProperties.private && current.body.extendedProperties.private[REFUNDED];
+  if (/^\d{1,12}$/.test(stored || "") && Number(stored) >= change.refunded) return { skipped: true };
+  const etag = typeof current.body.etag === "string" && current.body.etag.length <= 200 ? { "If-Match": current.body.etag } : {};
+  const result = await call(url, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json", ...etag },
+    body: JSON.stringify({ ...change.edit(current.body), ...marked }),
+  });
+  if (GONE.includes(result.status)) return { skipped: true };
+  return result.ok || result.status === 409 ? {} : { failed: String(result.status) };
+}
+
+export async function updateEvents(settings, changes, oidc, ref) {
+  try {
+    const access = await authorized(settings, oidc, ref, "permanent");
+    if (!access.token) return access.state;
+    const results = await Promise.all(changes.map((change) => patch(settings, access.token, change)));
+    const failed = results.map((result) => result.failed).filter(Boolean);
+    if (failed.length) {
+      console.error("calendar-fail", ref, "refund", ...failed);
+      return outcome(failed);
+    }
+    console.log("calendar-refunded", ref, results.filter((result) => !result.skipped).length, results.filter((result) => result.skipped).length);
     return "done";
   } catch {
     console.error("calendar-fail", ref, "handler");
