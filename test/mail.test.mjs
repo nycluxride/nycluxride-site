@@ -296,6 +296,9 @@ const FOR_OTHER = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)",
 const TO_T5 = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 5", to_id: "jfk-t5", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const SEATS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", rider: "me", ...ME, reach: "phone" });
 const HOURLY_JFK = await booked({ trip_type: "hour", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", flight: "BA 117", meet: "1", tip: "0", rider: "me", ...ME, reach: "phone" });
+const NASSAU = await booked({ trip_type: "one", from_text: "1 Old Country Rd, Mineola, NY 11501", to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
+const NEWARK_ROUND = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
+const CONNECTICUT = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: "10 Elm St, Greenwich, CT 06830", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
 let serial = 0;
@@ -509,7 +512,7 @@ await test("one way trip, live: both emails' headers, the whole plain text and t
   assert.deepEqual(owner.replyTo, { name: "Ana Lopez", address: "ana.lopez@example.com" });
   const steps = ["What happens next", "Paid: Stripe emails your receipt with your reference.", "Confirmed in writing: We confirm your car and chauffeur in writing before your ride.", "On the day: Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.", ""];
   const trip = ["Reference: 83558982", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", ""];
-  const pay = ["Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", ""];
+  const pay = ["Fare: $168.46", "Taxes and fees: $3.79", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", ""];
   const change = ["To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference 83558982.", "WhatsApp: https://wa.me/16467750556", "Terms of service: https://www.nycluxride.com/terms-of-service", "Rates and cancellation terms: https://www.nycluxride.com/rates#cancellation"];
   assert.equal(customer.text, [`Payment received`, "", "Your trip", ...trip, "Your payment", ...pay, ...steps.slice(0, 1), ...steps.slice(1), ...change, "", "NYC LUX RIDE", "+1 (646) 775-0556", "https://www.nycluxride.com", ""].join("\n"));
   assert.equal(owner.text, ["New booking 83558982", "", "Customer", "Name: Ana Lopez", "Email: ana.lopez@example.com", "Phone: +1 212 555 0100", "Preferred contact: WhatsApp", "", "Trip", ...trip, "Payment", ...pay, `Open the payment in Stripe: https://dashboard.stripe.com/payments/${session.payment_intent}`, "", "What the customer email says", ...steps.slice(1), ...change, ""].join("\n"));
@@ -517,7 +520,8 @@ await test("one way trip, live: both emails' headers, the whole plain text and t
   assert.deepEqual([...doc.querySelectorAll("h2")].map((h) => h.textContent), ["Your trip", "Your payment", "What happens next"]);
   assert.equal(doc.querySelector("h1").textContent, "Payment received");
   assert.deepEqual(tripTable(doc)[0][1], trip.slice(0, -1).map((line) => line.split(": ")));
-  assert.deepEqual(tripTable(doc)[1][1], [["Fare", "$155.00"], ["Taxes and fees", "$17.25"], ["Tolls", "$12.75"], ["Paid", "$185.00"]]);
+  assert.deepEqual(tripTable(doc)[1][1], [["Fare", "$168.46"], ["Taxes and fees", "$3.79"], ["Tolls", "$12.75"], ["Paid", "$185.00"]]);
+  assert.deepEqual([session.metadata.fare_cents, session.metadata.tax_cents, session.metadata.bcf_cents], ["16846", "0", "379"], "Manhattan to Newark is interstate: no New York sales tax");
   assert.deepEqual([...doc.querySelectorAll("ol li")].map((li) => [li.querySelector("strong").textContent, li.textContent.slice(li.querySelector("strong").textContent.length)]), [["Paid", "Stripe emails your receipt with your reference."], ["Confirmed in writing", "We confirm your car and chauffeur in writing before your ride."], ["On the day", "Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time."]]);
   const odoc = checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });
   assert.deepEqual([...odoc.querySelectorAll("h2")].map((h) => h.textContent), ["Customer", "Trip", "Payment", "What the customer email says"]);
@@ -535,7 +539,7 @@ await test("both emails show the price as the site does (owner change 2): one Ta
     const charged = receipt(m, readSettings({}), undefined).lines;
     const fees = Number(m.tax_cents) + Number(m.bcf_cents);
     const tolls = Number(m.tolls_cents || 0);
-    const want = [["Fare", m.fare_cents], ["Taxes and fees", fees], ...(tolls ? [["Tolls", tolls]] : []), ...charged.slice(tolls ? 4 : 3).map((line) => [line.label, line.cents])].map(([label, cents]) => [label.startsWith("Fare") ? charged[0].label : label, money(Number(cents))]);
+    const want = [["Fare", m.fare_cents], ["Taxes and fees", fees], ...(tolls ? [["Tolls", tolls]] : []), ...charged.slice(1).filter((line) => !["NYC sales tax", "Black Car Fund", "Tolls and airport fees"].includes(line.label)).map((line) => [line.label, line.cents])].map(([label, cents]) => [label.startsWith("Fare") ? charged[0].label : label, money(Number(cents))]);
     assert.equal(charged.reduce((sum, line) => sum + line.cents, 0), session.amount_total, m.ref);
     for (const letter of bookingLetters(session, SETTINGS)) {
       const at = `${letter.kind} ${fix.metadata.service} ${m.date}`;
@@ -600,7 +604,7 @@ await test("airport trip from New Jersey: priced by distance and time, no tolls 
   assert.equal(customer.subject, "[TEST] Your NYC LUX RIDE booking 83558982, Fri Nov 20, 5:15 AM");
   assert.equal(owner.subject, "[TEST] New booking 83558982: Fri Nov 20, 5:15 AM, Sedan & Electric, Secaucus to Newark Liberty (EWR)");
   assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: One way", "Pickup: Secaucus, NJ 07094", "Drop-off: Newark Liberty (EWR)", "Date: Fri, Nov 20, 2026", "Time: 5:15 AM, New York time", "Passengers: 2", "Vehicle: Sedan & Electric"]);
-  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $141.51", "Taxes and fees: $15.74", "Gratuity for your chauffeur (20%): $28.30", "Paid: $185.55"]);
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $153.79", "Taxes and fees: $3.46", "Gratuity for your chauffeur (20%): $30.76", "Paid: $188.01"]);
   assert.ok(customer.text.includes(`\n${POLICY.later.outside}\n`));
   assert.ok(customer.text.includes("\nFri, Nov 20, 2026, 5:15 AM. Sedan & Electric, 9.0 miles and 18 min.\n"));
   assert.ok(customer.text.includes("\nOn the day: Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.\n"));
@@ -719,7 +723,7 @@ await test("once the pickup, and the return when there is one, has passed, the c
   assert.ok(before.text.includes("\nWhat happens next\n") && ownerBefore.text.includes(`\n${MAIL.ownerNext}\n`));
   const [customer, owner] = bookingLetters(session, SETTINGS, pickup);
   assert.deepEqual([customer.subject, owner.subject], [before.subject, ownerBefore.subject]);
-  assert.equal(customer.text, ["Payment received", "", "Your trip", "Reference: 83558982", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "", "Your payment", "Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", "", "NYC LUX RIDE", "+1 (646) 775-0556", "https://www.nycluxride.com", ""].join("\n"));
+  assert.equal(customer.text, ["Payment received", "", "Your trip", "Reference: 83558982", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "", "Your payment", "Fare: $168.46", "Taxes and fees: $3.79", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", "", "NYC LUX RIDE", "+1 (646) 775-0556", "https://www.nycluxride.com", ""].join("\n"));
   const doc = checkHtml(customer);
   assert.deepEqual([...doc.querySelectorAll("h2")].map((h) => h.textContent), ["Your trip", "Your payment"]);
   assert.equal(doc.querySelectorAll("ol, ul").length, 0);
@@ -883,6 +887,28 @@ await test("non-ASCII names and places: RFC 2047 words in To, Reply-To and the o
   assert.equal(parse(buildMessage({ ...customer, from: SETTINGS.from })).headers.get("to"), "Zoë Ångström-Øster <ana.lopez@example.com>");
   assert.equal(owner.subject, "[TEST] New booking 83558982: Thu Nov 12, 7:30 AM, Business Premium SUV, JFK to Café Boulud, return Sun Nov 15, 6:00 PM");
   assert.ok(customer.text.includes("Notes for the chauffeur: Bébé seat 👶, merci"));
+});
+
+await test("sales tax in both emails: a Nassau pickup pays the Nassau rate, a round trip to Newark and a trip from JFK to Connecticut pay no New York sales tax, and every payment section adds up to the total paid", async () => {
+  setEnv();
+  assert.deepEqual([NASSAU.metadata.fare_cents, NASSAU.metadata.tax_cents, NASSAU.metadata.bcf_cents, NASSAU.total], ["15500", "1337", "349", 17186]);
+  assert.deepEqual([NEWARK_ROUND.metadata.fare_cents, NEWARK_ROUND.metadata.tax_cents, NEWARK_ROUND.metadata.tolls_cents, NEWARK_ROUND.total], ["33692", "0", "2550", 37000]);
+  assert.deepEqual([CONNECTICUT.metadata.tax_cents, CONNECTICUT.total], ["0", 15849]);
+  const want = {
+    [NASSAU.metadata.date + NASSAU.metadata.from_text]: ["Fare: $155.00", "Taxes and fees: $16.86", "Paid: $171.86"],
+    [NEWARK_ROUND.metadata.date + NEWARK_ROUND.metadata.from_text]: ["Fare: $336.92", "Taxes and fees: $7.58", "Tolls: $25.50", "Paid: $370.00"],
+    [CONNECTICUT.metadata.date + CONNECTICUT.metadata.from_text]: ["Fare: $155.00", "Taxes and fees: $3.49", "Paid: $158.49"],
+  };
+  for (const fix of [NASSAU, NEWARK_ROUND, CONNECTICUT]) {
+    const session = paid(fix);
+    const charged = receipt(session.metadata, readSettings({}), undefined).lines;
+    assert.equal(charged.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
+    for (const letter of bookingLetters(session, SETTINGS)) {
+      const lines = sectionOf(letter.text, letter.kind === "owner" ? "Payment" : "Your payment");
+      assert.deepEqual(lines, want[fix.metadata.date + fix.metadata.from_text], letter.kind);
+      assert.ok(!letter.text.includes("NYC sales tax"), letter.kind);
+    }
+  }
 });
 
 await test("a child seats line whenever the payment metadata has child_seats, and none without it", async () => {

@@ -11,7 +11,9 @@ import {
   DISTANCE_RATES,
   DISTANCE_LIMITS,
   DISTANCE_SKIP_ZIPS,
+  AIRPORT_STATES,
   NYC_TAX_PERCENT,
+  TAX_AREAS,
   BCF_PERCENT,
   TIP_PERCENTS,
   TIP_CUSTOM,
@@ -28,7 +30,7 @@ import {
   CONTACT,
 } from "./_rates.mjs";
 import { LABELS, NOTES, POLICY, MESSAGE, MAIL } from "./_copy.mjs";
-import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, localById, areaText, routeText } from "./_places.mjs";
+import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, placeRegion, endRegion, zoneRegion, inNewYork, localById, areaText, routeText, typedZip } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
 import { googleOn, placeDetails, computeRoute } from "./_google.mjs";
@@ -80,6 +82,7 @@ const tipAmountOk = (amount) => INTEGER.test(amount) && Number(amount) * 100 >= 
 export const airportZip = (text) => (text.match(/\b\d{5}\b/g) || []).some((zip) => DISTANCE_SKIP_ZIPS.includes(zip));
 const unplaced = (text) => (airportZip(text) ? "airport-zip" : "unplaced");
 const exact = (end) => !end || !(end.area || end.town);
+const regionOf = (region) => (region ? { region } : {});
 const marks = (ticket) => ({ ...(ticket.area && { area: true }), ...(ticket.town && { town: true }) });
 const askFor = (trip, ends) => (!exact(ends.from) ? "pickup-address" : trip.trip_type === "one" && trip.return && !exact(ends.to) ? "return-address" : "");
 const line = (label, cents) => ({ label, cents });
@@ -217,11 +220,18 @@ export function firstSlot(now) {
 
 function endsOf(trip) {
   if (trip.ends) return trip.ends;
-  const end = (zone) => (zone ? { text: "", zone, place: "", id: "" } : null);
+  const end = (zone) => (zone ? { text: "", zone, place: "", id: "", ...regionOf(zoneRegion(zone)) } : null);
   return { from: end(trip.from), stop1: null, stop2: null, to: trip.trip_type === "one" ? end(trip.to) : null };
 }
 
-function leg(from, to, back) {
+export function legTax(points) {
+  const regions = points.map((end) => (end && end.region) || "");
+  if (regions.some((region) => region && !inNewYork(region))) return { area: "", percent: "0" };
+  if (regions.some((region) => !region) || !has(TAX_AREAS, regions[0])) return null;
+  return { area: regions[0], percent: TAX_AREAS[regions[0]].percent };
+}
+
+function leg(from, to, back, salesTax) {
   const fromAirport = AIRPORT_ZONES.includes(from);
   const toAirport = AIRPORT_ZONES.includes(to);
   let reason = "";
@@ -238,6 +248,7 @@ function leg(from, to, back) {
     direction: fromAirport && !toAirport ? "from-airport" : toAirport && !fromAirport ? "to-airport" : "",
     back,
     reason,
+    salesTax,
   };
 }
 
@@ -246,8 +257,9 @@ export function legsOf(trip) {
   const ends = endsOf(trip);
   const points = ENDS.map((name) => ends[name]).filter(Boolean);
   const legs = [];
-  for (let i = 1; i < points.length; i++) legs.push(leg(points[i - 1].zone, points[i].zone, false));
-  if (trip.return && ends.from && ends.to) legs.push(leg(ends.to.zone, ends.from.zone, true));
+  const out = legTax(points);
+  for (let i = 1; i < points.length; i++) legs.push(leg(points[i - 1].zone, points[i].zone, false, out));
+  if (trip.return && ends.from && ends.to) legs.push(leg(ends.to.zone, ends.from.zone, true, legTax([ends.to, ends.from])));
   return legs;
 }
 
@@ -256,25 +268,26 @@ export async function resolveEnd(end, trip, context = {}) {
   if (!text) return null;
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const ticket = trip[`${end}_ticket`] ? verifyTicket(trip[`${end}_ticket`], text, now) : null;
-  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...marks(ticket) };
+  if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...regionOf(endRegion(ticket.zone, ticket.region, text)), ...marks(ticket) };
   if (ticket && googleOn()) {
     const known = placeZones.get(ticket.id);
-    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...marks(ticket) };
+    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...regionOf(endRegion(known.zone, known.region, text)), ...marks(ticket) };
     const allowed = (!context.request || clientBudget(context.request, "places-pick", PICK_IP)) && instanceBudget("places-pick", PICK_INSTANCE);
     const result = allowed ? await placeDetails(ticket.id, "") : { ok: false, status: 429 };
     if (result.ok) {
       const zone = classifyPlace(result.details, text);
+      const region = placeRegion(result.details);
       placeZones.delete(ticket.id);
-      placeZones.set(ticket.id, { zone, until: now + TICKET_TTL * 1000 });
+      placeZones.set(ticket.id, { zone, region, until: now + TICKET_TTL * 1000 });
       if (placeZones.size > PLACE_ZONES) placeZones.delete(placeZones.keys().next().value);
-      return { text, zone, place: ticket.id, id: "", ...marks(ticket) };
+      return { text, zone, place: ticket.id, id: "", ...regionOf(endRegion(zone, region, text)), ...marks(ticket) };
     }
     console.error("places-pick", result.status);
   }
   const row = localById(trip[`${end}_id`]);
-  if (row && norm(row.label) === norm(text)) return { text, zone: row.zone, place: row.id, id: row.id };
+  if (row && norm(row.label) === norm(text)) return { text, zone: row.zone, place: row.id, id: row.id, ...regionOf(endRegion(row.zone, "", row.addr)) };
   const { zone, id } = classifyText(text);
-  return { text, zone, place: id, id, ...(areaText(text) && { area: true }) };
+  return { text, zone, place: id, id, ...regionOf(endRegion(zone, "", text)), ...(areaText(text) && { area: true }) };
 }
 
 export async function resolveTrip(trip, context = {}) {
@@ -341,9 +354,9 @@ async function driveTrip(trip, token, context) {
   const ends = points.map(waypointOf);
   const zones = points.map((end) => end.zone);
   const back = trip.legs.filter((item) => item.back).map((item) => (item.reason ? item : { ...item, flat: true }));
-  const whole = { ...leg(zones[0], zones[zones.length - 1], false), airport: zones.find((zone) => AIRPORT_PLACES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
+  const whole = { ...leg(zones[0], zones[zones.length - 1], false, legTax(points)), airport: zones.find((zone) => AIRPORT_PLACES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
   const legs = stops.length ? [whole, ...back] : trip.legs;
-  const plain = legs[0] === whole ? leg(zones[0], zones[zones.length - 1], false) : null;
+  const plain = legs[0] === whole ? leg(zones[0], zones[zones.length - 1], false, whole.salesTax) : null;
   const direct = Boolean(plain) && ROUTED.includes(plain.reason);
   const routes = legs.filter((item) => item.back || !item.flat);
   const found = await Promise.all([
@@ -395,6 +408,15 @@ function spatialReason(trip) {
   for (const name of ENDS) if (ends[name] && ends[name].zone === "unknown") return { reason: unplaced(ends[name].text), field: `${name}_text` };
   const legs = trip.legs || legsOf(trip);
   if (!legs.length) return { reason: "unplaced", field: "from_text" };
+  const stopped = Boolean(ends.stop1 || ends.stop2);
+  const online = (item) => !item.reason || ROUTED.includes(item.reason) || (stopped && !item.back && item.reason === "airport-to-airport" && [item.from, item.to].every((zone) => AIRPORT_PLACES.includes(zone)));
+  const blind = ENDS.every((name) => exact(ends[name])) && legs.every(online) ? legs.find((item) => !item.salesTax) : null;
+  if (blind) {
+    const name = blind.back ? "to" : ENDS.find((end) => ends[end] && !ends[end].region) || "from";
+    const end = ends[name];
+    const reason = unplaced(end ? end.text : "");
+    return { reason: reason === "unplaced" && end && !end.place && typedZip(end.text) ? "county" : reason, field: `${name}_text` };
+  }
   const unpriced = legs.find((item) => item.reason);
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
   if (ask) return { reason: ask, field: "" };
@@ -472,30 +494,44 @@ export function checkDetails(trip, required) {
   return null;
 }
 
-export function priceLeg(cls, airport) {
-  const fare = AIRPORT_FARES[cls][airport];
+const flatPercent = (airport) => (AIRPORT_STATES[airport] === "NY" ? NYC_TAX_PERCENT : "0");
+const charged = (fare, percent) => fare + percentCents(fare, percent) + percentCents(fare, BCF_PERCENT);
+
+function fareWithin(cents, percent) {
+  let fare = Math.floor(cents / (1 + Number(percent) / 100 + Number(BCF_PERCENT) / 100));
+  while (charged(fare + 1, percent) <= cents) fare++;
+  while (fare > 0 && charged(fare, percent) > cents) fare--;
+  return fare;
+}
+
+export function priceLeg(cls, airport, percent = flatPercent(airport)) {
+  const listed = AIRPORT_FARES[cls][airport];
   const total = AIRPORT_TOTALS[cls][airport];
-  const tax = percentCents(fare, NYC_TAX_PERCENT);
+  const base = flatPercent(airport);
+  const fare = percent === base ? listed : fareWithin(charged(listed, base), percent);
+  const tax = percentCents(fare, percent);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { fare, tax, bcf, tolls: total - fare - tax - bcf, total };
 }
 
-export function legLines(cls, airport) {
-  const { fare, tax, bcf, tolls, total } = priceLeg(cls, airport);
-  return { lines: [line(LABELS.fare, fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf), line(LABELS.tolls, tolls)], total };
+const feeLines = (tax, bcf) => [...(tax ? [line(LABELS.tax, tax)] : []), line(LABELS.bcf, bcf)];
+
+export function legLines(cls, airport, percent) {
+  const { fare, tax, bcf, tolls, total } = priceLeg(cls, airport, percent);
+  return { lines: [line(LABELS.fare, fare), ...feeLines(tax, bcf), line(LABELS.tolls, tolls)], total };
 }
 
 export function hourlyLines(vehicle, hours) {
   const fare = VEHICLES[vehicle].hourly * Number(hours);
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
-  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf)], total: fare + tax + bcf };
+  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), ...feeLines(tax, bcf)], total: fare + tax + bcf };
 }
 
 for (const cls of Object.keys(CLASSES)) {
   for (const airport of AIRPORT_PLACES) {
     const ok = Number.isInteger(AIRPORT_FARES[cls] && AIRPORT_FARES[cls][airport]) && Number.isInteger(AIRPORT_TOTALS[cls] && AIRPORT_TOTALS[cls][airport]);
-    if (!ok || priceLeg(cls, airport).tolls < 0) throw new Error(`airport-config ${cls} ${airport}`);
+    if (!ok || !has(AIRPORT_STATES, airport) || priceLeg(cls, airport).tolls < 0) throw new Error(`airport-config ${cls} ${airport}`);
   }
 }
 
@@ -504,9 +540,13 @@ export function distanceFare(cls, tenths, minutes) {
   return Math.max(rate.minimum, rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute);
 }
 
-export function priceDistance(cls, { tenths, minutes }, ...airports) {
+export function priceDistance(cls, ride, ...airports) {
+  return priceRide(cls, ride, airports, NYC_TAX_PERCENT);
+}
+
+export function priceRide(cls, { tenths, minutes }, airports, percent) {
   const fare = Math.max(distanceFare(cls, tenths, minutes), ...airports.filter((airport) => has(AIRPORT_FARES[cls], airport)).map((airport) => AIRPORT_FARES[cls][airport]));
-  const tax = percentCents(fare, NYC_TAX_PERCENT);
+  const tax = percentCents(fare, percent);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { fare, tax, bcf, tolls: 0, total: fare + tax + bcf };
 }
@@ -524,7 +564,8 @@ export function classTotal(trip, cls) {
   return priceTrip({ ...trip, class: cls, vehicle: trip.trip_type === "hour" ? vehicleFor(trip, cls) : trip.vehicle }).total;
 }
 
-const legPrice = (cls, item) => (item.ride && !item.flat ? priceDistance(cls, item.ride, item.from, ...(item.via || []), item.to) : priceLeg(cls, item.airport));
+const legPercent = (item) => (item.salesTax ? item.salesTax.percent : undefined);
+const legPrice = (cls, item) => (item.ride && !item.flat ? priceRide(cls, item.ride, [item.from, ...(item.via || []), item.to], legPercent(item) || NYC_TAX_PERCENT) : priceLeg(cls, item.airport, legPercent(item)));
 
 export function chargedLegs(trip, cls = trip.class) {
   const legs = trip.legs || legsOf(trip);
@@ -557,7 +598,7 @@ export function priceTrip(input, settings) {
   const stopCount = hourly ? 0 : trip.legs.reduce((sum, item) => sum + (item.feeStops || 0), 0);
   const stops = stopCount * STOP_FEE_CENTS;
   const tip = custom ? Number(trip.tip_amount) * 100 || 0 : tipPercent ? percentCents(fare, String(tipPercent)) : 0;
-  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), line(LABELS.tax, tax), line(LABELS.bcf, bcf)];
+  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), ...feeLines(tax, bcf)];
   if (plain || tolls) lines.push(line(LABELS.tolls, tolls));
   if (meet) lines.push(line(LABELS.meet, meet));
   if (stops) lines.push(line(stopLabel(stopCount, stops), stops));
@@ -680,10 +721,15 @@ export function routeSummary(metadata, from, to) {
   return from && to ? fill(back ? MAIL.routeReturn : MAIL.route, { from, to, when: pickupWhen(f("return_date"), f("return_time")) }) : "";
 }
 
+export function subjectParts(metadata) {
+  const f = (name) => metaText(metadata[name]);
+  return { car: has(CLASSES, f("class")) ? CLASSES[f("class")].name : "", from: shortPlace(f("from_text"), f("from_zone")), to: shortPlace(f("to_text"), f("to_zone")) };
+}
+
 export function ownerSubject(metadata, ref) {
   const f = (name) => metaText(metadata[name]);
-  const car = has(CLASSES, f("class")) ? CLASSES[f("class")].name : "";
-  const route = routeSummary(metadata, shortPlace(f("from_text"), f("from_zone")), shortPlace(f("to_text"), f("to_zone")));
+  const { car, from, to } = subjectParts(metadata);
+  const route = routeSummary(metadata, from, to);
   const details = [pickupWhen(f("date"), f("time")), car, route].filter(Boolean).join(", ");
   return `${fill(MAIL.ownerSubject, { ref })}${details ? `: ${details}` : ""}`;
 }
@@ -762,7 +808,7 @@ export function receipt(metadata, settings, taxCents) {
     lines.push(line(tipLabel(20), cents("gratuity_cents")));
     if (tax) lines.push(line(LABELS.legacyTax, tax));
   } else if (known) {
-    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), line(LABELS.tax, cents("tax_cents")), line(LABELS.bcf, cents("bcf_cents")));
+    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), ...feeLines(cents("tax_cents"), cents("bcf_cents")));
     if (cents("tolls_cents")) lines.push(line(LABELS.tolls, cents("tolls_cents")));
     if (cents("meet_cents")) lines.push(line(LABELS.meet, cents("meet_cents")));
     if (cents("stops_cents")) lines.push(line(stopLabel(["stop1_text", "stop2_text"].filter((key) => data[key]).length, cents("stops_cents")), cents("stops_cents")));

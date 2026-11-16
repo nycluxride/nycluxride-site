@@ -1,5 +1,5 @@
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
-import { AREA_LABELS, AIRPORT_ZONES, ADDRESS_TYPES, classifyText, classifyPlace, localById, areaText, placeLevel, clearMatch } from "./_places.mjs";
+import { AREA_LABELS, AIRPORT_ZONES, ADDRESS_TYPES, classifyText, classifyPlace, placeRegion, localById, areaText, placeLevel, clearMatch } from "./_places.mjs";
 import { googleOn, mapOn, mapJsOn, autocomplete, placeDetails, reverseGeocode, geocodeAddress, geocodePlace, spot } from "./_google.mjs";
 import { signTicket, verifyTicket, placeProof, proofOk } from "./_ticket.mjs";
 import { airportZip } from "./_trip.mjs";
@@ -80,7 +80,7 @@ async function pick(request, data) {
     return json(200, { kind: "error" });
   }
   const level = placeLevel(kinds(result.details), zone);
-  const ticket = signTicket(id, zone, label, Date.now(), level);
+  const ticket = signTicket(id, zone, label, Date.now(), level, placeRegion(result.details));
   if (!ticket) {
     console.error("places-pick", "ticket");
     return json(200, { kind: "error" });
@@ -109,7 +109,7 @@ async function here(request, data) {
     return json(200, { kind: "error" });
   }
   if (zone === "abroad") return json(200, { kind: "far" });
-  const ticket = signTicket(found.placeId, zone, label, Date.now());
+  const ticket = signTicket(found.placeId, zone, label, Date.now(), 0, placeRegion(found));
   if (!ticket) {
     console.error("places-here", "ticket");
     return json(200, { kind: "error" });

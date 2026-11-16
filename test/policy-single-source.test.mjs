@@ -69,7 +69,7 @@ check("booking-confirmed.html: #cf-policy is POLICY.cancel and nothing more", ()
 check("the price notes are built from POLICY and NOTES.included", () => {
   assert.equal(NOTES.airport, NOTES.included + " " + POLICY.later.airport);
   assert.equal(NOTES.hourly, POLICY.later.hourly);
-  assert.equal(NOTES.included, "Tolls, airport fees, NYC sales tax and the Black Car Fund are included.");
+  assert.equal(NOTES.included, "Tolls, airport fees, the Black Car Fund and any sales tax are included.");
 });
 
 check("CHECKOUT.afterSubmit tells the rider how to change or cancel by email or WhatsApp, with no call", () => {

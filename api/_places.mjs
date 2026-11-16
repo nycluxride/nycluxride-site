@@ -1,4 +1,4 @@
-import { PLACES } from "./_rates.mjs";
+import { PLACES, AIRPORT_STATES, TAX_AREAS, NYC_TAX_AREA, COUNTY_AREAS, CITY_AREAS, CITY_ZIPS, ZIP_AREAS } from "./_rates.mjs";
 
 const JFK = "John F. Kennedy International Airport, Queens, NY 11430";
 const LGA = "LaGuardia Airport, East Elmhurst, NY 11371";
@@ -183,6 +183,72 @@ export function classifyText(text) {
   if (first.includes(" ") && Object.prototype.hasOwnProperty.call(NEIGHBORHOODS, first) && rest.every((part) => nycPart.test(part))) return { zone: NEIGHBORHOODS[first], id: "" };
   return { zone: "unknown", id: "" };
 }
+
+const NY_ZIP = /^(?:1[0-4]\d{3}|00501|00544|06390)$/;
+const NY_TAIL = /(?:^|,|\s)(?:ny|new york)$/;
+const NY_PART = /^(?:(?:.*\s)?(?:ny|nyc)|new york(?: city)?)(?:\s+\d{5}(?:-\d{4})?)?$|\snew york(?: city)?\s+\d{5}(?:-\d{4})?$/;
+const zipMap = (table) => new Map(Object.entries(table).flatMap(([area, zips]) => zips.split(" ").map((zip) => [zip, area])));
+const ZIP_AREA = zipMap(ZIP_AREAS);
+const CITY_ZIP = zipMap(CITY_ZIPS);
+const PLACE_TAIL = /(?:[\s,]+(?:ny|new york|\d{5}(?:-\d{4})?))+$/;
+const owns = (object, key) => typeof key === "string" && Object.prototype.hasOwnProperty.call(object, key);
+export const inNewYork = (region) => region === "NY" || owns(TAX_AREAS, region);
+
+export function zoneRegion(zone) {
+  if (CITY_ZONES.includes(zone)) return NYC_TAX_AREA;
+  if (owns(AIRPORT_STATES, zone)) return AIRPORT_STATES[zone] === "NY" ? NYC_TAX_AREA : AIRPORT_STATES[zone];
+  return "";
+}
+
+export function zipRegion(zip) {
+  const code = String(zip ?? "");
+  if (!/^\d{5}$/.test(code)) return "";
+  if (code === "11430" || code === "11371" || CITY_ZONES.includes(zipBorough(code))) return NYC_TAX_AREA;
+  return ZIP_AREA.get(code) || (NY_ZIP.test(code) ? "NY" : "US");
+}
+
+function cityRegion(plain, zip) {
+  const area = CITY_ZIP.get(zip);
+  const parts = ` ${plain}`.replace(PLACE_TAIL, "").split(",");
+  const place = norm(parts.at(-1));
+  if (` ${place}`.endsWith(` ${norm(TAX_AREAS[area].name)}`)) return area;
+  return parts.length > 1 && place ? ZIP_AREA.get(zip) : "NY";
+}
+
+const zipOf = (plain) => (LAST_ZIP.exec(plain) || NYC_TAIL.exec(plain) || [])[1] || "";
+export const typedZip = (text) => zipOf(lite(text));
+
+export function textRegion(text) {
+  const plain = lite(text);
+  const zip = zipOf(plain);
+  const found = zipRegion(zip);
+  const named = plain.split(",").some((part) => NY_PART.test(part.trim()));
+  if (AFTER_COMMA.test(plain) || BEFORE_ZIP.test(plain)) return inNewYork(found) || named ? "" : "US";
+  if (named && found && !inNewYork(found)) return "";
+  if (CITY_ZIP.has(zip)) return cityRegion(plain, zip);
+  return found || (NY_TAIL.test(plain) ? "NY" : "");
+}
+
+export function placeRegion(details) {
+  const parts = details && Array.isArray(details.addressComponents) ? details.addressComponents : [];
+  const part = (type) => parts.find((item) => item && Array.isArray(item.types) && item.types.includes(type)) || {};
+  const country = String(part("country").shortText || "");
+  const state = String(part("administrative_area_level_1").shortText || "");
+  const county = String(part("administrative_area_level_2").longText || "").replace(/ County$/, "");
+  const city = String(part("locality").longText || "");
+  const zip = String(part("postal_code").shortText || part("postal_code").longText || "");
+  if (country && !US_COUNTRIES.includes(country)) return "";
+  if (state && state !== "NY") return /^[A-Z]{2}$/.test(state) ? state : "US";
+  const area = owns(COUNTY_AREAS, county) ? COUNTY_AREAS[county] : "";
+  const split = CITY_ZIP.get(zip);
+  if (split && (!area || area === ZIP_AREA.get(zip))) return city === TAX_AREAS[split].name ? split : city ? ZIP_AREA.get(zip) : "NY";
+  if (!state) return zipRegion(zip);
+  if (area) return owns(CITY_AREAS, county) && owns(CITY_AREAS[county], city) ? CITY_AREAS[county][city] : area;
+  const known = zipRegion(zip);
+  return owns(TAX_AREAS, known) ? known : "NY";
+}
+
+export const endRegion = (zone, given, text) => zoneRegion(zone) || given || textRegion(text);
 
 export function classifyPlace(details, label) {
   const parts = details && Array.isArray(details.addressComponents) ? details.addressComponents : [];

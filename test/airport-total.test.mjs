@@ -10,16 +10,17 @@ const MANHATTAN = "350 5th Ave, New York, NY 10118";
 const BROOKLYN = "277 Bedford Ave, Brooklyn, NY 11211";
 const TOLLS = 1275;
 const TABLE = {
-  suv: { name: "Business SUV", far: [15500, 1376, 349, 18500], lga: [13701, 1216, 308, 16500] },
-  premium: { name: "Business Premium SUV", far: [18650, 1655, 420, 22000], lga: [15950, 1416, 359, 19000] },
-  first: { name: "First Class", far: [26749, 2374, 602, 31000], lga: [21350, 1895, 480, 25000] },
-  sedan: { name: "Sedan & Electric", far: [14151, 1256, 318, 17000], lga: [11901, 1056, 268, 14500] },
-  sprinter: { name: "Luxury Sprinter", far: [43847, 3891, 987, 50000], lga: [39348, 3492, 885, 45000] },
+  suv: { name: "Business SUV", far: [15500, 1376, 349, 18500], lga: [13701, 1216, 308, 16500], nj: [16846, 0, 379, 18500] },
+  premium: { name: "Business Premium SUV", far: [18650, 1655, 420, 22000], lga: [15950, 1416, 359, 19000], nj: [20269, 0, 456, 22000] },
+  first: { name: "First Class", far: [26749, 2374, 602, 31000], lga: [21350, 1895, 480, 25000], nj: [29071, 0, 654, 31000] },
+  sedan: { name: "Sedan & Electric", far: [14151, 1256, 318, 17000], lga: [11901, 1056, 268, 14500], nj: [15379, 0, 346, 17000] },
+  sprinter: { name: "Luxury Sprinter", far: [43847, 3891, 987, 50000], lga: [39348, 3492, 885, 45000], nj: [47653, 0, 1072, 50000] },
 };
-const figures = (cls, zone) => TABLE[cls][zone === "lga" ? "lga" : "far"];
+const NEW_JERSEY = ["ewr", "teb"];
+const figures = (cls, zone) => TABLE[cls][zone === "lga" ? "lga" : NEW_JERSEY.includes(zone) ? "nj" : "far"];
 const legOf = (cls, zone) => {
   const [fare, tax, bcf] = figures(cls, zone);
-  return [["Fare", fare], ["NYC sales tax", tax], ["Black Car Fund", bcf], ["Tolls and airport fees", TOLLS]];
+  return [["Fare", fare], ...(tax ? [["NYC sales tax", tax]] : []), ["Black Car Fund", bcf], ["Tolls and airport fees", TOLLS]];
 };
 const totalOf = (cls, zone) => figures(cls, zone)[3];
 const LEG = legOf("suv", "jfk");
@@ -65,7 +66,7 @@ await test("percentCents rounds the half cent up and is exact: 15500 at 8.875 is
   assert.equal(percentCents(0, NYC_TAX_PERCENT), 0);
 });
 
-await test("the owner's table: five classes in order, every fare and total exact, tax and Black Car Fund from the fare, $12.75 tolls on every leg", () => {
+await test("the owner's table: five classes in order, every fare and total exact, tax and Black Car Fund from the fare, $12.75 tolls on every leg, and no New York sales tax at Newark or Teterboro, whose fare is higher by the tax so the total stays the same", () => {
   assert.deepEqual(Object.keys(CLASSES), ["suv", "premium", "first", "sedan", "sprinter"]);
   assert.deepEqual(Object.values(CLASSES).map((c) => c.name), Object.values(TABLE).map((c) => c.name));
   assert.deepEqual(AIRPORT_PLACES, ["jfk", "lga", "ewr", "teb"]);
@@ -74,13 +75,19 @@ await test("the owner's table: five classes in order, every fare and total exact
       const [fare, tax, bcf, total] = figures(cls, zone);
       assert.equal(AIRPORT_FARES[cls][zone], fare, `${cls} ${zone} fare`);
       assert.equal(AIRPORT_TOTALS[cls][zone], total, `${cls} ${zone} total`);
-      assert.equal(percentCents(fare, NYC_TAX_PERCENT), tax, `${cls} ${zone} tax`);
+      assert.equal(NEW_JERSEY.includes(zone) ? 0 : percentCents(fare, NYC_TAX_PERCENT), tax, `${cls} ${zone} tax`);
       assert.equal(percentCents(fare, BCF_PERCENT), bcf, `${cls} ${zone} Black Car Fund`);
       assert.equal(fare + tax + bcf + TOLLS, total, `${cls} ${zone} sum`);
       assert.equal(priceLeg(cls, zone).tolls, TOLLS, `${cls} ${zone} tolls`);
     }
   }
   assert.deepEqual(Object.values(AIRPORT_TOTALS).map((t) => [t.jfk, t.lga]), [[18500, 16500], [22000, 19000], [31000, 25000], [17000, 14500], [50000, 45000]]);
+  for (const cls of Object.keys(TABLE)) {
+    const [jfkFare, jfkTax, jfkBcf] = figures(cls, "jfk");
+    const [njFare, , njBcf] = figures(cls, "ewr");
+    assert.equal(njFare + njBcf, jfkFare + jfkTax + jfkBcf, `${cls}: the Newark fare absorbs the JFK tax`);
+    assert.equal(AIRPORT_TOTALS[cls].ewr, AIRPORT_TOTALS[cls].jfk, cls);
+  }
 });
 
 for (const cls of Object.keys(CLASSES)) {

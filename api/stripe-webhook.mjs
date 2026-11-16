@@ -5,7 +5,7 @@ import { mailBooking } from "./_mail.mjs";
 const MAX_BODY = 262144;
 const SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{10,200}$/;
 const EVENTS = ["checkout.session.completed", "checkout.session.async_payment_succeeded"];
-const RETRY = ["failed", "busy"];
+const RETRY = ["failed", "busy", "calendar"];
 const ROUNDS = 3;
 const PAUSE_MS = 2000;
 const CALLS_PER_WINDOW = 300;
@@ -44,7 +44,7 @@ async function handle(request) {
       return reply(503);
     }
     if (result.body.payment_status !== "paid") return reply(200);
-    const status = await mailBooking(result.body, key, { unmarked: true });
+    const status = await mailBooking(result.body, key, { unmarked: true, oidc: request.headers.get("x-vercel-oidc-token") || "" });
     if (status !== "busy" || round === ROUNDS) return reply(RETRY.includes(status) ? 503 : 200);
     await new Promise((resolve) => setTimeout(resolve, PAUSE_MS));
   }

@@ -57,9 +57,10 @@ function test(name, fn) {
   }
 }
 
+const NEW_JERSEY = ["ewr", "teb"];
 const leg = (cls, airport) => {
   const fare = AIRPORT_FARES[cls][airport];
-  const tax = percentCents(fare, NYC_TAX_PERCENT);
+  const tax = NEW_JERSEY.includes(airport) ? 0 : percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
   const total = AIRPORT_TOTALS[cls][airport];
   return { fare, tax, bcf, tolls: total - fare - tax - bcf, total };
@@ -104,31 +105,40 @@ test("the airport columns are JFK, Newark and Teterboro, and LaGuardia, and the 
 test("the airport table caption says by vehicle class and the footer names both directions and what is included", () => {
   const table = row("airport-rates");
   assert.equal(squash(table.querySelector("caption")), "One way airport transfers to or from any New York City address, by vehicle class.");
-  assert.deepEqual([...table.querySelectorAll("tfoot td")].map(squash), ["Totals for one way, in either direction, with tolls, airport fees, NYC sales tax and the Black Car Fund included."]);
+  assert.deepEqual([...table.querySelectorAll("tfoot td")].map(squash), ["Totals for one way, in either direction, with tolls, airport fees, the Black Car Fund and any sales tax included."]);
 });
 
-test("#airport-total rows equal the Business SUV lines to JFK, Newark and Teterboro from api/_trip.mjs legLines", () => {
+test("#airport-total columns equal the Business SUV lines to JFK and to Newark and Teterboro from api/_trip.mjs legLines, with $0.00 New York sales tax in New Jersey", () => {
   assert.equal(typeof trip.legLines, "function", "api/_trip.mjs does not export legLines yet");
   const table = row("airport-total");
-  const shown = [...table.querySelectorAll("tbody tr")].map((tr) => [squash(tr.querySelector("th")), cents(squash(tr.querySelector("td")))[0]]);
-  for (const airport of FAR) {
-    const { lines, total } = trip.legLines("suv", airport);
-    assert.deepEqual(shown, lines.map((l) => [l.label, l.cents]), airport);
-    assert.equal(total, airportTotal, airport);
+  assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Item", "JFK", "Newark and Teterboro"]);
+  const labels = [...table.querySelectorAll("tbody th")].map(squash);
+  for (const [column, airports] of [[0, ["jfk"]], [1, NEW_JERSEY]]) {
+    const shown = [...table.querySelectorAll("tbody tr")].map((tr) => [squash(tr.querySelector("th")), cents(squash(tr.querySelectorAll("td")[column]))[0]]);
+    for (const airport of airports) {
+      const { lines, total } = trip.legLines("suv", airport);
+      assert.deepEqual(shown, labels.map((label) => [label, (lines.find((l) => l.label === label) || { cents: 0 }).cents]), airport);
+      assert.ok(lines.every((l) => labels.includes(l.label)), airport);
+      assert.equal(total, airportTotal, airport);
+    }
   }
+  assert.deepEqual(trip.legLines("suv", "ewr").lines.map((l) => [l.label, l.cents]), [["Fare", 16846], ["Black Car Fund", 379], ["Tolls and airport fees", 1275]]);
   const foot = [...table.querySelectorAll("tfoot tr")];
   assert.equal(squash(foot[0].querySelector("th")), "Total");
-  assert.deepEqual(cents(squash(foot[0].querySelector("td"))), [airportTotal]);
-  assert.equal(squash(foot[1]), "Every class adds NYC sales tax and the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Meet and greet, child seats and a gratuity, if chosen, are added at booking.");
+  assert.deepEqual([...foot[0].querySelectorAll("td")].map((td) => cents(squash(td))), [[airportTotal], [airportTotal]]);
+  assert.equal(squash(foot[1]), "Every class adds the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Trips to or from JFK and LaGuardia also add NYC sales tax. Newark and Teterboro are in New Jersey, where no New York sales tax applies, so the fare there is higher and the total is the same. Meet and greet, child seats and a gratuity, if chosen, are added at booking.");
   assert.deepEqual(cents(squash(foot[1])), [leg("suv", "jfk").tolls]);
 });
 
 test("#airport-total rows add up to the total with the rates and rounding of api/_rates.mjs", () => {
   const table = row("airport-total");
-  const figures = [...table.querySelectorAll("tbody td")].map((td) => cents(squash(td))[0]);
-  const { fare, tax, bcf, tolls, total } = leg("suv", "jfk");
-  assert.deepEqual(figures, [fare, tax, bcf, tolls]);
-  assert.equal(figures.reduce((a, b) => a + b, 0), total);
+  for (const [column, airport] of [[0, "jfk"], [1, "ewr"], [1, "teb"]]) {
+    const figures = [...table.querySelectorAll("tbody tr")].map((tr) => cents(squash(tr.querySelectorAll("td")[column]))[0]);
+    const { fare, tax, bcf, tolls, total } = leg("suv", airport);
+    assert.deepEqual(figures, [fare, tax, bcf, tolls], airport);
+    assert.equal(figures.reduce((a, b) => a + b, 0), total, airport);
+  }
+  const { total } = leg("suv", "jfk");
   const labels = [...table.querySelectorAll("tbody th")].map(squash);
   assert.deepEqual(labels, ["Fare", "NYC sales tax", "Black Car Fund", "Tolls and airport fees"]);
   assert.deepEqual(labels.filter((label) => /\d\s*%/.test(label)), []);
@@ -218,10 +228,11 @@ test("the gratuity line lists TIP_PERCENTS, none first, and says it is optional"
   assert.ok(text.endsWith("of the fare, chosen before you pay"), text);
 });
 
-test("the taxes line and the hourly caption name NYC sales tax and the Black Car Fund with no percent, and the only percents on the page are the gratuity choices", () => {
-  assert.equal(facts.Taxes, "NYC sales tax and the Black Car Fund are charged at booking on every fare");
+test("the taxes line names the Black Car Fund on every fare and sales tax on trips that start, stop and end in New York State at the pickup rate, the hourly caption names NYC sales tax, none with a percent, and the only percents on the page are the gratuity choices", () => {
+  assert.equal(facts.Taxes, "The Black Car Fund is charged at booking on every fare. Sales tax is charged at booking on trips that start, stop and end in New York State, at the rate where you are picked up");
+  assert.ok(squash(page.getElementById("hourly-caption")).includes("NYC sales tax"));
   for (const text of [facts.Taxes || "", squash(page.getElementById("hourly-caption"))]) {
-    assert.ok(text.includes("NYC sales tax") && text.includes("Black Car Fund"), text);
+    assert.ok(/sales tax/i.test(text) && text.includes("Black Car Fund"), text);
     assert.doesNotMatch(text, /%|percent/i);
   }
   const all = [squash(page.body), page.title, ...[...page.querySelectorAll('script[type="application/ld+json"], meta[content]')].map((n) => n.textContent || n.getAttribute("content"))].join(" ");
@@ -297,8 +308,8 @@ test("the distance worked example is base plus miles plus minutes from api/_trip
   assert.equal(e.fare, e.base + e.miles + e.time);
   assert.ok(e.fare > DISTANCE_RATES[e.cls].minimum);
   const text = squash(row("distance-rates").querySelector("tfoot td"));
-  assert.equal(text, `For example, 15 miles and 45 minutes in a ${CLASSES[e.cls].name} is the ${dollars(e.base)} base, ${cash(e.miles)} for the miles and ${cash(e.time)} for the minutes, a ${cash(e.fare)} fare. With ${cash(e.tax)} NYC sales tax and ${cash(e.bcf)} Black Car Fund, that is ${cash(e.fare + e.tax + e.bcf)} at booking.`);
-  assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808]);
+  assert.equal(text, `For example, 15 miles and 45 minutes in a ${CLASSES[e.cls].name} is the ${dollars(e.base)} base, ${cash(e.miles)} for the miles and ${cash(e.time)} for the minutes, a ${cash(e.fare)} fare. From New York City to an address in New York State, with ${cash(e.tax)} NYC sales tax and ${cash(e.bcf)} Black Car Fund, that is ${cash(e.fare + e.tax + e.bcf)} at booking. To or from New Jersey, with no New York sales tax, it is ${cash(e.fare + e.bcf)}.`);
+  assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf, e.fare + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808, 12705]);
 });
 
 test("the distance section says how the price is built, that trips with stops are priced over the whole route at no less than the airport fare of an airport on it, and that tolls and parking are charged after the ride, as on hourly bookings", () => {
@@ -309,8 +320,8 @@ test("the distance section says how the price is built, that trips with stops ar
   assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Each stop is $20 on top of the price of the same trip without it. If a stop takes the car out of the way and the whole route, from the pickup through each stop to the drop-off, costs more by distance and time, you pay that instead, never below the airport fare when the route starts, stops or ends at one of these airports. The same rule applies to every trip with stops, also when it starts, stops or ends at an airport. A trip with stops from one airport to another is priced by distance and time over the whole route. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
   assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
   const note = squash(page.querySelector("#distance-caption .rate-table__note"));
-  assert.equal(note, squash(page.querySelector("#hourly-caption .rate-table__note")));
-  assert.equal(note, "Prices are before NYC sales tax and the Black Car Fund, which are added at booking. Tolls and parking are charged after the ride.");
+  assert.equal(squash(page.querySelector("#hourly-caption .rate-table__note")), "Prices are before NYC sales tax and the Black Car Fund, which are added at booking. Tolls and parking are charged after the ride.");
+  assert.equal(note, "Prices are before sales tax and the Black Car Fund, which are added at booking. Sales tax applies to trips that start, stop and end in New York State, at the rate where you are picked up. Tolls and parking are charged after the ride.");
 });
 
 test("the airport section and the distance caption say that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City pays the airport fare or the distance and time fare, whichever is higher, as api/_trip.mjs prices it", () => {
@@ -345,6 +356,7 @@ test("every $ figure in the four rate tables is reproducible from the config", (
     ...DISTANCE_KEYS.flatMap((cls) => Object.values(DISTANCE_RATES[cls])),
     ...["base", "miles", "time", "fare", "tax", "bcf"].map((k) => distanceExample[k]),
     distanceExample.fare + distanceExample.tax + distanceExample.bcf,
+    distanceExample.fare + distanceExample.bcf,
   ]);
   const unknown = [];
   for (const cell of tables.flatMap((t) => [...t.querySelectorAll("td, th")])) {

@@ -130,7 +130,7 @@ await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket 
   }
   const boston = await places({ action: "here", lat: 42.3601, lng: -71.0589 });
   assert.deepEqual([boston.body.kind, boston.body.label, boston.body.zone, boston.body.area, boston.body.airport], ["ok", "4 S Market St, Boston, MA 02109", "outside", "Outside New York City", false]);
-  assert.deepEqual(verifyTicket(boston.body.ticket, boston.body.label, Date.now()), { id: "mock-faneuil", zone: "outside", expired: false });
+  assert.deepEqual(verifyTicket(boston.body.ticket, boston.body.label, Date.now()), { id: "mock-faneuil", zone: "outside", region: "MA", expired: false });
   assert.deepEqual((await places({ action: "here", lat: 43.642566, lng: -79.387057 })).body, { kind: "far" }, "the CN Tower spot is inside the box, and Google puts it in Canada");
   for (const spot of [{ lat: 43.0962, lng: -79.0377 }, { lat: 42.1001, lng: -73.9 }, { lat: 39.4999, lng: -74.5 }, { lat: 40.7, lng: -75.6001 }, { lat: 40.7, lng: -71.6999 }, { lat: 30, lng: -73.9 }, { lat: 61.2, lng: -149.9 }, { lat: 21.3, lng: -157.85 }, { lat: 18.45, lng: -66.1 }]) assert.deepEqual((await places({ action: "here", ...spot }, { from: "10.9.9.7" })).body, { kind: "none" }, JSON.stringify(spot));
   for (const bad of [{ lat: "40.7", lng: -73.9 }, { lat: 40.7 }, { lat: null, lng: -73.9 }, {}, { lat: 91, lng: -73.9 }, { lat: 40.7, lng: -181 }, { lat: 40.7, lng: "x" }, { lat: Infinity, lng: -73.9 }]) {

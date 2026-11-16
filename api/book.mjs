@@ -81,7 +81,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     heading: HEADINGS[group],
     text: map && draw && googleUp() ? map : google && googleUp() ? google : short && !hourly ? short : text,
     hourly,
-    field: reason === "unplaced" || reason === "airport-zip" ? field : "",
+    field: ["unplaced", "county", "airport-zip"].includes(reason) ? field : "",
     classes: classList(trip, scope === "trip" ? reason : ""),
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
@@ -261,7 +261,7 @@ async function handleGet(request) {
     return json(502, errorBody("stripe", contactLinks()));
   }
   const body = sessionBody(result.body);
-  if (body.payment_status === "paid") await mailSoon(mailBooking(result.body, key), MAIL_WAIT_MS);
+  if (body.payment_status === "paid") await mailSoon(mailBooking(result.body, key, { oidc: request.headers.get("x-vercel-oidc-token") || "", untrusted: true }), MAIL_WAIT_MS);
   return json(200, body);
 }
 

@@ -1,3 +1,6 @@
+import { TAX_AREAS, NYC_TAX_AREA } from "./_salestax.mjs";
+
+export { PUB_718, ZIP_SOURCE, TAX_AREAS, NYC_TAX_AREA, COUNTY_AREAS, CITY_AREAS, CITY_ZIPS, ZIP_AREAS } from "./_salestax.mjs";
 export const CLASSES = {
   suv: { name: "Business SUV", seats: 5, bags: "3 large plus 3 small bags" },
   premium: { name: "Business Premium SUV", seats: 5, bags: "3 large plus 3 small bags" },
@@ -29,13 +32,14 @@ export const PLACES = {
 };
 export const ADDRESS_PLACES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "outside"];
 export const AIRPORT_PLACES = ["jfk", "lga", "ewr", "teb"];
+export const AIRPORT_STATES = { jfk: "NY", lga: "NY", ewr: "NJ", teb: "NJ" };
 export const HOURLY_START = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"];
 export const AIRPORT_FARES = {
-  suv: { jfk: 15500, lga: 13701, ewr: 15500, teb: 15500 },
-  premium: { jfk: 18650, lga: 15950, ewr: 18650, teb: 18650 },
-  first: { jfk: 26749, lga: 21350, ewr: 26749, teb: 26749 },
-  sedan: { jfk: 14151, lga: 11901, ewr: 14151, teb: 14151 },
-  sprinter: { jfk: 43847, lga: 39348, ewr: 43847, teb: 43847 },
+  suv: { jfk: 15500, lga: 13701, ewr: 16846, teb: 16846 },
+  premium: { jfk: 18650, lga: 15950, ewr: 20269, teb: 20269 },
+  first: { jfk: 26749, lga: 21350, ewr: 29071, teb: 29071 },
+  sedan: { jfk: 14151, lga: 11901, ewr: 15379, teb: 15379 },
+  sprinter: { jfk: 43847, lga: 39348, ewr: 47653, teb: 47653 },
 };
 export const AIRPORT_TOTALS = {
   suv: { jfk: 18500, lga: 16500, ewr: 18500, teb: 18500 },
@@ -53,7 +57,7 @@ export const DISTANCE_RATES = {
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
-export const NYC_TAX_PERCENT = "8.875";
+export const NYC_TAX_PERCENT = TAX_AREAS[NYC_TAX_AREA].percent;
 export const BCF_PERCENT = "2.25";
 export const TIP_PERCENTS = [0, 10, 15, 20, 25];
 export const TIP_CUSTOM = { min: 100, max: 50000 };

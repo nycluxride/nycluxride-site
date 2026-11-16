@@ -31,7 +31,7 @@ function check(name, fn) {
 }
 
 const CARDS = [
-  ["/services#airport-transfers", "Airport transfers", "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, NYC sales tax and the Black Car Fund included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
+  ["/services#airport-transfers", "Airport transfers", "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
   ["/chauffeur-service-nyc", "Hourly chauffeur", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum.", "bmw-7-series", 1607, 979, "Dark gray BMW 7 Series outside a stone building at night"],
   ["/limousine-service-nyc", "Weddings, prom and groups", "Luxury Sprinters for up to 12 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside the Jet Sprinter: two leather captain's chairs facing a screen"],
   ["/services#corporate", "Corporate accounts", "Monthly billing and priority scheduling for your company.", "lincoln-navigator", 1536, 1024, "Black Lincoln Navigator in a showroom"],

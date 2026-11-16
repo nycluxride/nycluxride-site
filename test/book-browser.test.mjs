@@ -8749,7 +8749,7 @@ for (const width of [1440, 390]) {
 }
 
 {
-  const OWNER_TOTALS = { suv: 212027, premium: 253476, first: 281479, sedan: 159465, sprinter: 476615 };
+  const OWNER_TOTALS = { suv: 195093, premium: 233232, first: 258999, sedan: 146729, sprinter: 438550 };
   const typedRow = async (p, end, text, area) => {
     await type(p, end, text);
     await p.waitForFunction(([e, a]) => document.querySelector(`#bk-${e}-list [data-kind="typed"] .bk-opt__area`)?.textContent === a, [end, area]);
@@ -8767,8 +8767,8 @@ for (const width of [1440, 390]) {
       await priced(p);
       await settle(p, 600);
       assert.deepEqual(await cards(p), CLASS_KEYS.map((c) => cash(OWNER_TOTALS[c])));
-      assert.deepEqual(await cards(p), ["$2,120.27", "$2,534.76", "$2,814.79", "$1,594.65", "$4,766.15"]);
-      assert.deepEqual(await panel(p), { lines: [["Fare", "$1,908.00"], [L_FEES, "$212.27"]], total: "$2,120.27", notes: POLICY.later.hourly });
+      assert.deepEqual(await cards(p), ["$1,950.93", "$2,332.32", "$2,589.99", "$1,467.29", "$4,385.50"]);
+      assert.deepEqual(await panel(p), { lines: [["Fare", "$1,908.00"], [L_FEES, "$42.93"]], total: "$1,950.93", notes: POLICY.later.hourly });
       assert.equal(await p.isVisible("#quote .bk-q.is-on"), false);
       let [value, shifts] = await cls(p);
       assert.equal(value, 0, shifts.join(" | "));
@@ -8777,13 +8777,13 @@ for (const width of [1440, 390]) {
       await next(p);
       await details(p);
       await priced(p);
-      const want = [["Fare", "$1,435.00"], [L_FEES, "$159.65"]];
+      const want = [["Fare", "$1,435.00"], [L_FEES, "$32.29"]];
       assert.deepEqual((await panel(p)).lines, want);
-      assert.ok((await waText(p, "#q-wa")).includes("\nTotal shown: $1,594.65\n"));
+      assert.ok((await waText(p, "#q-wa")).includes("\nTotal shown: $1,467.29\n"));
       await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
       await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
       assert.deepEqual(await p.$$eval("#cf-lines tr", (r) => r.map((x) => [x.cells[0].textContent, x.cells[1].textContent])), want);
-      assert.deepEqual([await p.textContent("#cf-total"), await p.textContent("#cf-notes")], ["$1,594.65", POLICY.later.hourly]);
+      assert.deepEqual([await p.textContent("#cf-total"), await p.textContent("#cf-notes")], ["$1,467.29", POLICY.later.hourly]);
       assert.ok((await p.textContent("#cf-summary")).endsWith("Sedan & Electric, 400.0 miles and 420 min."), await p.textContent("#cf-summary"));
       await p.waitForTimeout(300);
       [value, shifts] = await cls(p);

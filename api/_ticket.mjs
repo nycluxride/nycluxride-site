@@ -7,6 +7,7 @@ export const ROUTE = /^r1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
 export const TICKET_TTL = 21600;
 const INFO = "nlr place ticket v1";
 const SKEW_S = 300;
+const REGION = /^(?:\d{4}|[A-Z]{2})$/;
 
 export function ticketKey() {
   const secret = String(process.env.PLACE_TICKET_SECRET || "").trim();
@@ -36,11 +37,11 @@ export function proofOk(id, label, proof) {
   return timingSafeEqual(Buffer.from(proof), Buffer.from(proofMac(key, id, label)));
 }
 
-export function signTicket(id, zone, label, now, area = 0) {
+export function signTicket(id, zone, label, now, area = 0, region = "") {
   const key = ticketKey();
   if (!key) return "";
   const level = area === 2 ? 2 : area ? 1 : 0;
-  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(level && { a: level }) })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(level && { a: level }), ...(zone === "outside" && !level && REGION.test(region) && { j: region }) })).toString("base64url");
   const ticket = `v1.${payload}.${mac(key, payload)}`;
   return TICKET.test(ticket) ? ticket : "";
 }
@@ -61,7 +62,7 @@ export function verifyTicket(ticket, label, now) {
   if (!ZONES.includes(data.z) || data.z === "unknown") return null;
   if (label !== null && data.h !== labelHash(label)) return null;
   const age = Math.floor(Number(now) / 1000) - data.t;
-  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S, ...(data.a === 1 && { area: true }), ...(data.a === 2 && { town: true }) };
+  return { id: data.id, zone: data.z, expired: age > TICKET_TTL || age < -SKEW_S, ...(typeof data.j === "string" && REGION.test(data.j) && { region: data.j }), ...(data.a === 1 && { area: true }), ...(data.a === 2 && { town: true }) };
 }
 
 const routeMac = (key, payload) => createHmac("sha256", key).update(`r1.${payload}`).digest("base64url");

@@ -4,6 +4,7 @@ export const HEADINGS = {
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
+  county: { group: "price", text: "Our dispatch team prices trips from this address.", google: "Pick the address from the list to see the price." },
   "street-address": { group: "price", text: "Add the street address to see the price.", google: "Add the street address, or pick it from the list, to see the price." },
   "pickup-address": { group: "price", text: "Add the pickup street address to see the price.", map: "Add the pickup street address, or choose the spot on the map, to see the price." },
   "return-address": { group: "price", text: "The drop-off is also your return pickup. Add its street address to see the price.", map: "The drop-off is also your return pickup. Add its street address, or choose the spot on the map, to see the price." },
@@ -61,7 +62,7 @@ export const POLICY = {
     outFlat: "After the ride, waiting beyond the free window, tolls for the return and parking are charged to your card, each on an itemized receipt.",
   },
 };
-const INCLUDED = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included.";
+const INCLUDED = "Tolls, airport fees, the Black Car Fund and any sales tax are included.";
 const CONFIRM = "We confirm your car and chauffeur in writing before your ride.";
 const CHANGE = "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference {ref}.";
 export const NOTES = {
@@ -196,4 +197,8 @@ export const MAIL = {
     reach: "Preferred contact",
     reaches: { phone: "Phone", whatsapp: "WhatsApp" },
   },
+};
+export const CALENDAR = {
+  back: "Return: ",
+  passengerPhone: "Passenger phone",
 };

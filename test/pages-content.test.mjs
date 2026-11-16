@@ -285,6 +285,7 @@ const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "i
 const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
+RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included."];
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
@@ -570,6 +571,14 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.ok(ps[1].endsWith("Don't follow the Ride App Pick Up signs. They lead to the rideshare pickup areas, like floor 3 of the Terminal C garage."), ps[1]);
     assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
   });
+  check("locations/newark-airport.html: the price answer names the Black Car Fund and any sales tax, never plain taxes, in the page and in its JSON-LD", () => {
+    const answer = "Yes, from any New York City address. JFK, Newark and Teterboro cost the same in each class, and LaGuardia costs less. The price includes tolls, airport fees, the Black Car Fund and any sales tax. See all rates.";
+    assert.ok([...document.querySelectorAll("main p")].some((p) => norm(p.textContent) === answer), "the FAQ answer");
+    const graph = [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((el) => JSON.parse(el.textContent)["@graph"] || []);
+    const faq = graph.find((node) => node["@type"] === "FAQPage");
+    assert.ok(faq.mainEntity.some((q) => q.acceptedAnswer.text === answer), "the JSON-LD answer");
+    assert.doesNotMatch(document.querySelector("main").textContent, /airport fees and taxes included|airport fees and taxes\./);
+  });
   check("locations/newark-airport.html: the safety tip says no to offered rides and names no New York City rule or JFK source", () => {
     const tip = document.querySelector("#arrival > aside.tip");
     assert.ok(tip && tip.firstElementChild.matches("svg.icon") && tip.firstElementChild.querySelector("use").getAttribute("href") === "#i-shield");
@@ -673,7 +682,7 @@ check("locations/staten-island.html and black-car-service-brooklyn.html: the tol
   assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("On hourly bookings and one-way trips priced by distance and time, bridge tolls are charged at cost after the ride to the card saved at booking.")), "the route paragraph");
   const toll = "Yes. The Verrazzano-Narrows Bridge charges tolls in both directions. On an airport ride, tolls and airport fees are already in the price. On hourly bookings and one-way trips priced by distance and time, we charge tolls at cost after the ride to the card saved at booking. A round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
-  const cost = "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, NYC sales tax and the Black Car Fund included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
+  const cost = "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
 check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport transfers to or from a New York City address and hourly bookings, and says other one-way trips are priced on the Google Maps route at the pickup time, visible and in JSON-LD", () => {

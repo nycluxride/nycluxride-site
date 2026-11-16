@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
-import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, localById, areaText, routeText, placeLevel, clearMatch } from "../api/_places.mjs";
+import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, placeRegion, textRegion, zipRegion, zoneRegion, inNewYork, localById, areaText, routeText, placeLevel, clearMatch } from "../api/_places.mjs";
 import { TICKET, TICKET_TTL, ticketKey, labelHash, signTicket, verifyTicket, placeProof, proofOk } from "../api/_ticket.mjs";
 import { PLACES, AIRPORT_FARES, AIRPORT_TOTALS } from "../api/_rates.mjs";
 import { POST } from "../api/places.mjs";
@@ -83,7 +83,7 @@ const labelOf = (item) => (item.main + (item.secondary ? `, ${item.secondary}` :
 const proofed = (items) => items.map((item) => ({ ...item, proof: createHmac("sha256", ticketKey()).update(`p1.${item.id}.${labelHash(labelOf(item))}`).digest("base64url") }));
 const component = (types, longText, shortText = longText) => ({ longText, shortText, types });
 const COUNTRY_NAMES = { US: "United States", CA: "Canada", MX: "Mexico", PR: "Puerto Rico" };
-const details = ({ state, county, sub, zip, country, types = ["street_address"], address = "" }) => ({
+const details = ({ state, county, sub, city, zip, country, types = ["street_address"], address = "" }) => ({
   id: "ChIJtest",
   formattedAddress: address,
   shortFormattedAddress: address.split(",")[0],
@@ -91,6 +91,7 @@ const details = ({ state, county, sub, zip, country, types = ["street_address"],
     state && component(["administrative_area_level_1", "political"], state === "NY" ? "New York" : state, state),
     county && component(["administrative_area_level_2", "political"], county),
     sub && component(["sublocality_level_1", "sublocality", "political"], sub),
+    city && component(["locality", "political"], city),
     zip && component(["postal_code"], zip),
     country && component(["country", "political"], COUNTRY_NAMES[country], country),
   ].filter(Boolean),
@@ -617,7 +618,7 @@ await test("pick marks a New York City borough, New York City, a ZIP code, a cou
     reply = answer(200, place);
     const res = await call(pick("ChIJarea", label));
     assert.deepEqual([res.body.kind, res.body.zone, res.body.exact], ["ok", zone, level ? false : undefined], label);
-    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJarea", zone, expired: false, ...(level === 1 && { area: true }), ...(level === 2 && { town: true }) }, label);
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJarea", zone, expired: false, ...(zone === "outside" && !level && { region: "NJ" }), ...(level === 1 && { area: true }), ...(level === 2 && { town: true }) }, label);
     assert.equal(JSON.parse(Buffer.from(res.body.ticket.split(".")[1], "base64url").toString()).a, level || undefined, label);
     assert.equal(placeLevel(place.types, zone), level, label);
   }
@@ -639,8 +640,8 @@ await test("old tickets with a: 1 verify as before, a: 2 verifies as a town, any
   const id = `Ei${"x".repeat(298)}`;
   for (const level of [1, 2]) assert.equal(signTicket(id, "staten-island", label, NOW, level).length, 553);
   const end = await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: signed(1) }), { now: NOW });
-  assert.deepEqual(end, { text: label, zone: "outside", place: "ChIJold", id: "", area: true });
-  assert.deepEqual(await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: signed(2) }), { now: NOW }), { text: label, zone: "outside", place: "ChIJold", id: "", town: true });
+  assert.deepEqual(end, { text: label, zone: "outside", place: "ChIJold", id: "", region: "US", area: true });
+  assert.deepEqual(await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: signed(2) }), { now: NOW }), { text: label, zone: "outside", place: "ChIJold", id: "", region: "US", town: true });
 });
 
 await test("suggest marks a place that is no exact spot with exact false, and the first suggestion with match true only when it clearly matches typed text that would get a request by itself: same start and the same place", async () => {
@@ -761,27 +762,27 @@ await test("the server resolves a pick itself: a fresh ticket needs no call, an 
   const fresh = signTicket("ChIJbedford", "brooklyn", label, Date.now());
   const fields = { trip_type: "one", from_text: label, from_ticket: fresh, to_text: "LaGuardia (LGA)", to_id: "lga" };
   const trip = await resolveTrip(readInput(fields), { now: Date.now() });
-  assert.deepEqual(trip.ends.from, { text: label, zone: "brooklyn", place: "ChIJbedford", id: "" });
-  assert.deepEqual(trip.ends.to, { text: "LaGuardia (LGA)", zone: "lga", place: "lga", id: "lga" });
+  assert.deepEqual(trip.ends.from, { text: label, zone: "brooklyn", place: "ChIJbedford", id: "", region: "8081" });
+  assert.deepEqual(trip.ends.to, { text: "LaGuardia (LGA)", zone: "lga", place: "lga", id: "lga", region: "8081" });
   assert.equal(calls.length, 0);
   const old = signTicket("ChIJbedford", "jfk", label, Date.now() - (TICKET_TTL + 60) * 1000);
   reply = answer(200, details({ state: "NY", county: "Kings County", zip: "11211" }));
   const refreshed = await resolveEnd("from", readInput({ ...fields, from_ticket: old }), { now: Date.now() });
-  assert.deepEqual(refreshed, { text: label, zone: "brooklyn", place: "ChIJbedford", id: "" });
+  assert.deepEqual(refreshed, { text: label, zone: "brooklyn", place: "ChIJbedford", id: "", region: "8081" });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://places.googleapis.com/v1/places/ChIJbedford?languageCode=en&regionCode=us");
   const other = await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ" }), { now: Date.now() });
-  assert.deepEqual(other, { text: "Hoboken, NJ", zone: "outside", place: "", id: "" });
+  assert.deepEqual(other, { text: "Hoboken, NJ", zone: "outside", place: "", id: "", region: "US" });
   const claimed = await resolveEnd("from", readInput({ ...fields, from_ticket: "", from_id: "jfk" }), { now: Date.now() });
   assert.equal(claimed.zone, "brooklyn");
   const stale = signTicket("ChIJhoboken", "outside", "Hoboken, NJ, USA", Date.now() - (TICKET_TTL + 60) * 1000, true);
   reply = answer(200, details({ state: "NJ", county: "Hudson County", zip: "07030", types: ["locality", "political"] }));
   const before = calls.length;
-  for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: stale }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhoboken", id: "", area: true }, `request ${i + 1}`);
+  for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: stale }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhoboken", id: "", region: "NJ", area: true }, `request ${i + 1}`);
   assert.equal(calls.length, before + 1);
   const town = signTicket("ChIJhobokentown", "outside", "Hoboken, NJ, USA", Date.now() - (TICKET_TTL + 60) * 1000, 2);
   const once = calls.length;
-  for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: town }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhobokentown", id: "", town: true }, `town request ${i + 1}`);
+  for (let i = 0; i < 2; i++) assert.deepEqual(await resolveEnd("from", readInput({ ...fields, from_text: "Hoboken, NJ, USA", from_ticket: town }), { now: Date.now() }), { text: "Hoboken, NJ, USA", zone: "outside", place: "ChIJhobokentown", id: "", region: "NJ", town: true }, `town request ${i + 1}`);
   assert.equal(calls.length, once + 1, "the town mark survives the Place Details refresh and the zone cache, with one call");
   delete process.env.GOOGLE_MAPS_SERVER_KEY;
   calls.length = 0;
@@ -828,7 +829,7 @@ await test("a Manhattan place labeled Hoboken, NJ never yields a ticket, and JFK
   assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "price", reason: "", hold: "" });
   assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.reason, leg.ride]), [["jfk", "outside", "", { tenths: 168, minutes: 43 }]]);
   const price = priceTrip(trip);
-  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", AIRPORT_FARES.suv.jfk], ["NYC sales tax", 1376], ["Black Car Fund", 349]], 17225]);
+  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", AIRPORT_FARES.suv.jfk], ["Black Car Fund", 349]], 15849], "JFK to New Jersey is interstate, so no New York sales tax");
 });
 
 await test("pick refuses a label whose own words contradict Place Details, and keeps genuine airport and FBO labels", async () => {
@@ -876,6 +877,67 @@ await test("pick: a place Google puts outside the United States is abroad whatev
   const stale = signTicket("ChIJcntower", "outside", label, Date.now() - (TICKET_TTL + 60) * 1000);
   reply = answer(200, canada);
   assert.deepEqual(await resolveEnd("to", readInput({ ...fields, to_ticket: stale }), { now: Date.now() }), { text: label, zone: "abroad", place: "ChIJcntower", id: "" });
+});
+
+await test("sales tax regions: Place Details give the state, the county and Yonkers, typed text gives the state and a county from the ZIP code, zones give New York City and New Jersey, and nothing is guessed", async () => {
+  const cases = [
+    [details({ state: "NY", county: "Nassau County", city: "Mineola", zip: "11501" }), "2811"],
+    [details({ state: "NY", county: "Westchester County", city: "Yonkers", zip: "10701" }), "6511"],
+    [details({ state: "NY", county: "Westchester County", city: "White Plains", zip: "10601" }), "5581"],
+    [details({ state: "NY", county: "Suffolk County", city: "Montauk", zip: "11954" }), "4711"],
+    [details({ state: "NY", county: "Kings County", sub: "Brooklyn", zip: "11211" }), "8081"],
+    [details({ state: "NY", zip: "11501" }), "2811"],
+    [details({ state: "NY", zip: "11001" }), "NY"],
+    [details({ state: "NY" }), "NY"],
+    [details({ state: "NJ", county: "Hudson County", zip: "07030" }), "NJ"],
+    [details({ state: "CT", county: "Fairfield County", zip: "06830" }), "CT"],
+    [details({ state: "ON", country: "CA" }), ""],
+  ];
+  for (const [place, region] of cases) assert.equal(placeRegion(place), region, JSON.stringify(place.addressComponents.map((c) => c.longText)));
+  assert.deepEqual(["manhattan", "staten-island", "jfk", "lga", "ewr", "teb", "outside", "abroad", "unknown"].map(zoneRegion), ["8081", "8081", "8081", "8081", "NJ", "NJ", "", "", ""]);
+  assert.deepEqual(["11501", "10705", "10701", "11430", "10001", "11001", "07030", "06830", "1150"].map(zipRegion), ["2811", "6511", "5581", "8081", "8081", "NY", "US", "US", ""]);
+  assert.deepEqual(["1 Old Country Rd, Mineola, NY 11501", "Hoboken, NJ 07030", "10 Elm St, Greenwich, CT", "Scarsdale, NY", "somewhere quiet", "Main St, NJ 11501"].map(textRegion), ["2811", "US", "US", "NY", "", ""]);
+  assert.deepEqual(["8081", "2811", "NY", "NJ", "US", ""].map(inNewYork), [true, true, true, false, false, false]);
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, details({ state: "NY", county: "Nassau County", city: "Mineola", zip: "11501" }));
+  const label = "1 Old Country Rd, Mineola, NY";
+  const res = await call(pick("ChIJmineola", label));
+  assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJmineola", zone: "outside", region: "2811", expired: false });
+  const end = await resolveEnd("from", readInput({ trip_type: "one", from_text: label, from_ticket: res.body.ticket }), { now: Date.now() });
+  assert.deepEqual([end.zone, end.region], ["outside", "2811"], "the county comes from the signed ticket, never from the browser");
+  assert.equal(JSON.parse(Buffer.from(signTicket("ChIJx", "manhattan", "x", NOW, 0, "8081").split(".")[1], "base64url").toString()).j, undefined, "a zone that names its own region signs no region");
+  assert.equal(JSON.parse(Buffer.from(signTicket("ChIJx", "outside", "x", NOW, 2, "2811").split(".")[1], "base64url").toString()).j, undefined, "an area that is no exact spot signs no region");
+  assert.equal(signTicket(`Ei${"x".repeat(298)}`, "outside", label, NOW, 0, "2811").length <= 553, true, "the longest place ID with a region still fits the ticket");
+  const forged = readInput({ trip_type: "one", from_text: label, from_region: "8081", region: "8081" });
+  assert.equal((await resolveEnd("from", forged, { now: Date.now() })).region, "NY", "a region sent by the browser is ignored");
+  delete process.env.GOOGLE_MAPS_SERVER_KEY;
+});
+
+await test("sales tax regions: typed text that names Yonkers in a Westchester ZIP code partly in the city gets the Yonkers rate, as a Google pick does, other named places in those ZIP codes keep the Westchester rate, and an address that names no place is not guessed", () => {
+  const yonkers = ["1 Larkin Plaza, Yonkers, NY 10701", "Ridge Hill, Yonkers, NY 10710", "1 Larkin Plaza Yonkers NY 10701", "1 Getty Sq, Yonkers, NY 10701-1234", "1 Getty Sq, Yonkers, 10701, New York", "40 Warburton Ave, Yonkers, NY 10705"];
+  assert.deepEqual(yonkers.map(textRegion), ["6511", "6511", "6511", "6511", "6511", "6511"]);
+  const county = ["Yonkers Ave, Tuckahoe, NY 10707", "100 Main St, Tuckahoe, NY 10707", "2 Popham Rd, Scarsdale, NY 10583", "1 Pondfield Rd W, Bronxville, NY 10708"];
+  assert.deepEqual(county.map(textRegion), ["5581", "5581", "5581", "5581"]);
+  const unnamed = ["1 Main St, NY 10701", "10701", "40 S Broadway, NY 10701", "Ridge Hill 10710"];
+  assert.deepEqual(unnamed.map(textRegion), ["NY", "NY", "NY", "NY"]);
+  assert.equal(textRegion("1 Larkin Plaza, Yonkers, NY 10701"), placeRegion(details({ state: "NY", county: "Westchester County", city: "Yonkers", zip: "10701" })));
+  const picks = [
+    [details({ state: "NY", city: "Yonkers", zip: "10701" }), "6511"],
+    [details({ city: "Yonkers", zip: "10710" }), "6511"],
+    [details({ state: "NY", county: "Westchester County", city: "Bronxville", zip: "10708" }), "5581"],
+    [details({ state: "NY", county: "Westchester County", zip: "10710" }), "NY"],
+    [details({ state: "NY", zip: "10701" }), "NY"],
+    [details({ state: "NY", county: "Westchester County", city: "Yonkers" }), "6511"],
+  ];
+  for (const [place, region] of picks) assert.equal(placeRegion(place), region, JSON.stringify(place.addressComponents.map((c) => c.longText)));
+});
+
+await test("sales tax regions: typed text that names New York State with a ZIP code outside it, or another state with a New York ZIP code or a New York City name, is not priced as either", () => {
+  const conflicts = ["1 Main St, Mineola, NY 07030", "1 Main St, Mineola, New York 06830", "1 Old Country Rd, Mineola NY 07030", "1 Main St, Mineola, 07030, NY", "350 5th Ave, Manhattan, NY 07030", "350 5th Ave, NYC 07030", "1 Main St, Greenwich, CT 11501", "Main St, NJ 11501", "350 5th Ave, New York, NJ", "350 5th Ave, New York, NJ 07030"];
+  assert.deepEqual(conflicts.map(textRegion), Array(conflicts.length).fill(""));
+  const outside = ["12 Washington St, Hoboken, NJ 07030", "1 Main St, West New York, NJ 07093", "100 New York Ave, Jersey City, NJ 07307", "10 Elm St, Greenwich, CT 06830", "10 Elm St, Greenwich, CT"];
+  assert.deepEqual(outside.map(textRegion), Array(outside.length).fill("US"));
+  assert.deepEqual(["1 Old Country Rd, Mineola, NY 11501", "1 Old Country Rd, Mineola, New York 11501", "350 5th Ave, New York, NY 10118"].map(textRegion), ["2811", "2811", "8081"]);
 });
 
 await test("budgets: 120 suggests and 15 picks per address a minute, then 429 busy without typed, another address still answers", async () => {

@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { CLASSES, VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
-import { MAIL } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject } from "./_trip.mjs";
+import { MAIL, CALENDAR } from "./_copy.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
 import { smsSettings, sendText, fitText } from "./_sms.mjs";
+import { calendarSettings, addEvents } from "./_calendar.mjs";
 
 const DEFAULTS = { host: "smtp.gmail.com", port: "465", from: "NYC LUX RIDE <info@nycluxride.com>", owners: "info@nycluxride.com,nycluxride@gmail.com" };
 const HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
@@ -18,10 +19,14 @@ const DATA_STAGES = ["data", "message"];
 const SMTP_MS = 8000;
 const STRIPE_MS = 5000;
 const STALE_MS = 120000;
+const CALENDAR_WAIT_MS = 60000;
 const SETTLE_MS = 2000;
 const MAX_TRIES = 5;
 const RUNS_PER_WINDOW = 300;
 const REQUEST_CONTEXT = Symbol.for("@vercel/request-context");
+const ZONE = "America/New_York";
+const EVENT_MINUTES = 60;
+const REMINDERS = [1440, 120];
 const STYLE = {
   body: "margin:0;padding:0;background-color:#ffffff;color:#14181f",
   wrap: "max-width:600px;margin:0 auto;padding:24px 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#14181f;background-color:#ffffff",
@@ -257,12 +262,58 @@ export function bookingText(session) {
   ]);
 }
 
+function legMinutes(b) {
+  const f = b.field;
+  const whole = (value) => (/^\d{1,5}$/.test(value) && Number(value) > 0 ? Number(value) : 0);
+  if (b.hourly) return [whole(f("hours")) * 60 || EVENT_MINUTES];
+  const drive = f("service") === "distance" ? whole(f("minutes")) : 0;
+  if (!b.back) return [drive || EVENT_MINUTES];
+  if (!drive) return [EVENT_MINUTES, EVENT_MINUTES];
+  const legs = whole(f("legs")) || 2;
+  const flat = whole(f("tolls_cents")) ? (legs === 2 ? "return" : "out") : "";
+  if (flat === "return") return [drive, EVENT_MINUTES];
+  if (flat === "out") return [EVENT_MINUTES, drive];
+  const back = Math.max(1, Math.round(drive / legs));
+  return [Math.max(1, drive - back), back];
+}
+
+export function bookingEvents(session) {
+  const b = bookingOf(session);
+  const f = b.field;
+  const data = metadataOf(session);
+  const L = MAIL.labels;
+  const { car, from, to } = subjectParts(data);
+  const [reference, ...trip] = tripRows(b);
+  const customer = [[MAIL.customer, b.name], [L.phone, b.phone], [L.email, b.email], ...(b.other ? [[MAIL.passenger, f("passenger_name")], [CALENDAR.passengerPhone, f("passenger_phone")]] : [])];
+  const rows = [reference, ...customer.filter(([, value]) => value), ...trip, ...(b.total === null ? [] : [[MAIL.paid, money(b.total)]])];
+  const description = [...(b.test ? [MAIL.testNote.join(" ")] : []), ...rows.map(([label, value]) => `${label}: ${String(value).replace(/\n/g, "\n  ")}`)].join("\n");
+  const tag = createHash("sha256").update(text(session.id)).digest("hex").slice(0, 16);
+  const ref = b.ref.toLowerCase().replace(/[^0-9a-v]/g, "");
+  const minutes = legMinutes(b);
+  const route = b.hourly ? routeSummary(data, from, to) : from && to ? fill(MAIL.route, { from, to }) : from || to;
+  const legs = [{ leg: "a", date: f("date"), time: f("time"), place: f("from_text"), route, title: "" }];
+  if (b.back) legs.push({ leg: "b", date: f("return_date"), time: f("return_time"), place: f("to_text"), route: from && to ? fill(MAIL.route, { from: to, to: from }) : "", title: CALENDAR.back });
+  return legs.map((leg, i) => {
+    const start = nycToUtc(leg.date, leg.time);
+    const end = new Date(start.getTime() + minutes[i] * 60000);
+    return {
+      id: `nlr${ref}${leg.leg}${tag}`,
+      summary: `${b.test ? MAIL.test : ""}${leg.title}${[b.ref, car].filter(Boolean).join(" ")}${leg.route ? `: ${leg.route}` : ""}`,
+      ...(placeText(leg.place) && { location: placeText(leg.place) }),
+      description,
+      start: { dateTime: start.toISOString(), timeZone: ZONE },
+      end: { dateTime: end.toISOString(), timeZone: ZONE },
+      reminders: { useDefault: false, overrides: REMINDERS.map((before) => ({ method: "popup", minutes: before })) },
+    };
+  });
+}
+
 function attemptOf(metadata) {
   try {
     const attempt = JSON.parse(text(metadata.email_attempt) || "null");
     const at = Date.parse(attempt && attempt.at);
     if (!attempt || !Number.isInteger(attempt.n) || attempt.n < 1 || !Number.isFinite(at)) return null;
-    return { n: attempt.n, at, sent: Array.isArray(attempt.sent) ? attempt.sent.filter((kind) => KINDS.includes(kind)) : [], failed: attempt.failed === true, tries: Number.isInteger(attempt.tries) && attempt.tries > 0 ? attempt.tries : 0, texted: text(attempt.texted_at) };
+    return { n: attempt.n, at, sent: Array.isArray(attempt.sent) ? attempt.sent.filter((kind) => KINDS.includes(kind)) : [], failed: attempt.failed === true, tries: Number.isInteger(attempt.tries) && attempt.tries > 0 ? attempt.tries : 0, texted: text(attempt.texted_at), booked: attempt.booked === 1 };
   } catch {
     return null;
   }
@@ -325,6 +376,62 @@ async function deliver(settings, letters, ref) {
   return { sent, reached: results.some((result) => !result.ok && DATA_STAGES.includes(result.stage)) };
 }
 
+function leftOf(metadata) {
+  const match = /^(\S+) calendar (\d{1,2}) (\S+)$/.exec(text(metadata.emailed_at));
+  const at = match ? Date.parse(match[3]) : NaN;
+  return match ? { stamp: match[1], tries: Number(match[2]), at: Number.isFinite(at) ? at : 0 } : null;
+}
+
+function eventsFor(session, oidc, ref, untrusted) {
+  const calendar = calendarSettings();
+  if (calendar.off) return null;
+  if (calendar.bad) {
+    console.error("calendar-config", ref);
+    return null;
+  }
+  return Promise.resolve()
+    .then(() => addEvents(calendar, bookingEvents(session), oidc, ref, untrusted))
+    .then((state) => {
+      if (state === "permanent") console.error("calendar-gave-up", ref);
+      return state;
+    })
+    .catch(() => {
+      console.error("calendar-fail", ref, "handler");
+      return "failed";
+    });
+}
+
+const waitingFor = (stamp, tries, at = Date.now()) => `${stamp} calendar ${tries} ${new Date(at).toISOString()}`;
+
+async function settleEvents(store, state, { stamp, tries, at }, key, ref) {
+  const was = `${tries}-${at}`;
+  if (state === "done") {
+    await mark(store, { emailed_at: stamp }, key, `nlr-cal-${store.id}-done-${was}`, ref);
+    return "done";
+  }
+  const counted = state !== "rejected";
+  if (state === "permanent" || (counted && tries + 1 >= MAX_TRIES)) {
+    if (state !== "permanent") console.error("calendar-gave-up", ref);
+    await mark(store, { emailed_at: stamp }, key, `nlr-cal-${store.id}-gave-up-${was}`, ref);
+    return "gave-up";
+  }
+  const next = counted ? tries + 1 : tries;
+  await mark(store, { emailed_at: waitingFor(stamp, next) }, key, `nlr-cal-${store.id}-${next}-${Date.now()}`, ref);
+  return "calendar";
+}
+
+async function eventsLeft(session, data, key, oidc, ref, untrusted) {
+  const left = leftOf(data);
+  const calendar = calendarSettings();
+  if (left === null || calendar.off || calendar.bad) return "done";
+  if (Math.abs(Date.now() - left.at) < CALENDAR_WAIT_MS) return "calendar";
+  if (!instanceBudget("stripe-mail", RUNS_PER_WINDOW)) {
+    console.error("stripe-budget");
+    return "calendar";
+  }
+  return settleEvents({ object: "checkout/sessions", id: session.id }, await eventsFor(session, oidc, ref, untrusted), left, key, ref);
+}
+
 async function textOwner(phone, session, ref) {
   try {
     return await sendText(phone, bookingText(session), ref);
@@ -334,25 +441,29 @@ async function textOwner(phone, session, ref) {
   }
 }
 
-export async function mailBooking(session, key, { unmarked = false } = {}) {
+export async function mailBooking(session, key, { unmarked = false, oidc = "", untrusted = false } = {}) {
   const ref = refOf(session);
   try {
     if (!session || session.payment_status !== "paid") return "unpaid";
     const data = metadataOf(session);
     if (!ref || !validDate(text(data.date)) || !TIME.test(text(data.time))) return "skip";
-    if (text(data.emailed_at)) return "done";
+    if (text(data.emailed_at)) return await eventsLeft(session, data, key, oidc, ref, untrusted);
+    const events = () => eventsFor(session, oidc, ref, untrusted);
     const settings = mailSettings();
     if (settings.off) {
       console.log("mail-off", ref);
+      await events();
       return "off";
     }
     if (settings.bad) {
       console.error("mail-config", ref);
+      await events();
       return "failed";
     }
     const letters = bookingLetters(session, settings, Date.now());
     if (!letters.length) {
       console.error("mail-none", ref);
+      await events();
       return "off";
     }
     if (!instanceBudget("stripe-mail", RUNS_PER_WINDOW)) {
@@ -370,13 +481,15 @@ export async function mailBooking(session, key, { unmarked = false } = {}) {
     const todo = letters.filter((letter) => !sent.includes(letter.kind));
     const n = (previous ? previous.n : 0) + 1;
     const tries = previous ? previous.tries + (previous.failed ? 0 : 1) : 0;
+    const booked = Boolean(previous && previous.booked);
     if (tries >= MAX_TRIES) {
       console.error("mail-gave-up", ref);
+      if (!booked) await events();
       return "gave-up";
     }
     const at = new Date(now).toISOString();
     const marker = texted || (texting ? at : "");
-    const attempt = { n, at, id: randomBytes(6).toString("hex"), sent, tries, ...(marker && { texted_at: marker }) };
+    const attempt = { n, at, id: randomBytes(6).toString("hex"), sent, tries, ...(marker && { texted_at: marker }), ...(booked && { booked: 1 }) };
     const result = await claim(store, attempt, key);
     if (result.lost) return "busy";
     if (result.transient !== undefined) {
@@ -390,23 +503,35 @@ export async function mailBooking(session, key, { unmarked = false } = {}) {
         return "unmarked";
       }
       if (texting) console.error("sms-unmarked", ref);
+      const adding = events();
       const { sent: done } = await deliver(settings, todo, ref);
+      await adding;
       return done.length === todo.length ? "sent" : done.length ? "partial" : "failed";
     }
     if (phone.off) console.log("sms-off", ref);
     if (phone.bad) console.error("sms-config", ref);
     if (texted && !previous.failed) console.error("sms-inherited", ref);
     let textState = "";
+    let eventState = "";
     const texts = texting ? textOwner(phone, session, ref).then((state) => (textState = state)) : null;
+    const adding = booked ? null : events();
+    const added = adding ? adding.then((state) => (eventState = state)) : null;
     const { sent: done, reached } = await deliver(settings, todo, ref);
     if (done.length === todo.length) {
-      await mark(store, { emailed_at: new Date().toISOString(), email_attempt: "" }, key, `nlr-mail-${store.id}-${n}-done`, ref);
+      const waiting = Boolean(added) && !["done", "permanent"].includes(eventState);
+      const stamp = new Date().toISOString();
+      const since = Date.now();
+      await mark(store, { emailed_at: waiting ? waitingFor(stamp, 0, since) : stamp, email_attempt: "" }, key, `nlr-mail-${store.id}-${n}-done`, ref);
       await texts;
-      return "sent";
+      if (!waiting) return "sent";
+      await added;
+      const state = await settleEvents(store, eventState, { stamp, tries: 0, at: since }, key, ref);
+      return state === "done" ? "sent" : state;
     }
-    const failed = { ...attempt, sent: [...sent, ...done], failed: true, tries: tries + (reached ? 1 : 0) };
+    const failed = { ...attempt, sent: [...sent, ...done], failed: true, tries: tries + (reached ? 1 : 0), ...(["done", "permanent"].includes(eventState) && { booked: 1 }) };
     await mark(store, { email_attempt: JSON.stringify(textState === "unsent" ? { ...failed, texted_at: undefined } : failed) }, key, `nlr-mail-${store.id}-${n}-failed`, ref);
     await texts;
+    await added;
     return "failed";
   } catch {
     console.error("mail-fail", ref, "handler");
