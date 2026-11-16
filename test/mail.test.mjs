@@ -148,7 +148,7 @@ function fakeSmtp() {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(Object.assign(state, { server, port: server.address().port }))));
 }
 
-const stripe = { sessions: new Map(), intents: new Map(), keys: new Map(), calls: [], intentAccess: "write", sessionUpdates: "allow", delay: 0, lose: null, fail: null };
+const stripe = { sessions: new Map(), intents: new Map(), keys: new Map(), calls: [], intentCalls: [], intentAccess: "write", sessionUpdates: "allow", delay: 0, lose: null, fail: null };
 const answer = (status, body, headers = {}) => new Response(JSON.stringify(body), { status, headers: { "request-id": "req_fake0001", ...headers } });
 const forbidden = () => answer(403, { error: { type: "invalid_request_error", message: "The provided key does not have the required permissions for this endpoint." } });
 const missing = () => answer(404, { error: { type: "invalid_request_error", code: "resource_missing" } });
@@ -218,6 +218,7 @@ globalThis.fetch = async (url, init = {}) => {
   }
   match = /^\/v1\/payment_intents\/([^/]+)$/.exec(target.pathname);
   if (match) {
+    stripe.intentCalls.push(`${method} ${target.pathname}`);
     if (stripe.intentAccess === "none") return forbidden();
     const intent = stripe.intents.get(decodeURIComponent(match[1]));
     if (!intent) return missing();
@@ -309,7 +310,7 @@ function paid(fix, { live = false, intent = true, metadata = {}, customer = {} }
   if (intent) stripe.intents.set(pi, { id: pi, object: "payment_intent", status: "succeeded", amount: fix.total, metadata: { ...data } });
   return session;
 }
-const intentOf = (session) => stripe.intents.get(session.payment_intent);
+const markersOf = (session) => stripe.sessions.get(session.id);
 const lookup = (session) => GET(new Request(`http://127.0.0.1:4173/api/book?session_id=${encodeURIComponent(session.id)}`));
 const sessionBodyOf = (session) => {
   const r = receipt(session.metadata, readSettings({}), undefined);
@@ -629,8 +630,8 @@ await test("a trip with two stops: Stop 1 and Stop 2 in order between the pickup
   const route = ["Pickup: LaGuardia (LGA)", "Stop 1: 277 Bedford Ave, Brooklyn, NY 11211", "Stop 2: John F. Kennedy (JFK)", "Drop-off: 350 5th Ave, New York, NY 10118"];
   assert.deepEqual(sectionOf(customer.text, "Your trip").slice(2, 6), route);
   assert.deepEqual(sectionOf(owner.text, "Trip").slice(2, 6), route);
-  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $447.01", "Taxes and fees: $49.74", "Tolls: $38.25", "Paid: $535.00"]);
-  assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. Business SUV, 3 airport transfers.\n"));
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $137.01", "Taxes and fees: $15.24", "Tolls: $12.75", "Extra stops (2 x $20.00): $40.00", "Paid: $205.00"]);
+  assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. From LaGuardia (LGA), Business SUV.\n"));
   assert.ok(customer.text.includes(`\nOn the day: ${MAIL.day.tracked} ${MAIL.day.bags}\n`));
   for (const letter of [customer, owner]) {
     const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
@@ -957,11 +958,11 @@ await test("dormant mode: without SMTP_USER or SMTP_PASS the confirmation check 
     assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path}`), [`GET /v1/checkout/sessions/${session.id}`]);
     assert.deepEqual([noted, logged], [["mail-off 83558982"], []]);
     assert.equal(smtp.sessions.length, 0);
-    assert.deepEqual(intentOf(session).metadata, session.metadata);
+    assert.deepEqual([markersOf(session).metadata, stripe.intents.get(session.payment_intent).metadata], [ONE_WAY.metadata, ONE_WAY.metadata]);
   }
 });
 
-await test("the confirmation check sends both emails once a session is paid, sets emailed_at on the PaymentIntent, and later checks and the webhook send nothing more", async () => {
+await test("the confirmation check sends both emails once a session is paid, sets emailed_at on the Checkout Session, and later checks and the webhook send nothing more", async () => {
   setEnv(mailEnv());
   withContext();
   const session = paid(ONE_WAY);
@@ -983,11 +984,12 @@ await test("the confirmation check sends both emails once a session is paid, set
   assert.deepEqual([customer.headers.get("mime-version"), customer.headers.get("auto-submitted")], ["1.0", "auto-generated"]);
   assert.match(customer.headers.get("content-type"), /^multipart\/alternative; boundary="nlr-[0-9a-f]{24}"$/);
   assert.deepEqual(customer.parts.map((p) => p.type), ["text/plain", "text/html"]);
-  const marker = intentOf(session).metadata;
+  const marker = markersOf(session).metadata;
   assert.match(marker.emailed_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   assert.equal(marker.email_attempt, undefined);
   assert.ok(Object.keys(marker).length <= 50);
-  assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET /v1/payment_intents/${session.payment_intent} `, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1`, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1-done`]);
+  assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1`, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1-done`]);
+  assert.deepEqual(stripe.intents.get(session.payment_intent).metadata, ONE_WAY.metadata);
   assert.ok(stripe.calls.every((c) => c.auth === `Bearer ${KEY}`));
   assert.deepEqual(noted, ["sms-off 83558982", "mail-sent 83558982 customer owner"]);
   assert.deepEqual(logged, []);
@@ -1011,7 +1013,7 @@ await test("the webhook sends both emails to the addresses Stripe holds for the 
   assert.deepEqual(sent.map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
   for (const m of sent) for (const value of Object.values(forged)) assert.ok(!m.data.includes(value) && !m.mail.text.includes(value) && !m.mail.html.includes(value));
   assert.ok(!sent[1].mail.text.includes("Forged notes"));
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
   withContext();
   await lookup(session);
   assert.deepEqual(await settled(), ["done"]);
@@ -1032,9 +1034,9 @@ await test("the send-once claim: a confirmation check and a webhook that arrive 
   const sent = delivered();
   assert.deepEqual(sent.map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
   assert.equal(smtp.sessions.length, 1);
-  const claims = stripe.calls.filter((c) => c.method === "POST" && c.idempotency === `nlr-mail-${session.payment_intent}-1`);
+  const claims = stripe.calls.filter((c) => c.method === "POST" && c.idempotency === `nlr-mail-${session.id}-1`);
   assert.equal(claims.length, 2);
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
 });
 
 await test("a failing SMTP server never breaks the confirmation page: a refused password, a dropped connection and a closed port all answer the normal paid body, mark the try failed, and the next check sends", async () => {
@@ -1048,15 +1050,15 @@ await test("a failing SMTP server never breaks the confirmation page: a refused 
   assert.deepEqual(await settled(), ["failed"]);
   assert.deepEqual(logged, ["mail-fail 83558982 customer auth 535", "mail-fail 83558982 owner auth 535"]);
   assert.equal(delivered().length, 0);
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
-  assert.deepEqual([tried.n, tried.failed, tried.sent, intentOf(session).metadata.emailed_at], [1, true, [], undefined]);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
+  assert.deepEqual([tried.n, tried.failed, tried.sent, markersOf(session).metadata.emailed_at], [1, true, [], undefined]);
   smtp.behavior = {};
   logged.length = 0;
   await lookup(session);
   assert.deepEqual(await settled(), ["sent"]);
   assert.equal(delivered().length, 2);
-  assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
-  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.payment_intent}-2`));
+  assert.ok(markersOf(session).metadata.emailed_at && !markersOf(session).metadata.email_attempt);
+  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.id}-2`));
   const closed = await new Promise((resolve) => {
     const probe = createNetServer().listen(0, "127.0.0.1", () => {
       const { port } = probe.address();
@@ -1086,7 +1088,7 @@ await test("a mail server that stops answering never holds the confirmation page
   for (const socket of smtp.sockets) socket.destroy();
   await until(() => logged.length === 2);
   assert.ok(logged.every((line, i) => new RegExp(`^mail-fail 83558982 ${["customer", "owner"][i]} ehlo (closed|ECONNRESET)$`).test(line)), logged.join(" | "));
-  await until(() => intentOf(session).metadata.email_attempt && JSON.parse(intentOf(session).metadata.email_attempt).failed);
+  await until(() => markersOf(session).metadata.email_attempt && JSON.parse(markersOf(session).metadata.email_attempt).failed);
 });
 
 await test("a request context that throws never breaks the confirmation page: the paid body comes back, one line says so, and the emails still go out once", async () => {
@@ -1100,7 +1102,7 @@ await test("a request context that throws never breaks the confirmation page: th
     const session = paid(ONE_WAY);
     const res = await lookup(session);
     const answered = [res.status, await res.json()];
-    await until(() => delivered().length === 2 && intentOf(session).metadata.emailed_at);
+    await until(() => delivered().length === 2 && markersOf(session).metadata.emailed_at);
     assert.deepEqual(answered, [200, sessionBodyOf(session)]);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
     assert.deepEqual(logged, ["mail-context"]);
@@ -1116,14 +1118,14 @@ await test("a message that fails alone is retried alone: the customer email is n
   await lookup(session);
   assert.deepEqual(await settled(), ["failed"]);
   assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"]]);
-  assert.deepEqual(JSON.parse(intentOf(session).metadata.email_attempt).sent, ["customer"]);
+  assert.deepEqual(JSON.parse(markersOf(session).metadata.email_attempt).sent, ["customer"]);
   assert.deepEqual(logged, ["mail-fail 83558982 owner rcpt 550"]);
   smtp.behavior = {};
   smtp.sessions.length = 0;
   const hooked = await hook(completed(session));
   assert.equal(hooked.status, 200);
   assert.deepEqual(delivered().map((m) => [m.to, m.mail.headers.get("message-id").split(".")[0]]), [[OWNERS, "<owner"]]);
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
 });
 
 await test("a customer email the mail server refuses never holds back the owner notice: the owner gets it, the try is marked failed, and the next check sends only the customer email", async () => {
@@ -1136,15 +1138,15 @@ await test("a customer email the mail server refuses never holds back the owner 
   assert.deepEqual(await settled(), ["failed"]);
   assert.deepEqual(delivered().map((m) => [m.to, m.mail.headers.get("message-id").split(".")[0]]), [[OWNERS, "<owner"]]);
   assert.deepEqual([logged, noted], [["mail-fail 83558982 customer message 554"], ["sms-off 83558982", "mail-sent 83558982 owner"]]);
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
-  assert.deepEqual([tried.n, tried.failed, tried.sent, intentOf(session).metadata.emailed_at], [1, true, ["owner"], undefined]);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
+  assert.deepEqual([tried.n, tried.failed, tried.sent, markersOf(session).metadata.emailed_at], [1, true, ["owner"], undefined]);
   smtp.behavior = {};
   smtp.sessions.length = 0;
   await lookup(session);
   assert.deepEqual(await settled(), ["sent"]);
   assert.deepEqual(delivered().map((m) => [m.to, m.mail.headers.get("message-id").split(".")[0]]), [[["ana.lopez@example.com"], "<customer"]]);
-  assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
-  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.payment_intent}-2`));
+  assert.ok(markersOf(session).metadata.emailed_at && !markersOf(session).metadata.email_attempt);
+  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.id}-2`));
 });
 
 await test("refused logins and bad mail settings never use up the tries: until the setting is fixed the webhook answers 503 so Stripe retries, and after five refused logins the fixed password sends each email once", async () => {
@@ -1159,7 +1161,7 @@ await test("refused logins and bad mail settings never use up the tries: until t
       assert.deepEqual(await settled(), ["failed"]);
     }
   }
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
   assert.deepEqual([tried.n, tried.failed, tried.sent, delivered().length], [5, true, [], 0]);
   assert.deepEqual(logged, Array(5).fill(["mail-fail 83558982 customer auth 535", "mail-fail 83558982 owner auth 535"]).flat());
   smtp.behavior = {};
@@ -1167,8 +1169,8 @@ await test("refused logins and bad mail settings never use up the tries: until t
   await lookup(session);
   assert.deepEqual(await settled(), ["sent"]);
   assert.deepEqual(delivered().map((m) => [m.to, m.mail.headers.get("message-id").split(".")[0]]), [[["ana.lopez@example.com"], "<customer"], [OWNERS, "<owner"]]);
-  assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
-  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.payment_intent}-6`));
+  assert.ok(markersOf(session).metadata.emailed_at && !markersOf(session).metadata.email_attempt);
+  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.id}-6`));
   assert.equal((await hook(completed(session))).status, 200);
   assert.deepEqual([delivered().length, logged, tried.tries], [2, [], 0]);
   for (const bad of [{ MAIL_FROM: "NYC LUX RIDE <not an address>" }, { SMTP_HOST: "smtp.gmail.com\r\nRCPT" }, { SMTP_PORT: "70000" }]) {
@@ -1193,7 +1195,7 @@ await test("a message the server refuses after DATA, or a claim that never finis
     await lookup(session);
     assert.deepEqual(await settled(), ["failed"]);
   }
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
   assert.deepEqual([tried.n, tried.sent], [5, ["owner"]]);
   smtp.behavior = {};
   logged.length = 0;
@@ -1204,7 +1206,7 @@ await test("a message the server refuses after DATA, or a claim that never finis
   assert.deepEqual(delivered().map((m) => m.to), [OWNERS]);
   const unfinished = (tries) => {
     const booking = paid(ONE_WAY);
-    intentOf(booking).metadata.email_attempt = JSON.stringify({ n: 7, at: new Date(Date.now() - 130000).toISOString(), id: "abc123", sent: [], tries });
+    markersOf(booking).metadata.email_attempt = JSON.stringify({ n: 7, at: new Date(Date.now() - 130000).toISOString(), id: "abc123", sent: [], tries });
     return booking;
   };
   const spent = unfinished(4);
@@ -1213,7 +1215,7 @@ await test("a message the server refuses after DATA, or a claim that never finis
   const left = unfinished(3);
   await lookup(left);
   assert.deepEqual(await settled(), ["sent"]);
-  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${left.payment_intent}-8`));
+  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${left.id}-8`));
   assert.deepEqual(delivered().slice(1).map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
   assert.equal(tried.tries, 5);
 });
@@ -1221,21 +1223,21 @@ await test("a message the server refuses after DATA, or a claim that never finis
 await test("a webhook that finds the work already claimed waits for it, and answers 503 so Stripe retries when the claim is still open", async () => {
   setEnv(mailEnv());
   const session = paid(ONE_WAY);
-  intentOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at: new Date().toISOString(), id: "abc123", sent: [] });
+  markersOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at: new Date().toISOString(), id: "abc123", sent: [] });
   const started = Date.now();
   const res = await hook(completed(session));
   assert.equal(res.status, 503);
   assert.ok(Date.now() - started >= 3900, "it waits twice before it gives up");
   assert.equal(stripe.calls.filter((c) => c.method === "GET" && c.path.startsWith("/v1/checkout/sessions/")).length, 3);
   assert.equal(delivered().length, 0);
-  intentOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at: new Date(Date.now() - 130000).toISOString(), id: "abc123", sent: [] });
+  markersOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at: new Date(Date.now() - 130000).toISOString(), id: "abc123", sent: [] });
   assert.equal((await hook(completed(session))).status, 200);
   assert.equal(delivered().length, 2);
-  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.payment_intent}-2`));
+  assert.ok(stripe.calls.some((c) => c.idempotency === `nlr-mail-${session.id}-2`));
 });
 
-await test("without PaymentIntent access the marker falls back to the Checkout Session metadata, which the documented key can write, and still sends once", async () => {
-  for (const access of ["none", "read"]) {
+await test("the marker lives only on the Checkout Session metadata, which the documented key can write: whatever the key may do with the PaymentIntent, it is never read or written, no 403 is logged, and the emails go out once", async () => {
+  for (const access of ["write", "read", "none"]) {
     setEnv(mailEnv());
     stripe.intentAccess = access;
     withContext();
@@ -1244,8 +1246,9 @@ await test("without PaymentIntent access the marker falls back to the Checkout S
     assert.deepEqual(await settled(), ["sent"]);
     assert.equal(delivered().length, 2);
     assert.ok(stripe.sessions.get(session.id).metadata.emailed_at, access);
-    assert.equal(intentOf(session).metadata.emailed_at, undefined);
-    assert.ok(logged.includes("mail-marker 83558982 payment_intents 403"), logged.join(" | "));
+    assert.deepEqual(stripe.intents.get(session.payment_intent).metadata, ONE_WAY.metadata, access);
+    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1`, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1-done`], access);
+    assert.deepEqual(logged, [], access);
     const before = [stripe.calls.length, logged.length];
     await lookup(session);
     assert.deepEqual(await settled(), ["done"]);
@@ -1258,20 +1261,19 @@ await test("without PaymentIntent access the marker falls back to the Checkout S
 
 await test("with no marker Stripe will keep, the confirmation check sends nothing and says so, and only the verified webhook sends, once per event", async () => {
   setEnv(mailEnv());
-  stripe.intentAccess = "none";
   stripe.sessionUpdates = "refuse";
   withContext();
   const session = paid(ONE_WAY);
   await lookup(session);
   assert.deepEqual(await settled(), ["unmarked"]);
   assert.equal(delivered().length, 0);
-  assert.deepEqual(logged, ["mail-marker 83558982 payment_intents 403", "mail-marker 83558982 checkout/sessions 400", "mail-unmarked 83558982"]);
+  assert.deepEqual(logged, ["mail-marker 83558982 checkout/sessions 400", "mail-unmarked 83558982"]);
   assert.equal((await hook(completed(session))).status, 200);
   assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
 });
 
 await test("a refused marker that Stripe keeps under its idempotency key is not mistaken for another trigger's claim: the webhook re-reads twice, finds no claim and sends, instead of answering 503 until the key expires", async () => {
-  for (const access of ["none", "read-kept"]) {
+  for (const access of ["write", "read-kept", "none"]) {
     setEnv(mailEnv());
     stripe.intentAccess = access;
     stripe.sessionUpdates = "refuse-kept";
@@ -1285,11 +1287,9 @@ await test("a refused marker that Stripe keeps under its idempotency key is not 
     const res = await hook(completed(session));
     assert.equal(res.status, 200, access);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
-    const reread = (path, id) => [`POST ${path} nlr-mail-${id}-1`, `GET ${path} `, `GET ${path} `];
-    const intent = `/v1/payment_intents/${session.payment_intent}`;
     const checkout = `/v1/checkout/sessions/${session.id}`;
-    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET ${checkout} `, `GET ${intent} `, ...(access === "none" ? [] : reread(intent, session.payment_intent)), ...reread(checkout, session.id)], access);
-    assert.deepEqual(logged, [`mail-marker 83558982 payment_intents ${access === "none" ? 403 : 400}`, "mail-marker 83558982 checkout/sessions 400"]);
+    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET ${checkout} `, `POST ${checkout} nlr-mail-${session.id}-1`, `GET ${checkout} `, `GET ${checkout} `], access);
+    assert.deepEqual(logged, ["mail-marker 83558982 checkout/sessions 400"], access);
   }
 });
 
@@ -1320,7 +1320,7 @@ await test("a booking with no valid customer email still sends the owner notice,
   assert.ok(owner.text.startsWith(`Test booking. No real payment was taken.\n\nNew booking 83558982\n\n${MAIL.noCustomer}\n`));
   assert.equal(owner.headers.get("reply-to"), undefined);
   assert.ok(!owner.text.includes(MAIL.ownerNext) && !owner.text.includes("Email:"));
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
 });
 
 await test("webhook: every request is rejected with 503 while STRIPE_WEBHOOK_SECRET is unset, before Stripe or the mail server is touched", async () => {
@@ -1435,9 +1435,9 @@ await test("texting off: with no Twilio setting, or one missing or malformed, bo
     const res = await hook(completed(session));
     assert.deepEqual([res.status, await res.json()], [200, { received: true }], line);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
-    assert.ok(intentOf(session).metadata.emailed_at);
+    assert.ok(markersOf(session).metadata.emailed_at);
     assert.equal(twilio.calls.length, 0);
-    const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-1`);
+    const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.id}-1`);
     assert.equal(JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]")).texted_at, undefined);
     const [said, quiet] = line.startsWith("sms-off") ? [noted, logged] : [logged, noted];
     assert.deepEqual([said.filter((l) => l.startsWith("sms-")), quiet.filter((l) => l.startsWith("sms-"))], [[line], []], JSON.stringify(env));
@@ -1459,12 +1459,12 @@ await test("with Twilio set, the confirmation check texts the owner once as the 
   assert.deepEqual([call.form.get("To"), call.form.get("From"), call.form.get("Body")], [OWNER_PHONE, SENDER, bookingText(session)]);
   assert.ok(call.form.get("Body").startsWith("[TEST] NYC LUX RIDE booking\nAna Lopez, +1 212 555 0100\nThu Nov 12, 7:30 AM\nJFK to 350 5th Ave, return Sun Nov 15, 6:00 PM\n"));
   assert.equal(call.mails, 0, "the text starts with the emails, not after them");
-  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-1`);
+  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.id}-1`);
   const attempt = JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]"));
   assert.equal(attempt.texted_at, attempt.at);
-  assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
-  assert.ok(Object.keys(intentOf(session).metadata).length <= 50);
-  assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET /v1/payment_intents/${session.payment_intent} `, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1`, `POST /v1/payment_intents/${session.payment_intent} nlr-mail-${session.payment_intent}-1-done`]);
+  assert.ok(markersOf(session).metadata.emailed_at && !markersOf(session).metadata.email_attempt);
+  assert.ok(Object.keys(markersOf(session).metadata).length <= 50);
+  assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1`, `POST /v1/checkout/sessions/${session.id} nlr-mail-${session.id}-1-done`]);
   assert.deepEqual([noted.filter((l) => l.startsWith("sms-")), logged], [[`sms-sent 83558982 201 ${sid("RQ", "request 1")}`], []]);
   for (let i = 0; i < 3; i++) {
     await lookup(session);
@@ -1489,7 +1489,7 @@ await test("with Twilio set, a confirmation check and a webhook that arrive toge
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
     assert.equal(twilio.calls.length, 1, `delay ${delay}`);
     assert.equal(twilio.calls[0].form.get("Body"), bookingText(session));
-    assert.ok(intentOf(session).metadata.emailed_at);
+    assert.ok(markersOf(session).metadata.emailed_at);
   }
   assert.equal(stripe.calls.filter((c) => c.method === "POST" && c.idempotency.endsWith("-1")).length, 2, "both triggers tried the claim");
 });
@@ -1500,16 +1500,16 @@ await test("with Twilio set, a webhook retry after the mail server failed sends 
   const session = paid(ONE_WAY);
   assert.equal((await hook(completed(session))).status, 503);
   assert.equal(twilio.calls.length, 1);
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
   assert.deepEqual([tried.failed, tried.sent, tried.texted_at === tried.at], [true, [], true]);
   assert.equal((await hook(completed(session))).status, 503);
-  const again = JSON.parse(intentOf(session).metadata.email_attempt);
+  const again = JSON.parse(markersOf(session).metadata.email_attempt);
   assert.deepEqual([again.n, again.failed, again.texted_at], [2, true, tried.texted_at]);
   assert.equal(twilio.calls.length, 1);
   smtp.behavior = {};
   for (let i = 0; i < 2; i++) assert.equal((await hook(completed(session))).status, 200);
   assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
   assert.equal(twilio.calls.length, 1);
   setEnv(mailEnv(SMS));
   withContext();
@@ -1517,7 +1517,7 @@ await test("with Twilio set, a webhook retry after the mail server failed sends 
   const other = paid(ROUND);
   await lookup(other);
   assert.deepEqual(await settled(), ["failed"]);
-  assert.deepEqual(JSON.parse(intentOf(other).metadata.email_attempt).sent, ["owner"]);
+  assert.deepEqual(JSON.parse(markersOf(other).metadata.email_attempt).sent, ["owner"]);
   smtp.behavior = {};
   await lookup(other);
   assert.deepEqual(await settled(), ["sent"]);
@@ -1539,7 +1539,7 @@ await test("with Twilio set, a text Twilio refused before the emails failed is t
     twilio.replies = [...replies];
     const session = paid(NEW_JERSEY);
     assert.equal((await hook(completed(session))).status, 503);
-    const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+    const tried = JSON.parse(markersOf(session).metadata.email_attempt);
     assert.deepEqual([tried.failed, marker ? tried.texted_at === tried.at : tried.texted_at], [true, marker ? true : undefined], JSON.stringify(logged));
     smtp.behavior = {};
     assert.equal((await hook(completed(session))).status, 200);
@@ -1566,7 +1566,7 @@ await test("with Twilio set, a Twilio that fails never holds back the emails or 
     const res = await hook(completed(session));
     assert.deepEqual([res.status, await res.json()], [200, { received: true }], line);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
-    assert.ok(intentOf(session).metadata.emailed_at && !intentOf(session).metadata.email_attempt);
+    assert.ok(markersOf(session).metadata.emailed_at && !markersOf(session).metadata.email_attempt);
     assert.equal(twilio.calls.length, asked, line);
     assert.ok(logged.some((l) => l.startsWith(line)), `${line} | ${logged.join(" | ")}`);
     assert.equal((await hook(completed(session))).status, 200);
@@ -1582,7 +1582,7 @@ await test("with Twilio set, a Twilio that never answers holds a webhook only fo
   const failing = paid(ONE_WAY, { metadata: { email: "ben.ortiz@example.com" }, customer: { email: "ben.ortiz@example.com" } });
   const started = Date.now();
   const answers = Promise.all([hook(completed(fine)), hook(completed(failing))]);
-  await until(() => intentOf(fine).metadata.emailed_at && twilio.calls.length === 2);
+  await until(() => markersOf(fine).metadata.emailed_at && twilio.calls.length === 2);
   assert.ok(twilio.calls.every((c) => !c.signal.aborted), "the emails and their marker never wait for the text");
   assert.deepEqual(delivered().filter((m) => m.to.includes("ana.lopez@example.com")).length, 1);
   const [first, second] = await answers;
@@ -1591,18 +1591,17 @@ await test("with Twilio set, a Twilio that never answers holds a webhook only fo
   assert.ok(took >= 7900 && took < 9500, `took ${took} ms`);
   assert.ok(twilio.calls.every((c) => c.signal.aborted));
   assert.deepEqual(logged.filter((l) => l.startsWith("sms-")), ["sms-fail 83558982 timeout", "sms-fail 83558982 timeout"]);
-  const kept = JSON.parse(intentOf(failing).metadata.email_attempt);
+  const kept = JSON.parse(markersOf(failing).metadata.email_attempt);
   assert.deepEqual([kept.failed, kept.sent, kept.texted_at === kept.at], [true, ["owner"], true]);
   smtp.behavior = {};
   assert.equal((await hook(completed(failing))).status, 200);
-  assert.ok(intentOf(failing).metadata.emailed_at);
+  assert.ok(markersOf(failing).metadata.emailed_at);
   assert.equal(delivered().filter((m) => m.to.includes("ben.ortiz@example.com")).length, 1);
   assert.equal(twilio.calls.length, 2);
 });
 
 await test("with Twilio set but no marker Stripe will keep, the confirmation check sends nothing and the webhook sends the emails without a text, since only the claim holder may text", async () => {
   setEnv(mailEnv(SMS));
-  stripe.intentAccess = "none";
   stripe.sessionUpdates = "refuse";
   withContext();
   const session = paid(ONE_WAY);
@@ -1614,8 +1613,8 @@ await test("with Twilio set but no marker Stripe will keep, the confirmation che
   assert.deepEqual(logged.filter((l) => l.startsWith("sms-")), ["sms-unmarked 83558982"]);
 });
 
-await test("with Twilio set and no PaymentIntent the key can write, the claim and its text marker live on the Checkout Session: one text, and a webhook retry after the mail server failed sends the emails and no second text", async () => {
-  for (const access of ["none", "read"]) {
+await test("with Twilio set, the claim and its text marker live on the Checkout Session whatever the key may do with the PaymentIntent: one text, and a webhook retry after the mail server failed sends the emails and no second text", async () => {
+  for (const access of ["write", "read", "none"]) {
     setEnv(mailEnv(SMS));
     stripe.intentAccess = access;
     smtp.behavior = { auth: "535 5.7.8 Username and Password not accepted" };
@@ -1623,12 +1622,13 @@ await test("with Twilio set and no PaymentIntent the key can write, the claim an
     assert.equal((await hook(completed(session))).status, 503, access);
     assert.equal(twilio.calls.length, 1, access);
     const tried = JSON.parse(stripe.sessions.get(session.id).metadata.email_attempt);
-    assert.deepEqual([tried.failed, tried.texted_at === tried.at, intentOf(session).metadata.email_attempt], [true, true, undefined], access);
+    assert.deepEqual([tried.failed, tried.texted_at === tried.at, stripe.intents.get(session.payment_intent).metadata.email_attempt], [true, true, undefined], access);
     smtp.behavior = {};
     for (let i = 0; i < 2; i++) assert.equal((await hook(completed(session))).status, 200, access);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS], access);
     assert.ok(stripe.sessions.get(session.id).metadata.emailed_at, access);
     assert.equal(twilio.calls.length, 1, access);
+    assert.deepEqual(stripe.intents.get(session.payment_intent).metadata, ONE_WAY.metadata, access);
   }
 });
 
@@ -1636,16 +1636,16 @@ await test("with Twilio set, a claim left by a run that died is taken over after
   setEnv(mailEnv(SMS));
   const at = new Date(Date.now() - 130000).toISOString();
   const session = paid(ONE_WAY);
-  intentOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: [], tries: 0, texted_at: at });
+  markersOf(session).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: [], tries: 0, texted_at: at });
   assert.equal((await hook(completed(session))).status, 200);
   assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
   assert.equal(twilio.calls.length, 0);
-  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.payment_intent}-2`);
+  const claimed = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.id}-2`);
   assert.equal(JSON.parse(new URLSearchParams(claimed.body).get("metadata[email_attempt]")).texted_at, at);
   assert.deepEqual(logged, ["sms-inherited 83558982"]);
   setEnv(mailEnv(SMS));
   const failed = paid(ONE_WAY);
-  intentOf(failed).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: ["owner"], tries: 1, failed: true, texted_at: at });
+  markersOf(failed).metadata.email_attempt = JSON.stringify({ n: 1, at, id: "abc123", sent: ["owner"], tries: 1, failed: true, texted_at: at });
   assert.equal((await hook(completed(failed))).status, 200);
   assert.deepEqual([delivered().map((m) => m.to), twilio.calls.length, logged], [[["ana.lopez@example.com"]], 0, []]);
 });
@@ -1654,16 +1654,16 @@ await test("with Twilio set, a claim whose answer never comes back is read back 
   for (const [delay, lost] of [[0, 2], [1000, 1]]) {
     setEnv(mailEnv(SMS));
     const session = paid(ONE_WAY);
-    const claimKey = `nlr-mail-${session.payment_intent}-1`;
+    const claimKey = `nlr-mail-${session.id}-1`;
     let left = lost;
     stripe.delay = (key) => (key === claimKey ? delay : 0);
     stripe.lose = (key) => key === claimKey && left-- > 0;
     assert.equal((await hook(completed(session))).status, 200, `delay ${delay}`);
     assert.deepEqual(delivered().map((m) => m.to), [["ana.lopez@example.com"], OWNERS]);
-    assert.ok(intentOf(session).metadata.emailed_at);
+    assert.ok(markersOf(session).metadata.emailed_at);
     assert.equal(twilio.calls.length, 1);
-    const intent = `/v1/payment_intents/${session.payment_intent}`;
-    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET /v1/checkout/sessions/${session.id} `, `GET ${intent} `, `POST ${intent} ${claimKey}`, `POST ${intent} ${claimKey}`, `GET ${intent} `, `POST ${intent} ${claimKey}-done`]);
+    const checkout = `/v1/checkout/sessions/${session.id}`;
+    assert.deepEqual(stripe.calls.map((c) => `${c.method} ${c.path} ${c.idempotency}`), [`GET ${checkout} `, `POST ${checkout} ${claimKey}`, `POST ${checkout} ${claimKey}`, `GET ${checkout} `, `POST ${checkout} ${claimKey}-done`]);
     assert.deepEqual(logged, []);
   }
 });
@@ -1672,7 +1672,7 @@ await test("with Twilio set, a claim read back after lost answers counts only wh
   setEnv(mailEnv(SMS));
   withContext();
   const session = paid(ONE_WAY);
-  const claimKey = `nlr-mail-${session.payment_intent}-1`;
+  const claimKey = `nlr-mail-${session.id}-1`;
   stripe.delay = (key) => (key === claimKey ? 1000 : key === `${claimKey}-done` ? 3000 : 0);
   const page = lookup(session);
   await until(() => stripe.calls.some((c) => c.idempotency === claimKey));
@@ -1698,12 +1698,12 @@ await test("with Twilio set, a slow text never holds back the mark of a failed e
   twilio.replies = [(call) => Promise.race([gate.then(() => texted(call)), silent(call)])];
   const session = paid(ONE_WAY);
   const page = lookup(session);
-  await until(() => /"failed":true/.test(intentOf(session).metadata.email_attempt || ""), 3000);
-  const tried = JSON.parse(intentOf(session).metadata.email_attempt);
+  await until(() => /"failed":true/.test(markersOf(session).metadata.email_attempt || ""), 3000);
+  const tried = JSON.parse(markersOf(session).metadata.email_attempt);
   assert.deepEqual([tried.sent, tried.texted_at === tried.at], [["owner"], true]);
   assert.equal((await hook(completed(session))).status, 200);
   assert.deepEqual(delivered().map((m) => m.to), [OWNERS, ["ana.lopez@example.com"]]);
-  assert.ok(intentOf(session).metadata.emailed_at);
+  assert.ok(markersOf(session).metadata.emailed_at);
   assert.ok(twilio.calls.length === 1 && !twilio.calls[0].signal.aborted, "the text is still on its way");
   release();
   assert.equal((await page).status, 200);
@@ -1712,22 +1712,56 @@ await test("with Twilio set, a slow text never holds back the mark of a failed e
   assert.deepEqual(noted.filter((l) => l.startsWith("sms-")), [`sms-sent 83558982 201 ${sid("RQ", "request 1")}`]);
 });
 
-await test("with Twilio set, a trigger that cannot see the other trigger's slow claim on the PaymentIntent and falls back to the Checkout Session sends the emails but never a second text", async () => {
+await test("with Twilio set, a trigger that cannot see the other trigger's slow claim on the Checkout Session sends the emails but never a second text", async () => {
   setEnv(mailEnv(SMS));
   withContext();
   const session = paid(HOURLY);
-  const claimKey = `nlr-mail-${session.payment_intent}-1`;
+  const claimKey = `nlr-mail-${session.id}-1`;
   stripe.delay = (key) => (key === claimKey ? 3000 : 0);
   const [page, hooked] = await Promise.all([lookup(session), hook(completed(session))]);
   assert.deepEqual([page.status, hooked.status], [200, 200]);
   assert.deepEqual(await settled(), ["sent"]);
   assert.equal(twilio.calls.length, 1);
   assert.equal(twilio.calls[0].form.get("Body"), bookingText(session));
-  assert.ok(intentOf(session).metadata.emailed_at && stripe.sessions.get(session.id).metadata.emailed_at);
-  assert.deepEqual(logged, ["mail-marker 83558982 payment_intents 400", "sms-unmarked 83558982"]);
-  const fallback = stripe.calls.find((c) => c.idempotency === `nlr-mail-${session.id}-1`);
-  assert.equal(JSON.parse(new URLSearchParams(fallback.body).get("metadata[email_attempt]")).texted_at, undefined);
+  assert.ok(markersOf(session).metadata.emailed_at);
+  assert.deepEqual(logged, ["mail-marker 83558982 checkout/sessions 400", "sms-unmarked 83558982"]);
+  const claims = stripe.calls.filter((c) => c.method === "POST" && c.idempotency === claimKey).map((c) => JSON.parse(new URLSearchParams(c.body).get("metadata[email_attempt]")));
+  assert.equal(claims.length, 2, "both triggers tried the one claim on the Checkout Session");
+  assert.equal(claims[0].texted_at, claims[0].at, "the text goes with the claim Stripe kept");
   assert.ok(["customer", "owner"].every((kind) => byKind(delivered(), kind).length), "both emails went out");
+  assert.deepEqual(stripe.intents.get(session.payment_intent).metadata, HOURLY.metadata);
+});
+
+await test("no request ever goes to /v1/payment_intents, so a restricted key that can only read PaymentIntents leaves no 403 in the Stripe logs: a confirmation check, a webhook, a failed email retried by the webhook, a claim taken over after two minutes and a text all mark only the Checkout Session, even with a key that could write the PaymentIntent", async () => {
+  setEnv(mailEnv(SMS));
+  withContext();
+  const session = paid(ROUND);
+  await lookup(session);
+  assert.deepEqual(await settled(), ["sent"]);
+  assert.equal((await hook(completed(session))).status, 200);
+  smtp.behavior = { reject: OWNERS };
+  const failing = paid(ONE_WAY);
+  assert.equal((await hook(completed(failing))).status, 503);
+  smtp.behavior = {};
+  assert.equal((await hook(completed(failing))).status, 200);
+  const stale = paid(HOURLY);
+  markersOf(stale).metadata.email_attempt = JSON.stringify({ n: 1, at: new Date(Date.now() - 130000).toISOString(), id: "abc123", sent: [], tries: 0 });
+  assert.equal((await hook(completed(stale))).status, 200);
+  assert.equal(twilio.calls.length, 3);
+  for (const booking of [session, failing, stale]) {
+    assert.ok(markersOf(booking).metadata.emailed_at && !markersOf(booking).metadata.email_attempt);
+    const pi = stripe.intents.get(booking.payment_intent).metadata;
+    assert.deepEqual(["email_attempt", "emailed_at"].map((name) => pi[name]), [undefined, undefined]);
+  }
+  assert.equal(stripe.intentAccess, "write");
+  assert.deepEqual(stripe.calls.filter((c) => c.path.startsWith("/v1/payment_intents")), []);
+  assert.deepEqual([...new Set(stripe.calls.map((c) => `${c.method} ${c.path.replace(/cs_test_\w+/, "{id}")}`))], ["GET /v1/checkout/sessions/{id}", "POST /v1/checkout/sessions/{id}"]);
+  assert.ok(!history.some((line) => line.includes("payment_intents")), "no marker line names the PaymentIntent");
+});
+
+await test("across every test above, webhook retries, confirmation checks, failed emails retried alone, texts and claims taken over, no request went to /v1/payment_intents, neither a POST nor a GET", () => {
+  assert.ok(stripe.intents.size > 30, `${stripe.intents.size} bookings with a PaymentIntent`);
+  assert.deepEqual(stripe.intentCalls, []);
 });
 
 await test("no log line holds the SMTP password, the AUTH string, an address, a name, a phone number or any part of an email", () => {

@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines, chargedTrip } from "./_trip.mjs";
-import { production } from "./_http.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
 const SESSIONS = `${API}/checkout/sessions`;
@@ -15,6 +15,10 @@ const EXPIRES_AFTER_S = 1860;
 const MAX_DESCRIPTION = 1000;
 const MAX_VALUE = 500;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const PLACE_LABELS = [["from", "Pickup"], ["stop1", "Stop 1"], ["stop2", "Stop 2"], ["to", "Drop-off"]];
+const PLACE_LIMITS = [160, 80, 40];
+const NOTE_LEAD = " Note: ";
+const NOTE_ROOM = 40;
 
 export const secretKey = () => String(process.env.STRIPE_SECRET_KEY || "").trim();
 export const liveKey = () => LIVE_KEY.test(secretKey());
@@ -46,35 +50,48 @@ export function encodeForm(object) {
 }
 
 const passengerText = (count) => `${count} ${count === "1" ? "passenger" : "passengers"}`;
-const quoted = (text) => {
+const quoted = (text, max) => {
   let kept = "";
   for (const ch of String(text).replace(/"/g, "'")) {
-    if (kept.length + ch.length > 160) break;
+    if (kept.length + ch.length > max) break;
     kept += ch;
   }
   return `"${kept}"`;
 };
 const legsFor = (trip) => trip.legs || legsOf(trip);
+const plain = (text) => clean(String(text ?? ""), MAX_DESCRIPTION).replace(/\s+/g, " ");
+const cut = (text, max) => text.slice(0, max).replace(/[\ud800-\udbff]$/, "");
+const sentence = (part) => {
+  const text = part.replace(/\.+$/, "");
+  return /[!?]$/.test(text) ? text : `${text}.`;
+};
 
 function fareDescription(trip, ref) {
   const back = trip.trip_type === "one" && trip.return ? ` Return ${formatDate(trip.return_date)}, ${formatTime(trip.return_time)}.` : "";
   return `${serviceLabel(trip)}. Reference ${ref}. ${formatDate(trip.date)}, ${formatTime(trip.time)}.${back} ${passengerText(trip.passengers)}.`;
 }
 
-function intentDescription(trip, ref) {
-  const parts = [`${trip.date} ${trip.time} Reference ${ref}`, serviceLabel(trip), `Pickup ${quoted(trip.from_text)}`];
-  if (trip.trip_type === "one") {
-    if (trip.stop1_text) parts.push(`Stop 1 ${quoted(trip.stop1_text)}`);
-    if (trip.stop2_text) parts.push(`Stop 2 ${quoted(trip.stop2_text)}`);
-    parts.push(`Drop-off ${quoted(trip.to_text)}`);
-    if (trip.return) parts.push(`Return ${trip.return_date} ${trip.return_time}`);
-  }
+function intentDescription(trip, metadata, ref) {
+  const f = (name) => plain(metadata[name]);
+  const parts = [plain(ownerSubject(metadata, ref))];
+  if (f("name")) parts.push(`Customer ${f("name")}`);
+  if (f("phone")) parts.push(`Phone ${f("phone")}`);
+  if (f("email")) parts.push(`Email ${f("email")}`);
+  if (f("passenger_name")) parts.push(`Passenger ${f("passenger_name")}`);
+  if (f("passenger_phone")) parts.push(`Passenger phone ${f("passenger_phone")}`);
+  if (f("flight")) parts.push(`Flight ${f("flight")}`);
+  if (f("return_flight")) parts.push(`Return flight ${f("return_flight")}`);
   parts.push(passengerText(trip.passengers));
-  if (trip.flight) parts.push(`Flight ${trip.flight}`);
-  if (trip.return && trip.return_flight) parts.push(`Return flight ${trip.return_flight}`);
-  if (trip.meet) parts.push(LABELS.meet);
   if (seatText(trip)) parts.push(seatText(trip));
-  return `${parts.join(". ")}.`.slice(0, MAX_DESCRIPTION).replace(/[\ud800-\udbff]$/, "");
+  if (trip.meet) parts.push(LABELS.meet);
+  const places = PLACE_LABELS.filter(([name]) => f(`${name}_text`) && (name.startsWith("stop") || shortPlace(metadata[`${name}_text`], metadata[`${name}_zone`]) !== placeText(metadata[`${name}_text`])));
+  const headWith = (max) => [...parts, ...places.map(([name, label]) => `${label} ${quoted(f(`${name}_text`), max)}`)].map(sentence).join(" ");
+  const notes = f("notes").replace(/\.+$/, "");
+  const want = notes ? NOTE_LEAD.length + 1 + Math.min(notes.length, NOTE_ROOM) : 0;
+  const head = PLACE_LIMITS.map(headWith).find((text) => text.length + want <= MAX_DESCRIPTION) || headWith(PLACE_LIMITS.at(-1));
+  const room = MAX_DESCRIPTION - head.length - NOTE_LEAD.length - 1;
+  const note = room > 0 ? cut(notes, room).trim().replace(/\.+$/, "") : "";
+  return cut(note ? `${head}${NOTE_LEAD}${sentence(note)}` : head, MAX_DESCRIPTION);
 }
 
 function descriptorSuffix(trip) {
@@ -194,7 +211,7 @@ export function sessionParams(input, price, ref, settings, now, origin) {
     line_items: lineItems,
     payment_intent_data: {
       setup_future_usage: "off_session",
-      description: intentDescription(trip, ref),
+      description: intentDescription(trip, metadata, ref),
       statement_descriptor_suffix: descriptorSuffix(trip),
       metadata,
     },
@@ -238,10 +255,6 @@ export function retrieveSession(id, key, timeout) {
 
 export function expireSession(id, key) {
   return call(`${SESSIONS}/${encodeURIComponent(id)}/expire`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "" }, key);
-}
-
-export function retrieveIntent(id, key, timeout) {
-  return call(`${API}/payment_intents/${encodeURIComponent(id)}`, { method: "GET", headers: {} }, key, timeout);
 }
 
 export function updateMetadata(object, id, values, key, idempotency, timeout) {

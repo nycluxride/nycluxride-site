@@ -33,7 +33,7 @@ const TAX = percentCents(FARE, NYC_TAX_PERCENT);
 const BCF = percentCents(FARE, BCF_PERCENT);
 const TOTAL = AIRPORT_TOTALS.suv.jfk;
 const CLASS_KEYS = ["suv", "premium", "first", "sedan", "sprinter"];
-const JFK_CARDS = ["$185.00", "$220.00", "$310.00", "$170.00", "$400.00"];
+const JFK_CARDS = ["$185.00", "$220.00", "$310.00", "$170.00", "$500.00"];
 const TOLLS = TOTAL - FARE - TAX - BCF;
 const L_TAX = "NYC sales tax";
 const L_BCF = "Black Car Fund";
@@ -588,7 +588,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await view(page);
     await priced(page);
     assert.equal(await page.$eval("#price-total", (x) => (x.firstChild || {}).textContent || ""), cash(AIRPORT_TOTALS.suv.lga));
-    assert.deepEqual(await cards(page), ["$165.00", "$190.00", "$250.00", "$145.00", "$350.00"]);
+    assert.deepEqual(await cards(page), ["$165.00", "$190.00", "$250.00", "$145.00", "$450.00"]);
   });
   await check("B8 without Google keys there is no route figure and no reserved space", async () => {
     assert.deepEqual([await page.isVisible("#bk-map"), await page.isVisible("#bk-drive"), await page.$("#bk-map img")], [false, false, null]);
@@ -699,7 +699,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await page.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, JFK_CARDS[4]);
     assert.deepEqual(await cards(page), ["Seats 5", "Seats 5", "Seats 3", "Seats 3", JFK_CARDS[4]]);
     assert.equal(await page.isVisible("#q-seats"), false);
-    assert.match(await waText(page, CHROME_WA), /Vehicle: Luxury Sprinter[\s\S]*Total shown: \$400\.00/);
+    assert.match(await waText(page, CHROME_WA), /Vehicle: Luxury Sprinter[\s\S]*Total shown: \$500\.00/);
     await pax(page, 1);
     await page.click('label[for="bk-c-suv"]');
     await priced(page);
@@ -806,7 +806,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     const f = FARE * 2, t = TAX * 2, b = BCF * 2;
     assert.deepEqual(await panel(page), { lines: [["Fare", cash(f)], [L_FEES, cash(t + b)], [L_TOLLS, cash(TOTAL * 2 - f - t - b)]], total: cash(TOTAL * 2), notes: NOTES.included + POLICY.later.airport });
     assert.equal(await page.$eval("#price-total", (x) => (x.firstChild || {}).textContent || ""), "$370.00");
-    assert.deepEqual(await cards(page), ["$370.00", "$440.00", "$620.00", "$340.00", "$800.00"]);
+    assert.deepEqual(await cards(page), ["$370.00", "$440.00", "$620.00", "$340.00", "$1,000.00"]);
     assert.deepEqual(await scopes(page), Array(5).fill("total, both rides"));
     assert.equal(await page.evaluate(() => document.getElementById("price-total").previousElementSibling.textContent), "Total, both rides");
     assert.match(await page.textContent("#bk-sum"), new RegExp(`Return: ${shortDate(RDATE)}, 6:00 PM`));
@@ -6674,7 +6674,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await settle(p, 500);
     assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => e.id), document.getElementById("price").hidden]), [[], false]);
     const van = ride("sprinter");
-    assert.deepEqual([van.fare, total("sprinter")], [37025, 41144]);
+    assert.deepEqual([van.fare, total("sprinter")], [AIRPORT_FARES.sprinter.jfk, 48725]);
     assert.deepEqual(await panel(p), { lines: [["Fare", cash(van.fare)], [L_FEES, cash(van.tax + van.bcf)]], total: cash(total("sprinter")), notes: POLICY.later.outside });
     const b = await reqBar(p);
     assert.deepEqual([b.isq, b.line], [false, ""]);
@@ -6747,7 +6747,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     const [van] = await Promise.all([p.waitForRequest((r) => r.url().endsWith("/api/book")), p.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/, { waitUntil: "commit" }), p.click("#bk-submit")]);
     assert.equal(new URLSearchParams(van.postData()).get("class"), "sprinter");
     const paid = await (await fetch(`${G.base}/api/book?session_id=${new URL(p.url()).searchParams.get("session_id")}`)).json();
-    assert.deepEqual([paid.lines.map((l) => [l.label, l.cents]), paid.total_cents, paid.notes, paid.summary.endsWith(". Luxury Sprinter, 25.0 miles and 45 min.")], [[["Fare", 37025], [L_FEES, 3286 + 833]], 41144, [POLICY.later.outside], true]);
+    assert.deepEqual([paid.lines.map((l) => [l.label, l.cents]), paid.total_cents, paid.notes, paid.summary.endsWith(". Luxury Sprinter, 25.0 miles and 45 min.")], [[["Fare", AIRPORT_FARES.sprinter.jfk], [L_FEES, 3891 + 987]], 48725, [POLICY.later.outside], true]);
     await p.close();
   });
   await ctx.close();
@@ -7177,7 +7177,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   const AIRPORT_NOTE = NOTES.included + POLICY.later.airport;
   for (const width of [390, 1440]) {
     const ctx = await context(G, { viewport: { width, height: width < 1024 ? 844 : 900 } });
-    await check(`B206 at ${width} the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St a few blocks apart, costs the LaGuardia flat total plus the stop fee: the cards show $185.00 to $370.00 in every class, the Luxury Sprinter at $370.00, the price box has the tolls line, the Extra stop line and the notes of an airport transfer, the placeholders already hold them, the stop has no dispatch hint, the note gives the miles and minutes of the whole route, nothing moves, and the mock payment lands on the receipt with the same lines`, async () => {
+    await check(`B206 at ${width} the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St a few blocks apart, costs the LaGuardia flat total plus the stop fee: the cards show $185.00 to $470.00 in every class, the Luxury Sprinter at $470.00, the price box has the tolls line, the Extra stop line and the notes of an airport transfer, the placeholders already hold them, the stop has no dispatch hint, the note gives the miles and minutes of the whole route, nothing moves, and the mock payment lands on the receipt with the same lines`, async () => {
       const p = await open(ctx, G, "/book");
       await place(p, "from", "lga", "LaGuardia (LGA)");
       await place(p, "to", CHURCH);
@@ -7197,7 +7197,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       await p.unroute("**/api/book");
       assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes, waiting.sprinter.startsWith("..."), waiting.sprinter === waiting.suv], [["Fare", L_FEES, L_TOLLS, "Extra stop"], AIRPORT_NOTE, true, true], "the placeholders are those of the airport transfer without the stop plus the stop line");
       assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(near(cls))));
-      assert.deepEqual(await cards(p), ["$185.00", "$210.00", "$270.00", "$165.00", "$370.00"]);
+      assert.deepEqual(await cards(p), ["$185.00", "$210.00", "$270.00", "$165.00", "$470.00"]);
       const box = await panel(p);
       assert.deepEqual([box.lines, box.total, box.notes], [[["Fare", cash(AIRPORT_FARES.suv.lga)], [L_FEES, cash(out("suv") - AIRPORT_FARES.suv.lga)], [L_TOLLS, cash(LGA_TOLLS)], ["Extra stop", cash(STOP_FEE_CENTS)]], "$185.00", AIRPORT_NOTE]);
       assert.equal(await p.isVisible("#q-stop-leg"), false);
@@ -7207,7 +7207,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       assert.equal(value, 0, shifts.join(" | "));
       await p.click('label[for="bk-c-sprinter"]');
       await priced(p);
-      assert.deepEqual(await panel(p), { lines: [["Fare", "$303.49"], [L_FEES, "$33.76"], [L_TOLLS, "$12.75"], ["Extra stop", "$20.00"]], total: "$370.00", notes: AIRPORT_NOTE });
+      assert.deepEqual(await panel(p), { lines: [["Fare", "$393.48"], [L_FEES, "$43.77"], [L_TOLLS, "$12.75"], ["Extra stop", "$20.00"]], total: "$470.00", notes: AIRPORT_NOTE });
       await p.click('label[for="bk-c-suv"]');
       await priced(p);
       assert.deepEqual((await panel(p)).lines, box.lines);
@@ -7259,7 +7259,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await ctx.close();
   }
   const ctx = await context(G, { viewport: { width: 390, height: 844 } });
-  await check("B207 the hint under a stop names dispatch only where the stop sends the trip there: none for a stop priced over the whole route or for airport transfers on every part, the hint for a stop at another airport, between two airports or on a return between two airports", async () => {
+  await check("B207 the hint under a stop names dispatch only where the stop sends the trip there: none for a stop priced over the whole route, for a trip whose parts are all airport transfers or for a stop between two airports on the ride out, which take the stop rule too, the hint for a stop at another airport or on a return between two airports", async () => {
     const p = await open(ctx, G, "/book");
     const hint = async () => [await p.isVisible("#bk-stop1-h"), (await p.textContent("#bk-stop1-h")).trim()];
     await place(p, "from", "edition", "The New York EDITION");
@@ -7272,10 +7272,10 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await place(p, "stop1", "white plains", "Westchester County (HPN)");
     assert.deepEqual(await hint(), [true, "With this stop, our dispatch team prices the trip."]);
     await place(p, "stop1", "laguardia", "LaGuardia (LGA)");
-    assert.deepEqual(await hint(), [true, "With this stop, our dispatch team prices the trip."], "the stop to JFK runs between two airports");
+    assert.deepEqual(await hint(), [false, "With this stop, our dispatch team prices the trip."], "the stop by LaGuardia to JFK on the ride out takes the stop rule");
     await place(p, "to", "edition", "The New York EDITION");
     await p.waitForFunction(() => /^v1\./.test(document.getElementById("bk-to-ticket").value));
-    assert.equal((await hint())[0], false, "an airport transfer on every part has no hint");
+    assert.equal((await hint())[0], false, "a trip whose parts are all airport transfers takes the stop rule and has no hint");
     await place(p, "from", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
     await place(p, "to", "newark", "Newark Liberty (EWR)");
     await place(p, "stop1", "edition", "The New York EDITION");
@@ -7337,7 +7337,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await p.unroute("**/api/book");
     assert.deepEqual(waiting.lines.map(([label]) => label), ["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], "the pending lines keep the stop line with its count and price per stop");
     const van = await panel(p);
-    assert.deepEqual([van.lines.map(([label]) => label), van.lines.at(-1)[1], van.total], [["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], "$40.00", "$390.00"]);
+    assert.deepEqual([van.lines.map(([label]) => label), van.lines.at(-1)[1], van.total], [["Fare", L_FEES, L_TOLLS, "Extra stops (2 x $20.00)"], "$40.00", "$490.00"]);
     const [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));
     await next(p);
@@ -7353,7 +7353,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   const { priceDistance } = await api("_trip.mjs");
   for (const width of [390, 1440]) {
     const wctx = await context(G, { viewport: { width, height: width < 1024 ? 844 : 900 } });
-    await check(`B208 at ${width} a round trip from 350 5th Ave by a JFK stop to 277 Bedford Ave keeps the ride out at its two airport transfers and prices the return by distance: the placeholder lines and notes already hold the tolls line and say the ride out's tolls are included and the return's come after the ride, nothing moves, every class costs more than the same ride one way, and the note gives the whole route and the return`, async () => {
+    await check(`B208 at ${width} a round trip from 350 5th Ave by a JFK stop to 277 Bedford Ave takes the stop rule for the ride out, priced over its whole route at no less than the JFK fare, and prices the return by distance: the placeholder lines and notes already have no tolls line and say tolls come after the ride, nothing moves, every class costs more than the same ride one way, and the note gives the whole route and the return`, async () => {
       const p = await open(wctx, G, "/book");
       await place(p, "from", "350 5th Ave, New York, NY 10118");
       await place(p, "to", "277 Bedford Ave, Brooklyn, NY 11211");
@@ -7373,13 +7373,15 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       release();
       await priced(p);
       await p.unroute("**/api/book");
-      const notes = NOTES.outFlat + POLICY.later.outFlat;
-      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes], [["Fare", L_FEES, L_TOLLS], notes], "the placeholders are those of a ride out at the flat rate");
-      const round = (cls) => 2 * AIRPORT_TOTALS[cls].jfk + priceDistance(cls, { tenths: 48, minutes: 31 }).total;
+      const notes = POLICY.later.outside;
+      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes], [["Fare", L_FEES], notes], "the placeholders are those of a ride over its whole route by an airport stop");
+      const out = (cls) => priceDistance(cls, { tenths: 168, minutes: 43 }, "jfk");
+      const round = (cls) => out(cls).total + priceDistance(cls, { tenths: 48, minutes: 31 }).total;
+      assert.deepEqual(CLASS_KEYS.map(round), [29449, 34615, 48617, 25393, 76507]);
       assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(round(cls))));
-      for (const cls of CLASS_KEYS) assert.ok(round(cls) > 2 * AIRPORT_TOTALS[cls].jfk, cls);
+      for (const cls of CLASS_KEYS) assert.ok(round(cls) > out(cls).total && out(cls).fare === AIRPORT_FARES[cls].jfk, cls);
       const box = await panel(p);
-      assert.deepEqual([box.lines.map(([label]) => label), box.lines.at(-1)[1], box.total, box.notes], [["Fare", L_FEES, L_TOLLS], cash(2 * TOLLS), cash(round("suv")), notes]);
+      assert.deepEqual([box.lines.map(([label]) => label), box.lines[0][1], box.total, box.notes], [["Fare", L_FEES], cash(26500), cash(29449), notes]);
       await p.waitForFunction(() => document.getElementById("bk-route-n").textContent.includes("Return"), null, { timeout: 5000 }).catch(() => 0);
       assert.equal(await p.textContent("#bk-route-n"), "16.8 miles, about 43 min by car. Return: 4.8 miles, about 31 min by car. Google Maps");
       const [value, shifts] = await cls(p);
@@ -7495,7 +7497,7 @@ for (const [width, height] of [[390, 844], [1024, 900], [1440, 900]]) {
     return [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, van.startsWith("...") && van === suv];
   });
   const PLACEHOLDER = [["Fare", "Taxes and fees"], POLICY.later.outside, true];
-  for (const [name, setTrip, sprinter] of [["a New Jersey address to JFK", async (p) => { await outsideEnd(p, "from"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }, 41144], ["a JFK pickup to a New Jersey address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await outsideEnd(p, "to"); }, 42672]]) {
+  for (const [name, setTrip, sprinter] of [["a New Jersey address to JFK", async (p) => { await outsideEnd(p, "from"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }, 48725], ["a JFK pickup to a New Jersey address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await outsideEnd(p, "to"); }, 48725]]) {
     await check(`B158 at ${width} ${name}, reloaded on the vehicle step and back from Stripe on /book#resume with a price that takes over 500 ms, shows from the first frame the panel of that trip, with no tolls line, the after the ride note with waiting beyond the free window and the Luxury Sprinter waiting for its price like every class, then priced, and CLS 0`, async () => {
       const p = await open(ctx, G, "/book");
       await setTrip(p);

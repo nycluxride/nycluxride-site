@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { CLASSES, VEHICLES, PLACES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
+import { CLASSES, VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText } from "./_trip.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
-import { retrieveIntent, retrieveSession, updateMetadata } from "./_stripe.mjs";
-import { buildMessage, smtpSend, addressOk, headerText } from "./_smtp.mjs";
+import { retrieveSession, updateMetadata } from "./_stripe.mjs";
+import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
 import { smsSettings, sendText, fitText } from "./_sms.mjs";
 
 const DEFAULTS = { host: "smtp.gmail.com", port: "465", from: "NYC LUX RIDE <info@nycluxride.com>", owners: "info@nycluxride.com,nycluxride@gmail.com" };
@@ -42,7 +42,6 @@ const STYLE = {
 const text = (value) => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
 const has = (object, key) => typeof key === "string" && Object.prototype.hasOwnProperty.call(object, key);
 const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
-const place = (value) => text(value).replace(/, USA$/, "");
 const atAirport = (spot, zone) => AIRPORT_PLACE.test(spot) || AIRPORT_ZONE.test(zone);
 const terminal57 = (spot, zone, words) => /^jfk-t[57]$/.test(spot) || (zone === "jfk" && /\bterminal ?[57]\b/i.test(words));
 const metadataOf = (object) => (object && object.metadata && typeof object.metadata === "object" ? object.metadata : {});
@@ -51,7 +50,7 @@ const intentOf = (session) => {
   return INTENT.test(id || "") ? id : "";
 };
 const refOf = (session) => (session ? text(metadataOf(session).ref) || text(session.client_reference_id) : "");
-const read = (store, key) => (store.object === "payment_intents" ? retrieveIntent(store.id, key, STRIPE_MS) : retrieveSession(store.id, key, STRIPE_MS));
+const read = (store, key) => retrieveSession(store.id, key, STRIPE_MS);
 
 function parseFrom(value) {
   const match = /^(.*)<([^<>]*)>$/.exec(value);
@@ -70,17 +69,6 @@ export function mailSettings() {
   const owners = (text(process.env.OWNER_EMAILS) || DEFAULTS.owners).split(/[\s,;]+/).filter((address) => addressOk(address) && !seen.has(address.toLowerCase()) && seen.add(address.toLowerCase()));
   if (!from || !HOST.test(host) || !Number.isInteger(port) || port < 1 || port > 65535) return { bad: true };
   return { host, port, user, pass, from, owners, helo: from.address.split("@")[1] };
-}
-
-function when(date, time) {
-  if (!validDate(date) || !TIME.test(time)) return "";
-  const [weekday, day] = formatDate(date).split(", ");
-  return `${weekday} ${day}, ${formatTime(time)}`;
-}
-
-function shortPlace(words, zone) {
-  if (/^(jfk|lga|ewr|teb)$/.test(zone)) return PLACES[zone];
-  return Array.from(headerText(place(words)).split(",")[0].trim()).slice(0, 60).join("");
 }
 
 function bookingOf(session) {
@@ -115,12 +103,6 @@ function seatsOf(b) {
   return seatText({ seats: Object.fromEntries(CHILD_SEATS.map((k) => [k, f(`${k}_seats`)])) }) || f("child_seats");
 }
 
-function routeOf(b, from, to) {
-  const f = b.field;
-  if (b.hourly) return from && /^\d+$/.test(f("hours")) ? fill(MAIL.routeHourly, { hours: f("hours"), from }) : from;
-  return from && to ? fill(b.back ? MAIL.routeReturn : MAIL.route, { from, to, when: when(f("return_date"), f("return_time")) }) : "";
-}
-
 function tripRows(b) {
   const L = MAIL.labels;
   const f = b.field;
@@ -130,8 +112,8 @@ function tripRows(b) {
   const rows = [
     [L.ref, b.ref],
     [L.trip, b.hourly ? (/^\d+$/.test(f("hours")) ? fill(L.hourly, { hours: f("hours") }) : "") : b.back ? L.roundTrip : L.oneWay],
-    [L.from, place(f("from_text"))],
-    ...(b.hourly ? [] : [[L.stop1, place(f("stop1_text"))], [L.stop2, place(f("stop2_text"))], [L.to, place(f("to_text"))]]),
+    [L.from, placeText(f("from_text"))],
+    ...(b.hourly ? [] : [[L.stop1, placeText(f("stop1_text"))], [L.stop2, placeText(f("stop2_text"))], [L.to, placeText(f("to_text"))]]),
     [L.date, dated ? formatDate(f("date")) : ""],
     [L.time, dated ? fill(L.clock, { time: formatTime(f("time")) }) : ""],
     [L.back, b.back ? fill(L.clock, { time: `${formatDate(f("return_date"))}, ${formatTime(f("return_time"))}` }) : ""],
@@ -225,11 +207,7 @@ export function bookingLetters(session, settings, now = Date.now()) {
   const ahead = !validDate(lastDate) || !TIME.test(lastTime) || nycToUtc(lastDate, lastTime).getTime() > now;
   const notice = b.test ? [{ notice: MAIL.testNote }] : [];
   const prefix = b.test ? MAIL.test : "";
-  const pickup = when(f("date"), f("time"));
-  const from = shortPlace(f("from_text"), f("from_zone"));
-  const to = shortPlace(f("to_text"), f("to_zone"));
-  const route = routeOf(b, from, to);
-  const car = has(CLASSES, f("class")) ? CLASSES[f("class")].name : "";
+  const pickup = pickupWhen(f("date"), f("time"));
   const trip = tripRows(b);
   const id = (kind) => `${kind}.${createHash("sha256").update(`${session.id} ${kind}`).digest("hex").slice(0, 32)}`;
   const letters = [];
@@ -239,8 +217,7 @@ export function bookingLetters(session, settings, now = Date.now()) {
     letters.push({ kind: "customer", to: [{ name: b.name, address: b.email }], replyTo: { name: MAIL.brand, address: CONTACT.email }, subject, text: textOf(blocks), html: htmlOf(subject, blocks), id: id("customer") });
   }
   if (settings.owners.length) {
-    const details = [pickup, car, route].filter(Boolean).join(", ");
-    const subject = `${prefix}${fill(MAIL.ownerSubject, { ref: b.ref })}${details ? `: ${details}` : ""}`;
+    const subject = `${prefix}${ownerSubject(metadataOf(session), b.ref)}`;
     const customer = [[L.name, b.name], [L.email, b.email], [L.phone, b.phone], [L.reach, has(L.reaches, f("reach")) ? L.reaches[f("reach")] : ""]].filter(([, value]) => value);
     const passenger = b.other ? [[L.name, f("passenger_name")], [L.phone, f("passenger_phone")]].filter(([, value]) => value) : [];
     const stripe = b.intent ? [{ links: [[MAIL.stripe, `https://dashboard.stripe.com/${b.test ? "test/" : ""}payments/${b.intent}`]] }] : [];
@@ -271,8 +248,8 @@ export function bookingText(session) {
   return fitText((clipPlace, clipName) => [
     `${b.test ? MAIL.test : ""}${MAIL.textHeading}`,
     [clipName(b.name), b.phone].filter(Boolean).join(", "),
-    when(f("date"), f("time")),
-    routeOf(b, clipPlace(shortPlace(f("from_text"), f("from_zone"))), clipPlace(shortPlace(f("to_text"), f("to_zone")))),
+    pickupWhen(f("date"), f("time")),
+    routeSummary(metadataOf(session), clipPlace(shortPlace(f("from_text"), f("from_zone"))), clipPlace(shortPlace(f("to_text"), f("to_zone")))),
     vehicleOf(b),
     seats ? `${L.seats}: ${seats}` : "",
     b.total === null ? "" : `${MAIL.paid} ${money(b.total)}`,
@@ -291,19 +268,6 @@ function attemptOf(metadata) {
   }
 }
 
-async function storesOf(session, key, ref) {
-  const list = [];
-  const intent = intentOf(session);
-  if (intent) {
-    const result = await retrieveIntent(intent, key, STRIPE_MS);
-    if (result.ok && result.body) list.push({ object: "payment_intents", id: intent, metadata: metadataOf(result.body) });
-    else if (result.status === 403) console.error("mail-marker", ref, "payment_intents", 403);
-    else return { error: result.status };
-  }
-  list.push({ object: "checkout/sessions", id: session.id, metadata: metadataOf(session) });
-  return { list };
-}
-
 async function taken(store, n, key) {
   for (let round = 0; ; round++) {
     const result = await read(store, key);
@@ -311,7 +275,7 @@ async function taken(store, n, key) {
     const metadata = metadataOf(result.body);
     const attempt = attemptOf(metadata);
     if (text(metadata.emailed_at) || (attempt && attempt.n >= n)) return { lost: true };
-    if (round) return { refused: 400, unsure: true };
+    if (round) return { refused: 400 };
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
   }
 }
@@ -395,69 +359,55 @@ export async function mailBooking(session, key, { unmarked = false } = {}) {
       console.error("stripe-budget");
       return "failed";
     }
-    const found = await storesOf(session, key, ref);
-    if (found.error !== undefined) {
-      console.error("mail-stripe", ref, found.error);
-      return "failed";
-    }
+    const store = { object: "checkout/sessions", id: session.id };
     const now = Date.now();
-    if (found.list.some((store) => text(store.metadata.emailed_at))) return "done";
-    const attempts = found.list.map((store) => attemptOf(store.metadata)).filter(Boolean);
-    if (attempts.some((attempt) => !attempt.failed && Math.abs(now - attempt.at) < STALE_MS)) return "busy";
-    const sent = [...new Set(attempts.flatMap((attempt) => attempt.sent))];
-    const texted = attempts.map((attempt) => attempt.texted).find(Boolean) || "";
-    const inherited = attempts.some((attempt) => attempt.texted && !attempt.failed);
+    const previous = attemptOf(data);
+    if (previous && !previous.failed && Math.abs(now - previous.at) < STALE_MS) return "busy";
+    const sent = previous ? previous.sent : [];
+    const texted = previous ? previous.texted : "";
     const phone = texted ? {} : smsSettings();
     const texting = !texted && !phone.off && !phone.bad;
     const todo = letters.filter((letter) => !sent.includes(letter.kind));
-    let unsure = false;
-    for (const store of found.list) {
-      const previous = attemptOf(store.metadata);
-      const n = (previous ? previous.n : 0) + 1;
-      const tries = previous ? previous.tries + (previous.failed ? 0 : 1) : 0;
-      if (tries >= MAX_TRIES) {
-        console.error("mail-gave-up", ref);
-        return "gave-up";
-      }
-      const at = new Date(now).toISOString();
-      const textNow = texting && !unsure;
-      const marker = texted || (textNow ? at : "");
-      const attempt = { n, at, id: randomBytes(6).toString("hex"), sent, tries, ...(marker && { texted_at: marker }) };
-      const result = await claim(store, attempt, key);
-      if (result.lost) return "busy";
-      if (result.transient !== undefined) {
-        console.error("mail-stripe", ref, result.transient);
-        return "failed";
-      }
-      if (result.refused !== undefined) {
-        console.error("mail-marker", ref, store.object, result.refused);
-        unsure = unsure || result.unsure === true;
-        continue;
-      }
-      if (phone.off) console.log("sms-off", ref);
-      if (phone.bad) console.error("sms-config", ref);
-      if (texting && !textNow) console.error("sms-unmarked", ref);
-      if (inherited) console.error("sms-inherited", ref);
-      let textState = "";
-      const texts = textNow ? textOwner(phone, session, ref).then((state) => (textState = state)) : null;
-      const { sent: done, reached } = await deliver(settings, todo, ref);
-      if (done.length === todo.length) {
-        await mark(store, { emailed_at: new Date().toISOString(), email_attempt: "" }, key, `nlr-mail-${store.id}-${n}-done`, ref);
-        await texts;
-        return "sent";
-      }
-      const failed = { ...attempt, sent: [...sent, ...done], failed: true, tries: tries + (reached ? 1 : 0) };
-      await mark(store, { email_attempt: JSON.stringify(textState === "unsent" ? { ...failed, texted_at: undefined } : failed) }, key, `nlr-mail-${store.id}-${n}-failed`, ref);
-      await texts;
+    const n = (previous ? previous.n : 0) + 1;
+    const tries = previous ? previous.tries + (previous.failed ? 0 : 1) : 0;
+    if (tries >= MAX_TRIES) {
+      console.error("mail-gave-up", ref);
+      return "gave-up";
+    }
+    const at = new Date(now).toISOString();
+    const marker = texted || (texting ? at : "");
+    const attempt = { n, at, id: randomBytes(6).toString("hex"), sent, tries, ...(marker && { texted_at: marker }) };
+    const result = await claim(store, attempt, key);
+    if (result.lost) return "busy";
+    if (result.transient !== undefined) {
+      console.error("mail-stripe", ref, result.transient);
       return "failed";
     }
-    if (!unmarked) {
-      console.error("mail-unmarked", ref);
-      return "unmarked";
+    if (result.refused !== undefined) {
+      console.error("mail-marker", ref, store.object, result.refused);
+      if (!unmarked) {
+        console.error("mail-unmarked", ref);
+        return "unmarked";
+      }
+      if (texting) console.error("sms-unmarked", ref);
+      const { sent: done } = await deliver(settings, todo, ref);
+      return done.length === todo.length ? "sent" : done.length ? "partial" : "failed";
     }
-    if (texting) console.error("sms-unmarked", ref);
-    const { sent: done } = await deliver(settings, todo, ref);
-    return done.length === todo.length ? "sent" : done.length ? "partial" : "failed";
+    if (phone.off) console.log("sms-off", ref);
+    if (phone.bad) console.error("sms-config", ref);
+    if (texted && !previous.failed) console.error("sms-inherited", ref);
+    let textState = "";
+    const texts = texting ? textOwner(phone, session, ref).then((state) => (textState = state)) : null;
+    const { sent: done, reached } = await deliver(settings, todo, ref);
+    if (done.length === todo.length) {
+      await mark(store, { emailed_at: new Date().toISOString(), email_attempt: "" }, key, `nlr-mail-${store.id}-${n}-done`, ref);
+      await texts;
+      return "sent";
+    }
+    const failed = { ...attempt, sent: [...sent, ...done], failed: true, tries: tries + (reached ? 1 : 0) };
+    await mark(store, { email_attempt: JSON.stringify(textState === "unsent" ? { ...failed, texted_at: undefined } : failed) }, key, `nlr-mail-${store.id}-${n}-failed`, ref);
+    await texts;
+    return "failed";
   } catch {
     console.error("mail-fail", ref, "handler");
     return "failed";

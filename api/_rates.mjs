@@ -35,14 +35,14 @@ export const AIRPORT_FARES = {
   premium: { jfk: 18650, lga: 15950, ewr: 18650, teb: 18650 },
   first: { jfk: 26749, lga: 21350, ewr: 26749, teb: 26749 },
   sedan: { jfk: 14151, lga: 11901, ewr: 14151, teb: 14151 },
-  sprinter: { jfk: 34848, lga: 30349, ewr: 34848, teb: 34848 },
+  sprinter: { jfk: 43847, lga: 39348, ewr: 43847, teb: 43847 },
 };
 export const AIRPORT_TOTALS = {
   suv: { jfk: 18500, lga: 16500, ewr: 18500, teb: 18500 },
   premium: { jfk: 22000, lga: 19000, ewr: 22000, teb: 22000 },
   first: { jfk: 31000, lga: 25000, ewr: 31000, teb: 31000 },
   sedan: { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 },
-  sprinter: { jfk: 40000, lga: 35000, ewr: 40000, teb: 40000 },
+  sprinter: { jfk: 50000, lga: 45000, ewr: 50000, teb: 50000 },
 };
 export const DISTANCE_RATES = {
   suv: { base: 3500, mile: 400, minute: 65, minimum: 11000 },

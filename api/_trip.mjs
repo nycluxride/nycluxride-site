@@ -27,12 +27,13 @@ import {
   MAX_ADVANCE_DAYS,
   CONTACT,
 } from "./_rates.mjs";
-import { LABELS, NOTES, POLICY, MESSAGE } from "./_copy.mjs";
+import { LABELS, NOTES, POLICY, MESSAGE, MAIL } from "./_copy.mjs";
 import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, localById, areaText, routeText } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
 import { googleOn, placeDetails, computeRoute } from "./_google.mjs";
 import { readPhone } from "./_phone.mjs";
+import { headerText } from "./_smtp.mjs";
 
 const ENDS = ["from", "stop1", "stop2", "to"];
 const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
@@ -329,7 +330,7 @@ async function driveTrip(trip, token, context) {
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const check = checkTrip(trip, now, OPEN);
   const stops = [trip.ends.stop1, trip.ends.stop2].filter(Boolean);
-  const routed = stops.length ? check.reason === "stop-leg" && trip.legs.every((item) => !item.reason || ROUTED.includes(item.reason)) : ROUTED.includes(check.reason);
+  const routed = stops.length ? check.reason === "stop-leg" && trip.legs.every((item) => !item.reason || ROUTED.includes(item.reason) || (!item.back && item.reason === "airport-to-airport" && [item.from, item.to].every((zone) => AIRPORT_PLACES.includes(zone)))) : ROUTED.includes(check.reason);
   if (check.kind !== "quote" || !routed) return trip;
   const points = [trip.ends.from, ...stops, trip.ends.to];
   if (points.some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" || stops.length ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
@@ -339,10 +340,9 @@ async function driveTrip(trip, token, context) {
   const known = readRoute(token, now);
   const ends = points.map(waypointOf);
   const zones = points.map((end) => end.zone);
-  const out = trip.legs.filter((item) => !item.back);
   const back = trip.legs.filter((item) => item.back).map((item) => (item.reason ? item : { ...item, flat: true }));
   const whole = { ...leg(zones[0], zones[zones.length - 1], false), airport: zones.find((zone) => AIRPORT_PLACES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
-  const legs = !stops.length ? trip.legs : out.every((item) => !item.reason) ? [...out.map((item) => ({ ...item, flat: true })), ...back] : [whole, ...back];
+  const legs = stops.length ? [whole, ...back] : trip.legs;
   const plain = legs[0] === whole ? leg(zones[0], zones[zones.length - 1], false) : null;
   const direct = Boolean(plain) && ROUTED.includes(plain.reason);
   const routes = legs.filter((item) => item.back || !item.flat);
@@ -398,7 +398,7 @@ function spatialReason(trip) {
   const unpriced = legs.find((item) => item.reason);
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
   if (ask) return { reason: ask, field: "" };
-  if (!unpriced) return null;
+  if (!unpriced) return (ends.stop1 || ends.stop2) && !legs.some((item) => item.stops) ? { reason: "stop-leg", field: "" } : null;
   return { reason: (ends.stop1 || ends.stop2) && !ROUTE_REASONS.includes(unpriced.reason) ? "stop-leg" : unpriced.reason, field: "" };
 }
 
@@ -657,6 +657,35 @@ export function formatDate(date) {
 export function formatTime(time) {
   const [h, m] = time.split(":").map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+const metaText = (value) => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
+export const placeText = (value) => metaText(value).replace(/, USA$/, "");
+
+export function pickupWhen(date, time) {
+  if (!validDate(date) || !TIME.test(time)) return "";
+  const [weekday, day] = formatDate(date).split(", ");
+  return `${weekday} ${day}, ${formatTime(time)}`;
+}
+
+export function shortPlace(words, zone) {
+  if (/^(jfk|lga|ewr|teb)$/.test(zone)) return PLACES[zone];
+  return Array.from(headerText(placeText(words)).split(",")[0].trim()).slice(0, 60).join("");
+}
+
+export function routeSummary(metadata, from, to) {
+  const f = (name) => metaText(metadata[name]);
+  if (f("service") === "hourly") return from && /^\d+$/.test(f("hours")) ? fill(MAIL.routeHourly, { hours: f("hours"), from }) : from;
+  const back = validDate(f("return_date")) && TIME.test(f("return_time"));
+  return from && to ? fill(back ? MAIL.routeReturn : MAIL.route, { from, to, when: pickupWhen(f("return_date"), f("return_time")) }) : "";
+}
+
+export function ownerSubject(metadata, ref) {
+  const f = (name) => metaText(metadata[name]);
+  const car = has(CLASSES, f("class")) ? CLASSES[f("class")].name : "";
+  const route = routeSummary(metadata, shortPlace(f("from_text"), f("from_zone")), shortPlace(f("to_text"), f("to_zone")));
+  const details = [pickupWhen(f("date"), f("time")), car, route].filter(Boolean).join(", ");
+  return `${fill(MAIL.ownerSubject, { ref })}${details ? `: ${details}` : ""}`;
 }
 
 function placeLine(trip, name) {

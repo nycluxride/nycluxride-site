@@ -910,7 +910,7 @@ await check("M27 a New Jersey address to JFK: the caption reads 25.0 miles, abou
   assert.deepEqual([n.text, n.attr], ["25.0 miles, about 45 min by car. Google Maps", "hidden"]);
   const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
   assert.deepEqual(cards, ["suv", "premium", "first", "sedan", "sprinter"].map((c) => cash(priceDistance(c, { tenths: 250, minutes: 45 }, "jfk").total)));
-  assert.deepEqual(cards, ["$182.53", "$221.97", "$297.25", "$157.25", "$411.44"]);
+  assert.deepEqual(cards, ["$182.53", "$221.97", "$297.25", "$157.25", "$487.25"]);
   assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls"))));
   const [value, shifts] = await cls(p);
   assert.equal(value, 0, shifts.join(" | "));

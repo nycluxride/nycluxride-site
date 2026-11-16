@@ -14,7 +14,7 @@ const TABLE = {
   premium: { name: "Business Premium SUV", far: [18650, 1655, 420, 22000], lga: [15950, 1416, 359, 19000] },
   first: { name: "First Class", far: [26749, 2374, 602, 31000], lga: [21350, 1895, 480, 25000] },
   sedan: { name: "Sedan & Electric", far: [14151, 1256, 318, 17000], lga: [11901, 1056, 268, 14500] },
-  sprinter: { name: "Luxury Sprinter", far: [34848, 3093, 784, 40000], lga: [30349, 2693, 683, 35000] },
+  sprinter: { name: "Luxury Sprinter", far: [43847, 3891, 987, 50000], lga: [39348, 3492, 885, 45000] },
 };
 const figures = (cls, zone) => TABLE[cls][zone === "lga" ? "lga" : "far"];
 const legOf = (cls, zone) => {
@@ -80,7 +80,7 @@ await test("the owner's table: five classes in order, every fare and total exact
       assert.equal(priceLeg(cls, zone).tolls, TOLLS, `${cls} ${zone} tolls`);
     }
   }
-  assert.deepEqual(Object.values(AIRPORT_TOTALS).map((t) => [t.jfk, t.lga]), [[18500, 16500], [22000, 19000], [31000, 25000], [17000, 14500], [40000, 35000]]);
+  assert.deepEqual(Object.values(AIRPORT_TOTALS).map((t) => [t.jfk, t.lga]), [[18500, 16500], [22000, 19000], [31000, 25000], [17000, 14500], [50000, 45000]]);
 });
 
 for (const cls of Object.keys(CLASSES)) {
@@ -253,12 +253,19 @@ await test("the return example: Fare 31000, tax 2752, Black Car Fund 698, tolls 
   assert.equal(tipped.price.total, 41650);
 });
 
-await test("a stop trip whose legs are all airport transfers prices as the sum of its legs", async () => {
-  const { trip, price } = await priced({ ...BASE, from_text: AIRPORT_ROW.jfk.label, from_id: "jfk", stop1_text: MANHATTAN, to_text: AIRPORT_ROW.lga.label, to_id: "lga" });
-  assert.equal(trip.legs.length, 2);
-  assert.deepEqual(price.legs.map((leg) => leg.total), [18500, 16500]);
-  assert.deepEqual(pairs(price.lines), [["Fare", 15500 + 13701], ["NYC sales tax", 1376 + 1216], ["Black Car Fund", 349 + 308], ["Tolls and airport fees", 2 * TOLLS]]);
-  assert.equal(price.total, 35000);
+await test("a stop trip whose legs are all airport transfers, JFK by a Manhattan stop to LaGuardia, is no longer the sum of its legs: it takes the stop rule, so with no price for the trip between the two airports it is priced over its whole route at no less than the JFK fare, and without the route it stays with dispatch", async () => {
+  const fields = { ...BASE, from_text: AIRPORT_ROW.jfk.label, from_id: "jfk", stop1_text: MANHATTAN, to_text: AIRPORT_ROW.lga.label, to_id: "lga" };
+  assert.deepEqual((await build(fields)).check, { kind: "quote", reason: "stop-leg", field: "" });
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const { trip, price } = await priced(fields);
+    assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.stops, leg.ride, leg.plain]), [["jfk", "lga", 1, { tenths: 168, minutes: 43 }, undefined]]);
+    assert.deepEqual(pairs(price.lines), [["Fare", 15500], ["NYC sales tax", 1376], ["Black Car Fund", 349]]);
+    assert.deepEqual([price.total, price.stops, price.tolls, price.service], [17225, 0, 0, "distance"]);
+    assert.ok(price.total < 18500 + 16500);
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
 });
 
 await test("a stop trip with a non-airport leg is stop-leg", async () => {
