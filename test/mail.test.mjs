@@ -8,12 +8,12 @@ import { createServer as createNetServer } from "node:net";
 import { createHash, createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc } from "../api/_trip.mjs";
-import { routeKey, signRoute } from "../api/_ticket.mjs";
+import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc, bookingData } from "../api/_trip.mjs";
+import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
 import { MAIL, CHECKOUT, NOTES, POLICY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
-import { bookingLetters as lettersAt, mailSettings, bookingText } from "../api/_mail.mjs";
+import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges } from "../api/_mail.mjs";
 import { GET } from "../api/book.mjs";
 import { POST } from "../api/stripe-webhook.mjs";
 
@@ -295,9 +295,14 @@ const NO_RETURN_FLIGHT = await booked({ trip_type: "one", from_text: MANHATTAN, 
 const FOR_OTHER = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", flight: "UA 523", tip: "0", rider: "other", ...ME, reach: "phone", pname: "Ben Ortiz", pphone: "+44 20 7946 0958" });
 const TO_T5 = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK), Terminal 5", to_id: "jfk-t5", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const SEATS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", rider: "me", ...ME, reach: "phone" });
+const DOGS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", small_dogs: "1", large_dogs: "2", rider: "me", ...ME, reach: "phone" });
 const HOURLY_JFK = await booked({ trip_type: "hour", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", flight: "BA 117", meet: "1", tip: "0", rider: "me", ...ME, reach: "phone" });
 const NASSAU = await booked({ trip_type: "one", from_text: "1 Old Country Rd, Mineola, NY 11501", to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const NEWARK_ROUND = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
+const picked = (name, id, zone, text, region = "") => ({ [`${name}_text`]: text, [`${name}_ticket`]: signTicket(id, zone, text, NOW, 0, region) });
+const WORST_FIELDS = { trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", ...picked("stop1", "ChIJb8Jg9pZYwokR-qHGtvSkLzs", "manhattan", "350 5th Ave, New York, NY 10118, USA"), ...picked("stop2", "ChIJ-b2RmVlZwokRpb1pwEQjss0", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211, USA"), ...picked("to", "ChIJ7cv00DwsDogRAMDACa2m4K8", "outside", "1 Old Country Rd, Mineola, NY 11501, USA", "2811"), date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", flight: "DL 401", passengers: "12", class: "sprinter", meet: "1", sign: "Ortiz family", tip: "custom", tip_amount: "40", rider: "other", ...ME, reach: "whatsapp", pname: "Ben Ortiz", pphone: "+44 20 7946 0958", notes: "Kids aged 1, 3 and 6", infant_seats: "4", toddler_seats: "4", booster_seats: "4" };
+const WORST = await booked(WORST_FIELDS);
+const WORST_DOGS = await booked({ ...WORST_FIELDS, small_dogs: "3", large_dogs: "3" });
 const CONNECTICUT = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: "10 Elm St, Greenwich, CT 06830", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
@@ -922,7 +927,7 @@ await test("a child seats line whenever the payment metadata has child_seats, an
 
 await test("a paid booking with child seats from the booking form names the seat types in the Child seats row of both emails and lists the seat line of the receipt at $15.00 a seat with the total paid", async () => {
   setEnv();
-  assert.deepEqual([SEATS.metadata.seats_cents, SEATS.metadata.child_seats, SEATS.metadata.infant_seats, SEATS.metadata.booster_seats, "toddler_seats" in SEATS.metadata, SEATS.total], ["4500", "3", "1", "2", false, 27825]);
+  assert.deepEqual([SEATS.metadata.seats_cents, SEATS.metadata.seats, ["child_seats", "infant_seats", "toddler_seats", "booster_seats"].filter((k) => k in SEATS.metadata), SEATS.total], ["4500", "1 infant, 2 booster", [], 27825]);
   const session = paid(SEATS);
   const [customer, owner] = bookingLetters(session, SETTINGS);
   const pay = ["Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Meet and greet: $25.00", "Child seats (3 x $15.00): $45.00", "Gratuity for your chauffeur (15%): $23.25", "Paid: $278.25"];
@@ -938,6 +943,87 @@ await test("a paid booking with child seats from the booking form names the seat
   assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
   const one = bookingLetters(paid(ONE_WAY, { metadata: { seats_cents: "1500", child_seats: "1", toddler_seats: "1" } }), SETTINGS)[0];
   assert.ok(one.text.includes("\nChild seats: 1 toddler seat\n") && one.text.includes("\nChild seats (1 x $15.00): $15.00\n"), one.text);
+});
+
+await test("a paid booking with pets names them in a Pets row right after the Child seats row of both emails, lists a Small dog and a Large dog line in the receipt at $15.00 and $40.00 a dog with the total paid, and shows no Pets row without dogs", async () => {
+  setEnv();
+  assert.deepEqual([DOGS.metadata.dogs, DOGS.metadata.seats_cents, "child_seats" in DOGS.metadata, DOGS.total], ["1 small 1500, 2 large 8000", "4500", false, 37325]);
+  const session = paid(DOGS);
+  const [customer, owner] = bookingLetters(session, SETTINGS);
+  const pay = ["Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Meet and greet: $25.00", "Child seats (3 x $15.00): $45.00", "Small dog (1 x $15.00): $15.00", "Large dog (2 x $40.00): $80.00", "Gratuity for your chauffeur (15%): $23.25", "Paid: $373.25"];
+  for (const letter of [customer, owner]) {
+    assert.ok(letter.text.includes("\nChild seats: 1 infant seat and 2 booster seats\nPets: 1 small dog and 2 large dogs\n"), letter.kind);
+    assert.deepEqual(sectionOf(letter.text, letter.kind === "customer" ? "Your payment" : "Payment"), pay, letter.kind);
+    const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
+    const tables = Object.fromEntries(tripTable(doc));
+    const rows = tables[letter.kind === "customer" ? "Your trip" : "Trip"];
+    const at = rows.findIndex(([label]) => label === "Child seats");
+    assert.deepEqual(rows[at + 1], ["Pets", "1 small dog and 2 large dogs"], letter.kind);
+    assert.deepEqual(tables[letter.kind === "customer" ? "Your payment" : "Payment"], pay.map((line) => line.split(": ")), letter.kind);
+  }
+  assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
+  const one = bookingLetters(paid(ONE_WAY, { metadata: { dogs: "1 large 4000" } }), SETTINGS)[0];
+  assert.ok(one.text.includes("\nPets: 1 large dog\n") && one.text.includes("\nLarge dog (1 x $40.00): $40.00\n") && !one.text.includes("Child seats"), one.text);
+  for (const letter of bookingLetters(paid(SEATS), SETTINGS)) assert.ok(!/Pets|dog/.test(letter.text) && !letter.html.includes(">Pets</th>"), letter.kind);
+});
+
+const LEGACY_KEYS = ["from_zone", "from_place", "to_zone", "to_place", "stop1_zone", "stop2_zone", "child_seats", "infant_seats", "toddler_seats", "booster_seats"];
+const LEGACY_WORST = { ref: "83558982", service: "distance", direction: "from-airport", airport: "jfk", class: "sprinter", from_text: "John F. Kennedy (JFK), Terminal 4", from_zone: "jfk", from_place: "jfk-t4", to_text: "1 Old Country Rd, Mineola, NY 11501, USA", to_zone: "outside", to_place: "ChIJ7cv00DwsDogRAMDACa2m4K8", stop1_text: "350 5th Ave, New York, NY 10118, USA", stop1_zone: "manhattan", stop2_text: "277 Bedford Ave, Brooklyn, NY 11211, USA", stop2_zone: "brooklyn", date: "2026-11-12", time: "07:30", pickup_at: "2026-11-12T12:30:00.000Z", return_date: "2026-11-15", return_time: "18:00", return_at: "2026-11-15T23:00:00.000Z", passengers: "12", flight: "DL 401", meet: "1", tip_percent: "0", legs: "2", miles: "33.6", minutes: "86", fare_cents: "87694", tax_cents: "7673", bcf_cents: "1974", tolls_cents: "0", stops_cents: "4000", meet_cents: "2500", seats_cents: "18000", child_seats: "12", infant_seats: "4", toddler_seats: "4", booster_seats: "4", tip_cents: "4000", total_cents: "125841", rider: "other", name: "Ana Lopez", email: "ana.lopez@example.com", phone: "+1 212 555 0100", reach: "whatsapp", passenger_name: "Ben Ortiz", passenger_phone: "+44 20 7946 0958", sign_name: "Ortiz family", notes: "Kids aged 1, 3 and 6" };
+const legacyOf = (metadata) => {
+  const out = { ...metadata };
+  for (const [key, fields] of [["zones", "zone"], ["places", "place"]]) for (const part of (out[key] || "").split(", ").filter(Boolean)) out[`${part.split(" ")[0]}_${fields}`] = part.split(" ")[1];
+  const seats = (out.seats || "").split(", ").filter(Boolean).map((part) => part.split(" "));
+  if (seats.length) out.child_seats = String(seats.reduce((sum, [n]) => sum + Number(n), 0));
+  for (const [n, kind] of seats) out[`${kind}_seats`] = n;
+  delete out.zones;
+  delete out.places;
+  delete out.seats;
+  return out;
+};
+const rebuilt = (session) => ({
+  letters: bookingLetters(session, SETTINGS),
+  text: bookingText(session),
+  events: bookingEvents(session),
+  refund: refundChanges(session, { amount: session.amount_total, amount_refunded: 10000, refunded: false }, 1794600000).map(({ id, refunded, event }) => ({ id, refunded, event })),
+  receipt: receipt(session.metadata, readSettings({}), undefined),
+  page: sessionBodyOf(session),
+});
+
+await test("a booking paid before the metadata was packed, with from_zone, from_place, to_zone, to_place, stop1_zone, stop2_zone, child_seats and the seat counts per type, rebuilds exactly the emails, the owner text, the calendar events, the refund note, the receipt and the confirmation page of the same booking written with zones, places and seats", async () => {
+  setEnv({ STRIPE_SECRET_KEY: KEY });
+  assert.deepEqual([Object.keys(LEGACY_WORST).length, Object.keys(WORST.metadata).length, LEGACY_KEYS.filter((k) => k in WORST.metadata), WORST.total], [50, 43, [], 125841]);
+  assert.deepEqual([WORST.metadata.zones, WORST.metadata.places, WORST.metadata.seats], ["from jfk, stop1 manhattan, stop2 brooklyn, to outside", "from jfk-t4, to ChIJ7cv00DwsDogRAMDACa2m4K8", "4 infant, 4 toddler, 4 booster"]);
+  assert.deepEqual(legacyOf(WORST.metadata), LEGACY_WORST);
+  assert.deepEqual(bookingData(WORST.metadata), { ...LEGACY_WORST, zones: WORST.metadata.zones, places: WORST.metadata.places, seats: WORST.metadata.seats });
+  const packed = paid(WORST);
+  const legacy = { ...packed, metadata: LEGACY_WORST };
+  const now = rebuilt(packed);
+  assert.deepEqual(rebuilt(legacy), now);
+  const [customer, owner] = now.letters;
+  for (const letter of [customer, owner]) {
+    assert.ok(letter.text.includes("\nStop 1: 350 5th Ave, New York, NY 10118\nStop 2: 277 Bedford Ave, Brooklyn, NY 11211\nDrop-off: 1 Old Country Rd, Mineola, NY 11501\n"), letter.kind);
+    assert.ok(letter.text.includes("\nChild seats: 4 infant seats, 4 toddler seats and 4 booster seats\n"), letter.kind);
+    assert.ok(letter.text.includes("\nChild seats (12 x $15.00): $180.00\n"), letter.kind);
+  }
+  for (const key of ["zones", "seats"]) assert.notDeepEqual(rebuilt({ ...packed, metadata: { ...WORST.metadata, [key]: "" } }), now, key);
+  assert.match(owner.subject, /^\[TEST\] New booking 83558982: Thu Nov 12, 7:30 AM, Luxury Sprinter, JFK to 1 Old Country Rd, return Sun Nov 15, 6:00 PM$/);
+  assert.equal(now.receipt.lines.reduce((sum, line) => sum + line.cents, 0), WORST.total);
+  assert.deepEqual(now.events.map((event) => event.summary), ["[TEST] 83558982 Luxury Sprinter: JFK to 1 Old Country Rd", "[TEST] Return: 83558982 Luxury Sprinter: 1 Old Country Rd to JFK"]);
+  stripe.sessions.set(packed.id, legacy);
+  const before = await (await lookup(packed)).json();
+  stripe.sessions.set(packed.id, packed);
+  assert.deepEqual(await (await lookup(packed)).json(), before);
+  assert.deepEqual(before, now.page);
+});
+
+await test("every booking shape written with zones, places and seats rebuilds the same emails, owner text, calendar events, refund note, receipt and confirmation page as the old keys: one way, round trip, hourly, stops, a JFK terminal, New Jersey, Nassau, someone else riding, child seats and pets", async () => {
+  setEnv();
+  for (const [name, fix] of Object.entries({ ONE_WAY, ROUND, HOURLY, NEW_JERSEY, STOPS, STOPS_ROUND, STOPS_FAR, STOP_ONE_WAY, TERMINAL, NO_FLIGHT, NO_RETURN_FLIGHT, FOR_OTHER, TO_T5, SEATS, DOGS, HOURLY_JFK, NASSAU, NEWARK_ROUND, CONNECTICUT, WORST, WORST_DOGS })) {
+    assert.deepEqual(LEGACY_KEYS.filter((k) => k in fix.metadata), [], name);
+    assert.ok(Object.keys(fix.metadata).length <= 48, name);
+    const packed = paid(fix);
+    assert.deepEqual(rebuilt({ ...packed, metadata: legacyOf(fix.metadata) }), rebuilt(packed), name);
+  }
 });
 
 await test("[TEST] starts both subjects only for a test mode session, and the test booking notice opens both bodies", async () => {

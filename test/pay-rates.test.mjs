@@ -15,6 +15,8 @@ import {
   percentCents,
   MEET_AND_GREET,
   CHILD_SEAT_CENTS,
+  SMALL_DOG_CENTS,
+  LARGE_DOG_CENTS,
   HOURS,
   MIN_NOTICE_MINUTES,
   MAX_ADVANCE_DAYS,
@@ -126,7 +128,7 @@ test("#airport-total columns equal the Business SUV lines to JFK and to Newark a
   const foot = [...table.querySelectorAll("tfoot tr")];
   assert.equal(squash(foot[0].querySelector("th")), "Total");
   assert.deepEqual([...foot[0].querySelectorAll("td")].map((td) => cents(squash(td))), [[airportTotal], [airportTotal]]);
-  assert.equal(squash(foot[1]), "Every class adds the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Trips to or from JFK and LaGuardia also add NYC sales tax. Newark and Teterboro are in New Jersey, where no New York sales tax applies, so the fare there is higher and the total is the same. Meet and greet, child seats and a gratuity, if chosen, are added at booking.");
+  assert.equal(squash(foot[1]), "Every class adds the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Trips to or from JFK and LaGuardia also add NYC sales tax. Newark and Teterboro are in New Jersey, where no New York sales tax applies, so the fare there is higher and the total is the same. Meet and greet, child seats, pets and a gratuity, if chosen, are added at booking.");
   assert.deepEqual(cents(squash(foot[1])), [leg("suv", "jfk").tolls]);
 });
 
@@ -371,9 +373,11 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   const nodes = [...page.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => JSON.parse(s.textContent)["@graph"] || []);
   const catalog = nodes.find((n) => n["@type"] === "OfferCatalog");
   assert.ok(catalog, "rates.html has no OfferCatalog");
-  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, MEET_AND_GREET, CHILD_SEAT_CENTS]);
+  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS]);
   const unknown = [];
   assert.deepEqual(catalog.itemListElement.filter((o) => o.name === "Child seat").map((o) => [Number(o.price) * 100, Number(o.priceSpecification.price) * 100]), [[CHILD_SEAT_CENTS, CHILD_SEAT_CENTS]]);
+  assert.deepEqual(catalog.itemListElement.filter((o) => / dog$/.test(o.name)).map((o) => [o.name, Number(o.price) * 100, Number(o.priceSpecification.price) * 100, o.priceSpecification.valueAddedTaxIncluded, o.url]), [["Small dog", SMALL_DOG_CENTS, SMALL_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"], ["Large dog", LARGE_DOG_CENTS, LARGE_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"]]);
+  assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [1500, 4000]);
   const airport = catalog.itemListElement.filter((o) => o.name.startsWith("Airport transfer, "));
   assert.deepEqual(airport.map((o) => [o.name, new URL(o.url).hash.slice(1)]), CLASS_KEYS.flatMap((k) => [[`Airport transfer, JFK, Newark or Teterboro, ${CLASSES[k].name}`, `airport-${k}`], [`Airport transfer, LaGuardia, ${CLASSES[k].name}`, `airport-${k}`]]));
   for (const [i, offer] of airport.entries()) {

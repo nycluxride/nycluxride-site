@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { CLASSES, VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL, CALENDAR } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, dogText, dogParts, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
@@ -53,7 +53,7 @@ const has = (object, key) => typeof key === "string" && Object.prototype.hasOwnP
 const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const atAirport = (spot, zone) => AIRPORT_PLACE.test(spot) || AIRPORT_ZONE.test(zone);
 const terminal57 = (spot, zone, words) => /^jfk-t[57]$/.test(spot) || (zone === "jfk" && /\bterminal ?[57]\b/i.test(words));
-const metadataOf = (object) => (object && object.metadata && typeof object.metadata === "object" ? object.metadata : {});
+const metadataOf = (object) => bookingData(object && object.metadata);
 const intentOf = (session) => {
   const id = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent && session.payment_intent.id;
   return INTENT.test(id || "") ? id : "";
@@ -112,6 +112,10 @@ function seatsOf(b) {
   return seatText({ seats: Object.fromEntries(CHILD_SEATS.map((k) => [k, f(`${k}_seats`)])) }) || f("child_seats");
 }
 
+function dogsOf(b) {
+  return dogText({ dogs: Object.fromEntries(dogParts(b.field("dogs")).map((part) => [part.size, String(part.count)])) });
+}
+
 function tripRows(b) {
   const L = MAIL.labels;
   const f = b.field;
@@ -133,6 +137,7 @@ function tripRows(b) {
     [L.meet, meet ? L.yes : ""],
     [L.sign, meet ? f("sign_name") : ""],
     [L.seats, seatsOf(b)],
+    [L.dogs, dogsOf(b)],
     [L.notes, f("notes")],
   ];
   return rows.filter(([, value]) => value);
@@ -254,6 +259,7 @@ export function bookingText(session) {
   const f = b.field;
   const L = MAIL.labels;
   const seats = seatsOf(b);
+  const dogs = dogsOf(b);
   return fitText((clipPlace, clipName) => [
     `${b.test ? MAIL.test : ""}${MAIL.textHeading}`,
     [clipName(b.name), b.phone].filter(Boolean).join(", "),
@@ -261,6 +267,7 @@ export function bookingText(session) {
     routeSummary(metadataOf(session), clipPlace(shortPlace(f("from_text"), f("from_zone"))), clipPlace(shortPlace(f("to_text"), f("to_zone")))),
     vehicleOf(b),
     seats ? `${L.seats}: ${seats}` : "",
+    dogs ? `${L.dogs}: ${dogs}` : "",
     b.total === null ? "" : `${MAIL.paid} ${money(b.total)}`,
     `${L.ref} ${b.ref}`,
   ]);

@@ -189,6 +189,7 @@
 @media (scripting:enabled){
 .bk.bk [data-show]:not(.is-shown),.bk.bk .bk-nojs,#from-search,.bk-nj{display:none}
 .bk:has(#q-error.is-on) #bk-kids:has(#bk-kids-p:empty) #bk-kids-n{display:block}
+.bk:has(#q-error.is-on) #bk-pets:has(#bk-pets-p:empty) #bk-pets-n{display:block}
 .bk:not(.is-js) :is(#bk-opts,#bk-det,#bk-act,#bk-side):has(:target){display:grid}
 [class*=__book]>.bk{--bu:#fff;--bf:#fff;--bo:var(--gold-500);--be:var(--error-on-dark);--b2:var(--on-glass-2);--bs:var(--on-glass-2);--bb:#0F1319;--bl:#fff6;--bw:var(--shadow-glass);--bx:var(--blur-pop);--ba:var(--muted);--bh:rgba(255,255,255,.12);--bn:var(--glass-dark);--bm:#fff;--bv:#fff;--bt:#0000;--bg:color-mix(in srgb,var(--gold-300),#fff);padding:0;border-radius:0;background:none;box-shadow:none;color:#fff}
 [class*=__book]>.bk .bk-mode{justify-self:center;margin-bottom:16px;background:var(--glass-dark);-webkit-backdrop-filter:var(--blur-glass);backdrop-filter:var(--blur-glass);box-shadow:var(--shadow-glass)}
@@ -379,7 +380,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk-who>label{font:400 16px/24px var(--font-sans)}
 .bk-det{gap:20px}
 .bk-det>.bk-e{margin-top:-12px}
-.bk[data-step=details] :is(#bk-tip,#bk-meet-f,#bk-kids,#bk-check){margin-top:8px}
+.bk[data-step=details] :is(#bk-tip,#bk-meet-f,#bk-kids,#bk-pets,#bk-check){margin-top:8px}
 #bk-back .icon{rotate:180deg}
 .bk-trip{display:grid;gap:12px;padding:20px 24px;border-radius:16px;background:#fff;box-shadow:var(--shadow-1)}
 .bk-trip h3{font:var(--m5);color:var(--ink)}

@@ -3,7 +3,7 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DISTANCE_RATES, CHILD_SEAT_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS } from "../api/_rates.mjs";
+import { DISTANCE_RATES, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RATES = "rates.html";
@@ -26,6 +26,8 @@ const PROSE_ATTRS = new Set(["content", "aria-label", "alt", "title", "placehold
 const PRICE_KEY = /price|offer/i;
 const PRICE_TYPE = /Offer|PriceSpecification|MonetaryAmount/;
 const SEAT_PRICE = `$${CHILD_SEAT_CENTS / 100} per seat`;
+const PET_CARD = "index.html";
+const PET_PRICES = [`$${SMALL_DOG_CENTS / 100} per dog`, `$${LARGE_DOG_CENTS / 100} per dog`];
 const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;
 const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "cancellation"];
 
@@ -49,6 +51,13 @@ function walk(node, visit, key = null) {
   if (Array.isArray(node)) node.forEach((v) => walk(v, visit, key));
   else if (node && typeof node === "object") for (const [k, v] of Object.entries(node)) { visit(k, v); walk(v, visit, k); }
   else visit(key, node, true);
+}
+
+function textOf(root) {
+  const w = root.ownerDocument.createTreeWalker(root, 4);
+  const parts = [];
+  while (w.nextNode()) parts.push(w.currentNode.nodeValue);
+  return parts.join(" ").replace(/\s+/g, " ");
 }
 
 function read(file) {
@@ -85,9 +94,9 @@ const pages = new Map(FILES.map((f) => [f, read(f)]));
 
 for (const [file, p] of pages) {
   if (file === RATES) continue;
-  const allowed = ALLOWED[file] || [];
+  const allowed = [...(ALLOWED[file] || []), ...(file === PET_CARD ? PET_PRICES : [])];
 
-  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}`, () => {
+  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}${file === PET_CARD ? ` and the pets card prices ${PET_PRICES.join(" and ")}` : ""}`, () => {
     const hits = [];
     const scan = (where, s, re = PROSE_PRICE) => {
       const rest = unseat(strip(String(s), allowed));
@@ -118,7 +127,7 @@ for (const [file, p] of pages) {
     assert.deepEqual(found, [], found.join(", "));
   });
 
-  for (const tok of allowed) {
+  for (const tok of ALLOWED[file] || []) {
     check(`${file}: allowlisted third-party figure ${tok} is still in use`, () => assert.ok(p.text.includes(tok), `${tok} no longer appears, drop it from the allowlist`));
   }
 }
@@ -159,6 +168,28 @@ if (rates) {
   check(`${RATES}: the add-ons carry the child seat price other pages quote, ${SEAT_PRICE}`, () => {
     const row = [...rates.document.querySelectorAll("#add-ons dt")].find((dt) => dt.textContent.trim() === "Child seats");
     assert.ok(row?.nextElementSibling?.textContent.includes(SEAT_PRICE), "no child seat price in the add-ons");
+  });
+  check(`${RATES}: the add-ons carry the pet prices of api/_rates.mjs, $${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog, and no other price per dog appears`, () => {
+    const row = [...rates.document.querySelectorAll("#add-ons dt")].find((dt) => dt.textContent.trim() === "Pets");
+    assert.ok(row?.nextElementSibling?.textContent.includes(`$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog`), "no pet prices in the add-ons");
+    assert.ok(row.nextElementSibling.textContent.includes("Service animals ride free"));
+    const found = [...rates.text.matchAll(/\$\s*(\d+(?:\.\d+)?)\s+per (small|large) dog/g)].map((m) => [m[2], Number(m[1]) * 100]);
+    assert.deepEqual(found, [["small", SMALL_DOG_CENTS], ["large", LARGE_DOG_CENTS]]);
+  });
+  check(`no page other than the rates page names a price per dog, apart from the homepage pets card, which names exactly ${PET_PRICES[0]} for a small dog and ${PET_PRICES[1]} for a large dog from api/_rates.mjs`, () => {
+    const outside = (file, p) => {
+      if (file !== PET_CARD) return p.text;
+      const body = p.document.body.cloneNode(true);
+      for (const n of body.querySelectorAll("script, style, main > section.hero > section.pets")) n.remove();
+      return textOf(body);
+    };
+    const hits = [...pages].filter(([file]) => file !== RATES).filter(([file, p]) => /\$\s*\d[^.]{0,40}\bdogs?\b|\bdogs?\b[^.]{0,40}\$\s*\d/i.test(outside(file, p))).map(([file]) => file);
+    assert.deepEqual(hits, []);
+    const card = pages.get(PET_CARD).document.querySelector("main > section.hero > section.pets");
+    assert.ok(card, "no pets card on the homepage");
+    assert.deepEqual([...textOf(card).matchAll(/\$\s*\d[\d.,]*/g)].map((m) => m[0]), [`$${SMALL_DOG_CENTS / 100}`, `$${LARGE_DOG_CENTS / 100}`]);
+    assert.deepEqual([...card.querySelectorAll(".pets__list > li")].map((li) => textOf(li).trim()), [`Small dog ${PET_PRICES[0]}`, `Large dog ${PET_PRICES[1]}`]);
+    assert.equal(pages.get(PET_CARD).text.split(" per dog").length - 1, 2, "a price per dog outside the pets card");
   });
   check(`${RATES}: every anchor other pages link to exists`, () => {
     const missing = RATE_ANCHORS.filter((id) => !ratesIds.has(id));

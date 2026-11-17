@@ -241,7 +241,7 @@ await check("M2 M3 M12 one map for the whole page view: pins appear at the picke
   await ctx.close();
 });
 
-for (const [from, to, tenths, minutes, note] of [[EDITION_ROW, BEDFORD_ROW, 46, 27, "4.6 miles, about 27 min by car."], [["350 5th Ave, New York, NY 10118"], ["Greenwich, CT 06830"], 314, 52, "31.4 miles, about 52 min by car."]]) {
+for (const [from, to, tenths, minutes, note, price] of [[EDITION_ROW, BEDFORD_ROW, 46, 27, "4.6 miles, about 27 min by car.", (ride) => priceDistance("suv", ride)], [["350 5th Ave, New York, NY 10118"], ["Greenwich, CT 06830"], 314, 52, "31.4 miles, about 52 min by car.", (ride) => priceRide("suv", ride, [], "0")]]) {
   await check(`M4 ${from[0]} to ${to[0]}: the priced route is the drawn route, the note reads ${note} with no Traffic estimate, the options request carries the token and no map size, no second route request`, async () => {
     const ctx = await context(M);
     const p = await open(ctx, M, "/book");
@@ -270,7 +270,7 @@ for (const [from, to, tenths, minutes, note] of [[EDITION_ROW, BEDFORD_ROW, 46, 
     assert.equal(n.text, `${note} Google Maps`);
     assert.equal(n.attr, "hidden", "the map logo is on screen");
     assert.ok(!/traffic estimate/i.test(await p.evaluate(() => document.body.innerText)));
-    assert.equal(await p.evaluate(() => document.getElementById("bk-p-suv").querySelector(".bk-fig").textContent), cash(priceDistance("suv", { tenths, minutes }).total));
+    assert.equal(await p.evaluate(() => document.getElementById("bk-p-suv").querySelector(".bk-fig").textContent), cash(price({ tenths, minutes }).total));
     assert.deepEqual(p.errors, []);
     await ctx.close();
   });

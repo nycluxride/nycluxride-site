@@ -239,6 +239,7 @@ const HOURLY = await booked({ trip_type: "hour", from_text: "1 Main Street, Broo
 const STOPS = await booked({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "277 Bedford Ave, Brooklyn, NY 11211", stop2_text: "John F. Kennedy (JFK)", stop2_id: "jfk", to_text: MANHATTAN, date: "2026-11-21", time: "09:00", passengers: "2", class: "suv", flight: "AA 100", tip: "0", rider: "me", ...ME, reach: "phone" });
 const NEW_JERSEY = await booked({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-20", time: "05:15", passengers: "2", class: "sedan", tip: "20", rider: "me", ...ME, reach: "phone" });
 const SPRINTER = await booked({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "Hoboken, NJ 07030", date: "2026-11-20", time: "05:15", return: "1", return_date: "2026-11-21", return_time: "09:00", passengers: "9", class: "sprinter", tip: "0", infant_seats: "1", rider: "me", ...ME, reach: "phone" });
+const DOGS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "3", class: "premium", meet: "1", flight: "DL 401", tip: "15", infant_seats: "1", small_dogs: "2", large_dogs: "1", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
 let serial = 0;
@@ -417,6 +418,23 @@ await test("drive minutes: a trip priced by distance lasts its drive time, and a
   assert.equal(back.summary, "[TEST] Return: 83558982 Luxury Sprinter: Hoboken to Secaucus");
   assert.deepEqual([out.start.dateTime, out.end.dateTime, back.start.dateTime, back.end.dateTime], ["2026-11-20T10:15:00.000Z", "2026-11-20T10:58:00.000Z", "2026-11-21T14:00:00.000Z", "2026-11-21T14:43:00.000Z"]);
   assert.ok(out.description.split("\n").includes("Child seats: 1 infant seat"), out.description);
+});
+
+await test("the events of a round trip with pets name the dogs right after the child seats in both descriptions, and the dog lines count once in the amount paid", async () => {
+  setEnv(fullEnv());
+  await hook(paid(DOGS));
+  const events = inserted();
+  assert.equal(events.length, 2);
+  assert.equal(DOGS.metadata.dogs, "2 small 3000, 1 large 4000");
+  for (const event of events) {
+    const lines = event.description.split("\n");
+    const at = lines.indexOf("Child seats: 1 infant seat");
+    assert.ok(at > 0 && lines[at + 1] === "Pets: 2 small dogs and 1 large dog", event.description);
+    assert.ok(lines.includes(`Paid: $${(DOGS.total / 100).toFixed(2)}`), event.description);
+  }
+  setEnv(fullEnv());
+  await hook(paid(ROUND));
+  for (const event of inserted()) assert.ok(!/Pets|dog/.test(event.description), event.description);
 });
 
 await test("[TEST] starts the title only for a test mode booking, and the event id is fixed per booking leg, made of 0-9 and a-v", () => {

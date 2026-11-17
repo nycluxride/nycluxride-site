@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES, CHILD_SEATS } from "./_rates.mjs";
+import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatCounts, seatText, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -83,6 +83,7 @@ function intentDescription(trip, metadata, ref) {
   if (f("return_flight")) parts.push(`Return flight ${f("return_flight")}`);
   parts.push(passengerText(trip.passengers));
   if (seatText(trip)) parts.push(seatText(trip));
+  if (dogText(trip)) parts.push(dogText(trip));
   if (trip.meet) parts.push(LABELS.meet);
   const places = PLACE_LABELS.filter(([name]) => f(`${name}_text`) && (name.startsWith("stop") || shortPlace(metadata[`${name}_text`], metadata[`${name}_zone`]) !== placeText(metadata[`${name}_text`])));
   const headWith = (max) => [...parts, ...places.map(([name, label]) => `${label} ${quoted(f(`${name}_text`), max)}`)].map(sentence).join(" ");
@@ -106,7 +107,6 @@ export function metadataFor(input, price, ref) {
   const hourly = trip.trip_type === "hour";
   const legs = legsFor(trip);
   const first = legs[0] || {};
-  const end = (name, key) => (trip.ends && trip.ends[name] ? trip.ends[name][key] : "");
   const d = trip.details || {};
   const other = d.rider === "other";
   const ride = rideTotals(trip);
@@ -119,15 +119,11 @@ export function metadataFor(input, price, ref) {
     vehicle: hourly ? trip.vehicle : "",
     hours: trip.hours,
     from_text: trip.from_text,
-    from_zone: end("from", "zone"),
-    from_place: end("from", "place"),
     to_text: trip.to_text,
-    to_zone: end("to", "zone"),
-    to_place: end("to", "place"),
     stop1_text: trip.stop1_text,
-    stop1_zone: end("stop1", "zone"),
     stop2_text: trip.stop2_text,
-    stop2_zone: end("stop2", "zone"),
+    zones: endMeta(trip.ends, ["from", "stop1", "stop2", "to"], "zone"),
+    places: endMeta(trip.ends, ["from", "to"], "place", MAX_VALUE),
     date: trip.date,
     time: trip.time,
     pickup_at: nycToUtc(trip.date, trip.time).toISOString(),
@@ -148,9 +144,9 @@ export function metadataFor(input, price, ref) {
     tolls_cents: price.tolls,
     stops_cents: price.stops || "",
     meet_cents: price.meet,
+    seats: price.seats ? seatMeta(trip) : "",
     seats_cents: price.seats || "",
-    child_seats: price.seats ? price.seatCount : "",
-    ...Object.fromEntries(CHILD_SEATS.map((k) => [`${k}_seats`, (price.seats && seatCounts(trip)[k]) || ""])),
+    dogs: price.dogs ? dogMeta(price) : "",
     tip_cents: price.tip,
     total_cents: price.total,
     rider: d.rider,
@@ -175,6 +171,7 @@ function lineDescription(entry, i, trip, price, ref) {
   if (i === 0) return fareDescription(trip, ref);
   if (entry.label === LABELS.meet) return LABELS.meetDescription;
   if (price.seats && entry.label === price.seatLabel) return `${seatText(trip)}.`;
+  if (price.dogs && price.dogLabels.includes(entry.label)) return LABELS.dogDescription;
   if (price.tip && (entry.label === LABELS.gratuityAmount || entry.label === fill(LABELS.gratuity, { rate: price.tipPercent }))) return LABELS.gratuityDescription;
   return undefined;
 }
@@ -211,7 +208,7 @@ export function sessionParams(input, price, ref, settings, now, origin) {
     line_items: lineItems,
     payment_intent_data: {
       setup_future_usage: "off_session",
-      description: intentDescription(trip, metadata, ref),
+      description: intentDescription(trip, bookingData(metadata), ref),
       statement_descriptor_suffix: descriptorSuffix(trip),
       metadata,
     },

@@ -631,6 +631,191 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       await ctx.close();
     }
   }
+  if (engine === "chromium") {
+    const PETS = () => {
+      const q = (s) => document.querySelector(s);
+      const box = (e) => e.getBoundingClientRect();
+      const lines = (e) => new Set([...e.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).flatMap((n) => {
+        const r = document.createRange();
+        r.selectNodeContents(n);
+        return [...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top));
+      })).size;
+      const card = q(".hero > .pets"), seats = q(".hero > .seats"), c = box(card), s = box(seats), band = box(q("#wait-h").closest("section"));
+      const cs = getComputedStyle(card), ss = getComputedStyle(seats);
+      const parts = [".pets__h", ".pets__line", ".pets__list", ".pets__svc", ".pets__checks", ".pets__more"].map((x) => box(card.querySelector(`:scope > ${x}`)));
+      const dogs = [...card.querySelectorAll(".pets__list > li")].map(box);
+      const out = [], clipped = [];
+      for (const el of card.querySelectorAll("*")) {
+        const r = box(el);
+        if (r.width && (r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.left < -0.5 || r.right > innerWidth + 0.5)) out.push(el.className.baseVal ?? el.className);
+        if (el.matches("p, li, h2, span, b") && !el.closest(".sr-only") && getComputedStyle(el).display !== "inline" && el.scrollWidth > el.clientWidth + 1) clipped.push(el.textContent.trim().slice(0, 40));
+      }
+      const px = (e, p) => getComputedStyle(e)[p];
+      return {
+        page: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+        out,
+        clipped,
+        gap: Math.round((c.top - s.bottom) * 10) / 10,
+        edges: [Math.round(c.left - s.left), Math.round(c.width - s.width)],
+        frame: [cs.paddingTop, cs.paddingLeft, cs.borderTopLeftRadius, cs.borderTopWidth, cs.backgroundImage.startsWith("linear-gradient") && cs.backgroundImage.includes("conic-gradient"), cs.boxShadow].join(" ") === [ss.paddingTop, ss.paddingLeft, ss.borderTopLeftRadius, ss.borderTopWidth, ss.backgroundImage.startsWith("linear-gradient") && ss.backgroundImage.includes("conic-gradient"), ss.boxShadow].join(" "),
+        gold: cs.backgroundImage.includes("conic-gradient"),
+        rings: [...card.querySelectorAll(".pets__art")].map((e) => `${Math.round(box(e).width)}x${Math.round(box(e).height)} ${px(e, "borderTopColor")} ${px(e, "borderTopLeftRadius")}`),
+        seatRing: (() => { const e = seats.querySelector(".seats__art"); return `${Math.round(box(e).width)}x${Math.round(box(e).height)} ${px(e, "borderTopColor")} ${px(e, "borderTopLeftRadius")}`; })(),
+        icons: [...card.querySelectorAll(".pets__art .icon")].map((e) => [Math.round(box(e).width), px(e, "color"), px(e, "strokeWidth")].join(" ")),
+        seatIcon: (() => { const e = seats.querySelector(".seats__art .icon"); return [Math.round(box(e).width), px(e, "color"), px(e, "strokeWidth")].join(" "); })(),
+        paw: (() => { const e = card.querySelector(".pets__paw"), h = box(card.querySelector(".pets__h")); const r = box(e); return [Math.round(r.width), Math.round(r.height), px(e, "borderTopLeftRadius"), r.top >= h.top - 0.5 && r.bottom <= h.bottom + 0.5]; })(),
+        price: [...card.querySelectorAll(".pets__s b")].map((e) => [px(e, "fontSize"), px(e, "color")].join(" ")),
+        seatPrice: [px(seats.querySelector(".seats__s b"), "fontSize"), px(seats.querySelector(".seats__s b"), "color")].join(" "),
+        title: [px(card.querySelector(".pets__h"), "fontSize"), px(card.querySelector(".pets__h > span"), "fontStyle"), px(card.querySelector(".pets__h > span"), "color")].join(" "),
+        seatTitle: [px(seats.querySelector(".seats__h"), "fontSize"), px(seats.querySelector(".seats__h > span"), "fontStyle"), px(seats.querySelector(".seats__h > span"), "color")].join(" "),
+        dogRow: [new Set(dogs.map((d) => Math.round(d.top))).size, new Set(dogs.map((d) => Math.round(d.left))).size],
+        dogGap: (() => { const [a, b] = [...card.querySelectorAll(".pets__list > li")].map((li) => { const r = document.createRange(); r.selectNodeContents(li.querySelector(".pets__s")); return r.getBoundingClientRect(); }); return Math.round(b.left - a.right); })(),
+        parts: parts.map((r) => [Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.right)]),
+        wrapped: [...card.querySelectorAll(".pets__h, .pets__n, .pets__s")].filter((e) => lines(e) > 1).map((e) => e.textContent.trim()),
+        height: Math.round(c.height),
+        above: c.bottom <= band.top,
+        columns: [[".pets__list", ".seats__list"], [".pets__svc", ".seats__s"]].map(([a, b]) => Math.round(box(card.querySelector(a)).left - box(seats.querySelector(b)).left)),
+        textEdges: [...card.querySelectorAll(":scope > .pets__svc, :scope > .pets__checks > li")].map((e) => { const r = document.createRange(); r.selectNodeContents([...e.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim())); return Math.round(r.getBoundingClientRect().left); }),
+      };
+    };
+    for (const width of [320, 390, 768, 1024, 1200, 1440]) {
+      const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+      const p = await ctx.newPage();
+      await p.addInitScript(NO_GUTTER);
+      await p.addInitScript(() => {
+        window.__cls = 0;
+        new PerformanceObserver((list) => { for (const e of list.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: "layout-shift", buffered: true });
+      });
+      await p.goto(`${base}/`, { waitUntil: "load" });
+      await p.evaluate(() => document.fonts.ready);
+      await p.waitForTimeout(200);
+      const m = await p.evaluate(PETS);
+      const L = width >= 1024;
+      await check(`${engine} ${width}px: the pets card follows the child seats card 16 px below it at the same width, with the same padding, radius, gold metallic edge and shadow, and ends above the waiting band`, () => {
+        assert.deepEqual([m.gap, m.edges, m.frame, m.gold, m.above], [16, [0, 0], true, true, true]);
+      });
+      await check(`${engine} ${width}px: the pets card has no sideways scroll, nothing outside the card and no clipped text`, () => {
+        assert.ok(m.page[0] <= m.page[1], `the page is ${m.page[0]}px wide in ${m.page[1]}px`);
+        assert.deepEqual([m.out, m.clipped], [[], []]);
+      });
+      await check(`${engine} ${width}px: the small and large dog sit side by side in gold rings and icons the size, colour and stroke of the child seats, the prices in the seats' gold menu figures, the heading in the seats' type with rides in gold italic beside a 40 px paw ring`, () => {
+        assert.deepEqual(m.rings, [m.seatRing, m.seatRing]);
+        assert.deepEqual(m.icons, [m.seatIcon, m.seatIcon]);
+        assert.deepEqual(m.price, [m.seatPrice, m.seatPrice]);
+        assert.equal(m.title, m.seatTitle);
+        assert.deepEqual(m.paw, [40, 40, "50%", true]);
+        assert.deepEqual(m.dogRow, [1, 2]);
+        assert.ok(m.dogGap >= 16, `the two dogs sit ${m.dogGap}px apart`);
+      });
+      await check(`${engine} ${width}px: the heading, each dog name and each price stay on one line`, () => assert.deepEqual(m.wrapped, []));
+      await check(`${engine} ${width}px: the service animal line and the three checks start their text at one edge${L ? ", and the dogs and the service animal line start where the child seats and their price start in the card above" : ""}`, () => {
+        assert.equal(new Set(m.textEdges).size, 1, JSON.stringify(m.textEdges));
+        if (L) assert.deepEqual(m.columns, [0, 0]);
+      });
+      await check(`${engine} ${width}px: ${L ? "the heading, line and FAQ link sit left of the dogs, and the service animal line and the checks right of them" : "the heading, the line, the dogs, the service animal line, the checks and the FAQ link run top to bottom"}, and the card is at most ${L ? 240 : width < 600 ? 520 : 480} px tall`, () => {
+        const [h, line, list, svc, checks, more] = m.parts;
+        if (L) {
+          for (const r of [h, line, more]) assert.ok(r[3] <= list[2], `${r} is not left of the dogs ${list}`);
+          for (const r of [svc, checks]) assert.ok(r[2] >= list[3], `${r} is not right of the dogs ${list}`);
+          assert.ok(h[1] <= line[0] && line[1] <= more[0] && svc[1] <= checks[0], JSON.stringify(m.parts));
+        } else {
+          for (let i = 1; i < m.parts.length; i++) assert.ok(m.parts[i - 1][1] <= m.parts[i][0] + 0.5, JSON.stringify(m.parts));
+        }
+        assert.ok(m.height <= (L ? 240 : width < 600 ? 520 : 480), `${m.height}px`);
+      });
+      await p.evaluate(() => document.querySelector(".hero > .pets").scrollIntoView({ block: "center" }));
+      await p.waitForTimeout(400);
+      await p.evaluate(() => Promise.all(document.querySelector(".hero > .pets").getAnimations({ subtree: true }).map((a) => a.finished)));
+      await p.evaluate(() => scrollTo(0, 0));
+      await p.waitForTimeout(100);
+      const cls = await p.evaluate(() => window.__cls);
+      await check(`${engine} ${width}px: CLS is 0 on load and after the pets card scrolls into view and plays`, () => assert.equal(cls, 0));
+      await p.addStyleTag({ content: SPACING });
+      await p.waitForTimeout(100);
+      const t = await p.evaluate(PETS);
+      await check(`${engine} ${width}px: with the WCAG text spacing the pets card still fits, no sideways scroll, nothing outside the card and no clipped text`, () => {
+        assert.ok(t.page[0] <= t.page[1], `the page is ${t.page[0]}px wide in ${t.page[1]}px`);
+        assert.deepEqual([t.out, t.clipped], [[], []]);
+      });
+      await ctx.close();
+    }
+    const PLAY = () => {
+      const c = document.querySelector(".hero > .pets"), els = [...c.querySelectorAll(":scope > .pets__list > li, :scope > .pets__svc, :scope > .pets__checks, :scope > .pets__more")];
+      return { rv: c.dataset.rv ?? null, op: els.map((e) => getComputedStyle(e).opacity), anims: c.getAnimations({ subtree: true }).map((a) => a.animationName).sort(), tops: els.map((e) => Math.round(e.getBoundingClientRect().top + scrollY)) };
+    };
+    const open = async (o) => {
+      const ctx = await browser.newContext(o);
+      const p = await ctx.newPage();
+      await p.goto(`${base}/`, { waitUntil: "load" });
+      if (o.javaScriptEnabled !== false) await p.evaluate(() => document.fonts.ready);
+      await p.waitForTimeout(200);
+      return { ctx, p, at: await p.evaluate(PLAY) };
+    };
+    const ALL = ["1", "1", "1", "1", "1"];
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      const { ctx, p, at } = await open({ viewport });
+      await p.evaluate(() => document.querySelector(".hero > .pets > .pets__list").scrollIntoView({ block: "center" }));
+      await p.waitForFunction(() => document.querySelector(".hero > .pets").getAnimations({ subtree: true }).length > 0, null, { timeout: 2000 }).catch(() => {});
+      const run = await p.evaluate(PLAY);
+      await p.evaluate(() => Promise.all(document.querySelector(".hero > .pets").getAnimations({ subtree: true }).map((a) => a.finished)));
+      const rest = await p.evaluate(PLAY);
+      await check(`${engine} ${viewport.width}x${viewport.height}: the pets card stays visible and still as it scrolls into view, each dog sends out the seats' gold ring, and only the word rides shimmers, with a gold star`, () => {
+        assert.deepEqual([at.rv, at.op, at.anims], ["0", ALL, []]);
+        assert.equal(run.rv, "1");
+        assert.deepEqual(run.anims, ["seat-ring", "seat-ring", "seat-sheen", "seat-star"]);
+        assert.deepEqual([run.op, run.tops], [ALL, at.tops]);
+        assert.deepEqual([rest.op, rest.anims, rest.tops], [ALL, [], at.tops]);
+      });
+      if (viewport.width === 1440) {
+        const li = ".hero > .pets .pets__list > li:nth-child(2)";
+        const before = await p.evaluate((s) => JSON.stringify(document.querySelector(s).querySelector(".pets__art").getBoundingClientRect()), li);
+        await p.hover(li);
+        await p.waitForTimeout(120);
+        const spark = await p.evaluate((s) => { const e = document.querySelector(s), a = e.querySelector(".pets__art"), st = getComputedStyle(a); return [[...new Set(e.getAnimations({ subtree: true }).map((x) => x.animationName))].sort(), st.translate, st.boxShadow, JSON.stringify(a.getBoundingClientRect())]; }, li);
+        await check(`${engine} 1440x900: hovering a dog makes it sparkle like a child seat, its icon glows and a star twinkles on the ring, and the medallion does not move`, () => assert.deepEqual(spark, [["seat-glow", "seat-star"], "none", "none", before]));
+        await p.hover(".hero > .pets .pets__checks > li");
+        await p.waitForTimeout(120);
+        const still = await p.evaluate(() => document.querySelector(".hero > .pets .pets__checks").getAnimations({ subtree: true }).length);
+        await check(`${engine} 1440x900: hovering a check does not animate it`, () => assert.equal(still, 0));
+      }
+      await ctx.close();
+    }
+    {
+      const { ctx, p } = await open({ viewport: { width: 1440, height: 900 }, forcedColors: "active" });
+      await p.evaluate(() => document.querySelector(".hero > .pets > .pets__list").scrollIntoView({ block: "center" }));
+      await p.waitForTimeout(300);
+      const fc = await p.evaluate(PLAY);
+      const look = await p.evaluate(() => {
+        const sys = (c, prop = "backgroundColor") => { const d = document.createElement("div"); d.style.cssText = `forced-color-adjust:none;background:${c};color:${c}`; document.body.append(d); const v = getComputedStyle(d)[prop]; d.remove(); return v; };
+        const card = document.querySelector(".hero > .pets"), paw = card.querySelector(".pets__paw"), ring = card.querySelector(".pets__art");
+        return { card: [getComputedStyle(card).borderTopStyle, getComputedStyle(card).backgroundColor], paw: [getComputedStyle(paw).borderTopColor, getComputedStyle(paw).backgroundColor], ring: getComputedStyle(ring).borderTopStyle, canvas: sys("Canvas"), text: sys("CanvasText", "color") };
+      });
+      await check(`${engine} with forced colors: the pets card keeps its outline on Canvas, the paw ring is CanvasText on Canvas, the dog rings keep their outline, and nothing animates`, () => {
+        assert.deepEqual([look.card, look.paw, look.ring], [["solid", look.canvas], [look.text, look.canvas], "solid"]);
+        assert.deepEqual([fc.op, fc.anims], [ALL, []]);
+      });
+      await ctx.close();
+    }
+    for (const [name, o] of [["with reduced motion", { viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" }], ["without javascript", { viewport: { width: 1440, height: 900 }, javaScriptEnabled: false }], ["with the pets card on screen at load", { viewport: { width: 1024, height: 1366 } }]]) {
+      const { ctx, p, at } = await open(o);
+      await p.evaluate(() => document.querySelector(".hero > .pets > .pets__list").scrollIntoView({ block: "center" }));
+      await p.waitForTimeout(300);
+      const after = await p.evaluate(PLAY);
+      await check(`${engine} ${name}: the pets card shows at once and never animates`, () => {
+        for (const s of [at, after]) assert.deepEqual([s.rv, s.op, s.anims], [null, ALL, []]);
+      });
+      await ctx.close();
+    }
+    for (const width of [390, 1440]) {
+      const { ctx, p } = await open({ viewport: { width, height: 900 }, javaScriptEnabled: false });
+      const order = await p.evaluate(() => [".hero > .seats", ".hero > .pets", ".hero__book"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; }));
+      await check(`${engine} ${width}px without javascript: the pets card sits 16 px under the child seats card and ends above the booking form`, () => {
+        assert.equal(order[1][0] - order[0][1], 16);
+        assert.ok(order[1][1] <= order[2][0], JSON.stringify(order));
+      });
+      await ctx.close();
+    }
+  }
   await browser.close();
 }
 

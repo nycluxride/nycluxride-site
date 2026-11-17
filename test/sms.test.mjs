@@ -85,6 +85,7 @@ const ONE_WAY = await booked({ trip_type: "one", from_text: "253 West 72nd Stree
 const ROUND = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "3", class: "premium", meet: "1", flight: "DL 401", tip: "15", rider: "other", ...ME, reach: "phone", pname: "Ben Ortiz", pphone: "+44 20 7946 0958", sign: "Ortiz Party" });
 const HOURLY = await booked({ trip_type: "hour", from_text: "1 Main Street, Brooklyn, NY 11201", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", tip: "custom", tip_amount: "40", rider: "me", ...ME, reach: "phone" });
 const SEATS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", rider: "me", ...ME, reach: "phone" });
+const DOGS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", small_dogs: "1", large_dogs: "2", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
 let serial = 0;
@@ -295,6 +296,15 @@ await test("the text: the heading, the customer's name and phone, the pickup in 
     if (zone === undefined) delete process.env.TZ;
     else process.env.TZ = zone;
   }
+});
+
+await test("the text names the pets right after the child seats, as the owner email does, and has no pets line without dogs", () => {
+  setEnv();
+  const dogs = paid(DOGS);
+  assert.equal(bookingText(dogs), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $373.25", "Reference 83558982"].join("\n"));
+  assert.ok(ownerLetter(dogs).text.includes("\nPets: 1 small dog and 2 large dogs\n"));
+  assert.equal(bookingText(paid(DOGS, { metadata: { dogs: "3 small 4500" } })).split("\n")[6], "Pets: 3 small dogs");
+  for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS]) assert.ok(!/Pets|dog/.test(bookingText(paid(fix))));
 });
 
 await test("[TEST] starts the text only for a test mode Checkout Session", () => {

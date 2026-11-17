@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
-import { readInput, readSettings, resolveTrip, priceTrip, priceDistance, priceRide, priceLeg, bookingRef, requestRef, composeMessage, contactLinks, formatDate, receipt, firstSlot, shownLines, nycToUtc, REF, ownerSubject } from "../api/_trip.mjs";
+import { readInput, readSettings, resolveTrip, priceTrip, priceDistance, priceRide, priceLeg, bookingRef, requestRef, composeMessage, contactLinks, formatDate, receipt, firstSlot, shownLines, nycToUtc, REF, ownerSubject, bookingData } from "../api/_trip.mjs";
 import { clientKey, clean } from "../api/_http.mjs";
 import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters } from "../api/_mail.mjs";
@@ -28,13 +28,13 @@ const ON = readSettings({ PAYMENTS_ENABLED: "true" });
 const TERMS =
   "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, stops added during the ride, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.";
 const SUBMIT =
-  "Today you pay the total shown: the fare, taxes and fees, tolls, any stop fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to this card, with an itemized receipt.";
+  "Today you pay the total shown: the fare, taxes and fees, tolls, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to this card, with an itemized receipt.";
 const SUBMIT_HOURLY =
-  "Today you pay the hourly fare, taxes and fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
+  "Today you pay the hourly fare, taxes and fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
 const SUBMIT_DISTANCE =
-  "Today you pay the fare, taxes and fees, any stop fees, child seats if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
+  "Today you pay the fare, taxes and fees, any stop fees, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
 const SUBMIT_OUTSIDE =
-  "Today you pay the fare, taxes and fees, any stop fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.";
+  "Today you pay the fare, taxes and fees, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.";
 const AIRPORT_NOTE = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to your card, each on an itemized receipt.";
 const HOURLY_NOTE = "After the ride, tolls and parking are charged to your card, each on an itemized receipt.";
 const OUTSIDE_NOTE = "After the ride, waiting beyond the free window, tolls and parking are charged to your card, each on an itemized receipt.";
@@ -136,10 +136,9 @@ const EXPECTED = {
         airport: "jfk",
         class: "suv",
         from_text: "John F. Kennedy (JFK), Terminal 4",
-        from_zone: "jfk",
-        from_place: "jfk-t4",
         to_text: MANHATTAN,
-        to_zone: "manhattan",
+        zones: "from jfk, to manhattan",
+        places: "from jfk-t4",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -181,10 +180,9 @@ const EXPECTED = {
         airport: "jfk",
         class: "suv",
         from_text: MANHATTAN,
-        from_zone: "manhattan",
         to_text: "John F. Kennedy (JFK)",
-        to_zone: "jfk",
-        to_place: "jfk",
+        zones: "from manhattan, to jfk",
+        places: "to jfk",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -220,7 +218,7 @@ const EXPECTED = {
         vehicle: "premium",
         hours: "4",
         from_text: "1 Main Street, Brooklyn, NY 11201",
-        from_zone: "brooklyn",
+        zones: "from brooklyn",
         date: "2026-12-01",
         time: "14:00",
         pickup_at: "2026-12-01T19:00:00.000Z",
@@ -263,10 +261,9 @@ const EXPECTED = {
         airport: "jfk",
         class: "first",
         from_text: MANHATTAN,
-        from_zone: "manhattan",
         to_text: "John F. Kennedy (JFK), Terminal 5",
-        to_zone: "jfk",
-        to_place: "jfk-t5",
+        zones: "from manhattan, to jfk",
+        places: "to jfk-t5",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -312,10 +309,9 @@ const EXPECTED = {
         airport: "jfk",
         class: "suv",
         from_text: MANHATTAN,
-        from_zone: "manhattan",
         to_text: "John F. Kennedy (JFK)",
-        to_zone: "jfk",
-        to_place: "jfk",
+        zones: "from manhattan, to jfk",
+        places: "to jfk",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -406,7 +402,7 @@ await test("builder: a JFK terminal typed after the airport name, with meet and 
   const [fields, nonce, ref, expected] = EXPECTED["an airport pickup with meet and greet and a 15% gratuity"];
   const built = await build({ ...fields, from_text: typed, from_id: "" }, ON, nonce);
   assert.equal(built.ref, ref);
-  assert.deepEqual(Object.fromEntries([...built.params]), { ...expected, ...bothMetadata({ from_text: typed, from_place: "jfk" }), "payment_intent_data[description]": expected["payment_intent_data[description]"].replace('Pickup "John F. Kennedy (JFK), Terminal 4"', `Pickup "${typed}"`) });
+  assert.deepEqual(Object.fromEntries([...built.params]), { ...expected, ...bothMetadata({ from_text: typed, places: "from jfk" }), "payment_intent_data[description]": expected["payment_intent_data[description]"].replace('Pickup "John F. Kennedy (JFK), Terminal 4"', `Pickup "${typed}"`) });
   assert.deepEqual([built.trip.from, built.trip.flight, built.trip.meet, built.price.total], ["jfk", "DL 401", true, 23325]);
 });
 
@@ -448,8 +444,8 @@ await test("builder: NYCLUXRIDE* plus the suffix is at most 22 characters for ev
 });
 
 await test("builder: metadata has at most 50 keys, the keys of 3.8 only, empty values left out, every value at most 500 characters", async () => {
-  const ALLOWED = "ref service direction airport class vehicle hours from_text from_zone from_place to_text to_zone to_place stop1_text stop1_zone stop2_text stop2_zone date time pickup_at return_date return_time return_at passengers flight return_flight meet tip_percent legs fare_cents tax_cents bcf_cents tolls_cents meet_cents tip_cents total_cents rider name email phone reach passenger_name passenger_phone sign_name notes short_notice".split(" ");
-  assert.equal(ALLOWED.length, 46);
+  const ALLOWED = "ref service direction airport class vehicle hours from_text to_text stop1_text stop2_text zones places date time pickup_at return_date return_time return_at passengers flight return_flight meet tip_percent legs fare_cents tax_cents bcf_cents tolls_cents meet_cents tip_cents total_cents rider name email phone reach passenger_name passenger_phone sign_name notes short_notice".split(" ");
+  assert.equal(ALLOWED.length, 42);
   const stops = { ...PICKUP, from_text: "John F. Kennedy (JFK)", from_id: "jfk", stop1_text: MANHATTAN, to_text: "LaGuardia (LGA)", to_id: "lga", tip: "" };
   for (const fields of [PICKUP, DROPOFF, HOURLY, ROUND, CUSTOM, stops]) {
     const { params, trip, price, ref } = await build(fields, ON, "nonce-metadata-0000000");
@@ -464,7 +460,7 @@ await test("builder: metadata has at most 50 keys, the keys of 3.8 only, empty v
     assert.ok(!("flight" in direct));
   }
   const { params } = await build(stops, ON, "nonce-metadata-0000001");
-  assert.deepEqual([params.get("metadata[stop1_text]"), params.get("metadata[stop1_zone]"), params.get("metadata[legs]"), params.get("metadata[total_cents]")], [MANHATTAN, "manhattan", "2", "37500"]);
+  assert.deepEqual([params.get("metadata[stop1_text]"), params.get("metadata[zones]"), params.get("metadata[places]"), params.get("metadata[legs]"), params.get("metadata[total_cents]")], [MANHATTAN, "from jfk, stop1 manhattan, to lga", "from jfk, to lga", "2", "37500"]);
   const me = await build({ ...PICKUP, rider: "me" }, ON, "nonce-metadata-0000002");
   assert.deepEqual([me.params.get("metadata[rider]"), me.params.get("metadata[passenger_name]"), me.params.get("metadata[passenger_phone]"), me.params.get("metadata[sign_name]")], ["me", null, null, "Ana Lopez"]);
   const other = await build({ ...PICKUP, pname: `${"Dana Reyes ".repeat(9)}Long`, pphone: "+44 20 7946 0958" }, ON, "nonce-metadata-0000005");
@@ -910,6 +906,8 @@ await test("handler: options answers the 13.1.2 shape with all five classes pric
     meet: true,
     meet_cents: 2500,
     seat_cents: 1500,
+    small_dog_cents: 1500,
+    large_dog_cents: 4000,
     stop_cents: 2000,
     selected: { class: "suv", vehicle: "", tip: 0, tip_amount: 0, meet: false },
     price: {
@@ -1121,6 +1119,8 @@ await test("handler: a trip reason answers the quote shape: classes all null wit
     tips: TIP_PERCENTS,
     tip_custom: { min_cents: 100, max_cents: 50000 },
     seat_cents: 1500,
+    small_dog_cents: 1500,
+    large_dog_cents: 4000,
     stop_cents: 2000,
     earliest: body.earliest,
     ...contactLinks(await resolved(fields), ref),
@@ -2203,9 +2203,8 @@ await test("builder: a return trip priced by distance and time equals the comple
         service: "distance",
         class: "sedan",
         from_text: MANHATTAN,
-        from_zone: "manhattan",
         to_text: "Greenwich, CT 06830",
-        to_zone: "outside",
+        zones: "from manhattan, to outside",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -2385,10 +2384,9 @@ await test("builder: a JFK pickup to New Jersey with meet and greet and a 15% gr
         airport: "jfk",
         class: "suv",
         from_text: "John F. Kennedy (JFK), Terminal 4",
-        from_zone: "jfk",
-        from_place: "jfk-t4",
         to_text: "Secaucus, NJ 07094",
-        to_zone: "outside",
+        zones: "from jfk, to outside",
+        places: "from jfk-t4",
         date: "2026-10-14",
         time: "07:30",
         pickup_at: "2026-10-14T11:30:00.000Z",
@@ -2512,7 +2510,7 @@ await test("handler: the owner's trip from 806 6th Street, Secaucus, NJ to Niaga
   assert.equal(form["line_items[2][quantity]"], undefined);
   assert.deepEqual([form["metadata[tax_cents]"], form["metadata[bcf_cents]"]], ["0", "4293"]);
   assert.equal(stripeTotal(calls[0].init.body), 195093);
-  assert.deepEqual([form["metadata[service]"], form["metadata[from_zone]"], form["metadata[to_zone]"], form["metadata[miles]"], form["metadata[minutes]"], form["metadata[fare_cents]"], form["metadata[tolls_cents]"], form["metadata[total_cents]"], form["payment_intent_data[metadata][total_cents]"]], ["distance", "outside", "outside", "400.0", "420", "190800", "0", "195093", "195093"]);
+  assert.deepEqual([form["metadata[service]"], form["metadata[zones]"], form["metadata[miles]"], form["metadata[minutes]"], form["metadata[fare_cents]"], form["metadata[tolls_cents]"], form["metadata[total_cents]"], form["payment_intent_data[metadata][total_cents]"]], ["distance", "from outside, to outside", "400.0", "420", "190800", "0", "195093", "195093"]);
   assert.deepEqual([form["custom_text[submit][message]"], form["custom_text[terms_of_service_acceptance][message]"]], [SUBMIT_DISTANCE, TERMS]);
   assert.equal(form["line_items[0][price_data][product_data][description]"].split(". ")[0], "Business SUV, 400.0 miles and 420 min");
   assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^RIDE [A-Z]{3}\d\d$/);
@@ -2569,7 +2567,8 @@ await test("handler: a trip to Canada answers the outside-us quote with its head
   assert.equal(calls.length, 0);
 });
 
-const SEAT_KEYS = ["seats_cents", "child_seats", "infant_seats", "toddler_seats", "booster_seats"];
+const SEAT_KEYS = ["seats", "seats_cents", "child_seats", "infant_seats", "toddler_seats", "booster_seats"];
+const metadataOf = (form) => Object.fromEntries([...form].filter(([k]) => k.startsWith("metadata[")).map(([k, v]) => [k.slice(9, -1), v]));
 const seatMeta = (form) => Object.fromEntries(SEAT_KEYS.filter((k) => form.has(`metadata[${k}]`)).map((k) => [k, form.get(`metadata[${k}]`)]));
 const lineItems = (form) => {
   const out = [];
@@ -2577,12 +2576,12 @@ const lineItems = (form) => {
   return out;
 };
 
-await test("builder: child seats on a one way airport pickup, 0, 1 and the maximum of 12, go to Stripe as their own line item after meet and greet with the count, the price per seat and the types, the amount of the total, and child_seats, the counts per type and seats_cents in both metadata maps, and nothing about seats when none is chosen", async () => {
+await test("builder: child seats on a one way airport pickup, 0, 1 and the maximum of 12, go to Stripe as their own line item after meet and greet with the count, the price per seat and the types, the amount of the total, and the counts per type in one seats key and seats_cents in both metadata maps, and nothing about seats when none is chosen", async () => {
   setEnv();
   for (const [seats, cls, pax, line, meta, intent] of [
     [{}, "suv", "2", null, {}, ". Flight DL 401. 2 passengers. Meet and greet. Pickup "],
-    [{ infant_seats: "1" }, "suv", "2", ["Child seats (1 x $15.00)", 1500, "1", "1 infant seat."], { seats_cents: "1500", child_seats: "1", infant_seats: "1" }, ". Flight DL 401. 2 passengers. 1 infant seat. Meet and greet. Pickup "],
-    [{ infant_seats: "4", toddler_seats: "4", booster_seats: "4" }, "sprinter", "12", ["Child seats (12 x $15.00)", 18000, "1", "4 infant seats, 4 toddler seats and 4 booster seats."], { seats_cents: "18000", child_seats: "12", infant_seats: "4", toddler_seats: "4", booster_seats: "4" }, ". Flight DL 401. 12 passengers. 4 infant seats, 4 toddler seats and 4 booster seats. Meet and greet. Pickup "],
+    [{ infant_seats: "1" }, "suv", "2", ["Child seats (1 x $15.00)", 1500, "1", "1 infant seat."], { seats: "1 infant", seats_cents: "1500" }, ". Flight DL 401. 2 passengers. 1 infant seat. Meet and greet. Pickup "],
+    [{ infant_seats: "4", toddler_seats: "4", booster_seats: "4" }, "sprinter", "12", ["Child seats (12 x $15.00)", 18000, "1", "4 infant seats, 4 toddler seats and 4 booster seats."], { seats: "4 infant, 4 toddler, 4 booster", seats_cents: "18000" }, ". Flight DL 401. 12 passengers. 4 infant seats, 4 toddler seats and 4 booster seats. Meet and greet. Pickup "],
   ]) {
     const { params, price } = await build({ ...PICKUP, ...seats, class: cls, passengers: pax }, ON, "nonce-seat-builder-000001");
     const items = lineItems(params);
@@ -2621,7 +2620,8 @@ await test("builder: child seats on a round trip and on an hourly booking are on
     const items = lineItems(params).filter(([name]) => name.startsWith("Child seats"));
     assert.equal(items.length, add ? 1 : 0);
     if (add) assert.deepEqual(items[0].slice(0, 3), [`Child seats (${add / 1500} x $15.00)`, add, "1"]);
-    assert.equal(params.get("metadata[child_seats]"), add ? String(add / 1500) : null);
+    assert.equal(params.get("metadata[child_seats]"), null);
+    assert.equal(bookingData(metadataOf(params)).child_seats, add ? String(add / 1500) : undefined);
     assert.equal(params.get("custom_text[submit][message]"), submit);
   }
 });
@@ -2633,8 +2633,9 @@ await test("builder: the largest booking, two stops, a return, both flights, mee
   assert.deepEqual(trip.legs.map((l) => l.reason), ["", "", "", ""]);
   const keys = [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
   assert.ok(keys.length <= 48, `${keys.length} keys`);
-  assert.deepEqual(keys.filter((k) => SEAT_KEYS.includes(k)), SEAT_KEYS);
-  assert.ok(keys.includes("short_notice") && keys.includes("stop2_zone") && keys.includes("return_at"), keys.join(" "));
+  assert.deepEqual(keys.filter((k) => SEAT_KEYS.includes(k)), ["seats", "seats_cents"]);
+  assert.deepEqual([params.get("metadata[seats]"), params.get("metadata[zones]")], ["4 infant, 4 toddler, 4 booster", "from jfk, stop1 manhattan, stop2 lga, to brooklyn"]);
+  assert.ok(keys.includes("short_notice") && keys.includes("return_at"), keys.join(" "));
   assert.equal([...params.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, keys.length);
   assert.equal(price.seats, 18000);
 });
@@ -2648,7 +2649,7 @@ await test("builder: the largest booking with stop fees, two Manhattan stops on 
     assert.deepEqual([price.stops, price.stopLabel, price.service], [4000, "Extra stops (2 x $20.00)", "airport"]);
     const keys = [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
     assert.ok(keys.length <= 48, `${keys.length} keys`);
-    assert.ok(keys.includes("stops_cents") && keys.includes("short_notice") && keys.includes("stop2_zone"), keys.join(" "));
+    assert.ok(keys.includes("stops_cents") && keys.includes("short_notice") && params.get("metadata[zones]").includes(", stop2 manhattan, "), keys.join(" "));
     assert.equal(params.get("metadata[stops_cents]"), "4000");
     assert.equal(stripeTotal(params.toString()), price.total);
   } finally {
@@ -2671,7 +2672,7 @@ await test("handler: options sends the price per seat and the class cards includ
   const form = formOf(calls.at(-1));
   assert.deepEqual(lineItems(form).at(-1), ["Child seats (2 x $15.00)", 3000, "1", "1 infant seat and 1 booster seat."]);
   assert.deepEqual([stripeTotal(form.toString()), form.get("metadata[total_cents]")], [21500, "21500"]);
-  assert.deepEqual(seatMeta(form), { seats_cents: "3000", child_seats: "2", infant_seats: "1", booster_seats: "1" });
+  assert.deepEqual(seatMeta(form), { seats: "1 infant, 1 booster", seats_cents: "3000" });
   setEnv(LIVE);
   stripe = (url, init) => (url.endsWith("/expire") ? new Response("{}", { status: 200 }) : new Response(JSON.stringify({ id: "cs_test_a1B2c3D4e5F6g7H8i9J0", object: "checkout.session", url: CHECKOUT_URL, amount_total: stripeTotal(init.body) - 3000 }), { status: 200 }));
   const body = await readJson(await post({ ...fields, nonce: "nonce-seat-handler-000002" }), 502);
@@ -2716,6 +2717,212 @@ await test("handler: the dispatch quote path keeps the seats in the WhatsApp and
   const sprinter = await readJson(await post({ ...trip(HOURLY), class: "sprinter", vehicle: "sprinter", passengers: "4", booster_seats: "2", action: "quote" }), 200);
   assert.equal(sprinter.reason, "sprinter-hourly");
   assert.ok(decodeURIComponent(sprinter.whatsapp).includes("\nBooster seats: 2"), sprinter.whatsapp);
+  assert.equal(calls.length, 0);
+});
+
+const DOG_FIELDS = { small_dogs: "1", large_dogs: "2" };
+const DOG_ITEMS = [["Small dog (1 x $15.00)", 1500, "1", "Charged once per booking."], ["Large dog (2 x $40.00)", 8000, "1", "Charged once per booking."]];
+const dogMetaOf = (form, prefix = "metadata") => Object.fromEntries([...SEAT_KEYS, "dogs"].filter((k) => form.has(`${prefix}[${k}]`)).map((k) => [k, form.get(`${prefix}[${k}]`)]));
+
+await test("builder: pets on a one way airport pickup go to Stripe as one line item per size after the child seats and before the gratuity, with the count and the price per dog, the amount of the total, and one dogs key in both metadata maps, and nothing about dogs when none is chosen", async () => {
+  setEnv();
+  for (const [dogs, items, meta] of [
+    [{}, [], {}],
+    [{ small_dogs: "1" }, [DOG_ITEMS[0]], { dogs: "1 small 1500" }],
+    [{ large_dogs: "1" }, [["Large dog (1 x $40.00)", 4000, "1", "Charged once per booking."]], { dogs: "1 large 4000" }],
+    [DOG_FIELDS, DOG_ITEMS, { dogs: "1 small 1500, 2 large 8000" }],
+    [{ small_dogs: "3", large_dogs: "3" }, [["Small dog (3 x $15.00)", 4500, "1", "Charged once per booking."], ["Large dog (3 x $40.00)", 12000, "1", "Charged once per booking."]], { dogs: "3 small 4500, 3 large 12000" }],
+  ]) {
+    const { params, price } = await build({ ...PICKUP, ...dogs }, ON, "nonce-dog-builder-0000001");
+    const all = lineItems(params);
+    const at = all.findIndex(([name]) => name === "Meet and greet");
+    assert.deepEqual(all.slice(at + 1, -1), items, JSON.stringify(dogs));
+    assert.equal(all.at(-1)[0], "Gratuity for your chauffeur (15%)");
+    assert.equal(price.total, 23325 + items.reduce((sum, item) => sum + item[1], 0));
+    assert.deepEqual([stripeTotal(params.toString()), params.get("metadata[total_cents]")], [price.total, String(price.total)]);
+    assert.deepEqual(dogMetaOf(params), meta);
+    assert.deepEqual(dogMetaOf(params, "payment_intent_data[metadata]"), meta);
+    assert.equal(params.get("custom_text[submit][message]"), SUBMIT);
+  }
+  const both = await build({ ...PICKUP, passengers: "3", infant_seats: "1", booster_seats: "2", ...DOG_FIELDS }, ON, "nonce-dog-builder-0000002");
+  assert.deepEqual(lineItems(both.params).slice(4, 7), [["Child seats (3 x $15.00)", 4500, "1", "1 infant seat and 2 booster seats."], ...DOG_ITEMS]);
+  assert.deepEqual(dogMetaOf(both.params), { seats: "1 infant, 2 booster", seats_cents: "4500", dogs: "1 small 1500, 2 large 8000" }, "the seat counts per type share one seats key, with or without dogs");
+  assert.deepEqual(receipt(Object.fromEntries([...both.params].filter(([k]) => k.startsWith("metadata[")).map(([k, v]) => [k.slice(9, -1), v])), ON).lines.slice(5, 8).map((l) => [l.label, l.cents]), [["Child seats (3 x $15.00)", 4500], ["Small dog (1 x $15.00)", 1500], ["Large dog (2 x $40.00)", 8000]]);
+});
+
+await test("builder: pets on a round trip and on an hourly booking are charged once for the booking, with the submit text that names pets, and the payment description names them after the seats", async () => {
+  setEnv();
+  for (const [fields, submit] of [[ROUND, SUBMIT], [HOURLY, SUBMIT_HOURLY]]) {
+    const plain = await build(fields, ON, "nonce-dog-round-00000001");
+    const { params, price } = await build({ ...fields, ...DOG_FIELDS }, ON, "nonce-dog-round-00000001");
+    assert.equal(price.total - plain.price.total, 9500);
+    assert.equal(stripeTotal(params.toString()), price.total);
+    assert.equal(lineItems(params).filter(([name]) => /dog/.test(name)).length, 2);
+    assert.equal(params.get("custom_text[submit][message]"), submit);
+    assert.ok(submit.includes("child seats and pets if chosen"), submit);
+  }
+  for (const key of ["submit", "submitHourly", "submitDistance", "submitOutside", "submitReturnFlat", "submitOutFlat"]) assert.ok(CHECKOUT[key].split(" After the ride")[0].includes("child seats and pets if chosen, and the gratuity"), key);
+  const seats = await build({ ...PICKUP, passengers: "3", toddler_seats: "1", ...DOG_FIELDS }, ON, "nonce-dog-describe-000001");
+  assert.ok(seats.params.get("payment_intent_data[description]").includes(". 3 passengers. 1 toddler seat. 1 small dog and 2 large dogs. Meet and greet. Pickup "), seats.params.get("payment_intent_data[description]"));
+  const large = await build({ ...PICKUP, large_dogs: "1" }, ON, "nonce-dog-describe-000002");
+  assert.ok(large.params.get("payment_intent_data[description]").includes(". 2 passengers. 1 large dog. Meet and greet. Pickup "), large.params.get("payment_intent_data[description]"));
+  const none = await build(PICKUP, ON, "nonce-dog-describe-000003");
+  assert.ok(!/dog/.test(none.params.get("payment_intent_data[description]")));
+});
+
+await test("builder: the largest booking with stop fees and pets, two Manhattan stops, a return, both flights, meet and greet, someone else riding, notes, short notice, 12 child seats and 3 dogs of each size, writes at most 48 metadata keys, so the send-once marker of the booking emails still fits in Stripe's 50, and the receipt rebuilds every line from them", async () => {
+  setEnv();
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    for (const stop2 of [{ stop2_text: "40 Wall St, New York, NY 10005" }, { stop2_text: "LaGuardia (LGA)", stop2_id: "lga" }]) {
+      const fields = { trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", stop1_text: MANHATTAN, ...stop2, to_text: "1 Main Street, Brooklyn, NY 11201", date: "2026-10-01", time: "13:20", return: "1", return_date: "2026-10-18", return_time: "18:00", flight: "DL 401", return_flight: "B6 1234", passengers: "12", class: "sprinter", meet: "1", tip: "custom", tip_amount: "40", rider: "other", ...ME, reach: "whatsapp", pname: "Ben Ortiz", pphone: "+44 20 7946 0958", sign: "Ortiz family", notes: "Kids aged 1, 3 and 6", infant_seats: "4", toddler_seats: "4", booster_seats: "4", small_dogs: "3", large_dogs: "3" };
+      const { params, price } = await build(fields, ON, "nonce-dog-largest-0000001", new Date("2026-10-01T16:00:00.000Z"));
+      const keys = [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
+      assert.ok(keys.length <= 48, `${keys.length} keys`);
+      assert.equal([...params.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, keys.length);
+      assert.ok(keys.includes("dogs") && keys.includes("short_notice") && keys.includes("seats") && keys.includes("seats_cents") && params.get("metadata[zones]").includes(", stop2 "), keys.join(" "));
+      assert.equal(params.get("metadata[dogs]"), "3 small 4500, 3 large 12000");
+      assert.deepEqual([price.dogs, price.seats], [16500, 18000]);
+      assert.equal(stripeTotal(params.toString()), price.total);
+      const metadata = Object.fromEntries([...params].filter(([k]) => k.startsWith("metadata[")).map(([k, v]) => [k.slice(9, -1), v]));
+      const rebuilt = receipt(metadata, ON);
+      assert.equal(rebuilt.lines.reduce((sum, l) => sum + l.cents, 0), price.total);
+      assert.deepEqual(rebuilt.lines.filter((l) => /^(Child|Small|Large)/.test(l.label)).map((l) => [l.label, l.cents]), [["Child seats (12 x $15.00)", 18000], ["Small dog (3 x $15.00)", 4500], ["Large dog (3 x $40.00)", 12000]]);
+    }
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+const OLD_KEYS = ["from_zone", "from_place", "to_zone", "to_place", "stop1_zone", "stop2_zone", "child_seats", "infant_seats", "toddler_seats", "booster_seats"];
+const picked = (name, id, zone, text, at, region = "") => ({ [`${name}_text`]: text, [`${name}_ticket`]: signTicket(id, zone, text, at, 0, region) });
+const worstFields = (at, date, time, returnDate) => ({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", ...picked("stop1", "ChIJb8Jg9pZYwokR-qHGtvSkLzs", "manhattan", "350 5th Ave, New York, NY 10118, USA", at), ...picked("stop2", "ChIJ-b2RmVlZwokRpb1pwEQjss0", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211, USA", at), ...picked("to", "ChIJ7cv00DwsDogRAMDACa2m4K8", "outside", "1 Old Country Rd, Mineola, NY 11501, USA", at, "2811"), date, time, return: "1", return_date: returnDate, return_time: "18:00", flight: "DL 401", return_flight: "B6 1234", passengers: "12", class: "sprinter", meet: "1", tip: "custom", tip_amount: "40", rider: "other", ...ME, reach: "whatsapp", pname: "Ben Ortiz", pphone: "+44 20 7946 0958", sign: "Ortiz family", notes: "Kids aged 1, 3 and 6", infant_seats: "4", toddler_seats: "4", booster_seats: "4", small_dogs: "3", large_dogs: "3" });
+
+await test("builder: the true worst case, every optional field filled from real form input, a round trip from JFK Terminal 4 with two stops and a drop-off picked from Google suggestions, priced by distance with stop fees and Nassau sales tax, a flight, meet and greet with a sign name, 12 child seats of every type, 3 dogs of each size, someone else riding, notes, a typed gratuity and short notice, writes 45 metadata keys, and every other shape, at the flat airport rate, to New Jersey, from an address to LaGuardia with a return flight, without dogs and by the hour, stays at most 48, so email_attempt and emailed_at always fit in Stripe's 50", async () => {
+  setEnv();
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const at = new Date("2026-10-01T16:00:00.000Z");
+    const worst = worstFields(at, "2026-10-01", "13:20", "2026-10-18");
+    const shapes = [
+      ["the worst case", worst, "distance", 45],
+      ["without dogs", { ...worst, small_dogs: "", large_dogs: "" }, "distance", 44],
+      ["at the flat airport rate with stop fees", { ...worst, ...picked("stop2", "ChIJmanhattanWallStreet00000", "manhattan", "40 Wall St, New York, NY 10005, USA", at), ...picked("to", "ChIJ-b2RmVlZwokRpb1pwEQjss0", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211, USA", at) }, "airport", 43],
+      ["to New Jersey with no New York sales tax", { ...worst, ...picked("to", "ChIJhobokenGardenStreet00000", "outside", "300 Garden St, Hoboken, NJ 07030, USA", at, "NJ") }, "distance", 45],
+      ["from a picked address to LaGuardia with a return flight", { ...worst, from_id: "", ...picked("from", "ChIJb8Jg9pZYwokR-qHGtvSkLzs", "manhattan", "350 5th Ave, New York, NY 10118, USA", at), to_text: "LaGuardia (LGA)", to_id: "lga", to_ticket: "" }, "airport", 42],
+      ["by the hour", { ...worst, trip_type: "hour", hours: "4", class: "premium", passengers: "5", infant_seats: "1", toddler_seats: "2", booster_seats: "2" }, "hourly", 36],
+    ];
+    const counts = [];
+    for (const [name, fields, service, count] of shapes) {
+      const { params, price, trip } = await build(fields, ON, "nonce-worst-case-00000001", at);
+      const keys = [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
+      if (service !== "hourly") assert.deepEqual(trip.legs.map((l) => l.reason), trip.legs.map(() => ""), name);
+      assert.deepEqual([price.service, keys.length], [service, count], `${name}: ${keys.join(" ")}`);
+      assert.ok(keys.length <= 48, name);
+      assert.deepEqual(keys.filter((k) => OLD_KEYS.includes(k)), [], name);
+      assert.equal([...params.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, keys.length, name);
+      assert.equal(stripeTotal(params.toString()), price.total, name);
+      assert.deepEqual(shownLines(receipt(metadataOf(params), ON).lines), stripeItems(params), name);
+      counts.push(keys.length);
+    }
+    assert.equal(Math.max(...counts), 45);
+    const { params, price } = await build(worst, ON, "nonce-worst-case-00000001", at);
+    const meta = metadataOf(params);
+    assert.deepEqual(Object.keys(meta), "ref service direction airport class from_text to_text stop1_text stop2_text zones places date time pickup_at return_date return_time return_at passengers flight meet tip_percent legs miles minutes fare_cents tax_cents bcf_cents tolls_cents stops_cents meet_cents seats seats_cents dogs tip_cents total_cents rider name email phone reach passenger_name passenger_phone sign_name notes short_notice".split(" "));
+    assert.deepEqual([meta.zones, meta.places, meta.seats, meta.dogs, meta.stops_cents, meta.short_notice], ["from jfk, stop1 manhattan, stop2 brooklyn, to outside", "from jfk-t4, to ChIJ7cv00DwsDogRAMDACa2m4K8", "4 infant, 4 toddler, 4 booster", "3 small 4500, 3 large 12000", "4000", "1"]);
+    assert.deepEqual(bookingData(meta), { ...meta, from_zone: "jfk", stop1_zone: "manhattan", stop2_zone: "brooklyn", to_zone: "outside", from_place: "jfk-t4", to_place: "ChIJ7cv00DwsDogRAMDACa2m4K8", infant_seats: "4", toddler_seats: "4", booster_seats: "4", child_seats: "12" });
+    const description = params.get("payment_intent_data[description]");
+    assert.ok(description.includes(`. Stop 1 "350 5th Ave, New York, NY 10118, USA". Stop 2 "277 Bedford Ave, Brooklyn, NY 11211, USA". Drop-off "1 Old Country Rd, Mineola, NY 11501, USA".`), description);
+    assert.ok(description.includes(", Luxury Sprinter, JFK to 1 Old Country Rd, return ") && description.includes(". 12 passengers. 4 infant seats, 4 toddler seats and 4 booster seats. 3 small dogs and 3 large dogs. Meet and greet. "), description);
+    assert.equal(price.total, stripeTotal(params.toString()));
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+await test("builder: two long Google place ids share the places key only as whole parts, so a pickup and a drop-off with ids of 200 or 245 characters (exactly 500) keep both, and ids of 246, 260 or 300 characters keep the pickup id whole and leave the drop-off id out, and bookingData never returns a cut id", async () => {
+  setEnv();
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const at = new Date("2026-10-01T16:00:00.000Z");
+    const FROM = "350 5th Ave, New York, NY 10118, USA";
+    const TO = "1 Old Country Rd, Mineola, NY 11501, USA";
+    for (const [n, both] of [[200, true], [245, true], [246, false], [260, false], [300, false]]) {
+      const a = `Ei${"A".repeat(n - 2)}`;
+      const b = `Ei${"B".repeat(n - 2)}`;
+      const fields = { trip_type: "one", ...picked("from", a, "manhattan", FROM, at), ...picked("to", b, "outside", TO, at, "2811"), date: "2026-10-03", time: "13:20", passengers: "2", class: "suv", ...ME, reach: "phone", rider: "me" };
+      assert.ok(fields.from_ticket && fields.to_ticket, `${n}: both tickets signed`);
+      const { params, price, trip } = await build(fields, ON, "nonce-long-place-ids-0001", at);
+      assert.deepEqual([trip.ends.from.place, trip.ends.to.place, price.service], [a, b, "distance"], `${n}`);
+      const meta = metadataOf(params);
+      const data = bookingData(meta);
+      assert.equal(meta.places, both ? `from ${a}, to ${b}` : `from ${a}`, `${n}`);
+      assert.ok(meta.places.length <= 500, `${n}: ${meta.places.length}`);
+      assert.equal(params.get("payment_intent_data[metadata][places]"), meta.places, `${n}`);
+      assert.deepEqual([data.from_place, data.to_place], [a, both ? b : undefined], `${n}`);
+      assert.deepEqual(shownLines(receipt(meta, ON).lines), stripeItems(params), `${n}`);
+    }
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+await test("handler: the worst case sent as the booking form posts it, without JavaScript, reaches Stripe with 44 metadata keys on the session and the payment, at most 48, and none of the old keys", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const fields = { ...worstFields(Date.now(), SOON, "10:00", inDays(5)), nonce: "nonce-worst-form-00000001" };
+  assertRedirect(await formPost(fields), CHECKOUT_URL);
+  const form = formOf(calls.at(-1));
+  const keys = [...form.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
+  assert.deepEqual([keys.length, keys.includes("short_notice"), keys.filter((k) => OLD_KEYS.includes(k))], [44, false, []], keys.join(" "));
+  assert.equal([...form.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, 44);
+  assert.deepEqual([form.get("metadata[service]"), form.get("metadata[zones]"), form.get("metadata[places]"), form.get("metadata[seats]"), form.get("metadata[dogs]")], ["distance", "from jfk, stop1 manhattan, stop2 brooklyn, to outside", "from jfk-t4, to ChIJ7cv00DwsDogRAMDACa2m4K8", "4 infant, 4 toddler, 4 booster", "3 small 4500, 3 large 12000"]);
+});
+
+await test("handler: options and quote send the price per dog of each size from api/_rates.mjs, the class cards include the dogs, Stripe gets both dog line items and the amount, and the messages name the dogs", async () => {
+  setEnv(LIVE);
+  const fields = { ...STRIPE_JFK, ...DOG_FIELDS, nonce: "nonce-dog-handler-0000001" };
+  const options = await readJson(await post({ ...fields, action: "options" }), 200);
+  assert.deepEqual([options.small_dog_cents, options.large_dog_cents, options.seat_cents], [1500, 4000, 1500]);
+  assert.deepEqual(options.classes.map((c) => c.total_cents), [28000, 31500, 40500, 26500, 59500]);
+  assert.deepEqual(options.price.lines.slice(-2), [{ label: "Small dog (1 x $15.00)", cents: 1500 }, { label: "Large dog (2 x $40.00)", cents: 8000 }]);
+  assert.equal(options.price.total_cents, 28000);
+  const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
+  assert.ok(message.includes("\nVehicle: Business SUV\nSmall dogs: 1\nLarge dogs: 2\nTotal shown: $280.00"), message);
+  const quote = await readJson(await post({ ...fields, from_text: "806 6th Street, Secaucus, NJ", to_text: "Niagara Falls, ON L2E 6T2", to_id: "", action: "options" }), 200);
+  assert.deepEqual([quote.kind, quote.reason, quote.small_dog_cents, quote.large_dog_cents], ["quote", "outside-us", 1500, 4000]);
+  for (const href of [quote.whatsapp, quote.mailto]) assert.ok(decodeURIComponent(href).includes("\nSmall dogs: 1\nLarge dogs: 2"), href);
+  const paid = await readJson(await post(fields), 200);
+  assert.deepEqual([paid.kind, paid.url], ["pay", CHECKOUT_URL]);
+  const form = formOf(calls.at(-1));
+  assert.deepEqual(lineItems(form).slice(-2), DOG_ITEMS);
+  assert.deepEqual([stripeTotal(form.toString()), form.get("metadata[total_cents]"), form.get("metadata[dogs]")], [28000, "28000", "1 small 1500, 2 large 8000"]);
+});
+
+await test("handler: the pet limit answers the dogs error on options, quote and pay, and without JavaScript lands on its message, before any Stripe call", async () => {
+  setEnv(LIVE);
+  const want = { kind: "invalid", code: "dogs", field: "dogs", text: ERRORS.dogs.text };
+  for (const action of ["options", "quote", "pay"]) {
+    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, small_dogs: "4", action }), 422), want, action);
+    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_dogs: "9", action }), 422), want, action);
+  }
+  for (const bad of ["-1", "1.5", "two", "1e9"]) assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_dogs: bad }), 422), want, bad);
+  assertRedirect(await formPost({ ...STRIPE_JFK, small_dogs: "4" }), "/book#e-dogs");
+  assert.equal(calls.length, 0);
+});
+
+await test("handler: BOOK_MOCK pays an airport pickup with meet and greet, a child seat, a small and a large dog and a gratuity, with JavaScript and without, and GET rebuilds the confirmation with the dog lines, the total and the value", async () => {
+  setEnv({ BOOK_MOCK: "true", PAYMENTS_ENABLED: "true" });
+  const fields = { ...trip(PICKUP), passengers: "3", booster_seats: "1", small_dogs: "1", large_dogs: "1", nonce: "nonce-dog-mock-000000001" };
+  const body = await readJson(await post(fields), 200);
+  const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
+  assert.deepEqual(session.lines, [{ label: "Fare", cents: 15500 }, { label: FEES, cents: 1725 }, { label: TOLLS_SHOWN, cents: 1275 }, { label: "Meet and greet", cents: 2500 }, { label: "Child seats (1 x $15.00)", cents: 1500 }, { label: "Small dog (1 x $15.00)", cents: 1500 }, { label: "Large dog (1 x $40.00)", cents: 4000 }, { label: "Gratuity for your chauffeur (15%)", cents: 2325 }]);
+  assert.deepEqual([session.total_cents, session.value_cents], [30325, 15500 + 2500 + 1500 + 5500]);
+  const res = await formPost({ ...fields, nonce: "nonce-dog-mock-000000002" });
+  assert.equal(res.status, 303);
+  const id = new URL(res.headers.get("location"), LOCAL).searchParams.get("session_id");
+  assert.match(id, /^cs_mock_[1-9]\d{7}$/);
+  const form = await readJson(await get(id), 200);
+  assert.deepEqual([form.lines.filter((l) => /dog/.test(l.label)), form.total_cents], [[{ label: "Small dog (1 x $15.00)", cents: 1500 }, { label: "Large dog (1 x $40.00)", cents: 4000 }], 30325]);
   assert.equal(calls.length, 0);
 });
 
@@ -2772,7 +2979,7 @@ await test("handler: the owner's trip from LaGuardia with stops at 26 Ann St and
   assert.equal(form["line_items[4][quantity]"], undefined);
   assert.equal(stripeTotal(stripeCalls()[0].init.body), 20500);
   const metadata = Object.fromEntries(Object.entries(form).filter(([key]) => key.startsWith("metadata[")).map(([key, value]) => [key.slice(9, -1), value]));
-  assert.deepEqual(["service", "direction", "airport", "legs", "miles", "minutes", "from_zone", "stop1_text", "stop1_zone", "stop2_text", "stop2_zone", "to_zone", "fare_cents", "tolls_cents", "stops_cents", "total_cents"].map((key) => metadata[key]), ["airport", "from-airport", "lga", "1", undefined, undefined, "lga", ANN, "manhattan", WALL, "manhattan", "manhattan", "13701", "1275", "4000", "20500"]);
+  assert.deepEqual(["service", "direction", "airport", "legs", "miles", "minutes", "zones", "stop1_text", "stop2_text", "fare_cents", "tolls_cents", "stops_cents", "total_cents"].map((key) => metadata[key]), ["airport", "from-airport", "lga", "1", undefined, undefined, "from lga, stop1 manhattan, stop2 manhattan, to manhattan", ANN, WALL, "13701", "1275", "4000", "20500"]);
   assert.deepEqual(Object.fromEntries(Object.entries(form).filter(([key]) => key.startsWith("payment_intent_data[metadata][stops_cents]"))), { "payment_intent_data[metadata][stops_cents]": "4000" });
   assert.deepEqual([form["custom_text[submit][message]"], form["custom_text[terms_of_service_acceptance][message]"]], [SUBMIT, TERMS]);
   assert.equal(form["line_items[0][price_data][product_data][description]"].split(". ")[0], "From LaGuardia (LGA), Business SUV");
@@ -2862,7 +3069,7 @@ await test("builder: a round trip with a stop, LaGuardia to 26 Ann St then 55 Ch
     const farService = "Business SUV, 25.0 miles and 70 min, return at the flat airport rate";
     assert.deepEqual([0, 1, 2].map((i) => [farForm[`line_items[${i}][price_data][product_data][name]`], farForm[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(ride.fare + home.fare)], [FEES, String(ride.tax + home.tax + ride.bcf + home.bcf)], [TOLLS_SHOWN, String(home.tolls)]]);
     assert.deepEqual([farForm["line_items[3][quantity]"], stripeTotal(far.params.toString()), farForm["custom_text[submit][message]"]], [undefined, ride.total + home.total, CHECKOUT.submitReturnFlat]);
-    assert.equal(CHECKOUT.submitReturnFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the return, any stop fees, meet and greet and child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.");
+    assert.equal(CHECKOUT.submitReturnFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the return, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.");
     assert.ok(farForm["line_items[0][price_data][product_data][description]"].startsWith(`${farService}. Reference ${far.ref}.`));
     const farMeta = metadataFor(far.trip, far.price, far.ref);
     assert.deepEqual(["service", "legs", "miles", "minutes", "tolls_cents", "stops_cents", "total_cents"].map((key) => farMeta[key]), ["distance", "2", "25.0", "70", "1275", undefined, String(ride.total + home.total)]);
@@ -2889,7 +3096,7 @@ await test("builder: a round trip from 350 5th Ave by a JFK stop to 277 Bedford 
     assert.deepEqual([out.fare, out.total, out.total + back.total], [AIRPORT_FARES.suv.jfk, 17225, 29449]);
     assert.deepEqual([0, 1].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", "26500"], [FEES, "2949"]]);
     assert.deepEqual([form["line_items[2][quantity]"], stripeTotal(built.params.toString()), form["custom_text[submit][message]"]], [undefined, 29449, SUBMIT_OUTSIDE]);
-    assert.equal(CHECKOUT.submitOutFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.");
+    assert.equal(CHECKOUT.submitOutFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.");
     assert.ok(form["line_items[0][price_data][product_data][description]"].startsWith(`${service}. Reference ${built.ref}.`));
     assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^RIDE OCT14$/);
     const metadata = metadataFor(built.trip, built.price, built.ref);

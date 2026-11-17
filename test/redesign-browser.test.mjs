@@ -330,12 +330,13 @@ for (const route of ["/faq", "/fleet", "/"]) {
     assert.ok(r.text > 800, `only ${r.text} chars of text`);
   });
   if (route === "/faq") {
-    check(`/faq: 22 native details elements render in main without javascript`, () => {
-      assert.equal(r.details, 22);
+    check(`/faq: 23 native details elements render in main without javascript, the pets question among them`, () => {
+      assert.equal(r.details, 23);
     });
     const answers = await p.evaluate(() => document.body.textContent);
     check(`/faq: answers are in the static html, not javascript`, () => {
       assert.match(answers, /Book online at least 90 minutes before pickup/);
+      assert.match(answers, /Can I bring my dog\?[\s\S]*Service animals ride free\./);
     });
   }
   if (route === "/fleet") {
