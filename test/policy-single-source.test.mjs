@@ -23,7 +23,7 @@ function check(name, fn) {
 }
 
 check("POLICY.cancel is today's cancellation sentence, with its phone number, WhatsApp, the reference, early notice and the written terms, and no dash or semicolon", () => {
-  assert.equal(POLICY.cancel, "To change or cancel, call +1 (646) 775-0556 or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.");
+  assert.equal(POLICY.cancel, "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.");
   for (const s of [POLICY.cancel, POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, NOTES.included]) assert.doesNotMatch(s, /[–—;]/);
 });
 
@@ -53,7 +53,7 @@ check("schedule.html carries POLICY.cancel as the value of its Cancellation fact
 
 const FLOW = "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.";
 const TERMS_LINE = POLICY.cancel.slice(POLICY.cancel.indexOf(". ") + 2);
-check("the booking flow's cancellation sentence is POLICY.cancel with email in place of the call", () => assert.equal(FLOW.replace("email info@nycluxride.com", "call +1 (646) 775-0556"), POLICY.cancel));
+check("the booking flow and every page use one cancellation sentence, POLICY.cancel, with email and WhatsApp and no phone number", () => { assert.equal(FLOW, POLICY.cancel); assert.doesNotMatch(POLICY.cancel, /\+1 \(646\)|call/); });
 
 for (const f of FULL) {
   check(`${f}: #bk-next3 ends with the booking flow's cancellation sentence, #bk-policy holds the written terms sentence of POLICY.cancel, and the form names no phone number`, () => {

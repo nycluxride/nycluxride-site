@@ -158,9 +158,10 @@ check("booking-confirmed.html static copy works without javascript: seal, H1, th
   assert.ok(done && done.defer && done.getAttribute("blocking") === "render");
 });
 
-check("booking-confirmed.html: the phone number in the cancellation sentence stays on one line", () => {
-  const n = $("cf-policy", cf).querySelector(".nowrap");
-  assert.ok(n && n.matches("span") && n.textContent === "+1 (646) 775-0556", n ? n.outerHTML : "no .nowrap in #cf-policy");
+check("booking-confirmed.html: the cancellation sentence says email or WhatsApp and names no phone number", () => {
+  const t = $("cf-policy", cf).textContent.replace(/\s+/g, " ");
+  assert.ok(t.includes("To change or cancel, email info@nycluxride.com or WhatsApp us with your reference"), t);
+  assert.doesNotMatch(t, /\+1 \(646\)/);
 });
 check("booking-confirmed.html main uses only booking classes that lux.css or book.css styles, and no vehicle card class", () => {
   const used = [...new Set([...cf.querySelectorAll("main [class]")].flatMap((el) => [...el.classList]))].filter((c) => c.startsWith("bk-"));

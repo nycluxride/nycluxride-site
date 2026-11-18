@@ -54,7 +54,7 @@ export const ERRORS = {
   pphone: { field: "pphone", text: "Add the passenger's mobile number, and check its country code." },
 };
 export const POLICY = {
-  cancel: "To change or cancel, call +1 (646) 775-0556 or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.",
+  cancel: "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.",
   later: {
     airport: "Extra waiting, stops added during the ride and parking are charged to your card after the ride.",
     hourly: "Tolls and parking are charged to your card after the ride.",

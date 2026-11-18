@@ -57,7 +57,7 @@ const EXT = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#
 const REVIEWS = `<p><a class="lnk" href="https://www.google.com/maps?cid=15477906940128800338" target="_blank" rel="noopener">Read the reviews on Google <span class="nowrap">Maps<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>`;
 const TRUST = '<ul class="assure-row assure-row--page" role="list"><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Flat airport rates include tolls, airport fees and taxes</li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg>We answer 24 hours a day, every day</li></ul>';
 const FITS = '<fieldset class="fits"><legend>Who is traveling?</legend><label><input type="radio" name="fits" value="0" checked="">All</label><label><input type="radio" name="fits" value="3">1 to 3</label><label><input type="radio" name="fits" value="5">4 or 5</label><label><input type="radio" name="fits" value="12">6 to 12</label></fieldset>';
-const P1 = "To change or cancel, call +1 (646) 775-0556 or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.";
+const P1 = "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.";
 const NOTE = "This form opens your email app with a message to info@nycluxride.com. Nothing is sent until you press send there. For a faster answer, call or use WhatsApp.";
 const KEYS = Object.keys(CLASSES);
 
@@ -309,7 +309,7 @@ for (const [file, fields] of Object.entries(FORMS)) {
       ["Cancellation", P1],
     ]);
     const cancel = [...dl[0].querySelectorAll("dd")].at(-1);
-    assert.deepEqual([...cancel.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["tel:+16467750556", "https://wa.me/16467750556"]);
+    assert.deepEqual([...cancel.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["mailto:info@nycluxride.com", "https://wa.me/16467750556"]);
     assert.equal(dl[0].nextElementSibling.outerHTML, `<p><a class="lnk" href="/rates#add-ons">See all add-ons and terms${ARROW}</a></p>`);
   });
   check("schedule.html: the inquiry form sits inside a closed details.acc, Send the details by email", () => {
