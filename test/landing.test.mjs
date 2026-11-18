@@ -131,7 +131,7 @@ check("index.html: the child seats card sits in the hero right after the booking
   assert.deepEqual(items.map((li) => [use(li), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
   assert.deepEqual([...seats.querySelectorAll(".seats__s")].map((p) => [p.parentElement === seats, p.innerHTML]), [[true, `<b>$${CHILD_SEAT_CENTS / 100}</b> per seat`]]);
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
-  assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip");
+  assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip");
   assert.doesNotMatch(seats.textContent, /free/i);
   assert.ok(answer("Are child safety seats available?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
@@ -156,7 +156,7 @@ check("index.html: the pets card sits in the hero right after the child seats ca
   assert.deepEqual(items.map((li) => [...li.children].map((c) => `${c.tagName.toLowerCase()}.${c.className}`)), Array(2).fill(["span.pets__art", "p.pets__n", "p.pets__s"]));
   assert.deepEqual(items.map((li) => [use(li.querySelector(".pets__art")), norm(li.querySelector(".pets__n").textContent), li.querySelector(".pets__s").innerHTML]), DOGS);
   assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [2000, 4500]);
-  assert.equal(fact("Pets"), `$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog, charged once at booking, also on a round trip. Service animals ride free`);
+  assert.equal(fact("Pets"), `$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog, charged once at booking, even on a round trip. Service animals ride free`);
   const svc = pets.querySelector(":scope > p.pets__svc");
   assert.deepEqual([svc.firstElementChild.querySelector("use").getAttribute("href"), norm(svc.textContent)], ["#i-dog-service", "Service animals ride free, as the law requires."]);
   const checks = [...pets.querySelectorAll(":scope > ul.pets__checks[role=list] > li")];

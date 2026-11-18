@@ -26,18 +26,18 @@ const DESCRIPTOR_PREFIX = "NYCLUXRIDE";
 const ENV_KEYS = ["BOOKING_REF_SECRET", "PLACE_TICKET_SECRET", "STRIPE_SECRET_KEY", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT", "BOOK_MOCK", "VERCEL_ENV", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MOCK", "FLIGHT_MOCK", "FLIGHT_API_KEY", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PORT", "MAIL_FROM", "OWNER_EMAILS", "STRIPE_WEBHOOK_SECRET"];
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
 const TERMS =
-  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, stops added during the ride, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.";
+  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.";
 const SUBMIT =
-  "Today you pay the total shown: the fare, taxes and fees, tolls, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to this card, with an itemized receipt.";
+  "You pay the total shown today. Extra waiting, stops added during the ride and parking are charged to this card after the ride, with a receipt.";
 const SUBMIT_HOURLY =
-  "Today you pay the hourly fare, taxes and fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
+  "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.";
 const SUBMIT_DISTANCE =
-  "Today you pay the fare, taxes and fees, any stop fees, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.";
+  "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.";
 const SUBMIT_OUTSIDE =
-  "Today you pay the fare, taxes and fees, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.";
-const AIRPORT_NOTE = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to your card, each on an itemized receipt.";
-const HOURLY_NOTE = "After the ride, tolls and parking are charged to your card, each on an itemized receipt.";
-const OUTSIDE_NOTE = "After the ride, waiting beyond the free window, tolls and parking are charged to your card, each on an itemized receipt.";
+  "You pay the total shown today. Extra waiting, tolls and parking are charged to this card after the ride, with a receipt.";
+const AIRPORT_NOTE = "Tolls, airport fees, NYC sales tax and the Black Car Fund are included. Extra waiting, stops added during the ride and parking are charged to your card after the ride.";
+const HOURLY_NOTE = "Tolls and parking are charged to your card after the ride.";
+const OUTSIDE_NOTE = "Extra waiting, tolls and parking are charged to your card after the ride.";
 const AIRPORT_NOTES = [NOTES.included, POLICY.later.airport];
 
 const ME = { name: "Ana Lopez", email: "ana.lopez@example.com", phone: "+1 212 555 0100" };
@@ -1143,7 +1143,7 @@ await test("handler: a trip reason answers the quote shape: classes all null wit
   assert.deepEqual([dropoff.reason, dropoff.field], ["unplaced", "to_text"]);
   const county = { ...fields, from_text: "1 Tulip Ave, Floral Park, NY 11001" };
   const split = await readJson(await post(county), 200);
-  assert.deepEqual([split.kind, split.reason, split.group, split.field, split.text], ["quote", "county", "price", "from_text", "Our dispatch team prices trips from this address."], "a typed ZIP code in two counties without Google goes to dispatch, never back to Add the ZIP code");
+  assert.deepEqual([split.kind, split.reason, split.group, split.field, split.text], ["quote", "county", "price", "from_text", "We'll send you a price for trips from this address."], "a typed ZIP code in two counties without Google goes to dispatch, never back to Add the ZIP code");
   assert.ok(!split.text.includes("ZIP code"));
   process.env.GOOGLE_MOCK = "true";
   const pick = await readJson(await post(county), 200);
@@ -1235,7 +1235,7 @@ await test("handler: a picked city, borough, neighborhood or ZIP code as the pic
 
 await test("handler: an address typed in an airport ZIP code answers the airport-zip request with its text, every class on that reason and its redirect, with the field of that end for the JFK and LaGuardia ZIP codes and no field for Newark and Teterboro", async () => {
   setEnv(LIVE);
-  const AIRPORT_ZIP = "This address is in an airport ZIP code. For the airport itself, type its name, like JFK or Newark Liberty (EWR), to see the price. Our dispatch team prices other trips here.";
+  const AIRPORT_ZIP = "This address is at or near an airport. Type the airport's name, like JFK or Newark Liberty (EWR), to see the price. Otherwise, we'll send you a price.";
   const cases = [
     [{ ...STRIPE_JFK, to_text: "TWA Hotel, One Idlewild Dr, Jamaica, NY 11430", to_id: "" }, "to_text"],
     [{ ...STRIPE_JFK, from_text: "Terminal B, East Elmhurst, NY 11371" }, "from_text"],
@@ -1258,7 +1258,7 @@ await test("handler: an address typed in an airport ZIP code answers the airport
 
 await test("handler: a hold set by the return pickup names a pickup or return, for the clock change at the return time and a return more than a year away, on pay and options with JavaScript and on the redirect without it", async () => {
   setEnv(LIVE);
-  const CLOCK = "The clocks change at this hour. A pickup or return at this time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp.";
+  const CLOCK = "A pickup or return at this hour can't be booked online because the clocks change. Choose another time, or email info@nycluxride.com or message us on WhatsApp.";
   const FAR = "For a pickup or return more than a year from now, email info@nycluxride.com or message us on WhatsApp.";
   const sunday = (year) => {
     const day = new Date(Date.UTC(year, 10, 1));
@@ -2551,7 +2551,7 @@ await test("handler: a trip to Canada answers the outside-us quote with its head
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const fields = trip({ trip_type: "one", from_text: "806 6th Street, Secaucus, NJ", to_text: "Niagara Falls, ON L2E 6T2", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const body = await readJson(await post({ ...fields, action: "options" }), 200);
-  assert.deepEqual([body.kind, body.reason, body.group, body.heading, body.text, body.field, "price" in body, "ride" in body, "route" in body], ["quote", "outside-us", "price", HEADINGS.price, "Our dispatch team prices trips that start or end outside the United States.", "", false, false, false]);
+  assert.deepEqual([body.kind, body.reason, body.group, body.heading, body.text, body.field, "price" in body, "ride" in body, "route" in body], ["quote", "outside-us", "price", HEADINGS.price, "For trips that start or end outside the United States, we'll send you a price.", "", false, false, false]);
   assert.ok(body.classes.every((c) => c.total_cents === null && c.reason === "outside-us"));
   const message = decodeURIComponent(body.whatsapp.split("?text=")[1]);
   assert.ok(message.includes("\nPickup: 806 6th Street, Secaucus, NJ (Outside New York City)\nDrop-off: Niagara Falls, ON L2E 6T2 (Outside the United States)\n"), message);
@@ -2750,7 +2750,7 @@ await test("builder: pets on a one way airport pickup go to Stripe as one line i
   assert.deepEqual(receipt(Object.fromEntries([...both.params].filter(([k]) => k.startsWith("metadata[")).map(([k, v]) => [k.slice(9, -1), v])), ON).lines.slice(5, 8).map((l) => [l.label, l.cents]), [["Child seats (3 x $15.00)", 4500], ["Small dog (1 x $20.00)", 2000], ["Large dog (2 x $45.00)", 9000]]);
 });
 
-await test("builder: pets on a round trip and on an hourly booking are charged once for the booking, with the submit text that names pets, and the payment description names them after the seats", async () => {
+await test("builder: pets on a round trip and on an hourly booking are charged once for the booking, with the submit text that says the total shown is paid today, and the payment description names them after the seats", async () => {
   setEnv();
   for (const [fields, submit] of [[ROUND, SUBMIT], [HOURLY, SUBMIT_HOURLY]]) {
     const plain = await build(fields, ON, "nonce-dog-round-00000001");
@@ -2759,9 +2759,9 @@ await test("builder: pets on a round trip and on an hourly booking are charged o
     assert.equal(stripeTotal(params.toString()), price.total);
     assert.equal(lineItems(params).filter(([name]) => /dog/.test(name)).length, 2);
     assert.equal(params.get("custom_text[submit][message]"), submit);
-    assert.ok(submit.includes("child seats and pets if chosen"), submit);
+    assert.ok(submit.startsWith("You pay the total shown today"), submit);
   }
-  for (const key of ["submit", "submitHourly", "submitDistance", "submitOutside", "submitReturnFlat", "submitOutFlat"]) assert.ok(CHECKOUT[key].split(" After the ride")[0].includes("child seats and pets if chosen, and the gratuity"), key);
+  for (const key of ["submit", "submitHourly", "submitDistance", "submitOutside", "submitReturnFlat", "submitOutFlat"]) assert.ok(CHECKOUT[key].startsWith("You pay the total shown today"), key);
   const seats = await build({ ...PICKUP, passengers: "3", toddler_seats: "1", ...DOG_FIELDS }, ON, "nonce-dog-describe-000001");
   assert.ok(seats.params.get("payment_intent_data[description]").includes(". 3 passengers. 1 toddler seat. 1 small dog and 2 large dogs. Meet and greet. Pickup "), seats.params.get("payment_intent_data[description]"));
   const large = await build({ ...PICKUP, large_dogs: "1" }, ON, "nonce-dog-describe-000002");
@@ -2942,8 +2942,8 @@ await test("handler: a stop that names only a borough on a trip priced over the 
   assert.deepEqual(sent, []);
 });
 
-await test("the Checkout texts list any stop fees with what is paid today wherever a stop fee can be charged, and the texts about charges after the ride name stops added during the ride, never extra stops", () => {
-  for (const key of ["submit", "submitDistance", "submitOutside", "submitReturnFlat"]) assert.ok(CHECKOUT[key].split(" After the ride")[0].includes(", any stop fees,"), key);
+await test("the Checkout texts say the total shown, stop fees included, is paid today wherever a stop fee can be charged, and the texts about charges after the ride name stops added during the ride, never extra stops", () => {
+  for (const key of ["submit", "submitDistance", "submitOutside", "submitReturnFlat"]) assert.ok(CHECKOUT[key].startsWith("You pay the total shown today"), key);
   for (const text of [CHECKOUT.submit, CHECKOUT.terms, POLICY.later.airport, NOTES.airport]) assert.ok(text.includes("stops added during the ride") && !/extra stops/i.test(text), text);
 });
 
@@ -3069,7 +3069,7 @@ await test("builder: a round trip with a stop, LaGuardia to 26 Ann St then 55 Ch
     const farService = "Business SUV, 25.0 miles and 70 min, return at the flat airport rate";
     assert.deepEqual([0, 1, 2].map((i) => [farForm[`line_items[${i}][price_data][product_data][name]`], farForm[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(ride.fare + home.fare)], [FEES, String(ride.tax + home.tax + ride.bcf + home.bcf)], [TOLLS_SHOWN, String(home.tolls)]]);
     assert.deepEqual([farForm["line_items[3][quantity]"], stripeTotal(far.params.toString()), farForm["custom_text[submit][message]"]], [undefined, ride.total + home.total, CHECKOUT.submitReturnFlat]);
-    assert.equal(CHECKOUT.submitReturnFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the return, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.");
+    assert.equal(CHECKOUT.submitReturnFlat, "You pay the total shown today, including tolls and airport fees for the return. Extra waiting, tolls for the ride out and parking are charged to this card after the ride, with a receipt.");
     assert.ok(farForm["line_items[0][price_data][product_data][description]"].startsWith(`${farService}. Reference ${far.ref}.`));
     const farMeta = metadataFor(far.trip, far.price, far.ref);
     assert.deepEqual(["service", "legs", "miles", "minutes", "tolls_cents", "stops_cents", "total_cents"].map((key) => farMeta[key]), ["distance", "2", "25.0", "70", "1275", undefined, String(ride.total + home.total)]);
@@ -3096,7 +3096,7 @@ await test("builder: a round trip from 350 5th Ave by a JFK stop to 277 Bedford 
     assert.deepEqual([out.fare, out.total, out.total + back.total], [AIRPORT_FARES.suv.jfk, 17225, 29449]);
     assert.deepEqual([0, 1].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", "26500"], [FEES, "2949"]]);
     assert.deepEqual([form["line_items[2][quantity]"], stripeTotal(built.params.toString()), form["custom_text[submit][message]"]], [undefined, 29449, SUBMIT_OUTSIDE]);
-    assert.equal(CHECKOUT.submitOutFlat, "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.");
+    assert.equal(CHECKOUT.submitOutFlat, "You pay the total shown today, including tolls and airport fees for the ride out. Extra waiting, tolls for the return and parking are charged to this card after the ride, with a receipt.");
     assert.ok(form["line_items[0][price_data][product_data][description]"].startsWith(`${service}. Reference ${built.ref}.`));
     assert.match(form["payment_intent_data[statement_descriptor_suffix]"], /^RIDE OCT14$/);
     const metadata = metadataFor(built.trip, built.price, built.ref);

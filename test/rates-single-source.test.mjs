@@ -153,7 +153,7 @@ if (rates) {
   check(`${RATES}: the stop fee is STOP_FEE_CENTS / 100 from api/_rates.mjs, in the distance section and the Extra stops fact, and no other price per stop appears`, () => {
     const fee = `$${STOP_FEE_CENTS / 100}`;
     assert.ok(rates.text.includes(`Each stop adds ${fee}, or more if it takes the car out of the way.`), "distance section");
-    assert.ok(rates.text.includes(`${fee} per stop booked with a one-way trip, charged at booking`), "Extra stops fact");
+    assert.ok(rates.text.includes(`${fee} per stop, charged at booking`), "Extra stops fact");
     const found = [...rates.text.matchAll(/(?:stop adds\s+\$\s*(\d+(?:\.\d+)?)|\$\s*(\d+(?:\.\d+)?)\s+(?:per stop|on top of the price))/g)].map((m) => Number(m[1] || m[2]));
     assert.deepEqual([...new Set(found)], [STOP_FEE_CENTS / 100]);
   });

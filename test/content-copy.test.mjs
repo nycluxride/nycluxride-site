@@ -47,14 +47,21 @@ const BANNED = [
   "price per seat is listed",
   "the price is listed with our add-ons",
   "Priced per seat",
+  "the Black Car Fund and any sales tax",
+  "card saved at booking",
+  "dispatch team prices",
+  "beyond the free window",
+  "bag figure",
+  "whichever is higher",
+  "also on a round trip",
 ];
 
 const A = {
-  A1: "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included.",
+  A1: "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included.",
   A2: "A gratuity for your chauffeur is optional and chosen when you book.",
   A3: "After an airport transfer, only true extras are charged to the card saved at booking: waiting beyond the free window, extra stops and parking, each with an itemized receipt.",
   A4: "Hourly bookings are charged the hourly fare with NYC sales tax and the Black Car Fund at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  A5: "Airport transfers to or from a New York City address are one total price with tolls, airport fees and taxes included, and the gratuity for your chauffeur is optional. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
+  A5: "Airport rides to or from New York City include tolls, airport fees and taxes, and the tip is up to you. On other trips, tolls and parking are charged after the ride.",
   A6: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes, and the gratuity is optional.",
   A7: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
   A8: "Flat airport rates from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
@@ -62,11 +69,11 @@ const A = {
 };
 
 const PREFIX = {
-  A1: "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price",
+  A1: "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price",
   A2: "A gratuity for your chauffeur is optional and",
   A3: "After an airport transfer, only",
   A4: "Hourly bookings are charged the hourly fare",
-  A5: "Airport transfers to or from a New York City address are one total price",
+  A5: "Airport rides to or from New York City include tolls, airport fees and taxes, and",
   A6: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes, and",
   A7: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes. ",
   A8: "Flat airport rates from NYC LUX RIDE include",
@@ -74,9 +81,8 @@ const PREFIX = {
 };
 
 const USED = {
-  A1: ["black-car-service-brooklyn.html", "faq.html", "locations/jfk-airport.html", "locations/laguardia-airport.html"],
-  A2: ["blog/nyc-limo-service-comparison-guide-april-29.html", "blog/nyc-prom-limo-booking-guide-march-13.html"],
-  A4: ["blog/nyc-prom-limo-booking-guide-march-13.html"],
+  A1: ["black-car-service-brooklyn.html", "faq.html"],
+  A2: ["blog/nyc-limo-service-comparison-guide-april-29.html"],
   A5: [
     "about.html",
     "blog/best-black-car-service-brooklyn-queens-march-20.html",
@@ -89,34 +95,33 @@ const USED = {
     "contact.html",
     "schedule.html",
   ],
-  A7: ["about.html", "blog/corporate-black-car-nyc-april-3.html", "locations/long-island-city.html"],
-  A8: ["blog/best-black-car-service-brooklyn-queens-march-20.html", "locations/staten-island.html"],
+  A8: ["blog/best-black-car-service-brooklyn-queens-march-20.html"],
 };
 
-const FAQ_TOLLS = "Tolls are included on airport transfers to or from a New York City address: the price covers tolls and airport fees, the Black Car Fund and any sales tax. The gratuity for your chauffeur is optional and chosen when you book. On hourly bookings and trips priced by distance and time, tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.";
-const TERMS_PAYMENTS = "Online bookings are paid on a Stripe payment page. The total shown at checkout is charged at booking: the fare with taxes and fees, on airport transfers to or from a New York City address also tolls and airport fees, and any stop fees, meet and greet, child seats, pets and a gratuity for the chauffeur if chosen. Service animals ride free and are never charged as pets. Airport transfers to or from an address outside New York City are priced by distance and time, and the fare is never less than the airport fare. A trip with stops costs the same trip without the stops plus a stop fee for each stop, or the whole route priced by distance and time when that costs more. The same rule applies to every trip with stops, also when it starts, stops or ends at an airport. A trip with stops from one airport to another is priced by distance and time over the whole route. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, stops added during the ride and parking, and on hourly bookings and trips priced by distance and time tolls and parking. These are charged to that card after the ride, each with an itemized receipt.";
-const FAQ_OUTSIDE = "Yes. A one-way trip anywhere in the United States is priced on the booking page by distance and time, unless it starts or ends at an airport. The flat airport rate is for New York City addresses. A trip between JFK, LaGuardia, Newark or Teterboro and an address outside the city is priced by distance and time too, and the fare is never less than the airport fare. A trip with stops costs the same trip without the stops plus a stop fee for each stop, listed in the rates. If a stop takes the car out of the way and the whole route, from the pickup through each stop to the drop-off, costs more by distance and time, you pay that instead, never below the airport fare when the route starts, stops or ends at one of these airports. The same rule applies to every trip with stops, also when it starts, stops or ends at an airport. A trip with stops from one airport to another is priced by distance and time over the whole route. For long trips and trips that start or end outside the United States, our dispatch team prices the trip.";
+const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport fees and taxes. On other trips, tolls and parking are charged after the ride to the card you paid with, and you get an itemized receipt. A gratuity is optional and you choose it when you book.";
+const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, taxes and fees, tolls and airport fees on airport rides to or from New York City, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
+const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips anywhere in the United States are priced by distance and time when you book. Each stop adds a fee, or more if it takes the car out of the way. For very long trips or trips outside the United States, we'll send you a price.";
 
 const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
 const RATES_DESCRIPTION = "Airport transfers between New York City and JFK, Newark and Teterboro from $170 and LaGuardia from $145, with tolls, airport fees and taxes included. Hourly from $85 by vehicle class, 3-hour minimum.";
-const RATES_LEDE = "Airport transfers are one total price by vehicle class from any New York City address, with tolls, airport fees and taxes included. Hourly work is billed by vehicle class with a three hour minimum. There is no meter and no surge multiplier, so the price does not move with demand.";
-const RATES_HOURLY_CAPTION = "Prices are before NYC sales tax and the Black Car Fund, which are added at booking. Tolls and parking are charged after the ride.";
+const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly bookings have a 3-hour minimum. There's no meter and no surge pricing.";
+const RATES_HOURLY_CAPTION = "Taxes and fees are added at booking. Tolls and parking are charged after the ride.";
 const RATES_FACTS = {
   "Meet and greet": "Inside the terminal with a name sign, $25 charged at booking, plus any airport parking charged after the ride",
-  Gratuity: "Optional, none, a dollar amount you choose, or 10%, 15%, 20% or 25% of the fare, chosen before you pay",
-  "Tolls and airport fees": "Included on airport transfers to or from a New York City address. On hourly bookings and trips priced by distance and time, billed at cost after the ride to the card saved at booking",
-  Taxes: "The Black Car Fund is charged at booking on every fare. Sales tax is charged at booking on trips that start, stop and end in New York State, at the rate where you are picked up",
-  "Extra stops": "$20 per stop booked with a one-way trip, charged at booking, also on trips that start, stop or end at an airport, unless the whole route by distance and time costs more or the trip goes from one airport to another. A stop added during an airport transfer is charged after the ride to the card saved at booking",
-  "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip",
-  Pets: "$20 per small dog and $45 per large dog, charged once at booking, also on a round trip. Service animals ride free",
+  Gratuity: "Optional. Choose 10%, 15%, 20% or 25% of the fare, or your own amount, before you pay",
+  "Tolls and airport fees": "Included on airport rides to or from New York City. On hourly and distance trips, charged after the ride to the card you booked with",
+  Taxes: "Added at booking on hourly and distance trips. Airport prices already include them",
+  "Extra stops": "$20 per stop, charged at booking, or more if the stop takes the car out of the way. A stop added during an airport ride is charged after the ride",
+  "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip",
+  Pets: "$20 per small dog and $45 per large dog, charged once at booking, even on a round trip. Service animals ride free",
 };
-const RATES_FOOTNOTE = "All prices in USD. Airport totals include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before tax, tolls and parking. A gratuity is optional.";
-const RATES_CANCELLATION = "You pay the total shown at checkout when you book. After the ride, we only charge the same card for waiting past the free time, stops added during the ride, parking, and tolls on hourly and distance trips. You get an itemized receipt for each charge.";
+const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
+const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls on hourly and distance trips. Each charge comes with an itemized receipt.";
 const RATES_FAQ = [
-  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV, from any New York City address. That total includes the $155 fare, NYC sales tax, the Black Car Fund, and tolls and airport fees. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity for your chauffeur is optional."],
-  ["How much is a car to LaGuardia?", "$165 in a Business SUV, from any New York City address. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450. Each class costs less to LaGuardia than to JFK, Newark or Teterboro."],
-  ["What is the shortest hourly booking?", "Three hours. In the Sedan & Electric class that is $255 before NYC sales tax and the Black Car Fund, with tolls and parking charged after the ride."],
-  ["When is my fare confirmed?", "The vehicle, the class and the fare come back in writing before the day."],
+  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity is optional."],
+  ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450."],
+  ["What is the shortest hourly booking?", "Three hours. For Sedan & Electric that's $255 plus taxes and fees, with tolls and parking after the ride."],
+  ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];
 const RATES_CLASSES = [
   ["airport-suv", "Business SUV", "Chevrolet Suburban or similar, GMC Denali, Lincoln Navigator", "185", "165"],
@@ -284,17 +289,19 @@ check("faq.html: the tolls and gratuity answer is exact, visible and in json-ld,
   assert.equal(faqAnswer(p, question), FAQ_TOLLS);
 });
 
-check("faq.html: the outside New York City answer prices one-way trips anywhere in the United States by distance and time, airport trips to an address outside the city at no less than the airport fare, trips with stops over the whole route at no less than the airport fare of an airport on it, and leaves long trips and trips outside the United States to dispatch, exact, visible and in json-ld", () => {
+check("faq.html: the outside New York City answer prices one-way trips anywhere in the United States by distance and time, airport trips to an address outside the city at no less than the airport fare, each stop at the stop fee or more, and sends a price for very long trips and trips outside the United States, exact, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "Do you drive outside New York City?";
   assert.equal(visibleAnswer(p, question), FAQ_OUTSIDE);
   assert.equal(faqAnswer(p, question), FAQ_OUTSIDE);
+  assert.doesNotMatch(FAQ_OUTSIDE, /\$/);
+  assert.deepEqual([...p.document.querySelectorAll("#q-outside-city a")].map((a) => [a.getAttribute("href"), squash(a.textContent)]), [["/rates#distance", "priced by distance and time"]]);
 });
 
-check("faq.html: the pets answer is exact, visible and in json-ld, right after the family answer, says the dog is chosen under Pets, charged once per booking at the price on the rates page, and that service animals ride free, with no price of its own on the page", () => {
+check("faq.html: the pets answer is exact, visible and in json-ld, right after the family answer, says the dog is chosen under Pets, charged once even on a round trip at the price on the rates page, and that service animals ride free, with no price of its own on the page", () => {
   const p = pages.get("faq.html");
   const question = "Can I bring my dog?";
-  const want = "Yes. Choose a small or large dog under Pets when you book, and tell us about your dog in the notes. Each dog is charged once per booking, also on a round trip, at the price on our rates page. Service animals ride free.";
+  const want = "Yes. Choose a small or large dog under Pets when you book and tell us about your dog in the notes. Each dog is charged once, even on a round trip, at the price on our rates page. Service animals ride free.";
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
   const q = p.document.getElementById("q-pets");
@@ -309,8 +316,8 @@ check("the pets copy is plain: no em dash, en dash or semicolon in the booking f
   const book = pages.get("book.html").document;
   const texts = [book.getElementById("bk-pets").textContent, ERRORS.dogs.text, RATES_FACTS.Pets, TERMS_PAYMENTS, RATES_CANCELLATION, ...Object.values(CHECKOUT_COPY)];
   for (const text of texts) assert.doesNotMatch(text, /[\u2013\u2014;]/, text);
-  assert.ok(TERMS_PAYMENTS.includes("meet and greet, child seats, pets and a gratuity"));
-  assert.ok(TERMS_PAYMENTS.includes("if chosen. Service animals ride free and are never charged as pets. Airport"));
+  assert.ok(TERMS_PAYMENTS.includes("meet and greet, child seats, pets and gratuity you chose"));
+  assert.ok(TERMS_PAYMENTS.includes("you chose. Service animals ride free and are never charged as pets. Prices"));
   assert.ok(RATES_FACTS.Pets.includes("Service animals ride free"), RATES_FACTS.Pets);
 });
 
@@ -325,26 +332,26 @@ check("services.html: the Rates list names the three bookable extras, with pets 
   assert.equal(pages.get("faq.html").document.getElementById("q-pets").getAttribute("data-k"), "pet pets puppy animal service guide");
 });
 
-check("faq.html: the family answer prices the Luxury Sprinter like every class, a flat rate to the airports and distance and time for other one-way trips, and leaves only hourly bookings to dispatch, exact, visible and in json-ld", () => {
+check("faq.html: the family answer gives the Luxury Sprinter its 12 seats and flat airport rate, and sends a price only for hourly Sprinter bookings, exact, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "Which car fits a family of 6 or more?";
-  const want = "Book a Luxury Sprinter. It seats up to 12. Airport transfers in a Sprinter have a flat rate, and other one-way trips are priced by distance and time. Our dispatch team prices Luxury Sprinter bookings by the hour.";
+  const want = "Book a Luxury Sprinter. It seats up to 12 and has a flat airport rate. For a Luxury Sprinter by the hour, we'll send you a price.";
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
 });
 
 check("about.html: What we do says other one-way trips anywhere in the United States are priced by distance and time, linked to the distance rates", () => {
   const p = pages.get("about.html");
-  const para = [...p.document.querySelectorAll("main p")].find((x) => squash(x.textContent).startsWith("We do three kinds of trips."));
+  const para = [...p.document.querySelectorAll("main p")].find((x) => squash(x.textContent).startsWith("Airport rides have a flat price from anywhere in New York City"));
   assert.ok(para, "no What we do paragraph");
-  assert.ok(squash(para.textContent).endsWith("You can book any class by the hour, with a 3-hour minimum. Other one-way trips anywhere in the United States are priced by distance and time."), squash(para.textContent));
+  assert.ok(squash(para.textContent).endsWith("with a 3-hour minimum. Other one-way trips anywhere in the United States are priced by distance and time."), squash(para.textContent));
   assert.deepEqual([...para.querySelectorAll('a[href="/rates#distance"]')].map((a) => squash(a.textContent)), ["priced by distance and time"]);
 });
 
 check("faq.html: the airport rates answer names every airport and every class, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "What are the airport rates?";
-  const want = `${A.A1} Hourly bookings have a 3-hour minimum. All our rates are on the rates page.`;
+  const want = `${A.A1} All our rates are on the rates page.`;
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
 });
@@ -376,6 +383,7 @@ check("rates.html: title, description, og copies and the WebPage description are
 
 check("rates.html: the lede is exact", () => {
   assert.equal(squash(rates.document.querySelector("main .lede").textContent), RATES_LEDE);
+  assert.ok(RATES_LEDE.split(/\s+/).length <= 35, "the rates lede stays short");
 });
 
 check("rates.html: the airport table rows, columns and footer are exact", () => {
@@ -386,7 +394,7 @@ check("rates.html: the airport table rows, columns and footer are exact", () => 
   const firstText = (el) => [...el.childNodes].find((n) => n.nodeType === 3 && n.nodeValue.trim())?.nodeValue;
   const rows = [...table.querySelectorAll("tbody tr")].map((tr) => [tr.id, squash(tr.querySelector("th").firstChild.textContent), squash(tr.querySelector("th small").textContent), ...[...tr.querySelectorAll("td")].map((td) => squash(firstText(td)))]);
   assert.deepEqual(rows, RATES_CLASSES.map(([id, name, vehicles, far, lga]) => [id, name, vehicles, `$${far}`, `$${lga}`]));
-  assert.deepEqual([...table.querySelectorAll("tfoot td")].map((td) => squash(td.textContent)), ["Totals for one way, in either direction, with tolls, airport fees, the Black Car Fund and any sales tax included."]);
+  assert.deepEqual([...table.querySelectorAll("tfoot td")].map((td) => squash(td.textContent)), ["One-way totals in either direction, with tolls, airport fees and taxes included."]);
 });
 
 check("rates.html: both First Class model lines keep S-Class in one nowrap span and join BMW 7 Series with no-break spaces", () => {
@@ -405,22 +413,21 @@ check("rates.html: #airport-total follows the airport table with the exact lines
   assert.deepEqual([...table.querySelectorAll("thead th")].map((th) => squash(th.textContent)), ["Item", "JFK", "Newark and Teterboro"]);
   const rows = [...table.querySelectorAll("tr")].filter((tr) => tr.querySelector("th[scope=row]")).map((tr) => [squash(tr.querySelector("th").textContent), ...[...tr.querySelectorAll("td")].map((td) => squash(td.textContent))]);
   assert.deepEqual(rows, [["Fare", "$155.00", "$168.46"], ["NYC sales tax", "$13.76", "$0.00"], ["Black Car Fund", "$3.49", "$3.79"], ["Tolls and airport fees", "$12.75", "$12.75"], ["Total", "$185.00", "$185.00"]]);
-  assert.equal(squash(table.querySelector("tfoot td[colspan]").textContent), "Every class adds the Black Car Fund to its fare, and $12.75 for tolls and airport fees. Trips to or from JFK and LaGuardia also add NYC sales tax. Newark and Teterboro are in New Jersey, where no New York sales tax applies, so the fare there is higher and the total is the same. Meet and greet, child seats, pets and a gratuity, if chosen, are added at booking.");
+  assert.equal(squash(table.querySelector("tfoot td[colspan]").textContent), "Every class includes $12.75 for tolls and airport fees, and the total is the same to JFK, Newark and Teterboro. Any meet and greet, child seats, pets and gratuity are added when you book.");
 });
 
-check("rates.html: the hourly caption adds the tax and after the ride sentence, rates unchanged", () => {
+check("rates.html: the hourly caption adds the taxes and fees and after the ride sentences, rates unchanged", () => {
   const caption = squash(rates.document.getElementById("hourly-caption").textContent);
   assert.ok(caption.endsWith(RATES_HOURLY_CAPTION), caption);
-  assert.ok(caption.startsWith("Hourly and as directed rates by vehicle class, with the cost of the three hour minimum."), caption);
+  assert.ok(caption.startsWith("Hourly rates by vehicle class, with the cost of the 3-hour minimum."), caption);
 });
 
 check("rates.html: the add-ons facts and the footnote are exact", () => {
   const facts = Object.fromEntries([...rates.document.querySelectorAll("#add-ons dl.facts dt")].map((dt) => [squash(dt.textContent), squash(dt.nextElementSibling.textContent)]));
   for (const [dt, dd] of Object.entries(RATES_FACTS)) assert.equal(facts[dt], dd, dt);
-  assert.deepEqual(Object.keys(facts), ["Meet and greet", "Gratuity", "Tolls and airport fees", "Taxes", "Free waiting at airports", "Other pickups", "Waiting beyond the free window", "Extra stops", "Child seats", "Pets", "Cancellation"]);
+  assert.deepEqual(Object.keys(facts), ["Meet and greet", "Gratuity", "Tolls and airport fees", "Taxes", "Free waiting at airports", "Other pickups", "Extra waiting", "Extra stops", "Child seats", "Pets", "Cancellation"]);
   const note = squash(rates.document.querySelector("#add-ons dl.facts").nextElementSibling.textContent);
-  assert.ok(note.startsWith(RATES_FOOTNOTE), note);
-  assert.ok(note.endsWith("The fare for your trip comes back in writing before the day."), note);
+  assert.equal(note, RATES_FOOTNOTE);
 });
 
 check("rates.html: the cancellation paragraph is exact", () => {
@@ -480,7 +487,8 @@ const NOTICE_USED = {
 const OLD_NOTICE = [/\b(at least|within|less than|under)( the next)? (an?|one|1)[ -]hours?\b/i, /\bnext hour\b/i, /\b(an?|one|1)[ -]hours? (before|ahead of) (the |your )?pickup\b/i, /\b(an?|one|1)[ -]hours? away\b/i];
 const HOUR_ELSEWHERE = [
   "A message an hour ahead gives us time to keep the car for you.",
-  "If your day might run late, tell us an hour ahead.",
+  "If your day might run long, message us an hour ahead so we can keep the car for you.",
+  "If your day might run late, tell us an hour ahead and we'll try to keep the car longer.",
   "If you'll spend an hour or more at one address, keeping the car by the hour usually costs less than two one-way bookings.",
   "An hour in the park with the photographer, and the Sprinter comes back to the same gate at the end.",
 ];
@@ -551,6 +559,39 @@ for (const file of FILES.filter((f) => f.startsWith("blog/"))) {
     if (post.dateModified.startsWith("2026-10-12")) assert.equal(squash(shown.textContent), "October 12, 2026");
   });
 }
+
+const wordCount = (s) => squash(s).split(" ").filter(Boolean).length;
+const after = (doc, id, n) => {
+  let el = doc.getElementById(id);
+  for (let i = 0; i < n; i++) el = el.nextElementSibling;
+  return el.textContent;
+};
+const startsWith = (file, start) => [...pages.get(file).document.querySelectorAll("main p")].map((p) => p.textContent).find((t) => squash(t).startsWith(start)) || "";
+const CAPS = [
+  ["faq.html: Do you drive outside New York City?", visibleAnswer(pages.get("faq.html"), "Do you drive outside New York City?"), 70],
+  ["faq.html: Are tolls and gratuity included in the rate?", visibleAnswer(pages.get("faq.html"), "Are tolls and gratuity included in the rate?"), 50],
+  ["faq.html: Where will I meet my chauffeur at JFK?", visibleAnswer(pages.get("faq.html"), "Where will I meet my chauffeur at JFK?"), 75],
+  ["terms-of-service.html: #payments first paragraph", after(pages.get("terms-of-service.html").document, "payments", 1), 90],
+  ["terms-of-service.html: #payments second paragraph", after(pages.get("terms-of-service.html").document, "payments", 2), 50],
+  ["privacy-policy.html: section 2 first paragraph", after(pages.get("privacy-policy.html").document, "information-we-collect", 1), 140],
+  ["privacy-policy.html: section 3 second paragraph", after(pages.get("privacy-policy.html").document, "how-we-collect", 2), 140],
+  ["rates.html: #airport-total footer", rates.document.querySelector("#airport-total tfoot td[colspan]").textContent, 40],
+  ["rates.html: add-ons footnote", rates.document.querySelector("#add-ons dl.facts").nextElementSibling.textContent, 15],
+  ...[...rates.document.querySelectorAll("#add-ons dl.facts dd")].map((dd) => [`rates.html: add-on ${squash(dd.previousElementSibling.textContent)}`, dd.textContent, 30]),
+  ...[...rates.document.querySelectorAll("#cancellation p")].map((p, i) => [`rates.html: #cancellation paragraph ${i + 1}`, p.textContent, 45]),
+  ["about.html: What the price covers, seats and billing", startsWith("about.html", "Infant, toddler and booster seats are"), 60],
+  ["blog/chauffeur-service-nyc-booking-guide-april-30.html: our answers paragraph", startsWith("blog/chauffeur-service-nyc-booking-guide-april-30.html", "Airport rides to or from New York City have one flat price by class"), 85],
+  ["blog/corporate-black-car-nyc-april-3.html: published rates paragraph", startsWith("blog/corporate-black-car-nyc-april-3.html", "Check our written confirmation"), 70],
+  ...Object.entries(COPY.REASONS).map(([k, r]) => [`REASONS.${k}`, r.text, 30]),
+  ...["submit", "submitHourly", "submitDistance", "submitOutside", "submitReturnFlat", "submitOutFlat"].map((k) => [`CHECKOUT.${k}`, COPY.CHECKOUT[k], 35]),
+  ["CHECKOUT.terms", COPY.CHECKOUT.terms, 40],
+  ["POLICY.cancel", COPY.POLICY.cancel, 30],
+  ...Object.entries(COPY.POLICY.later).map(([k, v]) => [`POLICY.later.${k}`, v, 20]),
+];
+check("the longest rewritten customer blocks stay under their word caps, like the 90 word cap on the rates distance prose", () => {
+  for (const [name, text] of CAPS) assert.ok(wordCount(text) > 0, `${name} is empty`);
+  assert.deepEqual(CAPS.filter(([, text, cap]) => wordCount(text) > cap).map(([name, text, cap]) => `${name}: ${wordCount(text)} words, cap ${cap}`), []);
+});
 
 if (failures) {
   console.error(`\n${failures} content copy assertion(s) failed`);

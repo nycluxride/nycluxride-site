@@ -593,7 +593,7 @@ await test("hourly booking: the hours, the vehicle model, the typed gratuity, th
   assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: By the hour, 4 hours", "Pickup: 1 Main Street, Brooklyn, NY 11201", "Date: Tue, Dec 1, 2026", "Time: 2:00 PM, New York time", "Passengers: 1", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)", "Notes for the chauffeur: A toddler seat, please"]);
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare, 4 hours: $420.00", "Taxes and fees: $46.73", "Gratuity for your chauffeur: $40.00", "Paid: $506.73"]);
   assert.ok(customer.text.includes(`\n${NOTES.hourly}\n`));
-  assert.ok(customer.text.includes("\nOn the day: The same car and chauffeur stay with you for the hours you booked. If your day might run long, tell us early. A message an hour ahead gives us time to keep the car for you.\n"));
+  assert.ok(customer.text.includes("\nOn the day: The same car and chauffeur stay with you for the hours you booked. If your day might run long, message us an hour ahead so we can keep the car for you.\n"));
   assert.doesNotMatch(customer.text, /Drop-off|Stop 1|Tolls:|Tolls and airport fees:/);
   checkHtml(customer);
   checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });

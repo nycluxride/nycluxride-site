@@ -873,7 +873,7 @@ await test("pick: a place Google puts outside the United States is abroad whatev
   assert.deepEqual([trip.to, trip.ends.to.place, trip.route, trip.legs.map((leg) => [leg.reason, leg.ride])], ["abroad", "ChIJcntower", "", [["outside-us", undefined]]]);
   assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "quote", reason: "outside-us", field: "" });
   assert.equal(calls.length, before, "no Place Details or route call");
-  assert.equal(REASONS["outside-us"].text, "Our dispatch team prices trips that start or end outside the United States.");
+  assert.equal(REASONS["outside-us"].text, "For trips that start or end outside the United States, we'll send you a price.");
   const stale = signTicket("ChIJcntower", "outside", label, Date.now() - (TICKET_TTL + 60) * 1000);
   reply = answer(200, canada);
   assert.deepEqual(await resolveEnd("to", readInput({ ...fields, to_ticket: stale }), { now: Date.now() }), { text: label, zone: "abroad", place: "ChIJcntower", id: "" });

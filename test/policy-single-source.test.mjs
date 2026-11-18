@@ -22,8 +22,8 @@ function check(name, fn) {
   }
 }
 
-check("POLICY.cancel is today's cancellation sentence, with its phone number and WhatsApp, and no dash or semicolon", () => {
-  assert.equal(POLICY.cancel, "Cancellation terms are confirmed in writing with the reservation. To change or cancel, call +1 (646) 775-0556 or message on WhatsApp with your reference, and give as much notice as you can.");
+check("POLICY.cancel is today's cancellation sentence, with its phone number, WhatsApp, the reference, early notice and the written terms, and no dash or semicolon", () => {
+  assert.equal(POLICY.cancel, "To change or cancel, call +1 (646) 775-0556 or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.");
   for (const s of [POLICY.cancel, POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, NOTES.included]) assert.doesNotMatch(s, /[–—;]/);
 });
 
@@ -51,15 +51,17 @@ check("schedule.html carries POLICY.cancel as the value of its Cancellation fact
   assert.equal(nt(dt.nextElementSibling.textContent), POLICY.cancel);
 });
 
-const FLOW = "Cancellation terms are confirmed in writing with the reservation. To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference, and give as much notice as you can.";
-check("the booking flow's cancellation sentence is POLICY.cancel with email in place of the call", () => assert.equal(FLOW.replace("email info@nycluxride.com or message us on WhatsApp", "call +1 (646) 775-0556 or message on WhatsApp"), POLICY.cancel));
+const FLOW = "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.";
+const TERMS_LINE = POLICY.cancel.slice(POLICY.cancel.indexOf(". ") + 2);
+check("the booking flow's cancellation sentence is POLICY.cancel with email in place of the call", () => assert.equal(FLOW.replace("email info@nycluxride.com", "call +1 (646) 775-0556"), POLICY.cancel));
 
 for (const f of FULL) {
-  check(`${f}: #bk-next3 ends with the booking flow's cancellation sentence, #bk-policy holds the first sentence of POLICY.cancel, and the form names no phone number`, () => {
+  check(`${f}: #bk-next3 ends with the booking flow's cancellation sentence, #bk-policy holds the written terms sentence of POLICY.cancel, and the form names no phone number`, () => {
     const d = doc(f);
     const last = d.getElementById("bk-next3").lastElementChild;
     assert.deepEqual([last.tagName, last.children.length, nt(last.textContent)], ["LI", 0, FLOW]);
-    assert.ok(nt(d.getElementById("bk-policy").textContent).startsWith(POLICY.cancel.slice(0, POLICY.cancel.indexOf(".") + 1) + " "));
+    assert.equal(TERMS_LINE, "Your written confirmation includes the cancellation terms.");
+    assert.ok(nt(d.getElementById("bk-policy").textContent).startsWith(TERMS_LINE + " "));
     assert.doesNotMatch(nt(d.getElementById("book-form").textContent), /775-0556|\bcall\b/i);
   });
 }
@@ -69,7 +71,7 @@ check("booking-confirmed.html: #cf-policy is POLICY.cancel and nothing more", ()
 check("the price notes are built from POLICY and NOTES.included", () => {
   assert.equal(NOTES.airport, NOTES.included + " " + POLICY.later.airport);
   assert.equal(NOTES.hourly, POLICY.later.hourly);
-  assert.equal(NOTES.included, "Tolls, airport fees, the Black Car Fund and any sales tax are included.");
+  assert.equal(NOTES.included, "Tolls, airport fees and any taxes are included.");
 });
 
 check("CHECKOUT.afterSubmit tells the rider how to change or cancel by email or WhatsApp, with no call", () => {

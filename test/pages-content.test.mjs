@@ -285,7 +285,7 @@ const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "i
 const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
-RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included."];
+RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees and any taxes included."];
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
@@ -368,7 +368,7 @@ for (const [file, at, vals, ids] of [["locations/jfk-airport.html", "JFK", ["all
       assert.equal(norm(src.textContent), "Port Authority advice on rides at JFK (opens in a new tab)");
       const dated = [...s.querySelectorAll(":scope>p")].find((p) => p.textContent.includes("checked October 15, 2026"));
       assert.ok(dated, "no dated line");
-      assert.equal(norm(dated.textContent), "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal. Source: Port Authority of New York and New Jersey (opens in a new tab), checked October 15, 2026.");
+      assert.equal(norm(dated.textContent), "For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal. Source: Port Authority of New York and New Jersey (opens in a new tab), checked October 15, 2026.");
       assert.ok(dated.querySelector('a[target="_blank"] svg[aria-hidden="true"] use[href="#i-external"]'), "the dated source link shows the new tab icon");
       assert.equal(dated.querySelector("a").getAttribute("href"), "https://www.jfkairport.com/transportation/ride-share-services");
       assert.ok(s.querySelector("table").closest(".table-scroll").compareDocumentPosition(dated) & 4, "the dated line is not under the table");
@@ -493,7 +493,7 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
 {
   const { document } = read("services.html");
   const ENDS = { "airport-transfers": [["/book", "Book an airport transfer"]], hourly: [["/book?trip-type=hour&hours=3", "Book by the hour"]], corporate: [["https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20ask%20about%20a%20corporate%20account.", "Ask about a corporate account on WhatsApp (opens in a new tab)"]], weddings: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], prom: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], cruise: [["/book", "Book a cruise transfer"]] };
-  check("services.html: each of the six sections ends with its one booking link, the Sprinter ones with the dispatch line", () => {
+  check("services.html: each of the six sections ends with its one booking link, the Sprinter ones with the we'll send you a price line", () => {
     for (const [id, want] of Object.entries(ENDS)) {
       const text = document.getElementById(id).querySelector(".svc__text");
       const lnks = [...text.querySelectorAll("a.lnk")];
@@ -504,7 +504,7 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
       if (sprinter) {
         assert.deepEqual([...end.children].map((e) => e.tagName), ["P", "P"], `${id}: the link and its line share one block`);
         assert.ok(end.firstElementChild.contains(lnks[0]));
-        assert.equal(norm(end.lastElementChild.textContent), "Our dispatch team prices Luxury Sprinter bookings by the hour.");
+        assert.equal(norm(end.lastElementChild.textContent), "For a Luxury Sprinter by the hour, we'll send you a price.");
       }
     }
     const wa = document.querySelector("#corporate a.lnk");
@@ -571,8 +571,8 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.ok(ps[1].endsWith("Don't follow the Ride App Pick Up signs. They lead to the rideshare pickup areas, like floor 3 of the Terminal C garage."), ps[1]);
     assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
   });
-  check("locations/newark-airport.html: the price answer names the Black Car Fund and any sales tax, never plain taxes, in the page and in its JSON-LD", () => {
-    const answer = "Yes, from any New York City address. JFK, Newark and Teterboro cost the same in each class, and LaGuardia costs less. The price includes tolls, airport fees, the Black Car Fund and any sales tax. See all rates.";
+  check("locations/newark-airport.html: the price answer says any taxes, never plain taxes, in the page and in its JSON-LD", () => {
+    const answer = "Yes. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. Tolls, airport fees and any taxes are included. See all rates.";
     assert.ok([...document.querySelectorAll("main p")].some((p) => norm(p.textContent) === answer), "the FAQ answer");
     const graph = [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((el) => JSON.parse(el.textContent)["@graph"] || []);
     const faq = graph.find((node) => node["@type"] === "FAQPage");
@@ -605,7 +605,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
 }
 
 const SEAT_LINKS = [
-  ["faq.html", "Our car seat page"],
+  ["faq.html", "our car seat page"],
   ["index.html", "How to ask for a car seat"],
   ["rates.html", "Infant, toddler and booster seats"],
   ["services.html", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`],
@@ -631,15 +631,15 @@ check("the airport guide, the pickup guide and the Staten Island page link Newar
   assert.deepEqual(want.filter(([file, href, text]) => ![...read(file).document.querySelectorAll(`main .prose a[href="${href}"]`)].some((a) => norm(a.textContent) === text)), []);
 });
 
-check("rates.html, services.html and corporate-car-service-nyc.html: the airport text links the JFK, LaGuardia and Newark pages in one sentence that names those three airports, and services.html links JFK where it says how JFK pickups work", () => {
+check("rates.html, services.html and corporate-car-service-nyc.html: the airport text links the JFK, LaGuardia and Newark pages in one sentence that names those three airports, and services.html links meet and greet to the add-ons where it says how airport pickups work", () => {
   const line = "Pickup details for JFK, LaGuardia and Newark are on their airport pages.";
   for (const [file, scope] of [["rates.html", (d) => d.getElementById("airport-h").closest(".prose")], ["services.html", (d) => d.getElementById("airport-transfers")], ["corporate-car-service-nyc.html", (d) => d.getElementById("airports")]]) {
     const p = [...scope(read(file).document).querySelectorAll("p")].find((x) => norm(x.textContent) === line);
     assert.ok(p, `${file}: no airport pages sentence in the airport section`);
     assert.deepEqual([...p.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/locations/jfk-airport", "JFK"], ["/locations/laguardia-airport", "LaGuardia"], ["/locations/newark-airport", "Newark"]], file);
   }
-  const at = [...read("services.html").document.querySelectorAll("#airport-transfers p")].find((p) => norm(p.textContent).startsWith("At JFK, your chauffeur meets you"));
-  assert.deepEqual([at.querySelector("a").getAttribute("href"), norm(at.querySelector("a").textContent)], ["/locations/jfk-airport", "JFK"]);
+  const at = [...read("services.html").document.querySelectorAll("#airport-transfers p")].find((p) => norm(p.textContent).startsWith("At JFK and the other airports, your chauffeur meets you at the curb or the car service pickup area"));
+  assert.deepEqual([...at.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/locations/jfk-airport", "JFK"], ["/rates#add-ons", "meet and greet"]]);
 });
 check("corporate-car-service-nyc.html: services.html #corporate and the corporate checklist post link the page in their copy, and the page leaves out the executive fleet Wi-Fi line until the owner confirms it", () => {
   const svc = [...read("services.html").document.querySelectorAll('#corporate .prose a[href="/corporate-car-service-nyc"]')].map((a) => norm(a.textContent));
@@ -653,41 +653,41 @@ check("corporate-car-service-nyc.html: services.html #corporate and the corporat
 
 const ldNodes = (document) => [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => { const j = JSON.parse(s.textContent); return j["@graph"] || [j]; });
 const ldAnswer = (document, name) => ldNodes(document).filter((n) => n["@type"] === "FAQPage").flatMap((n) => n.mainEntity).find((q) => q.name === name)?.acceptedAnswer.text;
-check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered on one-way trips too at ${SEAT}, the price of api/_rates.mjs, charged at booking, in the lede, the answers, their JSON-LD and the Service description, and the charge answer and How to ask say once per booking, also on a round trip, with the price and a link to the add-ons`, () => {
+check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered on one-way trips too at ${SEAT}, the price of api/_rates.mjs, charged at booking, in the lede, the answers, their JSON-LD and the Service description, and the charge answer and How to ask say charged once, even on a round trip, with the price`, () => {
   const seat = read("car-service-with-car-seat-nyc.html").document;
   const faq = read("faq.html").document;
   const answer = `Yes. Infant, toddler and booster seats are available on airport transfers, one-way trips and hourly bookings, for ${SEAT}, charged at booking.`;
   assert.equal(norm(seat.querySelector("main .lede").textContent), `Infant, toddler and booster seats are ${SEAT}, charged at booking, on airport transfers, one-way trips and by the hour. You choose the seats when you book, and we fit them before the car leaves.`);
   assert.deepEqual([norm(seat.querySelector("#q-car-seats .acc__body").textContent), ldAnswer(seat, "Do your cars have car seats?")], [answer, answer]);
   assert.equal(ldNodes(seat).find((n) => n["@type"] === "Service").description, `Chauffeured airport transfers, one-way trips and hourly bookings in New York City with infant, toddler and booster seats at ${SEAT}, charged at booking.`);
-  const charge = `Yes. Each child seat is charged once per booking, also on a round trip, and shows as its own line in your price. The price is ${SEAT}, as listed with our add-ons and terms.`;
+  const charge = `Yes, ${SEAT}, charged once, even on a round trip.`;
   assert.deepEqual([norm(seat.querySelector("#q-seat-charge .acc__body").textContent), ldAnswer(seat, "Is there a charge for a car seat?")], [charge, charge]);
-  assert.deepEqual([...seat.querySelectorAll("#q-seat-charge a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["/rates#add-ons", "add-ons and terms"]]);
+  assert.deepEqual([...seat.querySelectorAll("#q-seat-charge a")], []);
   const install = "Yes. Choose the seats when you book, and we'll fit them before the car leaves.";
   assert.deepEqual([norm(seat.querySelector("#q-install .acc__body").textContent), ldAnswer(seat, "Do you install the car seat?")], [install, install]);
-  const airport = "Yes. You can add seats to airport transfers to or from JFK, LaGuardia, Newark and Teterboro. Flat airport rates include tolls, airport fees and taxes. Each seat is added to the total at booking.";
+  const airport = "Yes, at JFK, LaGuardia, Newark and Teterboro. Each seat is added to your price when you book.";
   assert.deepEqual([norm(seat.querySelector("#q-airport-seat .acc__body").textContent), ldAnswer(seat, "Can I get a car seat for an airport pickup?")], [airport, airport]);
   const ask = [...seat.querySelectorAll("#ask ~ p")].map((p) => norm(p.textContent));
-  assert.equal(ask[0], `When you book online, choose the infant, toddler and booster seats you need, and add the children's ages in the notes. Each seat is charged once per booking, also on a round trip, and the price is ${SEAT}, as listed with our add-ons and terms.`);
+  assert.equal(ask[0], `When you book online, choose the seats you need and add the children's ages in the notes. The price is ${SEAT}, charged once, even on a round trip.`);
   assert.doesNotMatch(norm(seat.querySelector("main").textContent), /step 3/i, "the seat counts show at step 3 for a priced trip and beside the request for a trip our dispatch team prices, so the page names no step");
   assert.ok(ask[1].endsWith("and tell us which seats you need."), ask[1]);
   assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Child Car Seats in NYC | NYC LUX RIDE", "Book infant, toddler and booster seats with your ride. Chauffeured cars to JFK, LaGuardia, Newark and Teterboro at flat rates, or by the hour."]);
   const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Are child safety seats available?");
-  const tail = "Our car seat page covers airport pickups, one-way trips and hourly bookings.";
+  const tail = "See our car seat page for more.";
   assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Are child safety seats available?").endsWith(tail)], [true, true]);
 });
-check("locations/staten-island.html and black-car-service-brooklyn.html: the toll and cost answers cover one-way trips priced by distance and time, visible and in JSON-LD", () => {
+check("locations/staten-island.html and black-car-service-brooklyn.html: the toll and cost answers cover hourly and other trips, visible and in JSON-LD", () => {
   const si = read("locations/staten-island.html").document;
   const bk = read("black-car-service-brooklyn.html").document;
-  assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("On hourly bookings and one-way trips priced by distance and time, bridge tolls are charged at cost after the ride to the card saved at booking.")), "the route paragraph");
-  const toll = "Yes. The Verrazzano-Narrows Bridge charges tolls in both directions. On an airport ride, tolls and airport fees are already in the price. On hourly bookings and one-way trips priced by distance and time, we charge tolls at cost after the ride to the card saved at booking. A round trip over the bridge means two tolls.";
+  assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On hourly and other trips, bridge tolls are charged after the ride.")), "the route paragraph");
+  const toll = "Yes, both ways. Airport rides include tolls. On hourly and other trips, tolls are charged after the ride, and a round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
-  const cost = "Airport transfers to or from JFK, LaGuardia, Newark and Teterboro are one total price by vehicle class from any New York City address, with tolls, airport fees, the Black Car Fund and any sales tax included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
+  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
-check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport transfers to or from a New York City address and hourly bookings, and says other one-way trips are priced on the Google Maps route at the pickup time, visible and in JSON-LD", () => {
+check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport rides to or from New York City and hourly bookings, and says other one-way trips are priced by distance and time at the pickup time, visible and in JSON-LD", () => {
   const { document } = read("corporate-car-service-nyc.html");
-  const answer = "Not on airport transfers to or from a New York City address or on hourly bookings. Airport transfers are one total price by vehicle class and hourly bookings use the published rate for the class, with no surge on either. Other one-way trips are priced by the distance and time of the Google Maps route at your pickup time. See all rates.";
+  const answer = "Not on airport rides to or from New York City or on hourly bookings. Those have set prices with no surge. Other one-way trips are priced by distance and time at your pickup time. See all rates.";
   assert.deepEqual([norm(document.querySelector("#q-busy-times .acc__body").textContent), ldAnswer(document, "Do busy times change the price?")], [answer, answer]);
 });
 

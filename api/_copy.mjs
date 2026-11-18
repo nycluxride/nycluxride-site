@@ -4,25 +4,25 @@ export const HEADINGS = {
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
-  county: { group: "price", text: "Our dispatch team prices trips from this address.", google: "Pick the address from the list to see the price." },
+  county: { group: "price", text: "We'll send you a price for trips from this address.", google: "Pick the address from the list to see the price." },
   "street-address": { group: "price", text: "Add the street address to see the price.", google: "Add the street address, or pick it from the list, to see the price." },
   "pickup-address": { group: "price", text: "Add the pickup street address to see the price.", map: "Add the pickup street address, or choose the spot on the map, to see the price." },
   "return-address": { group: "price", text: "The drop-off is also your return pickup. Add its street address to see the price.", map: "The drop-off is also your return pickup. Add its street address, or choose the spot on the map, to see the price." },
   "stop-address": { group: "price", text: "Add the street address of each stop to see the price.", google: "Add the street address of each stop, or pick it from the list, to see the price." },
-  "airport-zip": { group: "price", text: "This address is in an airport ZIP code. For the airport itself, type its name, like JFK or Newark Liberty (EWR), to see the price. Our dispatch team prices other trips here." },
-  "stop-leg": { group: "price", text: "Trips with stops are priced online as the trip without the stops plus a fee for each stop, or by distance and time for the whole route when that costs more, never below the flat airport rate when they start, stop or end at JFK, LaGuardia, Newark or Teterboro. We can't price this one online. Our dispatch team prices it." },
-  "airport-to-airport": { group: "price", text: "Our dispatch team prices trips between two airports." },
-  "no-airport": { group: "price", text: "We can't price this trip online right now. Our dispatch team prices it. You can also book by the hour and pay now.", short: "We can't price this trip online right now. Our dispatch team prices it." },
-  "outside-us": { group: "price", text: "Our dispatch team prices trips that start or end outside the United States." },
-  "long-trip": { group: "price", text: "Our dispatch team prices long trips like this one." },
-  "other-airport": { group: "price", text: "Our dispatch team prices trips to or from this airport." },
-  "outside-city": { group: "price", text: "The flat airport rate is for New York City addresses. For other places, our dispatch team prices the trip." },
-  "outside-hourly": { group: "price", text: "Our dispatch team prices hourly bookings that start outside New York City." },
-  "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, our dispatch team prices it." },
-  "sprinter-hourly": { group: "price", text: "Our dispatch team prices Luxury Sprinter bookings by the hour." },
+  "airport-zip": { group: "price", text: "This address is at or near an airport. Type the airport's name, like JFK or Newark Liberty (EWR), to see the price. Otherwise, we'll send you a price." },
+  "stop-leg": { group: "price", text: "We can't price this trip with stops online. Send it to us and we'll reply with a price." },
+  "airport-to-airport": { group: "price", text: "For a trip between two airports, we'll send you a price." },
+  "no-airport": { group: "price", text: "We can't price this trip online. We'll send you a price, or you can book by the hour and pay now.", short: "We can't price this trip online. We'll send you a price." },
+  "outside-us": { group: "price", text: "For trips that start or end outside the United States, we'll send you a price." },
+  "long-trip": { group: "price", text: "For very long trips, we'll send you a price." },
+  "other-airport": { group: "price", text: "For this airport, we'll send you a price." },
+  "outside-city": { group: "price", text: "Flat airport rates are for New York City addresses. For other places, we'll send you a price." },
+  "outside-hourly": { group: "price", text: "For hourly bookings that start outside New York City, we'll send you a price." },
+  "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, we'll send you a price." },
+  "sprinter-hourly": { group: "price", text: "For a Luxury Sprinter by the hour, we'll send you a price." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
-  "clock-change": { group: "phone", text: "The clocks change at this hour. A pickup or return at this time can't be booked online. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
+  "clock-change": { group: "phone", text: "A pickup or return at this hour can't be booked online because the clocks change. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
   "short-notice": { group: "phone", text: "For a pickup within the next 90 minutes, email info@nycluxride.com or message us on WhatsApp." },
   "far-ahead": { group: "phone", text: "For a pickup or return more than a year from now, email info@nycluxride.com or message us on WhatsApp." },
 };
@@ -54,16 +54,16 @@ export const ERRORS = {
   pphone: { field: "pphone", text: "Add the passenger's mobile number, and check its country code." },
 };
 export const POLICY = {
-  cancel: "Cancellation terms are confirmed in writing with the reservation. To change or cancel, call +1 (646) 775-0556 or message on WhatsApp with your reference, and give as much notice as you can.",
+  cancel: "To change or cancel, call +1 (646) 775-0556 or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.",
   later: {
-    airport: "After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to your card, each on an itemized receipt.",
-    hourly: "After the ride, tolls and parking are charged to your card, each on an itemized receipt.",
-    outside: "After the ride, waiting beyond the free window, tolls and parking are charged to your card, each on an itemized receipt.",
-    returnFlat: "After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to your card, each on an itemized receipt.",
-    outFlat: "After the ride, waiting beyond the free window, tolls for the return and parking are charged to your card, each on an itemized receipt.",
+    airport: "Extra waiting, stops added during the ride and parking are charged to your card after the ride.",
+    hourly: "Tolls and parking are charged to your card after the ride.",
+    outside: "Extra waiting, tolls and parking are charged to your card after the ride.",
+    returnFlat: "Tolls for the ride out, extra waiting and parking are charged to your card after the ride.",
+    outFlat: "Tolls for the return, extra waiting and parking are charged to your card after the ride.",
   },
 };
-const INCLUDED = "Tolls, airport fees, the Black Car Fund and any sales tax are included.";
+const INCLUDED = "Tolls, airport fees and any taxes are included.";
 const CONFIRM = "We confirm your car and chauffeur in writing before your ride.";
 const CHANGE = "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference {ref}.";
 export const NOTES = {
@@ -111,13 +111,13 @@ export const LABELS = {
   airportZip: "Airport ZIP code",
 };
 export const CHECKOUT = {
-  terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for waiting beyond the free window, stops added during the ride, parking and, on hourly bookings and trips priced by distance and time, tolls, as the terms describe.",
-  submit: "Today you pay the total shown: the fare, taxes and fees, tolls, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, only waiting beyond the free window, stops added during the ride and parking are charged to this card, with an itemized receipt.",
-  submitHourly: "Today you pay the hourly fare, taxes and fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
-  submitDistance: "Today you pay the fare, taxes and fees, any stop fees, child seats and pets if chosen, and the gratuity if you chose one. After the ride, tolls and parking are charged to this card, with an itemized receipt.",
-  submitOutside: "Today you pay the fare, taxes and fees, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls and parking are charged to this card, with an itemized receipt.",
-  submitReturnFlat: "Today you pay the fare, taxes and fees, tolls and airport fees for the return, any stop fees, meet and greet, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to this card, with an itemized receipt.",
-  submitOutFlat: "Today you pay the fare, taxes and fees, tolls and airport fees for the ride out, child seats and pets if chosen, and the gratuity if you chose one. After the ride, waiting beyond the free window, tolls for the return and parking are charged to this card, with an itemized receipt.",
+  terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.",
+  submit: "You pay the total shown today. Extra waiting, stops added during the ride and parking are charged to this card after the ride, with a receipt.",
+  submitHourly: "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.",
+  submitDistance: "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.",
+  submitOutside: "You pay the total shown today. Extra waiting, tolls and parking are charged to this card after the ride, with a receipt.",
+  submitReturnFlat: "You pay the total shown today, including tolls and airport fees for the return. Extra waiting, tolls for the ride out and parking are charged to this card after the ride, with a receipt.",
+  submitOutFlat: "You pay the total shown today, including tolls and airport fees for the ride out. Extra waiting, tolls for the return and parking are charged to this card after the ride, with a receipt.",
   license: "Licensed by the NYC Taxi and Limousine Commission, base license {license}.",
   afterSubmit: `${CONFIRM} ${CHANGE}`,
 };
@@ -160,10 +160,10 @@ export const MAIL = {
     hourly: "The same car and chauffeur stay with {who} for the hours you booked.",
     you: "you",
     them: "them",
-    long: "If your day might run long, tell us early. A message an hour ahead gives us time to keep the car for you.",
+    long: "If your day might run long, message us an hour ahead so we can keep the car for you.",
     back: "On the return, once you have your bags, your chauffeur calls or messages you with the exact spot.",
     backOther: "On the return, once they have their bags, your chauffeur calls or messages them with the exact spot.",
-    terminals: "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.",
+    terminals: "For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.",
     askFlight: "Send us your flight number on WhatsApp with your reference {ref}.",
   },
   other: "Your chauffeur contacts {name} on the day of the ride. Your confirmation, receipt and any changes go to your email.",

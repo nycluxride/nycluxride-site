@@ -1330,7 +1330,7 @@ await test("Philadelphia to Boston, 308.6 miles and 322 minutes with neither end
 });
 
 await test("over the limits the trip stays with dispatch as long-trip with today's text: 501.0 miles to Raleigh, NC and 721 minutes to Bar Harbor, ME, one way and round trip, while a ride of exactly 500.0 miles and 720 minutes is priced", async () => {
-  assert.equal(REASONS["long-trip"].text, "Our dispatch team prices long trips like this one.");
+  assert.equal(REASONS["long-trip"].text, "For very long trips, we'll send you a price.");
   await withMock(async () => {
     for (const to_text of [RALEIGH, BAR_HARBOR]) {
       await isQuote({ ...RIDE, to_text }, "long-trip");
@@ -1347,7 +1347,7 @@ await test("over the limits the trip stays with dispatch as long-trip with today
 });
 
 await test("a trip with an end in Canada or Mexico stays with dispatch with the outside-us text: a Canadian postal code, a province or Canada or Mexico at the end of typed text, or a place Google puts outside the United States, one way, round trip, to or from an airport and in the Luxury Sprinter, with no route lookup, while hourly bookings, stops and text that can't be placed keep their requests", async () => {
-  assert.deepEqual(REASONS["outside-us"], { group: "price", text: "Our dispatch team prices trips that start or end outside the United States." });
+  assert.deepEqual(REASONS["outside-us"], { group: "price", text: "For trips that start or end outside the United States, we'll send you a price." });
   assert.ok(!("outside-trip" in REASONS));
   await withMock(async () => {
     for (const text of ["CN Tower, 290 Bremner Blvd, Toronto, ON M5V 3L9", "Niagara Falls, Ontario", "Montreal, QC", "Toronto ON M5V 3L9", "Ottawa, Canada", "Cancún, Quintana Roo, México"]) {
@@ -1871,7 +1871,7 @@ await test("a round trip with stops: a ride out with a stop a few blocks away co
     assert.deepEqual(far.legs, [priceDistance("suv", { tenths: 250, minutes: 70 }, "lga"), priceLeg("suv", "lga")]);
     assert.deepEqual([far.total, far.stops, far.service, far.notes, far.lines.map((item) => item.label)], [priceDistance("suv", { tenths: 250, minutes: 70 }).total + AIRPORT_TOTALS.suv.lga, 0, "distance", [NOTES.returnFlat, POLICY.later.returnFlat], ["Fare", TAX, BCF, "Tolls and airport fees"]]);
     assert.ok(far.total > owner.total);
-    assert.deepEqual([NOTES.returnFlat, POLICY.later.returnFlat], ["Tolls and airport fees for the return are included.", "After the ride, waiting beyond the free window, tolls for the ride out and parking are charged to your card, each on an itemized receipt."]);
+    assert.deepEqual([NOTES.returnFlat, POLICY.later.returnFlat], ["Tolls and airport fees for the return are included.", "Tolls for the ride out, extra waiting and parking are charged to your card after the ride."]);
     await isQuote({ ...STOPS, ...ROUND_TRIP, to_text: "Manhattan" }, "return-address");
   });
 });
@@ -1899,7 +1899,7 @@ await test("a round trip with an airport stop on the ride out, 350 5th Ave by JF
       assert.deepEqual(pairs(round.lines).map(([label]) => label), ["Fare", TAX, BCF], cls);
       assert.ok(round.total > one.total, cls);
     }
-    assert.deepEqual([NOTES.outFlat, POLICY.later.outFlat], ["Tolls and airport fees for the ride out are included.", "After the ride, waiting beyond the free window, tolls for the return and parking are charged to your card, each on an itemized receipt."]);
+    assert.deepEqual([NOTES.outFlat, POLICY.later.outFlat], ["Tolls and airport fees for the ride out are included.", "Tolls for the return, extra waiting and parking are charged to your card after the ride."]);
     const { trip } = await run({ ...OUT, ...ROUND_TRIP });
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.back, leg.stops, leg.flat, leg.reason, leg.ride]), [["manhattan", "brooklyn", false, 1, undefined, "", WHOLE], ["brooklyn", "manhattan", true, undefined, undefined, "", { tenths: 48, minutes: 31 }]]);
     assert.deepEqual([...readRoute(trip.route, NOW).keys()], [out, home, alone]);
@@ -2041,7 +2041,7 @@ await test("the whole route of a trip with stops keeps DISTANCE_LIMITS: up to 50
 });
 
 await test("with Google routes off or failing, a trip with stops that needs its whole route stays with dispatch as stop-leg, with the text of the new rule, also when every part is an airport transfer", async () => {
-  assert.deepEqual(REASONS["stop-leg"], { group: "price", text: "Trips with stops are priced online as the trip without the stops plus a fee for each stop, or by distance and time for the whole route when that costs more, never below the flat airport rate when they start, stop or end at JFK, LaGuardia, Newark or Teterboro. We can't price this one online. Our dispatch team prices it." });
+  assert.deepEqual(REASONS["stop-leg"], { group: "price", text: "We can't price this trip with stops online. Send it to us and we'll reply with a price." });
   assert.deepEqual(["sprinter-distance", "sprinter-outside", "sprinter-stops"].map((key) => REASONS[key]), [undefined, undefined, undefined]);
   for (const fields of [STOPS, { ...STOPS, stop2_text: WALL }, { ...STOPS, ...ROUND_TRIP }, { ...RIDE, stop1_text: PARK }]) {
     await isQuote(fields, "stop-leg");
