@@ -53,7 +53,7 @@ check("pets: pay.js reprices on a change of either dog count, keys the price on 
   assert.match(PAY, /V\(\);uk\(\$\("e-dogs"\)\);WM2="";uk\(\$\("e-child_seats"\)\);su\(\);/);
   assert.match(PAY, /iv\(r\);uk\(\$\("e-child_seats"\)\);uk\(\$\("e-dogs"\)\);/);
   assert.match(PAY, /KX=\[\],DX=\[\],/);
-  assert.doesNotMatch(SRC, /40\.00|\$40|dog_cents[:=]\d|4000/);
+  assert.doesNotMatch(SRC, /45\.00|\$45|dog_cents[:=]\d|4500/);
   assert.equal(book.html.split('id="bk-pets"').length, 2);
 });
 

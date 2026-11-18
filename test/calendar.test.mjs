@@ -425,7 +425,7 @@ await test("the events of a round trip with pets name the dogs right after the c
   await hook(paid(DOGS));
   const events = inserted();
   assert.equal(events.length, 2);
-  assert.equal(DOGS.metadata.dogs, "2 small 3000, 1 large 4000");
+  assert.equal(DOGS.metadata.dogs, "2 small 4000, 1 large 4500");
   for (const event of events) {
     const lines = event.description.split("\n");
     const at = lines.indexOf("Child seats: 1 infant seat");

@@ -310,20 +310,19 @@ test("the distance worked example is base plus miles plus minutes from api/_trip
   assert.equal(e.fare, e.base + e.miles + e.time);
   assert.ok(e.fare > DISTANCE_RATES[e.cls].minimum);
   const text = squash(row("distance-rates").querySelector("tfoot td"));
-  assert.equal(text, `For example, 15 miles and 45 minutes in a ${CLASSES[e.cls].name} is the ${dollars(e.base)} base, ${cash(e.miles)} for the miles and ${cash(e.time)} for the minutes, a ${cash(e.fare)} fare. From New York City to an address in New York State, with ${cash(e.tax)} NYC sales tax and ${cash(e.bcf)} Black Car Fund, that is ${cash(e.fare + e.tax + e.bcf)} at booking. To or from New Jersey, with no New York sales tax, it is ${cash(e.fare + e.bcf)}.`);
+  assert.equal(text, `For example, 15 miles and 45 minutes in a ${CLASSES[e.cls].name} is the ${dollars(e.base)} base, ${cash(e.miles)} for the miles and ${cash(e.time)} for the minutes, a ${cash(e.fare)} fare, plus taxes and fees.`);
   assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf, e.fare + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808, 12705]);
 });
 
-test("the distance section says how the price is built, that trips with stops are priced over the whole route at no less than the airport fare of an airport on it, and that tolls and parking are charged after the ride, as on hourly bookings", () => {
-  const prose = squash(page.querySelector("#distance .prose"));
-  assert.ok(prose.includes("One-way trips anywhere in the United States that don't start or end at an airport are priced by distance and time."), prose);
-  assert.ok(!/five boroughs|New York City address|60 miles|180 minutes/.test(prose), prose);
-  assert.ok(prose.includes("The fare is the base rate plus a rate for each mile and each minute of the Google Maps route at your pickup time. If that comes to less than the minimum, you pay the minimum."), prose);
-  assert.ok(prose.includes("If that comes to less than the minimum, you pay the minimum. Trips between JFK, LaGuardia, Newark or Teterboro and an address outside New York City are priced the same way, and the fare is never less than the airport fare. Each stop is $20 on top of the price of the same trip without it. If a stop takes the car out of the way and the whole route, from the pickup through each stop to the drop-off, costs more by distance and time, you pay that instead, never below the airport fare when the route starts, stops or ends at one of these airports. The same rule applies to every trip with stops, also when it starts, stops or ends at an airport. A trip with stops from one airport to another is priced by distance and time over the whole route. Our dispatch team prices long trips and trips that start or end outside the United States."), prose);
-  assert.ok(prose.endsWith("Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt."), prose);
-  const note = squash(page.querySelector("#distance-caption .rate-table__note"));
+test("the distance section says in a few plain sentences how the price is built, that airport trips outside New York City never cost less than the airport fare, that each stop adds $20, and that tolls and parking are charged after the ride", () => {
+  const ps = [...page.querySelectorAll("#distance .prose p")].map(squash);
+  assert.deepEqual(ps, [
+    "Trips that don't start or end at an airport are priced by distance and time. You pay a base rate plus a rate per mile and per minute, or the minimum if that's higher. Airport trips to or from an address outside New York City are priced the same way, and never cost less than the airport fare.",
+    `Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Tolls and parking are charged after the ride. For very long trips, we'll send you a price.`,
+  ]);
+  assert.ok(ps.join(" ").split(/\s+/).length <= 90, "the distance section stays short");
   assert.equal(squash(page.querySelector("#hourly-caption .rate-table__note")), "Prices are before NYC sales tax and the Black Car Fund, which are added at booking. Tolls and parking are charged after the ride.");
-  assert.equal(note, "Prices are before sales tax and the Black Car Fund, which are added at booking. Sales tax applies to trips that start, stop and end in New York State, at the rate where you are picked up. Tolls and parking are charged after the ride.");
+  assert.equal(squash(page.querySelector("#distance-caption .rate-table__note")), "Taxes and fees are added at booking.");
 });
 
 test("the airport section and the distance caption say that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City pays the airport fare or the distance and time fare, whichever is higher, as api/_trip.mjs prices it", () => {
@@ -377,7 +376,7 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   const unknown = [];
   assert.deepEqual(catalog.itemListElement.filter((o) => o.name === "Child seat").map((o) => [Number(o.price) * 100, Number(o.priceSpecification.price) * 100]), [[CHILD_SEAT_CENTS, CHILD_SEAT_CENTS]]);
   assert.deepEqual(catalog.itemListElement.filter((o) => / dog$/.test(o.name)).map((o) => [o.name, Number(o.price) * 100, Number(o.priceSpecification.price) * 100, o.priceSpecification.valueAddedTaxIncluded, o.url]), [["Small dog", SMALL_DOG_CENTS, SMALL_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"], ["Large dog", LARGE_DOG_CENTS, LARGE_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"]]);
-  assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [1500, 4000]);
+  assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [2000, 4500]);
   const airport = catalog.itemListElement.filter((o) => o.name.startsWith("Airport transfer, "));
   assert.deepEqual(airport.map((o) => [o.name, new URL(o.url).hash.slice(1)]), CLASS_KEYS.flatMap((k) => [[`Airport transfer, JFK, Newark or Teterboro, ${CLASSES[k].name}`, `airport-${k}`], [`Airport transfer, LaGuardia, ${CLASSES[k].name}`, `airport-${k}`]]));
   for (const [i, offer] of airport.entries()) {

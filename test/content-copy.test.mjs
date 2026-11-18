@@ -108,10 +108,10 @@ const RATES_FACTS = {
   Taxes: "The Black Car Fund is charged at booking on every fare. Sales tax is charged at booking on trips that start, stop and end in New York State, at the rate where you are picked up",
   "Extra stops": "$20 per stop booked with a one-way trip, charged at booking, also on trips that start, stop or end at an airport, unless the whole route by distance and time costs more or the trip goes from one airport to another. A stop added during an airport transfer is charged after the ride to the card saved at booking",
   "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, also on a round trip",
-  Pets: "$15 per small dog and $40 per large dog, charged once at booking, also on a round trip. Service animals ride free",
+  Pets: "$20 per small dog and $45 per large dog, charged once at booking, also on a round trip. Service animals ride free",
 };
 const RATES_FOOTNOTE = "All prices in USD. Airport totals include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before tax, tolls and parking. A gratuity is optional.";
-const RATES_CANCELLATION = "At booking you pay the total shown at checkout: on airport transfers to or from a New York City address the fare, the Black Car Fund, tolls and airport fees and any sales tax, on hourly bookings and trips priced by distance and time the fare with the Black Car Fund and any sales tax, plus any stop fees, meet and greet, child seats, pets and a gratuity if you choose them. Sales tax applies to trips that start, stop and end in New York State, at the rate where you are picked up. Trips to or from New Jersey or another state have none. The card used at booking is saved for the charges known only after the ride: on airport transfers waiting beyond the free window, stops added during the ride and parking, and on hourly bookings and trips priced by distance and time tolls and parking. Each is charged with an itemized receipt.";
+const RATES_CANCELLATION = "You pay the total shown at checkout when you book. After the ride, we only charge the same card for waiting past the free time, stops added during the ride, parking, and tolls on hourly and distance trips. You get an itemized receipt for each charge.";
 const RATES_FAQ = [
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV, from any New York City address. That total includes the $155 fare, NYC sales tax, the Black Car Fund, and tolls and airport fees. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity for your chauffeur is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV, from any New York City address. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450. Each class costs less to LaGuardia than to JFK, Newark or Teterboro."],
@@ -311,7 +311,7 @@ check("the pets copy is plain: no em dash, en dash or semicolon in the booking f
   for (const text of texts) assert.doesNotMatch(text, /[\u2013\u2014;]/, text);
   assert.ok(TERMS_PAYMENTS.includes("meet and greet, child seats, pets and a gratuity"));
   assert.ok(TERMS_PAYMENTS.includes("if chosen. Service animals ride free and are never charged as pets. Airport"));
-  assert.ok(RATES_CANCELLATION.includes("meet and greet, child seats, pets and a gratuity"));
+  assert.ok(RATES_FACTS.Pets.includes("Service animals ride free"), RATES_FACTS.Pets);
 });
 
 check("services.html: the Rates list names the three bookable extras, with pets and no pet price, schedule.html asks for pets in the notes, and the FAQ pets keywords do not promise emotional support animals ride free", () => {
@@ -451,7 +451,7 @@ check("rates.html: the OfferCatalog has an airport offer per class for JFK, Newa
   assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Infant, toddler or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
-  assert.deepEqual(hourly.slice(-2), [dog("Small dog", "15"), dog("Large dog", "40")]);
+  assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);
   assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "175", undefined]]);
 });
 

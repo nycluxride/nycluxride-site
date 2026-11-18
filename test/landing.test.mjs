@@ -155,7 +155,7 @@ check("index.html: the pets card sits in the hero right after the child seats ca
   const items = [...pets.querySelectorAll(":scope > ul.pets__list[role=list] > li")];
   assert.deepEqual(items.map((li) => [...li.children].map((c) => `${c.tagName.toLowerCase()}.${c.className}`)), Array(2).fill(["span.pets__art", "p.pets__n", "p.pets__s"]));
   assert.deepEqual(items.map((li) => [use(li.querySelector(".pets__art")), norm(li.querySelector(".pets__n").textContent), li.querySelector(".pets__s").innerHTML]), DOGS);
-  assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [1500, 4000]);
+  assert.deepEqual([SMALL_DOG_CENTS, LARGE_DOG_CENTS], [2000, 4500]);
   assert.equal(fact("Pets"), `$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog, charged once at booking, also on a round trip. Service animals ride free`);
   const svc = pets.querySelector(":scope > p.pets__svc");
   assert.deepEqual([svc.firstElementChild.querySelector("use").getAttribute("href"), norm(svc.textContent)], ["#i-dog-service", "Service animals ride free, as the law requires."]);

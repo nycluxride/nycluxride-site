@@ -945,12 +945,12 @@ await test("a paid booking with child seats from the booking form names the seat
   assert.ok(one.text.includes("\nChild seats: 1 toddler seat\n") && one.text.includes("\nChild seats (1 x $15.00): $15.00\n"), one.text);
 });
 
-await test("a paid booking with pets names them in a Pets row right after the Child seats row of both emails, lists a Small dog and a Large dog line in the receipt at $15.00 and $40.00 a dog with the total paid, and shows no Pets row without dogs", async () => {
+await test("a paid booking with pets names them in a Pets row right after the Child seats row of both emails, lists a Small dog and a Large dog line in the receipt at $20.00 and $45.00 a dog with the total paid, and shows no Pets row without dogs", async () => {
   setEnv();
-  assert.deepEqual([DOGS.metadata.dogs, DOGS.metadata.seats_cents, "child_seats" in DOGS.metadata, DOGS.total], ["1 small 1500, 2 large 8000", "4500", false, 37325]);
+  assert.deepEqual([DOGS.metadata.dogs, DOGS.metadata.seats_cents, "child_seats" in DOGS.metadata, DOGS.total], ["1 small 2000, 2 large 9000", "4500", false, 38825]);
   const session = paid(DOGS);
   const [customer, owner] = bookingLetters(session, SETTINGS);
-  const pay = ["Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Meet and greet: $25.00", "Child seats (3 x $15.00): $45.00", "Small dog (1 x $15.00): $15.00", "Large dog (2 x $40.00): $80.00", "Gratuity for your chauffeur (15%): $23.25", "Paid: $373.25"];
+  const pay = ["Fare: $155.00", "Taxes and fees: $17.25", "Tolls: $12.75", "Meet and greet: $25.00", "Child seats (3 x $15.00): $45.00", "Small dog (1 x $20.00): $20.00", "Large dog (2 x $45.00): $90.00", "Gratuity for your chauffeur (15%): $23.25", "Paid: $388.25"];
   for (const letter of [customer, owner]) {
     assert.ok(letter.text.includes("\nChild seats: 1 infant seat and 2 booster seats\nPets: 1 small dog and 2 large dogs\n"), letter.kind);
     assert.deepEqual(sectionOf(letter.text, letter.kind === "customer" ? "Your payment" : "Payment"), pay, letter.kind);
@@ -962,8 +962,8 @@ await test("a paid booking with pets names them in a Pets row right after the Ch
     assert.deepEqual(tables[letter.kind === "customer" ? "Your payment" : "Payment"], pay.map((line) => line.split(": ")), letter.kind);
   }
   assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
-  const one = bookingLetters(paid(ONE_WAY, { metadata: { dogs: "1 large 4000" } }), SETTINGS)[0];
-  assert.ok(one.text.includes("\nPets: 1 large dog\n") && one.text.includes("\nLarge dog (1 x $40.00): $40.00\n") && !one.text.includes("Child seats"), one.text);
+  const one = bookingLetters(paid(ONE_WAY, { metadata: { dogs: "1 large 4500" } }), SETTINGS)[0];
+  assert.ok(one.text.includes("\nPets: 1 large dog\n") && one.text.includes("\nLarge dog (1 x $45.00): $45.00\n") && !one.text.includes("Child seats"), one.text);
   for (const letter of bookingLetters(paid(SEATS), SETTINGS)) assert.ok(!/Pets|dog/.test(letter.text) && !letter.html.includes(">Pets</th>"), letter.kind);
 });
 
