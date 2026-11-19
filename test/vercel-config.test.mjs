@@ -249,8 +249,10 @@ test(".vercelignore does not exclude api/", () => {
   assert.deepEqual(lines.filter((l) => /^\/?api(\/.*)?$/.test(l)), []);
 });
 
-test("the files in api/ without a leading underscore are exactly book, flight, places, route and stripe-webhook", () => {
-  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "places.mjs", "route.mjs", "stripe-webhook.mjs"]);
+test("the files in api/ without a leading underscore are exactly book, flight, owner-questions, places, route and stripe-webhook, and owner-questions runs only as the one-time Vercel cron", () => {
+  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "owner-questions.mjs", "places.mjs", "route.mjs", "stripe-webhook.mjs"]);
+  const vercel = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
+  assert.deepEqual(vercel.crons, [{ path: "/api/owner-questions", schedule: "0 22 19 11 *" }]);
 });
 
 test("every api route answers no-store through the /api rule", () => {

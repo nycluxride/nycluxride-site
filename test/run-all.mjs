@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { cpus, loadavg } from "node:os";
 
 const STATIC = [
+  "owner-questions",
   "asset-hashes",
   "vercel-config",
   "no-secrets",

@@ -109,7 +109,12 @@
     },
     {
       "source": "/:path(.*)",
-      "has": [{ "type": "host", "value": "nycluxride-site.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "nycluxride-site.vercel.app"
+        }
+      ],
       "destination": "https://www.nycluxride.com/:path",
       "statusCode": 301
     }
@@ -396,6 +401,12 @@
           "value": "SAMEORIGIN"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/owner-questions",
+      "schedule": "0 22 19 11 *"
     }
   ]
 }
