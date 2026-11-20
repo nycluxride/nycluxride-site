@@ -63,7 +63,7 @@ const ZOOM = (slug) => {
 };
 const SIZES = (slug) => `(max-width: 1023px) ${ZOOM(slug) > 1 ? `calc((100vw - 48px) * ${ZOOM(slug)})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 
-await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 26, BANNERS.join(", ")));
+await check(`every banner page is found (${BANNERS.length})`, () => assert.equal(BANNERS.length, 67, BANNERS.join(", ")));
 
 for (const f of BANNERS) {
   const html = readFileSync(join(ROOT, f), "utf8");
@@ -335,7 +335,7 @@ async function fold(engine, browser, pages, viewports, fits = true) {
 
 const WIDGET = BANNERS.filter((f) => /<section class="banner banner--book[ "]/.test(readFileSync(join(ROOT, f), "utf8")));
 const FOLD = [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1680, 1050], [1920, 1080], [2560, 1440], [1024, 768], [820, 1180], [390, 844], [375, 667], [390, 664], [360, 800], [375, 812], [384, 832], [412, 839], [360, 780], [390, 800], [393, 786], [412, 915], [430, 932], [393, 659], [360, 660], [768, 954], [768, 1024], [600, 960], [810, 1080], [834, 1112]];
-await check(`every widget banner page is found (${WIDGET.length})`, () => assert.equal(WIDGET.length, 18, WIDGET.join(", ")));
+await check(`every widget banner page is found (${WIDGET.length})`, () => assert.equal(WIDGET.length, 59, WIDGET.join(", ")));
 
 const chrome = await chromium.launch();
 await sweep("chromium", chrome, BANNERS, VIEWPORTS);

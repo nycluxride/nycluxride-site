@@ -82,8 +82,8 @@ test("no page links the Maps share link that opens as NYC LUX RIDE, New Jersey, 
   for (const file of pages) assert.ok(readFileSync(join(ROOT, file), "utf8").includes('href="https://www.google.com/maps?cid=15477906940128800338"'), file);
 });
 
-test("the five booking form pages keep the booking request messages out of search snippets", () => {
-  for (const file of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"]) {
+test("the six booking form pages keep the booking request messages out of search snippets", () => {
+  for (const file of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) {
     const quote = new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document.getElementById("quote");
     assert.ok(quote && quote.hasAttribute("data-nosnippet"), file);
   }

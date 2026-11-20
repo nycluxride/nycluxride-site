@@ -243,7 +243,7 @@ test("the taxes line says taxes are added at booking and included in airport pri
 });
 
 test("tolls and airport fees are included on airport transfers to or from a New York City address and billed after hourly rides and trips priced by distance and time", () => {
-  assert.equal(facts["Tolls and airport fees"], "Included on airport rides to or from New York City. On hourly and distance trips, charged after the ride to the card you booked with");
+  assert.equal(facts["Tolls and airport fees"], "Included on airport rides to or from New York City. On distance trips, tolls are added at booking. On hourly trips, they are charged to your card after the ride");
   assert.equal(facts["Extra stops"], `$${STOP_FEE_CENTS / 100} per stop, charged at booking, or more if the stop takes the car out of the way. A stop added during an airport ride is charged after the ride`);
   assert.equal(facts.Tolls, undefined);
 });
@@ -317,7 +317,7 @@ test("the distance section says in a few plain sentences how the price is built,
   const ps = [...page.querySelectorAll("#distance .prose p")].map(squash);
   assert.deepEqual(ps, [
     "Other one-way trips are priced by distance and time. You pay a base rate plus a rate per mile and per minute, with a minimum for each class.",
-    `Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Tolls and parking are charged after the ride. For very long trips, we'll send you a price.`,
+    `Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Tolls are added to your price when you book. Parking is charged after the ride. For very long trips, we'll send you a price.`,
   ]);
   assert.ok(ps.join(" ").split(/\s+/).length <= 90, "the distance section stays short");
   assert.equal(squash(page.querySelector("#hourly-caption .rate-table__note")), "Taxes and fees are added at booking. Tolls and parking are charged after the ride.");
@@ -328,7 +328,7 @@ test("the airport section says that a trip between JFK, LaGuardia, Newark or Tet
   assert.deepEqual([...page.querySelectorAll("#airport .prose p")].map(squash), [
     "Each transfer is a one-way, flat-rate ride to or from any address in the five boroughs. We track your flight and move the pickup if it lands early or late. The price stays the same.",
     "Pickup details for JFK, LaGuardia and Newark are on their airport pages.",
-    "Airport rides to or from a place outside New York City are priced by distance and time, and never cost less than the airport fare. Tolls and parking on these trips are charged after the ride.",
+    "Airport rides to or from a place outside New York City are priced by distance and time, and never cost less than the airport fare. Tolls are added when you book, and parking is charged after the ride.",
   ]);
   assert.equal(squash(page.querySelector('#airport .prose a[href="#distance"]')), "priced by distance and time");
   assert.equal(own(page.getElementById("distance-caption")), "One way trips priced by distance and time, by vehicle class.");

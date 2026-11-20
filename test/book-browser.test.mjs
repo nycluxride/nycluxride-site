@@ -2388,6 +2388,74 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
 }
 
 {
+  const ctx = await context(G, { viewport: { width: 390, height: 844 } });
+  await check("B217 tolls on a trip priced by distance and time: Newark Liberty (EWR) to 19 Coventry Ln, Riverside, CT first without a toll price shows no Tolls line and tolls after the ride, then with the Google estimate the price box adds Tolls $22.50 the same in every class, the after the ride note drops tolls, another class keeps the Tolls row, and the confirmation shows the same lines and note from the first frame", async () => {
+    const p = await open(ctx, G, "/book");
+    await typedTrip(p, { id: ["ewr", "Newark Liberty (EWR)"], to: "1 Ocean Rd, Montauk, NY 11954" });
+    await view(p);
+    await priced(p);
+    let box = await panel(p);
+    assert.deepEqual([box.lines.map(([label]) => label), box.notes], [["Fare", "Taxes and fees"], POLICY.later.outside]);
+    await p.click("#bk-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    await place(p, "to", "19 Coventry Ln, Riverside, CT 06878");
+    await view(p);
+    await priced(p);
+    await p.waitForFunction(() => [...document.querySelectorAll("#price-lines th")].some((th) => th.textContent === "Tolls"));
+    box = await panel(p);
+    const fare = 3500 + 525 * 40 + 64 * 65;
+    assert.deepEqual(box, { lines: [["Fare", cash(fare)], ["Taxes and fees", cash(percentCents(fare, BCF_PERCENT))], ["Tolls", "$22.50"]], total: cash(fare + percentCents(fare, BCF_PERCENT) + 2250), notes: POLICY.later.waiting });
+    assert.equal(await p.textContent("#price-lines tr.bk-hint"), "The same in every class.");
+    assert.deepEqual(await cards(p), ["$315.55", "$375.86", "$419.47", "$241.83", "$682.32"]);
+    await p.click('label[for="bk-c-sedan"]');
+    await p.waitForFunction(() => /241\.83/.test(document.getElementById("price-total").textContent));
+    box = await panel(p);
+    assert.deepEqual(box, { lines: [["Fare", "$214.50"], ["Taxes and fees", "$4.83"], ["Tolls", "$22.50"]], total: "$241.83", notes: POLICY.later.waiting });
+    await next(p);
+    await priced(p);
+    await details(p);
+    assert.deepEqual((await panel(p)).lines.map(([label]) => label), ["Fare", "Taxes and fees", "Tolls"]);
+    await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => tr.cells[0].textContent), document.getElementById("cf-notes").textContent]), [["Fare", "Taxes and fees", "Tolls"], POLICY.later.waiting]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]), document.getElementById("cf-total").textContent, document.getElementById("cf-notes").textContent]), [[["Fare", "$214.50"], ["Taxes and fees", "$4.83"], ["Tolls", "$22.50"]], "$241.83", POLICY.later.waiting]);
+    assert.match(await p.textContent("#cf-summary"), /Sedan & Electric, 52\.5 miles and 64 min\.$/);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await check("B218 tolls by direction on a round trip: Newark Liberty (EWR) to 19 Coventry Ln and back shows one Tolls line of $28.21, $22.50 out and $5.71 back, with the note without tolls", async () => {
+    const p = await open(ctx, G, "/book");
+    await typedTrip(p, { id: ["ewr", "Newark Liberty (EWR)"], to: "19 Coventry Ln, Riverside, CT 06878", ret: true });
+    await view(p);
+    await priced(p);
+    await p.waitForFunction(() => [...document.querySelectorAll("#price-lines th")].some((th) => th.textContent === "Tolls"));
+    const box = await panel(p);
+    assert.deepEqual([box.lines.find(([label]) => label === "Tolls"), box.notes], [["Tolls", "$28.21"], POLICY.later.waiting]);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B219 while a trip priced by distance and time loads, the price box note never says tolls come after the ride and keeps its height when the answer adds tolls to the price: 350 5th Ave to Staten Island with a Google toll price", async () => {
+    const p = await open(ctx, G, "/book");
+    await typedTrip(p, { to: "10 Richmond Terrace, Staten Island, NY 10301" });
+    await p.route("**/api/book", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
+    const note = () => p.evaluate(() => { const n = document.getElementById("price-notes"); return { text: n.textContent, items: n.children.length, height: n.getBoundingClientRect().height }; });
+    await p.click("#bk-view");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && !document.getElementById("price").hidden);
+    const loading = await note();
+    assert.deepEqual([loading.text, loading.items, /toll/i.test(loading.text)], [POLICY.later.distance, 1, false]);
+    await priced(p);
+    await p.waitForFunction(() => [...document.querySelectorAll("#price-lines th")].some((th) => th.textContent === "Tolls"));
+    const done = await note();
+    assert.deepEqual([done.text, done.items, done.height], [POLICY.later.distance, 1, loading.height]);
+    assert.deepEqual((await panel(p)).lines.find(([label]) => label === "Tolls"), ["Tolls", "$14.24"]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
+  await ctx.close();
+}
+
+{
   const ctx = await context(G, { viewport: { width: 1440, height: 900 } });
   await check("B140 a paid trip priced by distance: the confirmation keeps the line with the miles and minutes that set the fare, and its trip card arrives at the time of that ride", async () => {
     const p = await open(ctx, G, "/book");
@@ -6704,19 +6772,19 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual([p.errors, p.failed], [[], []]);
     await p.close();
   });
-  await check(`B153 at ${width} with a price that takes over 500 ms, a New Jersey address to JFK shows from the first frame the panel of a trip priced by distance and time, with no tolls line, the after the ride note and the Luxury Sprinter waiting for its price like every class, and CLS 0`, async () => {
+  await check(`B153 at ${width} with a price that takes over 500 ms, a New Jersey address to JFK shows from the first frame the panel of a trip priced by distance and time, with no tolls line, the after the ride note without tolls until Google answers with no toll price, and the Luxury Sprinter waiting for its price like every class, and CLS 0`, async () => {
     const p = await open(ctx, G, "/book");
     await njTrip(p);
     await p.route("**/api/book", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
     await p.click("#bk-view");
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
     const first = await p.evaluate(() => [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, document.getElementById("bk-p-sprinter").textContent, document.getElementById("bk-p-suv").textContent]);
-    assert.deepEqual(first.slice(0, 2), [["Fare", "Taxes and fees"], POLICY.later.outside]);
+    assert.deepEqual(first.slice(0, 2), [["Fare", "Taxes and fees"], POLICY.later.waiting]);
     assert.ok(first[2].startsWith("...") && first[2] === first[3], first.slice(2).join(" | "));
     await priced(p);
     await settle(p, 600);
     assert.deepEqual(await cards(p), CLASS_KEYS.map((cls) => cash(total(cls))));
-    assert.equal((await panel(p)).lines.length, 2);
+    assert.deepEqual([(await panel(p)).lines.length, (await panel(p)).notes], [2, POLICY.later.outside]);
     const [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));
     assert.deepEqual([p.errors, p.failed], [[], []]);
@@ -7374,7 +7442,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       await priced(p);
       await p.unroute("**/api/book");
       const notes = POLICY.later.outside;
-      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes], [["Fare", L_FEES], notes], "the placeholders are those of a ride over its whole route by an airport stop");
+      assert.deepEqual([waiting.lines.map(([label]) => label), waiting.notes], [["Fare", L_FEES], POLICY.later.waiting], "the placeholders are those of a ride over its whole route by an airport stop, with no word on tolls until the answer");
       const out = (cls) => priceDistance(cls, { tenths: 168, minutes: 43 }, "jfk");
       const round = (cls) => out(cls).total + priceDistance(cls, { tenths: 48, minutes: 31 }).total;
       assert.deepEqual(CLASS_KEYS.map(round), [29449, 34615, 48617, 25393, 76507]);
@@ -7496,7 +7564,7 @@ for (const [width, height] of [[390, 844], [1024, 900], [1440, 900]]) {
     const [van, suv] = ["sprinter", "suv"].map((k) => document.getElementById(`bk-p-${k}`).textContent);
     return [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, van.startsWith("...") && van === suv];
   });
-  const PLACEHOLDER = [["Fare", "Taxes and fees"], POLICY.later.outside, true];
+  const PLACEHOLDER = [["Fare", "Taxes and fees"], POLICY.later.waiting, true];
   for (const [name, setTrip, sprinter] of [["a New Jersey address to JFK", async (p) => { await outsideEnd(p, "from"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }, 44834], ["a JFK pickup to a New Jersey address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await outsideEnd(p, "to"); }, 44834]]) {
     await check(`B158 at ${width} ${name}, reloaded on the vehicle step and back from Stripe on /book#resume with a price that takes over 500 ms, shows from the first frame the panel of that trip, with no tolls line, the after the ride note with waiting beyond the free window and the Luxury Sprinter waiting for its price like every class, then priced, and CLS 0`, async () => {
       const p = await open(ctx, G, "/book");

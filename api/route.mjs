@@ -1,9 +1,9 @@
 import { MAX_STOPS } from "./_rates.mjs";
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
 import { localById, classifyText, routeText } from "./_places.mjs";
-import { verifyTicket, routeKey, signRoute } from "./_ticket.mjs";
+import { verifyTicket, routeKey, signRoute, routeRide } from "./_ticket.mjs";
 import { googleOn, computeRoute, mapSize, routeMap } from "./_google.mjs";
-import { nycToUtc, validDate } from "./_trip.mjs";
+import { nycToUtc, validDate, flatPair } from "./_trip.mjs";
 
 const LIMIT = 3072;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -44,6 +44,12 @@ function waypoint(end, now) {
   return ticket && !ticket.expired ? { placeId: ticket.id } : null;
 }
 
+function zoneOf(end, now) {
+  if (typeof end.text === "string") return classifyText(placeText(end.text)).zone;
+  if (typeof end.id === "string") return (localById(end.id) || {}).zone || "";
+  return (verifyTicket(end.ticket, null, now) || {}).zone || "";
+}
+
 export async function POST(request) {
   try {
     const { data, response } = await jsonRequest(request, LIMIT);
@@ -58,7 +64,8 @@ export async function POST(request) {
     if (departure.getTime() <= now || (back && back.getTime() <= departure.getTime()) || !googleOn()) return off();
     for (let i = back ? 2 : 1; i > 0; i--) if (!clientBudget(request, "route", ROUTE_IP) || !instanceBudget("route", ROUTE_INSTANCE)) return off();
     const size = mapSize(data.map);
-    const [result, home] = await Promise.all([computeRoute(waypoints, departure, size), back && computeRoute([waypoints[waypoints.length - 1], waypoints[0]], back, size)]);
+    const flat = flatPair(zoneOf(data.from, now), zoneOf(data.to, now));
+    const [result, home] = await Promise.all([computeRoute(waypoints, departure, size, stops.length > 0 || !flat), back && computeRoute([waypoints[waypoints.length - 1], waypoints[0]], back, size, !flat)]);
     if (!result.ok) {
       console.error("route", result.status);
       return off();
@@ -69,7 +76,7 @@ export async function POST(request) {
     const draw = data.draw === 1;
     const [first, last] = [waypoints[0], waypoints[waypoints.length - 1]];
     const keys = [routeKey(first, last, departure.toISOString(), waypoints.slice(1, -1)), legs[1] && routeKey(last, first, back.toISOString())];
-    const token = draw ? signRoute(legs.map((item, i) => [keys[i], Math.round(item.miles * 10), item.minutes]), now) : "";
+    const token = draw ? signRoute(legs.map((item, i) => routeRide(keys[i], Math.round(item.miles * 10), item.minutes, item.tolls)), now) : "";
     const points = draw && Array.isArray(result.points) && result.points.every(Array.isArray) ? result.points : null;
     return json(200, { kind: "ok", ...leg(result, draw), ...(points && { points }), ...(legs[1] && { back: leg(home, draw) }), ...(token && { route: token }), ...(map ? { map } : { attribution: "Google Maps" }) });
   } catch {

@@ -71,6 +71,8 @@ export function routeKey(from, to, departure, stops = []) {
   return createHash("sha256").update(JSON.stringify([from, ...stops, to, departure])).digest("base64url").slice(0, 22);
 }
 
+export const routeRide = (key, tenths, minutes, tolls) => [key, tenths, minutes, ...(Number.isInteger(tolls) && tolls >= 0 ? [tolls] : [])];
+
 export function signRoute(rides, now) {
   const key = ticketKey();
   if (!key || !rides.length) return "";
@@ -95,7 +97,7 @@ export function readRoute(token, now) {
   const age = Math.floor(Number(now) / 1000) - data.t;
   if (age > TICKET_TTL || age < -SKEW_S) return rides;
   for (const ride of data.l) {
-    if (Array.isArray(ride) && typeof ride[0] === "string" && [ride[1], ride[2]].every((n) => Number.isInteger(n) && n >= 0)) rides.set(ride[0], { tenths: ride[1], minutes: ride[2], at: data.t * 1000 });
+    if (Array.isArray(ride) && typeof ride[0] === "string" && [ride[1], ride[2]].every((n) => Number.isInteger(n) && n >= 0)) rides.set(ride[0], { tenths: ride[1], minutes: ride[2], at: data.t * 1000, ...(Number.isInteger(ride[3]) && ride[3] >= 0 && { tolls: ride[3] }) });
   }
   return rides;
 }

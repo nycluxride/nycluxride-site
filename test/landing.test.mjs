@@ -40,7 +40,7 @@ const PET_CHECKS = ["Advance notice recommended", "Pets must be well behaved and
 const SEAT_NOTE = "Choose them when you book, and we'll fit them before the car leaves.";
 const AMENITIES = [
   ["i-bottle", "Bottled water", ""],
-  ["i-wifi", "Free Wi-Fi", "Executive fleet"],
+  ["i-wifi", "Free Wi-Fi", "Every class"],
   ["i-charge", "Charging", "Executive fleet"],
   ["i-armchair", "Comfortable interior", ""],
   ["i-case", "Help with bags", ""],
@@ -118,10 +118,11 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the booking card, Child seats available with available in gold italic, the client's line, the infant, toddler and booster seat with their icons, and one price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
+check("index.html: the child seats card sits in the hero right after the trust section under the booking card, Child seats available with available in gold italic, the client's line, the infant, toddler and booster seat with their icons, and one price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
-  assert.equal(seats.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the card does not follow the booking card");
+  assert.equal(seats.previousElementSibling, hero.querySelector(":scope > section.trust"), "the card does not follow the trust section");
+  assert.equal(seats.previousElementSibling.previousElementSibling, hero.querySelector(":scope > div.hero__book"), "the trust section does not follow the booking card");
   assert.equal(seats.nextElementSibling, hero.querySelector(":scope > section.pets"), "the pets card does not follow the card");
   const h = seats.querySelector(":scope > h2.seats__h#seats-h");
   assert.equal(norm(h.textContent), "Child seats available");
@@ -133,12 +134,12 @@ check("index.html: the child seats card sits in the hero right after the booking
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
   assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip");
   assert.doesNotMatch(seats.textContent, /free/i);
-  assert.ok(answer("Are child safety seats available?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
+  assert.ok(answer("Do your cars have car seats?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
 
-check("index.html: the child seats card ends with one link, How to ask for a car seat with the arrow, to the car seat page", () => {
+check("index.html: the child seats card ends with one link, Car service with car seats with the arrow, to the car seat page", () => {
   const seats = hero.querySelector(":scope > section.seats");
-  assert.equal(seats.lastElementChild.outerHTML, `<p class="seats__more"><a class="lnk" href="/car-service-with-car-seat-nyc">How to ask for a car seat ${ARROW}</a></p>`);
+  assert.equal(seats.lastElementChild.outerHTML, `<p class="seats__more"><a class="lnk" href="/car-service-with-car-seat-nyc">Car service with car seats ${ARROW}</a></p>`);
   assert.equal(seats.querySelectorAll("a").length, 1);
 });
 
@@ -166,11 +167,11 @@ check("index.html: the pets card sits in the hero right after the child seats ca
   assert.doesNotMatch(norm(pets.textContent), /[\u2013\u2014;]/);
 });
 
-check("index.html: the pets card ends with one link, Read the FAQ with the arrow, named Read the FAQ about pets, to the pets question of the FAQ", () => {
+check("index.html: the pets card ends with one link, Rides with your dog with the arrow, to the pet page, and the FAQ keeps its pets question", () => {
   const pets = hero.querySelector(":scope > section.pets");
-  assert.equal(pets.lastElementChild.outerHTML, `<p class="pets__more"><a class="lnk" href="/faq#q-pets">Read the FAQ <span class="sr-only">about pets </span>${ARROW}</a></p>`);
+  assert.equal(pets.lastElementChild.outerHTML, `<p class="pets__more"><a class="lnk" href="/pet-friendly-car-service-nyc">Rides with your dog ${ARROW}</a></p>`);
   assert.equal(pets.querySelectorAll("a").length, 1);
-  assert.equal(norm(pets.querySelector("a").textContent), "Read the FAQ about pets");
+  assert.equal(norm(pets.querySelector("a").textContent), "Rides with your dog");
   const q = faq.getElementById("q-pets");
   assert.ok(q?.matches("details"), "no #q-pets question on faq.html");
   assert.equal(norm(q.querySelector("summary").textContent), "Can I bring my dog?");
@@ -213,14 +214,15 @@ check("index.html: the perks block holds only the amenity strip, and the one chi
   assert.ok(hero.querySelector(":scope > section.seats").compareDocumentPosition(band) & 4, "the card does not come before the band");
 });
 
-check("index.html: Wi-Fi and charging ports are promised for the executive fleet only, as the FAQ and the booking form say, and screen readers hear in the Executive fleet", () => {
-  assert.deepEqual(AMENITIES.filter(([, , s]) => s === "Executive fleet").map(([id, , s]) => [id, s]), [["i-wifi", "Executive fleet"], ["i-charge", "Executive fleet"]]);
-  const fleet = [...doc.querySelectorAll("#amen-h ~ ul.amen__list > li")].filter((li) => shown(li.querySelector(":scope > small")) === "Executive fleet");
-  assert.deepEqual(fleet.map((li) => li.querySelector(":scope > small").innerHTML), Array(2).fill('<span class="sr-only">in the </span>Executive fleet'));
-  assert.deepEqual(fleet.map((li) => norm(li.textContent)), ["Free Wi-Fi in the Executive fleet", "Charging in the Executive fleet"]);
-  assert.doesNotMatch(norm(doc.getElementById("amen-h").textContent), /\bevery\b/i, "the heading over the two executive fleet tiles must not promise every ride");
-  assert.equal(answer("Do your vehicles include Wi-Fi?"), "Yes. The executive fleet has free Wi-Fi and charging ports.");
-  assert.ok([...doc.querySelectorAll("#bk-incl > li")].some((li) => norm(li.textContent) === "Free Wi-Fi and charging ports in the executive fleet"), "the booking form no longer says it");
+check("index.html: Wi-Fi is promised in every class and charging ports in the executive fleet only, as the FAQ and the booking form say, and screen readers hear in Every class and in the Executive fleet", () => {
+  assert.deepEqual(AMENITIES.filter(([, , s]) => s === "Executive fleet" || s === "Every class").map(([id, , s]) => [id, s]), [["i-wifi", "Every class"], ["i-charge", "Executive fleet"]]);
+  const tiles = [...doc.querySelectorAll("#amen-h ~ ul.amen__list > li")].filter((li) => ["Executive fleet", "Every class"].includes(shown(li.querySelector(":scope > small"))));
+  assert.deepEqual(tiles.map((li) => li.querySelector(":scope > small").innerHTML), ['<span class="sr-only">in </span>Every class', '<span class="sr-only">in the </span>Executive fleet']);
+  assert.deepEqual(tiles.map((li) => norm(li.textContent)), ["Free Wi-Fi in Every class", "Charging in the Executive fleet"]);
+  assert.doesNotMatch(norm(doc.getElementById("amen-h").textContent), /\bevery\b/i, "the heading over the tiles must not promise every ride");
+  assert.equal(answer("Do your vehicles include Wi-Fi?"), "Yes. Every class has free Wi-Fi, and the Cadillac Escalade has high-speed Wi-Fi. The executive fleet also has charging ports.");
+  assert.ok([...doc.querySelectorAll("#bk-incl > li")].some((li) => norm(li.textContent) === "Free Wi-Fi in every class"), "the booking form no longer says it");
+  assert.ok(![...doc.querySelectorAll("#bk-incl > li")].some((li) => /executive fleet/i.test(li.textContent)), "the booking form still limits Wi-Fi to the executive fleet");
 });
 
 check("index.html: the perks block ends with meet and greet as an extra and the add-ons and FAQ links", () => {
@@ -236,7 +238,7 @@ check("index.html: the old What is included lines are not said again outside the
   const text = norm(main.textContent);
   const count = (s) => text.split(s).length - 1;
   assert.deepEqual(
-    ["What is included", "Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Infant, toddler and booster seats", "Free Wi-Fi and charging ports in the executive fleet"].map(count),
+    ["What is included", "Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Infant, toddler and booster seats", "Free Wi-Fi in every class"].map(count),
     [0, 0, 0, 0, 0, 0],
   );
   assert.equal(count("Meet and greet inside the terminal with a name sign"), 1);
@@ -249,15 +251,15 @@ check("index.html: every icon of the band, the strip and the hero's child seats 
   assert.deepEqual(ids.filter((id) => !sprite.includes(`<symbol id="${id}" viewBox="0 0 24 24">`)), []);
 });
 
-check("index.html: the H1 reads NYC airport transfers. Travel in First Class, with First Class the one gold span", () => {
+check("index.html: the H1 reads NYC luxury airport transfers and chauffeur service. Travel in First Class, with First Class the one gold span", () => {
   const h1 = doc.querySelector("main > section.hero > h1#hero-h");
-  assert.equal(norm(h1.textContent), "NYC airport transfers. Travel in First Class");
+  assert.equal(norm(h1.textContent), "NYC luxury airport transfers and chauffeur service. Travel in First Class");
   assert.deepEqual([...h1.querySelectorAll(".hero__gold")].map((s) => s.outerHTML), ['<span class="hero__gold">First Class</span>']);
 });
 
 check("index.html: under the H1 the two lines read Professional, Luxury, Reliable and Airport Transfers, Hourly Service, Corporate Travel, with no lede and no visible eyebrow", () => {
   const h1 = hero.querySelector(":scope > h1#hero-h");
-  assert.deepEqual([...h1.children].map((x) => [x.className, x.textContent]), [["sr-only", "NYC airport transfers."], ["hero__gold", "First Class"]]);
+  assert.deepEqual([...h1.children].map((x) => [x.className, x.textContent]), [["sr-only", "NYC luxury airport transfers and chauffeur service."], ["hero__gold", "First Class"]]);
   const lists = [...hero.querySelectorAll(":scope > ul.hero__tags")];
   assert.deepEqual(lists.map((l) => [l.className, l.getAttribute("role"), [...l.children].map((li) => [li.tagName, li.textContent])]), [
     ["hero__tags", "list", [["LI", "Professional"], ["LI", "Luxury"], ["LI", "Reliable"]]],
@@ -283,7 +285,7 @@ const block = (src, head) => {
 };
 const layer = (name) => block(css, `@layer ${name}{`);
 
-check(`assets/${cssFile}: the pets card shares the child seats card rules, the white card with the gold metallic edge, the gold rings, the gold italic word, the ring, sheen and star only with motion allowed outside forced colors, the hover sparkle, a Canvas card and a CanvasText paw ring in forced colors, and row 8 after the seats with scripting, row 7 before the form without`, () => {
+check(`assets/${cssFile}: the pets card shares the child seats card rules, the white card with the gold metallic edge, the gold rings, the gold italic word, the ring, sheen and star only with motion allowed outside forced colors, the hover sparkle, a Canvas card and a CanvasText paw ring in forced colors, and rows 8 and 9 after the trust section with scripting, rows 6 and 7 before the form without`, () => {
   const pages = layer("pages");
   const comp = layer("components");
   const has = (list, sel, ...want) => {
@@ -297,8 +299,8 @@ check(`assets/${cssFile}: the pets card shares the child seats card rules, the w
     return parse(out);
   };
   has(parse(comp), ".hero>:is(.seats,.pets)", "justify-self:stretch", "border:1px solid var(--gold-300)", "background:var(--white)");
-  has(base, ".home :is(.seats,.pets)", "grid-row:7", "display:grid", "margin-block-start:16px", "padding:20px", "border-radius:var(--radius-lg)");
-  has(base, ".home .pets", "grid-row:8");
+  has(base, ".home :is(.seats,.pets)", "grid-row:8", "display:grid", "margin-block-start:16px", "padding:20px", "border-radius:var(--radius-lg)");
+  has(base, ".home .pets", "grid-row:9");
   has(base, ".home .pets__list", "grid-template-columns:repeat(2,minmax(0,1fr))");
   has(base, ".home :is(.seats__art,.pets__art)", "position:relative", "inline-size:56px", "border:1px solid var(--gold-300)", "border-radius:50%", "background:var(--gold-50)");
   has(base, ".home :is(.seats__list,.pets__list) .icon", "font-size:31px", "color:var(--gold-700)", "stroke-width:1.25");

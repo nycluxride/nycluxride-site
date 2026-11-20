@@ -28,6 +28,9 @@ const PRICE_TYPE = /Offer|PriceSpecification|MonetaryAmount/;
 const SEAT_PRICE = `$${CHILD_SEAT_CENTS / 100} per seat`;
 const PET_CARD = "index.html";
 const PET_PRICES = [`$${SMALL_DOG_CENTS / 100} per dog`, `$${LARGE_DOG_CENTS / 100} per dog`];
+// Gate G-PET: the owner approved the dog prices on the pet page, written from api/_rates.mjs.
+const PET_PAGE = "pet-friendly-car-service-nyc.html";
+const PET_PAGE_PRICES = [`$${SMALL_DOG_CENTS / 100} per small dog`, `$${LARGE_DOG_CENTS / 100} per large dog`];
 const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;
 const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "cancellation"];
 
@@ -94,9 +97,9 @@ const pages = new Map(FILES.map((f) => [f, read(f)]));
 
 for (const [file, p] of pages) {
   if (file === RATES) continue;
-  const allowed = [...(ALLOWED[file] || []), ...(file === PET_CARD ? PET_PRICES : [])];
+  const allowed = [...(ALLOWED[file] || []), ...(file === PET_CARD ? PET_PRICES : []), ...(file === PET_PAGE ? PET_PAGE_PRICES : [])];
 
-  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}${file === PET_CARD ? ` and the pets card prices ${PET_PRICES.join(" and ")}` : ""}`, () => {
+  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}${file === PET_CARD ? ` and the pets card prices ${PET_PRICES.join(" and ")}` : ""}${file === PET_PAGE ? ` and the dog prices ${PET_PAGE_PRICES.join(" and ")}` : ""}`, () => {
     const hits = [];
     const scan = (where, s, re = PROSE_PRICE) => {
       const rest = unseat(strip(String(s), allowed));
@@ -176,8 +179,9 @@ if (rates) {
     const found = [...rates.text.matchAll(/\$\s*(\d+(?:\.\d+)?)\s+per (small|large) dog/g)].map((m) => [m[2], Number(m[1]) * 100]);
     assert.deepEqual(found, [["small", SMALL_DOG_CENTS], ["large", LARGE_DOG_CENTS]]);
   });
-  check(`no page other than the rates page names a price per dog, apart from the homepage pets card, which names exactly ${PET_PRICES[0]} for a small dog and ${PET_PRICES[1]} for a large dog from api/_rates.mjs`, () => {
+  check(`no page other than the rates page names a price per dog, apart from the homepage pets card, which names exactly ${PET_PRICES[0]} for a small dog and ${PET_PRICES[1]} for a large dog from api/_rates.mjs, and the pet page, which names only ${PET_PAGE_PRICES.join(" and ")}`, () => {
     const outside = (file, p) => {
+      if (file === PET_PAGE) return strip(p.text, PET_PAGE_PRICES);
       if (file !== PET_CARD) return p.text;
       const body = p.document.body.cloneNode(true);
       for (const n of body.querySelectorAll("script, style, main > section.hero > section.pets")) n.remove();
@@ -190,6 +194,12 @@ if (rates) {
     assert.deepEqual([...textOf(card).matchAll(/\$\s*\d[\d.,]*/g)].map((m) => m[0]), [`$${SMALL_DOG_CENTS / 100}`, `$${LARGE_DOG_CENTS / 100}`]);
     assert.deepEqual([...card.querySelectorAll(".pets__list > li")].map((li) => textOf(li).trim()), [`Small dog ${PET_PRICES[0]}`, `Large dog ${PET_PRICES[1]}`]);
     assert.equal(pages.get(PET_CARD).text.split(" per dog").length - 1, 2, "a price per dog outside the pets card");
+    const pet = pages.get(PET_PAGE);
+    assert.ok(pet, `${PET_PAGE} is missing`);
+    const named = [...pet.text.matchAll(/\$\s*(\d+(?:\.\d+)?)\s+per (small|large) dog/g)].map((m) => [m[2], Number(m[1]) * 100]);
+    assert.deepEqual([...new Set(named.map(([size, cents]) => `${size} ${cents}`))].sort(), [`large ${LARGE_DOG_CENTS}`, `small ${SMALL_DOG_CENTS}`]);
+    assert.equal(pet.title.match(/\$/g), null, "a dog price in the pet page title");
+    assert.equal(JSON.stringify(pet.ld).match(/\$\s*\d/g), null, "a dog price in the pet page json-ld");
   });
   check(`${RATES}: every anchor other pages link to exists`, () => {
     const missing = RATE_ANCHORS.filter((id) => !ratesIds.has(id));

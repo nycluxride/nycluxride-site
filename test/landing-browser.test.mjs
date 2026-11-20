@@ -796,7 +796,7 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
       });
       await ctx.close();
     }
-    for (const [name, o] of [["with reduced motion", { viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" }], ["without javascript", { viewport: { width: 1440, height: 900 }, javaScriptEnabled: false }], ["with the pets card on screen at load", { viewport: { width: 1024, height: 1366 } }]]) {
+    for (const [name, o] of [["with reduced motion", { viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" }], ["without javascript", { viewport: { width: 1440, height: 900 }, javaScriptEnabled: false }], ["with the pets card on screen at load", { viewport: { width: 1024, height: 1600 } }]]) {
       const { ctx, p, at } = await open(o);
       await p.evaluate(() => document.querySelector(".hero > .pets > .pets__list").scrollIntoView({ block: "center" }));
       await p.waitForTimeout(300);

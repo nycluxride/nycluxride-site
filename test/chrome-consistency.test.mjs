@@ -8,7 +8,7 @@ const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.
 const BOOK = "/book";
 
 const SECTIONS = {
-  "/services": ["chauffeur-service-nyc.html", "corporate-car-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html"],
+  "/services": (f) => ["chauffeur-service-nyc.html", "corporate-car-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "long-distance-car-service.html", "pet-friendly-car-service-nyc.html", "private-jet-car-service-nyc.html", "roadshow-transportation-nyc.html", "sprinter-van-service-nyc.html", "cruise-terminal-car-service-nyc.html", "wedding-car-service-nyc.html"].includes(f) || f.startsWith("long-distance-car-service/"),
   "/contact": ["schedule.html", "card-authorization.html"],
   "/locations": (f) => f.startsWith("locations/"),
   "/blog": (f) => f.startsWith("blog/"),
@@ -16,8 +16,9 @@ const SECTIONS = {
 const HEADER_NAV = ["/services", "/fleet", "/rates", "/locations", "/faq"];
 const PANEL_NAV = ["/services", "/fleet", "/rates", "/faq", "/blog", "/about", "/contact"];
 const PANEL_ORDER = ["/", "/book", "/services", "/fleet", "/rates", "/locations"];
-const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk-airport", "laguardia-airport", "newark-airport", "long-island-city", "soho", "upper-east-side", "upper-west-side", "financial-district"].map((a) => `/locations/${a}`);
-const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["jfk-airport", "laguardia-airport", "newark-airport", "manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"].map((a) => `locations/${a}.html`)];
+const AREAS = [...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk-airport", "laguardia-airport", "newark-airport", "teterboro-airport", "long-island-city", "soho", "upper-east-side", "upper-west-side", "financial-district", "new-jersey", "long-island", "westchester-county"].map((a) => `/locations/${a}`), "/long-distance-car-service"];
+const FOOTER_AREAS = 14;
+const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["jfk-airport", "laguardia-airport", "newark-airport", "manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "teterboro-airport", "westchester-airport", "hoboken"].map((a) => `locations/${a}.html`), "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
 const FOOTER = {
   Book: [BOOK, "/rates", "/fleet", "/schedule", "/card-authorization", "/car-service-with-car-seat-nyc"],
   Services: ["/services", "/chauffeur-service-nyc", "/corporate-car-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn"],
@@ -272,7 +273,7 @@ for (const file of FILES) {
       const nav = [...document.querySelectorAll(".site-footer nav")].find((n) => n.querySelector("h2").textContent.trim() === title);
       assert.deepEqual([...nav.querySelectorAll("a")].map((a) => a.getAttribute("href")), want, title);
     }
-    assert.equal(document.querySelectorAll(".site-footer nav .footer-links--cols a").length, 14);
+    assert.equal(document.querySelectorAll(".site-footer nav .footer-links--cols a").length, FOOTER_AREAS);
     assert.equal(document.querySelector('.site-footer a[href="/car-service-with-car-seat-nyc"]').textContent.trim(), "Child car seats");
     assert.equal(document.querySelector('.site-footer a[href="/locations/newark-airport"]').textContent.trim(), "Newark Airport");
     assert.equal(document.querySelector('.site-footer a[href="/schedule"]').textContent.trim(), "Schedule a chauffeur");

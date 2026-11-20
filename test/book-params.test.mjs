@@ -12,6 +12,7 @@ import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY } from "../api/_copy.mjs";
 import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES } from "../api/_rates.mjs";
 import { ROUTE, signTicket, signRoute, routeKey } from "../api/_ticket.mjs";
+import { localById } from "../api/_places.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const NOW = new Date("2026-10-01T16:00:00.000Z");
@@ -2840,6 +2841,33 @@ await test("builder: the true worst case, every optional field filled from real 
   }
 });
 
+await test("builder: the true worst case with the Google toll estimate on both rides adds only tolls_est_cents, 46 metadata keys, at most 48, the Tolls line holds both estimates and the receipt rebuilds the same lines", async () => {
+  setEnv();
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const at = new Date("2026-10-01T16:00:00.000Z");
+    const worst = worstFields(at, "2026-10-01", "13:20", "2026-10-18");
+    const row = localById("jfk-t4");
+    const from = row.gid ? { placeId: row.gid } : { address: row.addr };
+    const to = { placeId: "ChIJ7cv00DwsDogRAMDACa2m4K8" };
+    const stops = [{ placeId: "ChIJb8Jg9pZYwokR-qHGtvSkLzs" }, { placeId: "ChIJ-b2RmVlZwokRpb1pwEQjss0" }];
+    const route = signRoute([[routeKey(from, to, nycToUtc("2026-10-01", "13:20").toISOString(), stops), 168, 43, 1679], [routeKey(to, from, nycToUtc("2026-10-18", "18:00").toISOString()), 168, 43, 571]], at.getTime());
+    const { params, price, trip } = await build({ ...worst, route }, ON, "nonce-worst-case-00000001", at);
+    const keys = [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
+    assert.deepEqual([price.service, price.estimate, price.tolls, keys.length], ["distance", 2250, 2250, 46], keys.join(" "));
+    assert.ok(keys.length <= 48);
+    assert.deepEqual(trip.legs.map((l) => l.reason), ["", ""]);
+    assert.equal(params.get("metadata[tolls_est_cents]"), "2250");
+    assert.equal(params.get("payment_intent_data[metadata][tolls_est_cents]"), "2250");
+    assert.equal([...params.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, keys.length);
+    assert.ok(stripeItems(params).some(({ label, cents }) => label === "Tolls" && cents === 2250));
+    assert.deepEqual(shownLines(receipt(metadataOf(params), ON).lines), stripeItems(params));
+    assert.equal(stripeTotal(params.toString()), price.total);
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
 await test("builder: two long Google place ids share the places key only as whole parts, so a pickup and a drop-off with ids of 200 or 245 characters (exactly 500) keep both, and ids of 246, 260 or 300 characters keep the pickup id whole and leave the drop-off id out, and bookingData never returns a cut id", async () => {
   setEnv();
   process.env.GOOGLE_MOCK = "true";
@@ -2947,14 +2975,14 @@ await test("the Checkout texts say the total shown, stop fees included, is paid 
   for (const text of [CHECKOUT.submit, CHECKOUT.terms, POLICY.later.airport, NOTES.airport]) assert.ok(text.includes("stops added during the ride") && !/extra stops/i.test(text), text);
 });
 
-await test("handler: the owner's trip from LaGuardia with stops at 26 Ann St and 40 Wall St to 55 Church St prices each class at the LaGuardia flat total plus two stop fees, or over the whole route by distance and time when that costs more than the flat total without its tolls plus the fees, pays the same total with its route token, Stripe gets the Extra stops line item and the stops_cents metadata, the receipt rebuilds its lines, the receipt check finds no mismatch, and a changed or reordered stop at pay can't reuse the signed route", async () => {
+await test("handler: when Google expects tolls but gives no price, the owner's trip from LaGuardia with stops at 26 Ann St and 40 Wall St to 55 Church St prices each class at the LaGuardia flat total plus two stop fees, or over the whole route by distance and time when that costs more than the flat total without its tolls plus the fees, pays the same total with its route token, Stripe gets the Extra stops line item and the stops_cents metadata, the receipt rebuilds its lines, the receipt check finds no mismatch, and a changed or reordered stop at pay can't reuse the signed route", async () => {
   setEnv({ ...LIVE, GOOGLE_MAPS_SERVER_KEY: "test-server-key-SENTINEL" });
   let down = false;
   const sent = [];
   stripe = (url, init) => {
     if (!url.startsWith("https://routes.googleapis.com/")) return STRIPE_OK(url, init);
     sent.push(JSON.parse(init.body));
-    return down ? new Response("{}", { status: 503 }) : new Response(JSON.stringify({ routes: [{ duration: "4200s", distanceMeters: 32187 }] }), { status: 200 });
+    return down ? new Response("{}", { status: 503 }) : new Response(JSON.stringify({ routes: [{ duration: "4200s", distanceMeters: 32187, travelAdvisory: { tollInfo: {} } }] }), { status: 200 });
   };
   const stripeCalls = () => calls.filter((c) => c.url.startsWith("https://api.stripe.com"));
   const fields = trip({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: ANN, stop2_text: WALL, to_text: CHURCH, passengers: "2", class: "suv", ...ME, reach: "phone" });

@@ -13,7 +13,19 @@ const CLOSES = [
   ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"].map((a) => `locations/${a}.html`),
   "car-service-with-car-seat-nyc.html",
   "corporate-car-service-nyc.html",
+  ...["teterboro-airport", "westchester-airport", "hoboken"].map((a) => `locations/${a}.html`),
+  "long-distance-car-service.html",
+  ...["nyc-to-philadelphia", "nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`),
+  "pet-friendly-car-service-nyc.html", "private-jet-car-service-nyc.html", "roadshow-transportation-nyc.html", "sprinter-van-service-nyc.html", "cruise-terminal-car-service-nyc.html", "wedding-car-service-nyc.html",
+  ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan"].map((a) => `locations/${a}.html`),
 ];
+// Location pages outside the flat rate area: T-B distance airports and T-C towns outside New York City.
+const AIRPORT_DISTANCE = ["westchester-airport", "philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport"].map((a) => `locations/${a}.html`);
+const OUTSIDE = [
+  "hoboken", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct",
+  "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton",
+].map((a) => `locations/${a}.html`);
+CLOSES.push(...OUTSIDE.filter((f) => !CLOSES.includes(f)));
 
 function htmlFiles(dir) {
   const out = [];
@@ -62,9 +74,9 @@ const pages = new Map(files.map((f) => [f, read(f)]));
 const locations = files.filter((f) => f.startsWith("locations/"));
 const posts = files.filter((f) => f.startsWith("blog/"));
 
-check("there are 13 location pages and 10 blog posts", () => {
-  assert.equal(locations.length, 13);
-  assert.equal(posts.length, 10);
+check("there are 42 location pages and 17 blog posts", () => {
+  assert.equal(locations.length, 42);
+  assert.equal(posts.length, 17);
 });
 
 for (const [file, { document, ld }] of pages) {
@@ -84,16 +96,50 @@ check("no page uses the retired rate board component", () => {
   assert.deepEqual(hits, []);
 });
 
-const AIRPORT_HOME = { "locations/jfk-airport.html": "jfk", "locations/laguardia-airport.html": "lga", "locations/newark-airport.html": "ewr" };
+const AIRPORT_HOME = { "locations/jfk-airport.html": "jfk", "locations/laguardia-airport.html": "lga", "locations/newark-airport.html": "ewr", "locations/teterboro-airport.html": "teb" };
 const AIRPORT_OF = (name) => (/\bJFK\b/.test(name) ? "jfk" : /LaGuardia/.test(name) ? "lga" : /Newark/.test(name) ? "ewr" : /Teterboro/.test(name) ? "teb" : null);
 const T1_LABELS = ["Airport price", "Free waiting", "By the hour", "Child seats", "Booking ahead"];
 const T1_AIRPORT = ["Where we meet you", "Flight tracking", "Airport price", "Free waiting", "Child seats", "Booking ahead"];
+// Teterboro leaves out the meeting, tracking and waiting rows until the owner answers G-JET.
+const T1_PRIVATE = ["Your FBO", "Airport price", "Child seats", "Dogs", "Booking ahead"];
+const T1_DISTANCE_AIRPORT = ["Where we meet you", "Flight tracking", "Your price", "Free waiting", "Child seats", "Booking ahead"];
+const T1_OUTSIDE = ["Your price", "Free waiting", "Child seats", "Dogs", "Booking ahead"];
+// Private fields (MMU, FRG) leave out the same rows as Teterboro. PHL and BDL, typed as airports, are
+// airport-other in the booking form like HPN, so they share its rail.
+const T1_PRIVATE_DISTANCE = ["Your FBO", "Your price", "Child seats", "Dogs", "Booking ahead"];
+const T1_UNLISTED_AIRPORT = T1_DISTANCE_AIRPORT;
+const T1_OWN = {
+  "locations/morristown-airport.html": T1_PRIVATE_DISTANCE,
+  "locations/republic-airport.html": T1_PRIVATE_DISTANCE,
+  "locations/philadelphia-airport.html": T1_UNLISTED_AIRPORT,
+  "locations/bradley-airport.html": T1_UNLISTED_AIRPORT,
+};
+const T1_FOR = (file, home) => (home === "teb" ? T1_PRIVATE : home ? T1_AIRPORT : T1_OWN[file] || (AIRPORT_DISTANCE.includes(file) ? T1_DISTANCE_AIRPORT : OUTSIDE.includes(file) ? T1_OUTSIDE : T1_LABELS));
 
-for (const file of locations) {
+for (const file of locations.filter((f) => AIRPORT_DISTANCE.includes(f) || OUTSIDE.includes(f))) {
+  const { document } = pages.get(file);
+  check(`${file}: one trips list, each row to the distance rates with no figures, and no flat airport row`, () => {
+    const h = [...document.querySelectorAll("main h2")].find((n) => /^(Trips from|To the airports from)/.test(n.textContent.trim()));
+    assert.ok(h, "no trips heading");
+    let n = h.nextElementSibling;
+    while (n && !n.matches("ul.ledger")) n = n.nextElementSibling;
+    assert.ok(n, "no trips list after the heading");
+    const rows = [...n.querySelectorAll("a.ledger__row")];
+    assert.ok(rows.length >= 4, `${rows.length} rows`);
+    for (const r of rows) {
+      assert.doesNotMatch(r.textContent, /\$\s*\d/);
+      assert.equal(norm(r.querySelector(".ledger__name .sr-only")?.textContent || ""), "rates", `${norm(r.textContent)}: no sr-only rates`);
+      assert.equal(r.getAttribute("href"), "/rates#distance", norm(r.textContent));
+    }
+    assert.equal(document.querySelectorAll('main a[href^="/rates#"]:not([href="/rates#distance"]):not([href="/rates#add-ons"])').length, 0, "a flat rate link on a distance priced page");
+  });
+}
+
+for (const file of locations.filter((f) => !AIRPORT_DISTANCE.includes(f) && !OUTSIDE.includes(f))) {
   const { document } = pages.get(file);
   const home = AIRPORT_HOME[file];
   check(`${file}: ${home === "ewr" ? "one routes list of six trips from the city to this airport" : home ? "one routes list of six trips from this airport" : "airport routes cover the four airports"}, each row to its rates row, with no figures`, () => {
-    const h = [...document.querySelectorAll("main h2")].find((n) => /^(Airport routes from|Routes into the city|Routes from LaGuardia|Routes to Newark from the city)/.test(n.textContent.trim()));
+    const h = [...document.querySelectorAll("main h2")].find((n) => /^(Airport routes from|Routes into the city|Routes from LaGuardia|Routes from Teterboro|Routes to Newark from the city)/.test(n.textContent.trim()));
     assert.ok(h, "no airport routes heading");
     let n = h.nextElementSibling;
     while (n && !n.matches("ul.ledger")) n = n.nextElementSibling;
@@ -108,7 +154,7 @@ for (const file of locations) {
     if (home) {
       assert.equal(rows.length, 6);
       if (home === "ewr") for (const r of rows) assert.match(norm(r.querySelector(".ledger__name").textContent), /^\S.* to Newark Liberty rates$/, "a row does not run from the city to Newark Liberty");
-      else for (const r of rows) assert.ok(norm(r.querySelector(".ledger__name").textContent).startsWith(home === "jfk" ? "JFK to " : "LaGuardia to "), "a row starts at another airport");
+      else for (const r of rows) assert.ok(norm(r.querySelector(".ledger__name").textContent).startsWith({ jfk: "JFK to ", lga: "LaGuardia to ", teb: "Teterboro to " }[home]), "a row starts at another airport");
       assert.equal(document.querySelectorAll("main ul.ledger").length, 1, "more than one routes list");
     } else {
       assert.ok(rows.length >= 4 && rows.length <= 5, `${rows.length} rows`);
@@ -119,6 +165,11 @@ for (const file of locations) {
       }
     }
   });
+}
+
+for (const file of locations) {
+  const { document } = pages.get(file);
+  const home = AIRPORT_HOME[file];
   check(`${file}: the sidebar is the rider facts box, first in its grid`, () => {
     const aside = document.querySelector("main aside:not(#bk-side)");
     assert.equal(aside.parentElement.firstElementChild, aside, "the box is not first in its grid");
@@ -128,7 +179,7 @@ for (const file of locations) {
     assert.equal(norm(h.textContent), "Before you book");
     assert.equal(aside.getAttribute("aria-labelledby"), "lf-h");
     assert.equal(h.nextElementSibling.tagName, "DL");
-    assert.deepEqual([...aside.querySelectorAll(".facts--lead dt")].map((d) => norm(d.textContent)), home ? T1_AIRPORT : T1_LABELS);
+    assert.deepEqual([...aside.querySelectorAll(".facts--lead dt")].map((d) => norm(d.textContent)), T1_FOR(file, home));
     assert.equal(norm(aside.querySelector(".eyebrow").textContent), "Nearby");
     assert.ok(aside.querySelector('a[href="/rates"]'), "no See all rates link");
     assert.ok(aside.querySelector('a[href="tel:+16467750556"]'), "no phone link");

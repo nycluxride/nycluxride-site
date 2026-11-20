@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -142,6 +142,7 @@ export function metadataFor(input, price, ref) {
     tax_cents: price.tax,
     bcf_cents: price.bcf,
     tolls_cents: price.tolls,
+    tolls_est_cents: Number.isInteger(price.estimate) ? price.estimate : "",
     stops_cents: price.stops || "",
     meet_cents: price.meet,
     seats: price.seats ? seatMeta(trip) : "",
@@ -176,6 +177,13 @@ function lineDescription(entry, i, trip, price, ref) {
   return undefined;
 }
 
+function submitText(trip, hourly) {
+  const flat = flatPart(trip);
+  if (hourly) return CHECKOUT.submitHourly;
+  if (tollsIn(trip)) return flat ? CHECKOUT.submitFlatTolled : airportDistance(trip) ? CHECKOUT.submitOutsideTolled : CHECKOUT.submitDistanceTolled;
+  return flat === "return" ? CHECKOUT.submitReturnFlat : flat === "out" ? CHECKOUT.submitOutFlat : airportDistance(trip) ? CHECKOUT.submitOutside : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit;
+}
+
 export function sessionParams(input, price, ref, settings, now, origin) {
   const trip = chargedTrip(input);
   const hourly = trip.trip_type === "hour";
@@ -202,7 +210,7 @@ export function sessionParams(input, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: hourly ? CHECKOUT.submitHourly : flatPart(trip) === "return" ? CHECKOUT.submitReturnFlat : flatPart(trip) === "out" ? CHECKOUT.submitOutFlat : airportDistance(trip) ? CHECKOUT.submitOutside : serviceOf(trip) === "distance" ? CHECKOUT.submitDistance : CHECKOUT.submit },
+      submit: { message: submitText(trip, hourly) },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,

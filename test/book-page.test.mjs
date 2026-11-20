@@ -11,7 +11,8 @@ const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`)];
+const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`), "locations/westchester-airport.html", "locations/hoboken.html", "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
+const FULL_HOSTS = 6;
 
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 const read = (f) => {
@@ -64,7 +65,7 @@ check("book.html head: title, description, canonical, indexable", () => {
   assert.doesNotMatch(doc.querySelector('meta[name="robots"]')?.content || "", /noindex/);
 });
 
-check("book.html main is the band with the heading and the four notes, the step counts in the step headings, then section.bk-page with the form and the country list template after it", () => {
+check("book.html main is the band with the heading and the four notes, the step counts in the step headings, then section.bk-page with the form, the country list template after it and the trust section last", () => {
   const main = doc.querySelector("main");
   assert.deepEqual([...main.children].map((e) => `${e.tagName.toLowerCase()}.${e.className}`), ["section.band", "section.section bk-page"]);
   const band = main.children[0], frame = band.querySelector(":scope > .frame");
@@ -90,8 +91,9 @@ check("book.html main is the band with the heading and the four notes, the step 
   assert.ok($("from-search").matches("p.bk-note") && norm($("from-search").textContent) === "JavaScript is off in your browser, and your trip didn't carry over. Please enter it again below.");
   for (const id of ["resume", "restored", "retnote", "from-search"]) assert.ok(steps.compareDocumentPosition($(id)) & 4 && $(id).compareDocumentPosition($("book-form")) & 4 && !$("book-form").contains($(id)), id);
   const page = main.children[1].querySelector(":scope > .frame");
-  assert.deepEqual([...page.children].map((e) => e.id || e.tagName.toLowerCase()), ["book-form", "bk-cc"]);
-  assert.equal(page.lastElementChild.tagName, "TEMPLATE");
+  assert.deepEqual([...page.children].map((e) => e.id || e.tagName.toLowerCase()), ["book-form", "bk-cc", "section"]);
+  assert.equal(page.children[1].tagName, "TEMPLATE");
+  assert.ok(page.lastElementChild.matches("section.trust"), "the trust section is not last");
   assert.equal(main.querySelector('a[href="/rates"]'), null);
   assert.doesNotMatch(norm(main.textContent), /See all rates/);
 });
@@ -194,10 +196,10 @@ for (const [name, { document }] of [["book.html", book], ["booking-confirmed.htm
   });
 }
 
-check("the pay script loads in the head of the five FULL hosts, lux.js brings it to the 15 SEARCH hosts, the confirmation page loads the done script, and nowhere else checked here", () => {
-  assert.equal(HOSTS.length, 20);
-  for (const f of HOSTS.slice(0, 5)) assert.ok(readFileSync(join(ROOT, f), "utf8").includes(`/assets/${payName}`), f);
-  for (const f of [...HOSTS.slice(5), "booking-confirmed.html"]) assert.ok(!readFileSync(join(ROOT, f), "utf8").includes("/assets/pay."), f);
+check("the pay script loads in the head of the six FULL hosts, lux.js brings it to the 55 SEARCH hosts, the confirmation page loads the done script, and nowhere else checked here", () => {
+  assert.equal(HOSTS.length, 61);
+  for (const f of HOSTS.slice(0, FULL_HOSTS)) assert.ok(readFileSync(join(ROOT, f), "utf8").includes(`/assets/${payName}`), f);
+  for (const f of [...HOSTS.slice(FULL_HOSTS), "booking-confirmed.html"]) assert.ok(!readFileSync(join(ROOT, f), "utf8").includes("/assets/pay."), f);
   assert.ok(doneName && readFileSync(join(ROOT, "booking-confirmed.html"), "utf8").includes(`/assets/${doneName}`));
   assert.ok(LUX.includes(`"/assets/${payName}"`), "lux.js does not load the current pay script");
   const others = ["rates.html", "404.html", "faq.html", "locations.html"].filter((f) => /\/assets\/(pay|done)\./.test(readFileSync(join(ROOT, f), "utf8")));
@@ -266,7 +268,7 @@ check("the pickup that fills in by itself (owner request 2) is the first slot MI
 
 check("the price box and the confirmation receipt (owner change 2) hold the Taxes and fees and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
   assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(tl\(\)\?\["Tolls"\]:\[\]\)\)/);
-  assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\|\|sq\(\)&&tl\(\)\?"airport":tl\(\)\?"returnFlat":AP\(\)\?"outside":"hourly"\]/, "a trip whose stops take the stop fee has the notes of the same trip without the stops, and a trip with an airport on its route priced over the whole route has the notes of an airport trip priced by distance");
+  assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\|\|sq\(\)&&tl\(\)\?"airport":tl\(\)\?"returnFlat":AP\(\)\?"waiting":one\(\)\?"distance":"hourly"\]/, "a trip whose stops take the stop fee has the notes of the same trip without the stops, a trip with an airport on its route priced over the whole route has the notes of an airport trip priced by distance, and while a trip priced by distance loads its note never says tolls come after the ride");
   assert.match(PAY, /ap=\(\)=>AP\(\)&&!ns&&!EN\.some\(k=>zv\(C\[k\]\)=="outside"\),sq=\(\)=>one\(\)&&ns&&\(za\("from"\)!=za\("to"\)\|\|!AP\(\)\),tl=\(\)=>ap\(\)\|\|one\(\)&&ns&&za\("to"\)!=za\("from"\)&&zv\(C\.to\)!="outside"&&zv\(C\.from\)!="outside"/, "before the first answer only a trip with no stop is an airport transfer at the flat rate, a trip with stops expects the stop fee when the trip without the stops is an airport transfer or runs between two addresses, with the tolls line when it is an airport transfer, and a trip between two airports or between two addresses by an airport stop expects its whole route");
   assert.doesNotMatch(PAY, /ou=\(\)=>|aw=a=>/, "no trip with stops keeps its airport transfers on every part");
   assert.match(PAY, /"stop-address":aq\("stop "\)/);

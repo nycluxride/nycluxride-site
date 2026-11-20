@@ -11,12 +11,12 @@ const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS } = await 
 const { PLACE_LIST, norm } = await load("_places.mjs");
 const { COUNTRIES, MAIN_BY_DIAL, TRUNK } = await load("_phone.mjs");
 
-const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"];
+const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const SEARCH_HOSTS = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`)];
+const SEARCH_HOSTS = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`), "locations/westchester-airport.html", "locations/hoboken.html", "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
 const WIDGET = [...HOSTS, ...SEARCH_HOSTS];
-const BANNER_PAGES = [...SEARCH_HOSTS, "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html"];
-const AIRPORT_PAGES = { "locations/jfk-airport.html": ["John F. Kennedy (JFK)", "jfk"], "locations/laguardia-airport.html": ["LaGuardia (LGA)", "lga"], "locations/newark-airport.html": ["Newark Liberty (EWR)", "ewr"] };
+const BANNER_PAGES = [...SEARCH_HOSTS, "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"];
+const AIRPORT_PAGES = { "locations/jfk-airport.html": ["John F. Kennedy (JFK)", "jfk"], "locations/laguardia-airport.html": ["LaGuardia (LGA)", "lga"], "locations/newark-airport.html": ["Newark Liberty (EWR)", "ewr"], "locations/teterboro-airport.html": ["Teterboro (TEB)", "teb"] };
 const START = '<form id="book-form" class="bk" method="post" action="/api/book" data-step="search" aria-label="Book a car">';
 const SEARCH_START = '<form id="book-form" class="bk bk--go" method="get" action="/book#from-search" data-step="search" aria-label="Book a car">';
 const VIEW = '<button class="btn bk-js-only" id="bk-view" type="submit" name="action" value="options">Book your ride<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></button>';
@@ -27,7 +27,7 @@ const PH = "Airport, hotel or address";
 const WA_DEFAULT = "https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20book%20a%20ride.";
 const DETAILS = ["rider", "name", "email", "phone", "phone_cc", "reach", "pname", "pphone", "pphone_cc", "sign", "notes"];
 const FIELDS = ["trip_type", "from_text", "from_id", "from_ticket", "stop1_text", "stop1_id", "stop1_ticket", "stop2_text", "stop2_id", "stop2_ticket", "to_text", "to_id", "to_ticket", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", "child_seats", "infant_seats", "toddler_seats", "booster_seats", "dogs", "small_dogs", "large_dogs", "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp", ...DETAILS];
-const SHOW = ["one", "hour", "stop1", "stop2", "return", "from-airport", "from-priced", "to-airport", "hour-suv", "options", "details", "side", "other", "meet"];
+const SHOW = ["one", "hour", "stop1", "stop2", "return", "from-airport", "from-airline", "from-priced", "to-airport", "hour-suv", "options", "details", "side", "other", "meet"];
 const ENDS = { from: "Pickup location", stop1: "Stop 1", stop2: "Stop 2", to: "Drop-off location" };
 const NOJS = ["(one way)", "(by the hour)", " for airport pickups", " (airport pickups)", "(return trip)", "(return trip, optional)", "(by the hour, Business SUV)", "(airport pickups)", "(one way, optional)", "(if someone else is riding)", "(meet and greet)", "By email or WhatsApp. Put the pickup, drop-off, date, time and any child seats or pets in the message.", "If someone else is riding, your chauffeur contacts them on the day of the ride."];
 const STEP1_IDS = ["bk-search", "bk-mode", "bk-one", "bk-hour", "e-trip_type", "bk-adds", "bk-addstop", "bk-addret", "bk-hours-f", "bk-hours", "bk-date-f", "bk-date-l", "bk-date", "bk-date-btn", "bk-cal", "bk-flight-f", "bk-flight", "bk-flight-status", "bk-time-f", "bk-time-l", "bk-time", "bk-time-btn", "bk-tm", "bk-time-h", "bk-ret-c", "bk-ret", "bk-ret-f", "bk-ret-sum", "bk-rdate-f", "bk-rdate-l", "bk-rdate", "bk-rdate-btn", "bk-rtime-f", "bk-rtime", "bk-rflight-f", "bk-rflight", "bk-rflight-status", "bk-rmret", "bk-view", "bk-status", "bk-assure", "bk-stop1-h", "bk-stop2-h"];
@@ -37,14 +37,17 @@ const STEP3_IDS = ["bk-det", "bk-back", "bk-det-h", "bk-who", "bk-r-other", "e-r
 const REMOVED_IDS = ["bk-help", "bk-wa", "bk-helpline", "bk-hl-wa", "bk-hl-h", "bk-noflight", "bk-addflight", "bk-from-address", "bk-to-address", "e-from_address", "e-to_address", "bk-class", "bk-estimate", "q-switch", "q-switch-fare", "q-class-airport", "q-first-lga", "q-call", "bk-bar-wa", "bk-bar-tel", "bk-msg", "bk-steps", "bk-r-me", "bk-email-h", "bk-notes-add-h"];
 const ICON = (id) => `<svg class="icon" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
 const MEET = ['<fieldset class="bk-meet" id="bk-meet-f" data-show="from-priced">', '<legend>Where we meet<span class="bk-nojs"> (airport pickups)</span></legend>', '<label class="bk-mrow" for="bk-meet-no"><input type="radio" id="bk-meet-no" name="meet" value="" checked><span class="bk-mrow__t">At the curb or pickup area</span><span class="bk-mrow__p">Included</span><span class="bk-mrow__s">Your chauffeur confirms the exact spot by phone or WhatsApp once you have your bags.</span></label>', '<label class="bk-mrow" for="bk-meet"><input type="radio" id="bk-meet" name="meet" value="1"><span class="bk-mrow__t">Inside the terminal with a name sign</span><span class="bk-mrow__p" id="bk-meet-p"></span><span class="bk-mrow__s" id="bk-meet-h"><span id="bk-meet-bc">Your chauffeur waits inside near baggage claim. </span>Airport parking is charged after the ride.</span></label>', '<p class="bk-mrow__x" id="bk-meet-t57" hidden>For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.</p>', "</fieldset>"].join("\n");
-const INCL = `<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airport">${ICON("i-plane-arrive")}<span>Free waiting</span> <small>after you land</small></li><li>${ICON("i-clock")}<span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airport">${ICON("i-shield")}<span>Live flight tracking</span></li><li>${ICON("i-wifi")}<span>Free Wi-Fi and charging ports</span> <small>in the executive fleet</small></li><li>${ICON("i-phone")}<span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>`;
-const INCL_FACTS = ["Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Free Wi-Fi and charging ports in the executive fleet", "We answer 24 hours a day, every day"];
+const INCL = `<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline">${ICON("i-plane-arrive")}<span>Free waiting</span> <small>after you land</small></li><li>${ICON("i-clock")}<span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline">${ICON("i-shield")}<span>Live flight tracking</span></li><li>${ICON("i-wifi")}<span>Free Wi-Fi</span> <small>in every class</small></li><li>${ICON("i-phone")}<span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>`;
+const INCL_FACTS = ["Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Free Wi-Fi in every class", "We answer 24 hours a day, every day"];
 const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"><button class="bk-pill" type="button" tabindex="-1" data-c="suv"><span>Business SUV</span><span id="bk-pp-suv"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="premium"><span>Business Premium SUV</span><span id="bk-pp-premium"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="first"><span>First Class</span><span id="bk-pp-first"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sedan"><span>Sedan &amp; Electric</span><span id="bk-pp-sedan"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sprinter"><span>Luxury Sprinter</span><span id="bk-pp-sprinter"></span></button></div>';
 const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Book and pay online</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>`;
 const EXT = `${ICON("i-external")}<span class="sr-only"> (opens in a new tab)</span>`;
 const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#cancellation" target="_blank" rel="noopener">rates and cancellation terms${EXT}</a>.</p>`;
 const ASSURE = `<ul class="assure-row" id="bk-assure" role="list"><li>${ICON("i-check")}Flat airport rates include tolls, airport fees and taxes</li><li>${ICON("i-clock")}Free waiting after you land</li><li>${ICON("i-phone")}We answer 24 hours a day, every day</li></ul>`;
+const ASSURE_PRIVATE = ASSURE.replace("Free waiting after you land", "Free waiting after airline landings");
+const PRIVATE_PAGES = ["locations/teterboro-airport.html", "private-jet-car-service-nyc.html", "locations/morristown-airport.html", "locations/republic-airport.html", "locations/westchester-airport.html"];
 const MONITOR = "Set the pickup time to your scheduled landing time. We track your flight.";
+const MONITOR_TEB = "For a private flight, add the details as a note in the Details step.";
 const P1_TERMS = POLICY.cancel.slice(POLICY.cancel.indexOf(". ") + 2);
 const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Limo Sprinter or Jet Sprinter" };
 
@@ -54,7 +57,10 @@ const region = (html) => {
   const a = html.indexOf('<form id="book-form"');
   return a < 0 ? "" : html.slice(a, html.indexOf("</form>", a) + 7);
 };
+const unprivate = (f, part) => (PRIVATE_PAGES.includes(f) ? part.replace(ASSURE_PRIVATE, ASSURE) : part);
 const revert = (f, part) => {
+  part = unprivate(f, part);
+  if (f === "locations/teterboro-airport.html") part = part.replace(`aria-live="polite">${MONITOR_TEB}</p>`, `aria-live="polite">${MONITOR}</p>`);
   if (!AIRPORT_PAGES[f]) return part;
   const [label, id] = AIRPORT_PAGES[f];
   return part
@@ -70,8 +76,8 @@ const HOURLY = [
   ['class="bk-adds bk-js-only" id="bk-adds"', 'class="bk-adds bk-js-only is-shown" id="bk-adds"'],
   ['class="field is-shown" id="bk-hours-f"', 'class="field" id="bk-hours-f"'],
 ];
-const HOURLY_HOSTS = ["chauffeur-service-nyc.html", "limousine-service-nyc.html"];
-const revertSearch = (f, part) => (HOURLY_HOSTS.includes(f) ? HOURLY.reduce((t, [a, b]) => (t.split(a).length === 2 ? t.replace(a, b) : t + "\nmissing " + a), part) : part);
+const HOURLY_HOSTS = ["chauffeur-service-nyc.html", "limousine-service-nyc.html", "roadshow-transportation-nyc.html", "wedding-car-service-nyc.html"];
+const revertSearch = (f, part) => (HOURLY_HOSTS.includes(f) ? HOURLY.reduce((t, [a, b]) => (t.split(a).length === 2 ? t.replace(a, b) : t + "\nmissing " + a), unprivate(f, part)) : unprivate(f, part));
 const derive = (full) => {
   const t = full.replace(START, SEARCH_START).replace(VIEW, SEARCH_VIEW);
   return t.slice(0, t.indexOf(CUT_FROM)) + t.slice(t.indexOf(CUT_TO) + CUT_TO.length);
@@ -99,7 +105,7 @@ function check(name, fn) {
 }
 
 const all = pages();
-check("exactly one form#book-form on the 20 widget pages and on no other page, and no old trip form anywhere", () => {
+check("exactly one form#book-form on the 61 widget pages and on no other page, and no old trip form anywhere", () => {
   const withForm = all.filter((f) => read(f).includes('id="book-form"'));
   assert.deepEqual(withForm, [...WIDGET].sort());
   for (const f of WIDGET) assert.equal(read(f).split('<form id="book-form"').length - 1, 1, f);
@@ -167,7 +173,8 @@ check("document order of the form, step 1, step 2, step 3, the three ways to fin
   assert.deepEqual(ids($("bk-go")), ["bk-next", "bk-submit", "q-mail", "q-wa", "bk-nopay", "bk-consent", "bk-under", "q-sent", "e-form"]);
   assert.deepEqual(ids($("quote")).slice(-3), ["q-error", "q-fix", "bk-qnotes-f"]);
   assert.deepEqual([$("bk-sum").dataset.show, $("bk-edit").dataset.show, $("bk-side").dataset.show, $("bk-det").dataset.show, $("bk-tip").dataset.show, $("bk-submit").dataset.show, $("bk-next").dataset.show, $("bk-bar").dataset.show, $("bk-policy").dataset.show, $("bk-nopay").dataset.show, $("bk-under").dataset.show, $("bk-act").dataset.show, $("bk-more").dataset.show, $("bk-next3").dataset.show, $("bk-meet-f").dataset.show, $("bk-check").dataset.show], ["side", "side", "side", "details", "details", "details", "options", "side", "side", "options", "details", "side", "options", "details", "from-priced", "details"]);
-  assert.deepEqual([...$("bk-incl").children].map((li) => li.dataset.show || ""), ["from-airport", "", "from-airport", "", ""]);
+  assert.deepEqual([...$("bk-incl").children].map((li) => li.dataset.show || ""), ["from-airline", "", "from-airline", "", ""], "free waiting after you land and live flight tracking show for airline pickups only, not Teterboro or an FBO");
+  assert.equal($("bk-flight-f").dataset.show, "from-airport", "the flight field still shows for every airport pickup");
   assert.deepEqual([...$("bk-incl").children].map((li) => nt(li.textContent)), INCL_FACTS, "each tile still reads as the fact it stated as a list line");
   assert.deepEqual([...$("bk-incl").children].map((li) => [...li.children].map((c) => c.tagName.toLowerCase()).join(" ")), ["svg span small", "svg span small", "svg span", "svg span small", "svg span small"], "an icon, a caption and the small second line of the tile language");
   assert.doesNotMatch($("bk-incl").textContent, /seat/i, "child seats are charged per seat, so they are not in What is included");
@@ -255,6 +262,15 @@ check("labels, qualifiers and texts of step 1 are exact", () => {
   assert.ok(parts["book.html"].includes(`${VIEW}\n<p class="bk-status sr-only" id="bk-status" role="status"></p>`));
   assert.equal($("bk-assure").outerHTML, ASSURE);
   assert.equal($("bk-assure").previousElementSibling, $("bk-search"));
+});
+
+check("the five private aviation pages scope free waiting to airline landings, Teterboro asks for private flight details as a note, and no other form changes", () => {
+  for (const f of WIDGET) {
+    const d = new JSDOM(read(f)).window.document;
+    assert.equal(d.getElementById("bk-assure").outerHTML, PRIVATE_PAGES.includes(f) ? ASSURE_PRIVATE : ASSURE, f);
+    assert.equal(nt(d.getElementById("bk-flight-status").textContent), f === "locations/teterboro-airport.html" ? MONITOR_TEB : MONITOR, f);
+  }
+  assert.ok(PRIVATE_PAGES.every((f) => WIDGET.includes(f)) && !ASSURE_PRIVATE.includes("after you land"));
 });
 
 check("the flow carries no help row, call button or call line: WhatsApp and email live only in the three ways to finish, the request bar and the form error (owner changes 1 and 3)", () => {
@@ -432,6 +448,7 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.ok($("price-notes").matches("ul.bk-later"));
   assert.deepEqual([$("price-notes").dataset.airport, $("price-notes").dataset.hourly, $("price-notes").dataset.outside, $("price-notes").textContent], [NOTES.included + "|" + POLICY.later.airport, POLICY.later.hourly, POLICY.later.outside, ""]);
   assert.deepEqual([$("price-notes").dataset.returnFlat, $("price-notes").dataset.outFlat], [NOTES.returnFlat + "|" + POLICY.later.returnFlat, NOTES.outFlat + "|" + POLICY.later.outFlat], "the notes of a round trip with stops whose return, or whose ride out, is at the flat airport rate");
+  assert.deepEqual([$("price-notes").dataset.distance, $("price-notes").dataset.waiting], [POLICY.later.distance, POLICY.later.waiting], "while a trip priced by distance loads, the note leaves tolls out until the answer says whether they are in the price");
   assert.equal($("quote").getAttribute("aria-label"), "Booking request");
   const blocks = [...$("quote").querySelectorAll("div.bk-q")];
   assert.deepEqual(blocks.map((b) => b.id), [...Object.keys(REASONS).flatMap((r) => (REASONS[r].short ? [`q-${r}`, `q-${r}-short`] : [`q-${r}`])), "q-error"]);

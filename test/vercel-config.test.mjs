@@ -148,20 +148,20 @@ const policiesFor = (path) =>
     .routes.filter((r) => r.headers && "Content-Security-Policy" in r.headers && new RegExp(r.src).test(path))
     .map((r) => r.headers["Content-Security-Policy"]);
 
-const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", "/car-service-with-car-seat-nyc", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"].map((a) => `/locations/${a}`)];
-const PAYMENT_PAGES = ["/", "/book", "/booking-confirmed", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", ...SEARCH_PAGES];
-const PAYMENT_FILES = ["index.html", "book.html", "booking-confirmed.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...SEARCH_PAGES.map((p) => `${p.slice(1)}.html`)];
+const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", "/car-service-with-car-seat-nyc", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "westchester-airport", "hoboken"].map((a) => `/locations/${a}`), "/long-distance-car-service", "/long-distance-car-service/nyc-to-philadelphia", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `/${s}`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `/locations/${a}`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `/long-distance-car-service/${r}`)];
+const PAYMENT_PAGES = ["/", "/book", "/booking-confirmed", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", "/locations/teterboro-airport", ...SEARCH_PAGES];
+const PAYMENT_FILES = ["index.html", "book.html", "booking-confirmed.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html", ...SEARCH_PAGES.map((p) => `${p.slice(1)}.html`)];
 
-test("vercel's transformed routes send one identical Content-Security-Policy on the 21 payment pages and none elsewhere", () => {
+test("vercel's transformed routes send one identical Content-Security-Policy on the 62 payment pages and none elsewhere", () => {
   const book = policiesFor("/book");
   assert.equal(book.length, 1);
-  assert.equal(PAYMENT_PAGES.length, 21);
+  assert.equal(PAYMENT_PAGES.length, 62);
   for (const path of PAYMENT_PAGES) assert.deepEqual(policiesFor(path), book, path);
   const paths = ["/rates", "/faq", "/about", "/blog", "/services/x", "/locations/manhattan/x", "/locations", "/locations/jfk-airport/x", "/locations/jfk-airports", "/locations/newark-airport/x", "/car-service-with-car-seat-nyc/x", "/booking", "/book/x", "/books", "/api/book", "/api/places", "/booking-confirmed-old", "/index", "/fleet"];
   for (const path of paths) assert.deepEqual(policiesFor(path), [], path);
 });
 
-test("the 21 payment pages use one header rule each with the same policy text in vercel.json", () => {
+test("the 62 payment pages use one header rule each with the same policy text in vercel.json", () => {
   const rules = (config.headers || []).filter((h) => h.headers.some((x) => x.key === "Content-Security-Policy"));
   assert.deepEqual(rules.map((r) => r.source).sort(), [...PAYMENT_PAGES].sort());
   const values = new Set(rules.map((r) => r.headers.find((x) => x.key === "Content-Security-Policy").value));
@@ -186,7 +186,7 @@ test("the policy needs no new origin: no img-src, connect-src or default-src, so
   assert.ok(!policy.includes("unsafe-eval") && !policy.includes("unsafe-inline"));
 });
 
-test("the 21 payment pages hold no inline script and no inline event handler", () => {
+test("the 62 payment pages hold no inline script and no inline event handler", () => {
   for (const file of PAYMENT_FILES) {
     const html = readFileSync(join(ROOT, file), "utf8");
     const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].filter(([, attrs, body]) => !/\bsrc=/.test(attrs) && !/type="application\/ld\+json"/.test(attrs) && body.trim());
@@ -249,17 +249,20 @@ test(".vercelignore does not exclude api/", () => {
   assert.deepEqual(lines.filter((l) => /^\/?api(\/.*)?$/.test(l)), []);
 });
 
-test("the files in api/ without a leading underscore are exactly book, flight, owner-questions, places, route and stripe-webhook, and owner-questions runs only as the one-time Vercel cron", () => {
-  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "owner-questions.mjs", "places.mjs", "route.mjs", "stripe-webhook.mjs"]);
-  const vercel = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
-  assert.deepEqual(vercel.crons, [{ path: "/api/owner-questions", schedule: "0 22 19 11 *" }]);
+test("the files in api/ without a leading underscore are exactly book, flight, places, route, seo-weekly and stripe-webhook", () => {
+  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "places.mjs", "route.mjs", "seo-weekly.mjs", "stripe-webhook.mjs"]);
 });
 
 test("every api route answers no-store through the /api rule", () => {
-  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight", "/api/stripe-webhook"]) {
+  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight", "/api/stripe-webhook", "/api/seo-weekly"]) {
     const values = (config.headers || []).filter((h) => pathToRegexp(h.source).test(path)).flatMap((h) => h.headers.filter((x) => x.key === "Cache-Control").map((x) => x.value));
     assert.deepEqual(values, ["no-store"], path);
   }
+});
+
+test("the only cron is the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, and its route exists", () => {
+  assert.deepEqual(config.crons, [{ path: "/api/seo-weekly", schedule: "0 13 * * 1" }]);
+  assert.ok(existsSync(join(ROOT, "api", "seo-weekly.mjs")));
 });
 
 if (failures) {

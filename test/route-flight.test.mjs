@@ -102,7 +102,7 @@ await test("route: the Routes request has the field mask, TRAFFIC_AWARE, the dep
   assert.deepEqual(init.headers, {
     "Content-Type": "application/json",
     "X-Goog-Api-Key": SERVER_KEY,
-    "X-Goog-FieldMask": "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation",
+    "X-Goog-FieldMask": "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation,routes.travelAdvisory.tollInfo",
   });
   assert.deepEqual(JSON.parse(init.body), {
     origin: { placeId: "ChIJedition" },
@@ -113,10 +113,43 @@ await test("route: the Routes request has the field mask, TRAFFIC_AWARE, the dep
     departureTime: nycToUtc(DATE, "12:40").toISOString(),
     languageCode: "en-US",
     units: "IMPERIAL",
+    extraComputations: ["TOLLS"],
+    routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: ["US_NY_EZPASSNY", "US_NJ_EZPASSNJ", "US_PA_EZPASSPA", "US_DE_EZPASSDE", "US_MD_EZPASSMD", "US_MA_EZPASSMA", "US_RI_EZPASSRI", "US_NH_EZPASSNH", "US_ME_EZPASSME"] },
   });
   assert.ok(!init.body.includes(SERVER_KEY) && !init.body.includes(label));
   assert.ok(init.signal instanceof AbortSignal);
   assert.equal(res.headers.get("cache-control"), "no-store");
+});
+
+const TOLL_MASK = "routes.travelAdvisory.tollInfo";
+const asked = () => calls.filter(({ url }) => url.startsWith("https://routes.googleapis.com/")).map(({ init }) => [JSON.parse(init.body).extraComputations || null, "routeModifiers" in JSON.parse(init.body), init.headers["X-Goog-FieldMask"].split(",").includes(TOLL_MASK)]);
+const TOLLS = [["TOLLS"], true, true];
+const NO_TOLLS = [null, false, false];
+
+await test("route: a flat airport transfer with no stops asks Google for no tolls in either direction, so the call stays on the Pro SKU", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, ROUTES);
+  const ticket = signTicket("ChIJedition", "manhattan", "The New York EDITION, Madison Avenue, New York, NY, USA", Date.now());
+  const res = await route({ from: { ticket }, to: { id: "jfk-t4" }, date: DATE, time: "12:40", back: { date: DATE, time: "20:00" } });
+  assert.equal(res.body.kind, "ok");
+  assert.deepEqual(asked(), [NO_TOLLS, NO_TOLLS]);
+  assert.equal(calls[0].init.headers["X-Goog-FieldMask"], "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation");
+  calls.length = 0;
+  assert.equal((await route({ from: { id: "lga" }, to: { text: "26 Ann St, New York, NY 10038" }, date: DATE, time: "09:00" })).body.kind, "ok");
+  assert.deepEqual(asked(), [NO_TOLLS]);
+});
+
+await test("route: a trip priced by distance still asks for tolls, and a flat pair with stops asks only on the way out", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  reply = answer(200, ROUTES);
+  assert.equal((await route({ from: { id: "jfk" }, to: { text: "1 Ocean Rd, Montauk, NY 11954" }, date: DATE, time: "08:00", back: { date: DATE, time: "20:00" } })).body.kind, "ok");
+  assert.deepEqual(asked(), [TOLLS, TOLLS]);
+  calls.length = 0;
+  assert.equal((await route({ from: { text: "350 5th Ave, New York, NY 10118" }, to: { text: "1 Steamboat Rd, Greenwich, CT 06830" }, date: DATE, time: "08:00" })).body.kind, "ok");
+  assert.deepEqual(asked(), [TOLLS]);
+  calls.length = 0;
+  assert.equal((await route({ from: { id: "lga" }, stops: [{ text: "26 Ann St, New York, NY 10038" }], to: { text: "55 Church St, New York, NY 10007" }, date: DATE, time: "08:00", back: { date: DATE, time: "20:00" } })).body.kind, "ok");
+  assert.deepEqual(asked(), [TOLLS, NO_TOLLS]);
 });
 
 await test("route: with the browser key and the signing secret the answer carries signed Maps Static URLs at the shown size, 1x and 2x, checked with node:crypto", async () => {

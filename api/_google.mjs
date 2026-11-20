@@ -12,6 +12,8 @@ const SUGGEST_MASK = "suggestions.placePrediction.placeId,suggestions.placePredi
 const DETAILS_MASK = "id,formattedAddress,shortFormattedAddress,addressComponents,types,location";
 const REVERSE_MASK = "results.placeId,results.location,results.granularity,results.formattedAddress,results.addressComponents,results.types";
 const ROUTE_MASK = "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation";
+const TOLL_MASK = "routes.travelAdvisory.tollInfo";
+export const TOLL_PASSES = ["US_NY_EZPASSNY", "US_NJ_EZPASSNJ", "US_PA_EZPASSPA", "US_DE_EZPASSDE", "US_MD_EZPASSMD", "US_MA_EZPASSMA", "US_RI_EZPASSRI", "US_NH_EZPASSNH", "US_ME_EZPASSME"];
 const BIAS = { circle: { center: { latitude: 40.758, longitude: -73.9855 }, radius: 50000 } };
 const PLACES_TIMEOUT_MS = 2500;
 const ROUTES_TIMEOUT_MS = 3000;
@@ -112,8 +114,29 @@ const point = (location) => {
 const round6 = (value) => Math.round(value * 1e6) / 1e6;
 export const spot = (location) => (location && [location.latitude, location.longitude].every((n) => typeof n === "number" && Number.isFinite(n)) ? { lat: round6(location.latitude), lng: round6(location.longitude) } : null);
 
-export async function computeRoute(waypoints, departure, size) {
-  if (googleMock()) return { ok: true, mock: true, ...mockRoute(size, waypoints) };
+const UNITS = /^\d{1,6}$/;
+
+export function tollCents(route) {
+  const info = route && route.travelAdvisory && route.travelAdvisory.tollInfo;
+  if (!info) return 0;
+  const prices = Array.isArray(info.estimatedPrice) ? info.estimatedPrice : [];
+  if (!prices.length) return null;
+  let nanos = 0;
+  for (const price of prices) {
+    if (!price || typeof price !== "object" || price.currencyCode !== "USD") return null;
+    const units = price.units === undefined ? "0" : String(price.units);
+    const part = price.nanos === undefined ? 0 : price.nanos;
+    if (!UNITS.test(units) || !Number.isInteger(part) || part < 0 || part > 999999999) return null;
+    nanos += Number(units) * 1e9 + part;
+  }
+  return Math.round(nanos / 1e7);
+}
+
+export async function computeRoute(waypoints, departure, size, tolls = true) {
+  if (googleMock()) {
+    const { travelAdvisory, ...route } = mockRoute(size, waypoints);
+    return { ok: true, mock: true, ...route, ...(tolls && { tolls: tollCents({ travelAdvisory }) }) };
+  }
   const key = serverKey();
   if (!key || waypoints.length < 2) return { ok: false, status: 0 };
   const body = {
@@ -125,10 +148,11 @@ export async function computeRoute(waypoints, departure, size) {
     departureTime: departure.toISOString(),
     languageCode: "en-US",
     units: "IMPERIAL",
+    ...(tolls && { extraComputations: ["TOLLS"], routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: TOLL_PASSES } }),
   };
   const result = await call(
     ROUTES_URL,
-    { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": ROUTE_MASK }, body: JSON.stringify(body) },
+    { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": tolls ? `${ROUTE_MASK},${TOLL_MASK}` : ROUTE_MASK }, body: JSON.stringify(body) },
     ROUTES_TIMEOUT_MS,
   );
   if (!result.ok) return result;
@@ -141,6 +165,7 @@ export async function computeRoute(waypoints, departure, size) {
     ok: true,
     minutes: Math.ceil(seconds / 60),
     miles: Math.round((meters / 1609.344) * 10) / 10,
+    ...(tolls && { tolls: tollCents(route) }),
     polyline: route.polyline && typeof route.polyline.encodedPolyline === "string" ? route.polyline.encodedPolyline : "",
     start: legs.length ? point(legs[0].startLocation) : null,
     end: legs.length ? point(legs[legs.length - 1].endLocation) : null,

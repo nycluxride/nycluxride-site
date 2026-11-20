@@ -216,7 +216,16 @@ const JFK = "John F. Kennedy International Airport, Queens, NY 11430";
 const SECAUCUS_STREET = "806 6th Street, Secaucus, NJ";
 const NIAGARA = "Niagara Falls, NY 14303";
 const PHILADELPHIA = "1500 Market St, Philadelphia, PA 19102";
+const EWR = "Newark Liberty International Airport, Newark, NJ 07114";
+const RIVERSIDE = "19 Coventry Ln, Riverside, CT 06878";
+const STEAMBOAT = "1 Steamboat Rd, Greenwich, CT 06830";
+const STATEN = "10 Richmond Terrace, Staten Island, NY 10301";
 const ROUTES = [
+  [MANHATTAN, STATEN, 38, 13.4, 1424],
+  [EWR, RIVERSIDE, 64, 52.5, 2250],
+  [RIVERSIDE, EWR, 70, 52.9, 571],
+  [STEAMBOAT, RIVERSIDE, 9, 3.2, 0],
+  [RIVERSIDE, STEAMBOAT, 9, 3.3],
   ["mock-edition", "mock-bedford", 27, 4.6],
   ["mock-bedford", "mock-edition", 31, 4.8],
   ["mock-edition", "mock-hoboken", 21, 3.9],
@@ -239,13 +248,21 @@ const ROUTES = [
   [JFK, "Raleigh, NC", 505, 524.6],
   [MANHATTAN, "Bar Harbor, ME 04609", 721, 480],
 ];
+const STOP_ROUTES = [
+  [[EWR, STEAMBOAT, RIVERSIDE], 72, 55.1, 2250],
+  [[EWR, STEAMBOAT, MANHATTAN], 98, 63.4, 2250],
+];
 const key = (text) => (text.startsWith("mock-") ? text : norm(text));
 const point = (waypoint) => (waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : norm(waypoint && waypoint.address));
+const same = (names, ends) => names.length === ends.length && names.every((name, i) => key(name) === ends[i]);
+const tollInfo = (cents) => (cents === 0 ? {} : { travelAdvisory: { tollInfo: Number.isInteger(cents) ? { estimatedPrice: [{ currencyCode: "USD", units: String(Math.floor(cents / 100)), nanos: (cents % 100) * 10000000 }] } : {} } });
 
 function mockDrive(waypoints) {
-  const ends = Array.isArray(waypoints) && waypoints.length === 2 ? waypoints.map(point) : [];
-  const row = ends.length ? ROUTES.find(([from, to]) => key(from) === ends[0] && key(to) === ends[1]) : null;
-  return row ? { minutes: row[2], miles: row[3] } : { minutes: 43, miles: 16.8 };
+  const ends = Array.isArray(waypoints) ? waypoints.map(point) : [];
+  const row = ends.length === 2 ? ROUTES.find(([from, to]) => same([from, to], ends)) : null;
+  const stops = ends.length > 2 ? STOP_ROUTES.find(([names]) => same(names, ends)) : null;
+  const [minutes, miles, cents] = row ? row.slice(2) : stops ? stops.slice(1) : [43, 16.8];
+  return { minutes, miles, ...tollInfo(cents) };
 }
 
 export function mockRoute(size, waypoints) {

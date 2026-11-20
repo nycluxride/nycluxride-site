@@ -8,7 +8,7 @@ import { JSDOM } from "jsdom";
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const TWINS = JSON.parse(readFileSync(join(ROOT, "fleet/twins.json"), "utf8"));
 const HERO_C = ["404.html", "about.html", "contact.html", "faq.html", "fleet.html", "rates.html", "schedule.html", "locations.html", "corporate-car-service-nyc.html"];
-const HERO_B = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport"].map((a) => `locations/${a}.html`)];
+const HERO_B = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "jfk-airport", "laguardia-airport", "newark-airport", "teterboro-airport", "westchester-airport", "hoboken"].map((a) => `locations/${a}.html`), "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
 
 let failures = 0;
 function check(name, fn) {
@@ -84,7 +84,7 @@ for (const file of pages) {
 check("the Hero A photo has its twin", () => assert.ok(withTwins.has("index.html")));
 for (const file of HERO_B) check(`${file}: the Hero B banner photo has its twin`, () => assert.ok(withTwins.has(file)));
 for (const file of HERO_C) check(`${file}: the header photo has its twin`, () => assert.ok(withTwins.has(file)));
-check("no page outside Hero A, the 26 banners and the Service areas header carries a twin", () => assert.deepEqual([...withTwins].filter((f) => f !== "index.html" && !HERO_B.includes(f) && !HERO_C.includes(f)), []));
+check("no page outside Hero A, the 31 banners and the Service areas header carries a twin", () => assert.deepEqual([...withTwins].filter((f) => f !== "index.html" && !HERO_B.includes(f) && !HERO_C.includes(f)), []));
 
 if (failures) {
   console.error(`\n${failures} twin assertion(s) failed`);

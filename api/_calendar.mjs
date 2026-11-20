@@ -1,24 +1,19 @@
 import { instanceBudget } from "./_http.mjs";
+import { ACCOUNT, AUDIENCE, oidcToken, call as googleCall, accessToken as googleToken } from "./_gtoken.mjs";
 
-const STS = "https://sts.googleapis.com/v1/token";
-const IAM = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts";
+export { oidcToken };
+
 const API = "https://www.googleapis.com/calendar/v3/calendars";
-const CLOUD_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 const EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events";
-const LIFETIME = "300s";
 const CALL_MS = 4000;
 const CALLS_PER_WINDOW = 300;
-const MAX_TOKEN = 8192;
 const CALENDAR_ID = /^[A-Za-z0-9._%+-]{1,200}@[A-Za-z0-9.-]{1,200}$/;
-const ACCOUNT = /^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$/;
-const AUDIENCE = /^\/\/iam\.googleapis\.com\/projects\/\d{1,20}\/locations\/global\/workloadIdentityPools\/[a-z0-9-]{4,32}\/providers\/[a-z0-9-]{4,32}$/;
-const JWT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const PERMANENT = [400, 401, 403, 404];
 const GONE = [404, 410];
 const REFUNDED = "nlrRefundedCents";
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
-const tokenOk = (value) => typeof value === "string" && value.length > 0 && value.length <= MAX_TOKEN && !/\s/.test(value);
+const call = (url, init) => googleCall(url, init, CALL_MS);
 
 export function calendarSettings() {
   const calendar = text(process.env.GCAL_CALENDAR_ID);
@@ -27,45 +22,6 @@ export function calendarSettings() {
   if (!calendar && !account && !audience) return { off: true };
   if (!CALENDAR_ID.test(calendar) || !ACCOUNT.test(account) || !AUDIENCE.test(audience)) return { bad: true };
   return { calendar, account, audience };
-}
-
-export function oidcToken(header) {
-  return [text(header), text(process.env.VERCEL_OIDC_TOKEN)].find((token) => token.length <= MAX_TOKEN && JWT.test(token)) || "";
-}
-
-async function call(url, init) {
-  try {
-    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(CALL_MS) });
-    const body = await res.json().catch(() => null);
-    return { ok: res.ok, status: res.status, body };
-  } catch {
-    return { ok: false, status: 0, body: null };
-  }
-}
-
-async function accessToken(settings, oidc) {
-  const exchanged = await call(STS, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-      audience: settings.audience,
-      scope: CLOUD_SCOPE,
-      requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
-      subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
-      subject_token: oidc,
-    }).toString(),
-  });
-  const federated = exchanged.body && exchanged.body.access_token;
-  if (!exchanged.ok || !tokenOk(federated)) return { stage: "sts", status: exchanged.status };
-  const issued = await call(`${IAM}/${settings.account}:generateAccessToken`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${federated}`, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ scope: [EVENTS_SCOPE], lifetime: LIFETIME }),
-  });
-  const token = issued.body && issued.body.accessToken;
-  if (!issued.ok || !tokenOk(token)) return { stage: "iam", status: issued.status };
-  return { token };
 }
 
 async function insert(settings, token, event) {
@@ -87,7 +43,7 @@ async function authorized(settings, oidc, ref, refused) {
     console.error("calendar-budget", ref);
     return { state: "failed" };
   }
-  const access = await accessToken(settings, subject);
+  const access = await googleToken(settings, subject, EVENTS_SCOPE, CALL_MS);
   if (!access.token) {
     console.error("calendar-fail", ref, access.stage, access.status);
     return { state: PERMANENT.includes(access.status) ? refused : "failed" };

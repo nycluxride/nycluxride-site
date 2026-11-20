@@ -62,6 +62,11 @@ const VALUE_FORMS = {
   "Free waiting": "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup.",
   "Flight tracking": "We move the pickup if your flight lands early or late.",
 };
+const AIRLINE_VALUE_FORMS = {
+  "Free waiting": "45 minutes after a domestic airline landing and 60 after an international one.",
+  "Flight tracking": "For airline flights, we move the pickup if your flight lands early or late.",
+};
+const AIRLINE_ONLY = new Set(["locations/westchester-airport.html"]);
 
 const AREAS = {
   manhattan: ["Manhattan", "", "in Manhattan"],
@@ -74,8 +79,78 @@ const AREAS = {
   "upper-east-side": ["Upper East Side", "the ", "on the Upper East Side"],
   "upper-west-side": ["Upper West Side", "the ", "on the Upper West Side"],
   "long-island-city": ["Long Island City", "", "in Long Island City"],
+  "midtown-manhattan": ["Midtown", "", "in Midtown"],
 };
 const SLOT_EYEBROWS = ["Nearby", "By the hour", "Questions", "Nearby areas", "Book"];
+// Slot labels of the 2026-11 templates: T-B distance airports, T-C towns outside New York City, T-E routes.
+const SLOTS = {
+  "locations/westchester-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/hoboken.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "long-distance-car-service/nyc-to-philadelphia.html": ["Questions", "Other routes", "Book"],
+  "locations/alpine-tenafly.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/bradley-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/edgewater.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/englewood.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/fort-lee.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/greenwich-ct.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/hamptons.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/jersey-city.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/long-island-macarthur-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/long-island.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/morristown-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/morristown.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/new-jersey.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/newark-nj.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/paramus.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/philadelphia-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/princeton.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/republic-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/secaucus.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/short-hills-livingston.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/stamford-ct.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/stewart-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/summit.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/weehawken-north-bergen.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "locations/westchester-county.html": ["Nearby", "Questions", "Nearby areas", "Book"],
+  "long-distance-car-service/nyc-to-atlantic-city.html": ["Questions", "Other routes", "Book"],
+  "long-distance-car-service/nyc-to-boston.html": ["Questions", "Other routes", "Book"],
+  "long-distance-car-service/nyc-to-connecticut.html": ["Questions", "Other routes", "Book"],
+  "long-distance-car-service/nyc-to-washington-dc.html": ["Questions", "Other routes", "Book"],
+};
+const SLOT_H2 = {
+  "locations/westchester-airport.html": ["How we meet you at Westchester", "Trips from Westchester Airport", "Questions about Westchester pickups", "Areas near Westchester Airport"],
+  "locations/hoboken.html": ["Pickups in Hoboken", "To the airports from Hoboken", "Questions about Hoboken pickups", "Areas near Hoboken", "Book a car in Hoboken"],
+  "long-distance-car-service/nyc-to-philadelphia.html": ["Questions about New York to Philadelphia", "More trips from New York"],
+  "locations/alpine-tenafly.html": ["Pickups in Alpine and Tenafly", "To the airports from Alpine and Tenafly", "Questions about Alpine and Tenafly pickups", "Areas near Alpine and Tenafly", "Book a car in Alpine and Tenafly"],
+  "locations/bradley-airport.html": ["How we meet you at Bradley", "Trips from Bradley Airport", "Questions about Bradley pickups", "Areas near Bradley Airport"],
+  "locations/edgewater.html": ["Pickups in Edgewater", "To the airports from Edgewater", "Questions about Edgewater pickups", "Areas near Edgewater", "Book a car in Edgewater"],
+  "locations/englewood.html": ["Pickups in Englewood", "To the airports from Englewood", "Questions about Englewood pickups", "Areas near Englewood", "Book a car in Englewood"],
+  "locations/fort-lee.html": ["Pickups in Fort Lee", "To the airports from Fort Lee", "Questions about Fort Lee pickups", "Areas near Fort Lee", "Book a car in Fort Lee"],
+  "locations/greenwich-ct.html": ["Pickups in Greenwich", "To the airports from Greenwich", "Questions about Greenwich pickups", "Areas near Greenwich", "Book a car in Greenwich"],
+  "locations/hamptons.html": ["Pickups in the Hamptons", "To the airports from the Hamptons", "Questions about Hamptons trips", "Areas near the Hamptons", "Book a car to the Hamptons"],
+  "locations/jersey-city.html": ["Pickups in Jersey City", "To the airports from Jersey City", "Questions about Jersey City pickups", "Areas near Jersey City", "Book a car in Jersey City"],
+  "locations/long-island-macarthur-airport.html": ["How we meet you at MacArthur", "Trips from MacArthur Airport", "Questions about MacArthur pickups", "Areas near MacArthur Airport"],
+  "locations/long-island.html": ["Pickups on Long Island", "To the airports from Long Island", "Questions about Long Island pickups", "Areas near Long Island", "Book a car on Long Island"],
+  "locations/morristown-airport.html": ["The FBOs at Morristown", "Trips from Morristown Airport", "Questions about Morristown Airport pickups", "Areas near Morristown Airport"],
+  "locations/morristown.html": ["Pickups in Morristown", "To the airports from Morristown", "Questions about Morristown pickups", "Areas near Morristown", "Book a car in Morristown"],
+  "locations/new-jersey.html": ["Pickups in New Jersey", "To the airports from New Jersey", "Questions about New Jersey pickups", "Areas near New Jersey", "Book a car from New Jersey"],
+  "locations/newark-nj.html": ["Pickups in Newark", "To the airports from Newark", "Questions about Newark pickups", "Areas near Newark", "Book a car in Newark"],
+  "locations/paramus.html": ["Pickups in Paramus", "To the airports from Paramus", "Questions about Paramus pickups", "Areas near Paramus", "Book a car in Paramus"],
+  "locations/philadelphia-airport.html": ["How we meet you at PHL", "Trips from Philadelphia Airport", "Questions about PHL pickups", "Areas near Philadelphia Airport"],
+  "locations/princeton.html": ["Pickups in Princeton", "To the airports from Princeton", "Questions about Princeton pickups", "Areas near Princeton", "Book a car in Princeton"],
+  "locations/republic-airport.html": ["The FBOs at Republic", "Trips from Republic Airport", "Questions about Republic Airport pickups", "Areas near Republic Airport"],
+  "locations/secaucus.html": ["Pickups in Secaucus", "To the airports from Secaucus", "Questions about Secaucus pickups", "Areas near Secaucus", "Book a car in Secaucus"],
+  "locations/short-hills-livingston.html": ["Pickups in Short Hills and Livingston", "To the airports from Short Hills and Livingston", "Questions about Short Hills and Livingston pickups", "Areas near Short Hills and Livingston", "Book a car in Short Hills and Livingston"],
+  "locations/stamford-ct.html": ["Pickups in Stamford", "To the airports from Stamford", "Questions about Stamford pickups", "Areas near Stamford", "Book a car in Stamford"],
+  "locations/stewart-airport.html": ["How we meet you at Stewart", "Trips from Stewart Airport", "Questions about Stewart pickups", "Areas near Stewart Airport"],
+  "locations/summit.html": ["Pickups in Summit", "To the airports from Summit", "Questions about Summit pickups", "Areas near Summit", "Book a car in Summit"],
+  "locations/weehawken-north-bergen.html": ["Pickups in Weehawken and North Bergen", "To the airports from Weehawken and North Bergen", "Questions about Weehawken and North Bergen pickups", "Areas near Weehawken and North Bergen", "Book a car in Weehawken or North Bergen"],
+  "locations/westchester-county.html": ["Pickups in Westchester", "To the airports from Westchester", "Questions about Westchester pickups", "Areas near Westchester", "Book a car in Westchester"],
+  "long-distance-car-service/nyc-to-atlantic-city.html": ["Questions about New York to Atlantic City", "More trips from New York"],
+  "long-distance-car-service/nyc-to-boston.html": ["Questions about New York to Boston", "More trips from New York"],
+  "long-distance-car-service/nyc-to-connecticut.html": ["Questions about New York to Connecticut", "More trips from New York"],
+  "long-distance-car-service/nyc-to-washington-dc.html": ["Questions about New York to Washington", "More trips from New York"],
+};
 
 const SO = /, so (?!that\b)[a-z]+/gi;
 const SO_START = /^So\b/;
@@ -292,7 +367,9 @@ for (const p of pages) {
     assert.deepEqual([...new Set(formHits([p.title, ...p.attrs, ...p.ld.filter((t) => !meta.has(t)), ...p.blocks.filter((b) => !b.exempt).map((b) => b.text)].filter((t) => !ALLOW.has(t))))], []);
     const pairs = [...p.body.querySelectorAll("dt")].filter((dt) => !(p.file === "rates.html" && dt.closest("#add-ons"))).map((dt) => [squash(dt.textContent), dt.nextElementSibling && squash(dt.nextElementSibling.textContent)]);
     for (const li of p.body.querySelectorAll("li")) { const b = li.querySelector(":scope > b, :scope > strong"), s = li.querySelector(":scope > span"); if (b && s) pairs.push([squash(b.textContent), squash(s.textContent)]); }
-    assert.deepEqual(pairs.filter(([k, v]) => (VALUE_FORMS[k] && v !== VALUE_FORMS[k]) || (/^free waiting./i.test(k) && k !== "Free waiting")), []);
+    const forms = AIRLINE_ONLY.has(p.file) ? AIRLINE_VALUE_FORMS : VALUE_FORMS;
+    assert.deepEqual(pairs.filter(([k, v]) => (forms[k] && v !== forms[k]) || (/^free waiting./i.test(k) && k !== "Free waiting")), []);
+    if (AIRLINE_ONLY.has(p.file)) assert.deepEqual(Object.keys(forms).map((k) => pairs.filter(([a]) => a === k).length), [1, 1], "the airline-scoped free waiting and flight tracking facts are on the page");
   });
   const area = /^locations\/([a-z-]+)\.html$/.exec(p.file);
   if (area && AREAS[area[1]]) {
@@ -309,6 +386,12 @@ for (const p of pages) {
       assert.ok(links.includes("All service areas") && links.includes("Book by the hour"), links.join(" | "));
     });
   }
+  if (SLOTS[p.file]) check(`${p.file}: the template slots use their labels`, () => {
+    const main = p.body.querySelector("main");
+    assert.deepEqual([...main.querySelectorAll("p.eyebrow")].filter((e) => !e.closest("form")).map((e) => squash(e.textContent)), SLOTS[p.file]);
+    const h2 = [...main.querySelectorAll("h2")].filter((e) => !e.closest("form")).map((e) => squash(e.textContent));
+    for (const want of SLOT_H2[p.file]) assert.ok(h2.includes(want), `no H2 "${want}" in ${h2.join(" | ")}`);
+  });
   check(`${p.file}: no sentence of 8 or more words is said twice on the page, outside the one wording per fact of 6.4`, () => {
     const seen = new Map();
     const linkOnly = (b) => { const a = b.el.querySelectorAll("a"); return a.length === 1 && squash(a[0].textContent) === squash(b.el.textContent); };

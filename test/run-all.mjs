@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { cpus, loadavg } from "node:os";
 
 const STATIC = [
-  "owner-questions",
   "asset-hashes",
   "vercel-config",
   "no-secrets",
@@ -33,14 +32,19 @@ const STATIC = [
   "twins",
   "policy-single-source",
   "prose-shape",
+  "uniqueness",
   "landing",
+  "trust",
   "map-api",
   "gmock",
   "mail",
   "sms",
   "calendar",
+  "tolls",
+  "seo-weekly",
+  "release1",
 ];
-const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser"];
+const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser", "trust-browser"];
 
 const files = process.argv.includes("--static") ? STATIC : [...STATIC, ...BROWSER];
 const failed = [];

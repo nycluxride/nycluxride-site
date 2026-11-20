@@ -61,7 +61,7 @@ const A = {
   A2: "A gratuity for your chauffeur is optional and chosen when you book.",
   A3: "After an airport transfer, only true extras are charged to the card saved at booking: waiting beyond the free window, extra stops and parking, each with an itemized receipt.",
   A4: "Hourly bookings are charged the hourly fare with NYC sales tax and the Black Car Fund at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  A5: "Airport rides to or from New York City include tolls, airport fees and taxes, and the tip is up to you. On other trips, tolls and parking are charged after the ride.",
+  A5: "Airport rides to or from New York City include tolls, airport fees and taxes, and the tip is up to you. On distance trips, tolls are added at booking, and parking, plus tolls on hourly trips, is charged after the ride.",
   A6: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes, and the gratuity is optional.",
   A7: "Airport transfer prices for New York City addresses include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
   A8: "Flat airport rates from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
@@ -98,25 +98,25 @@ const USED = {
   A8: ["blog/best-black-car-service-brooklyn-queens-march-20.html"],
 };
 
-const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport fees and taxes. On other trips, tolls and parking are charged after the ride to the card you paid with, and you get an itemized receipt. A gratuity is optional and you choose it when you book.";
-const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, taxes and fees, tolls and airport fees on airport rides to or from New York City, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
+const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport fees and taxes. On distance trips, tolls are added at booking. Parking, and tolls on hourly trips, are charged to your card after the ride, with an itemized receipt. A gratuity is optional and chosen when you book.";
+const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, taxes and fees, tolls and airport fees on airport rides to or from New York City, tolls on distance trips, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
 const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips anywhere in the United States are priced by distance and time when you book. Each stop adds a fee, or more if it takes the car out of the way. For very long trips or trips outside the United States, we'll send you a price.";
 
 const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
-const RATES_DESCRIPTION = "Airport transfers between New York City and JFK, Newark and Teterboro from $170 and LaGuardia from $145, with tolls, airport fees and taxes included. Hourly from $85 by vehicle class, 3-hour minimum.";
+const RATES_DESCRIPTION = "Airport transfers to JFK, Newark and Teterboro from $170, LaGuardia from $145, with tolls, fees and taxes included. Hourly from $85, 3-hour minimum.";
 const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly bookings have a 3-hour minimum. There's no meter and no surge pricing.";
 const RATES_HOURLY_CAPTION = "Taxes and fees are added at booking. Tolls and parking are charged after the ride.";
 const RATES_FACTS = {
   "Meet and greet": "Inside the terminal with a name sign, $25 charged at booking, plus any airport parking charged after the ride",
   Gratuity: "Optional. Choose 10%, 15%, 20% or 25% of the fare, or your own amount, before you pay",
-  "Tolls and airport fees": "Included on airport rides to or from New York City. On hourly and distance trips, charged after the ride to the card you booked with",
+  "Tolls and airport fees": "Included on airport rides to or from New York City. On distance trips, tolls are added at booking. On hourly trips, they are charged to your card after the ride",
   Taxes: "Added at booking on hourly and distance trips. Airport prices already include them",
   "Extra stops": "$20 per stop, charged at booking, or more if the stop takes the car out of the way. A stop added during an airport ride is charged after the ride",
   "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip",
   Pets: "$20 per small dog and $45 per large dog, charged once at booking, even on a round trip. Service animals ride free",
 };
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
-const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls on hourly and distance trips. Each charge comes with an itemized receipt.";
+const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls not in your price. Each charge comes with an itemized receipt.";
 const RATES_FAQ = [
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450."],
@@ -298,15 +298,16 @@ check("faq.html: the outside New York City answer prices one-way trips anywhere 
   assert.deepEqual([...p.document.querySelectorAll("#q-outside-city a")].map((a) => [a.getAttribute("href"), squash(a.textContent)]), [["/rates#distance", "priced by distance and time"]]);
 });
 
-check("faq.html: the pets answer is exact, visible and in json-ld, right after the family answer, says the dog is chosen under Pets, charged once even on a round trip at the price on the rates page, and that service animals ride free, with no price of its own on the page", () => {
+check("faq.html: the pets answer is exact, visible and in json-ld, right after the family answer, says the dog is chosen under Pets, charged once even on a round trip at the price on the rates page, and that service animals ride free, links the pet page, with no price of its own on the page", () => {
   const p = pages.get("faq.html");
   const question = "Can I bring my dog?";
-  const want = "Yes. Choose a small or large dog under Pets when you book and tell us about your dog in the notes. Each dog is charged once, even on a round trip, at the price on our rates page. Service animals ride free.";
+  const want = "Yes. Choose a small or large dog under Pets when you book and tell us about your dog in the notes. Each dog is charged once, even on a round trip, at the price on our rates page. Our page on pet friendly car service covers airports and long trips with a dog. Service animals ride free.";
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
   const q = p.document.getElementById("q-pets");
   assert.ok(q && q.matches("details.acc") && q.previousElementSibling.id === "q-family-car" && q.nextElementSibling.id === "q-wifi");
   assert.equal(q.querySelector('a[href="/rates#add-ons"]').textContent, "rates page");
+  assert.equal(q.querySelector('a[href="/pet-friendly-car-service-nyc"]').textContent, "pet friendly car service");
   const faq = p.graph.find((n) => n["@type"] === "FAQPage").mainEntity.map((x) => x.name);
   assert.equal(faq[faq.indexOf("Which car fits a family of 6 or more?") + 1], question);
   assert.doesNotMatch(want, /[\u2013\u2014;$]/);
@@ -553,7 +554,9 @@ for (const file of FILES.filter((f) => f.startsWith("blog/"))) {
     assert.ok(post, "no BlogPosting with dateModified");
     const url = `https://www.nycluxride.com/${file.replace(/\.html$/, "")}`;
     assert.equal(listed.get(url), post.dateModified, `blog.html lists ${listed.get(url)}`);
-    const shown = p.document.querySelector(".note__date time:not(.note__date)") || [...p.document.querySelectorAll("main time")][1];
+    // A post never updated shows one date, its published date, which then equals dateModified.
+    const once = post.datePublished === post.dateModified ? p.document.querySelector("main time.note__date[datetime]") : null;
+    const shown = p.document.querySelector(".note__date time:not(.note__date)") || once || [...p.document.querySelectorAll("main time")][1];
     assert.ok(shown, "no visible updated date");
     assert.equal(shown.getAttribute("datetime"), post.dateModified.slice(0, 10));
     if (post.dateModified.startsWith("2026-10-12")) assert.equal(squash(shown.textContent), "October 12, 2026");

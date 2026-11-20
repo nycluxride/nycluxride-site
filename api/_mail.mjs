@@ -173,7 +173,7 @@ function payment(b) {
   return [{ prices: shownLines(b.receipt.lines).map((line) => [line.label, money(line.cents)]), total: b.total === null ? null : [MAIL.paid, money(b.total)] }, ...b.receipt.notes.map((note) => ({ p: note })), ...(b.receipt.summary ? [{ p: b.receipt.summary }] : [])];
 }
 
-function textOf(blocks) {
+export function textOf(blocks) {
   const out = [];
   const row = ([label, value]) => `${label}: ${String(value).replace(/\n/g, "\n  ")}`;
   for (const block of blocks) {
@@ -186,12 +186,13 @@ function textOf(blocks) {
     else if (block.p) out.push(block.p, "");
     else if (block.change) out.push(block.change, `WhatsApp: ${CONTACT.whatsapp}`);
     else if (block.links) out.push(...block.links.map(row), "");
+    else if (block.list) out.push(...block.list.map(([label, value], i) => `${i + 1}. ${label}\n   ${value}`), "");
     else if (block.footer) out.push(MAIL.brand, CONTACT.phone, SITE_ORIGIN);
   }
   return `${out.join("\n").trim()}\n`;
 }
 
-function htmlOf(title, blocks) {
+export function htmlOf(title, blocks) {
   const link = (href, label) => `<a href="${esc(href)}" style="${STYLE.link}">${esc(label)}</a>`;
   const whatsapp = (html) => html.replace("WhatsApp", link(CONTACT.whatsapp, "WhatsApp"));
   const cells = (label, value, style = STYLE.td) => `<tr><th scope="row" style="${STYLE.th}">${esc(label)}</th><td style="${style}">${esc(value).replace(/\n/g, "<br>")}</td></tr>`;
@@ -208,6 +209,7 @@ function htmlOf(title, blocks) {
     else if (block.p) parts.push(`<p style="${STYLE.p}">${esc(block.p)}</p>`);
     else if (block.change) parts.push(`<p style="${STYLE.p}">${whatsapp(esc(block.change).replace(CONTACT.email, link(`mailto:${CONTACT.email}`, CONTACT.email)))}</p>`);
     else if (block.links) parts.push(`<ul style="${STYLE.list}">${block.links.map(([label, href]) => `<li style="${STYLE.item}">${link(href, label)}</li>`).join("")}</ul>`);
+    else if (block.list) parts.push(`<ol style="${STYLE.list}">${block.list.map(([label, value]) => `<li style="${STYLE.item}"><strong>${esc(label)}</strong><br>${esc(value)}</li>`).join("")}</ol>`);
     else if (block.footer) parts.push(`<p style="${STYLE.p}">${esc(MAIL.brand)}<br>${link(CONTACT.tel, CONTACT.phone)}<br>${link(SITE_ORIGIN, SITE_ORIGIN.replace("https://", ""))}</p>`);
   }
   return `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${esc(title)}</title>\n</head>\n<body style="${STYLE.body}">\n<div style="${STYLE.wrap}">\n${parts.join("\n")}\n</div>\n</body>\n</html>\n`;
@@ -281,7 +283,7 @@ function legMinutes(b) {
   if (!b.back) return [drive || EVENT_MINUTES];
   if (!drive) return [EVENT_MINUTES, EVENT_MINUTES];
   const legs = whole(f("legs")) || 2;
-  const flat = whole(f("tolls_cents")) ? (legs === 2 ? "return" : "out") : "";
+  const flat = whole(f("tolls_cents")) > whole(f("tolls_est_cents")) ? (legs === 2 ? "return" : "out") : "";
   if (flat === "return") return [drive, EVENT_MINUTES];
   if (flat === "out") return [EVENT_MINUTES, drive];
   const back = Math.max(1, Math.round(drive / legs));

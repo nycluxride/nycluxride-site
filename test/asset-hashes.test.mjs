@@ -9,9 +9,9 @@ const HASHED = /^(.+)\.([A-Za-z0-9_-]{6,})\.(js|css|webp|webmanifest|woff2)$/;
 const REFERRERS = /\.(css|js|webmanifest)$/;
 const BUDGETS = [
   [/^lux\..*\.css$/, 127000, true],
-  [/^book\..*\.css$/, 61400, true],
+  [/^book\..*\.css$/, 63800, true],
   [/^lux\..*\.js$/, 12288, true],
-  [/^pay\..*\.js$/, 66800, true],
+  [/^pay\..*\.js$/, 66900, true],
   [/^pay2\..*\.js$/, 12000, true],
   [/^done\..*\.js$/, 9000, false],
   [/^wide\..*\.css$/, 1700, true],
@@ -19,9 +19,9 @@ const BUDGETS = [
   [/^map\..*\.css$/, 3072, true],
 ];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
-const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`)];
-const BOOKING_CSS = 188500;
-const BOOK_SCRIPTS = 78500;
+const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`), "locations/teterboro-airport.html", "locations/westchester-airport.html", "locations/hoboken.html", "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
+const BOOKING_CSS = 190600;
+const BOOK_SCRIPTS = 78800;
 const SPECULATION_BYTES = 600;
 const FONT_FILES = 3;
 const FONT_BYTES = 60000;
@@ -95,7 +95,7 @@ const linked = (file, re) =>
   [...readFileSync(join(ROOT, file), "utf8").matchAll(re)].map((m) => m[1]).filter((p) => existsSync(join(ROOT, p)));
 
 test(`booking pages load lux and book CSS within ${BOOKING_CSS} bytes`, () => {
-  assert.equal(BOOKING_PAGES.length, 21);
+  assert.equal(BOOKING_PAGES.length, 62);
   for (const file of BOOKING_PAGES) {
     const css = linked(file, /<link rel="stylesheet" href="\/(assets\/(?:lux|book)\.[^"]+\.css)">/g);
     assert.ok(css.some((p) => /^assets\/lux\./.test(p)), `${file} links no lux.css`);

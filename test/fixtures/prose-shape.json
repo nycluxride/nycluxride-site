@@ -44,6 +44,15 @@
   "colons": 0,
   "questions": 0
  },
+ "blog/car-seats-nyc-car-service-parents-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "blog/chauffeur-service-nyc-booking-guide-april-30.html": {
   "so": 0,
   "sostart": 1,
@@ -60,6 +69,24 @@
   "places": 1,
   "triads": 0,
   "colons": 1,
+  "questions": 0
+ },
+ "blog/dog-nyc-to-boston-or-dc-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/flying-from-new-jersey-jfk-laguardia-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
   "questions": 0
  },
  "blog/jfk-lga-ewr-airport-transfer-guide-april-17.html": {
@@ -103,6 +130,42 @@
   "sostart": 1,
   "which": 0,
   "places": 1,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/nyc-to-philadelphia-kids-car-or-amtrak-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/roadshow-day-manhattan-planning-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/stewart-westchester-macarthur-airports-by-car-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "blog/teterboro-airport-fbos-manhattan-november-19.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
   "triads": 0,
   "colons": 0,
   "questions": 0
@@ -188,6 +251,15 @@
   "colons": 0,
   "questions": 0
  },
+ "cruise-terminal-car-service-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "faq.html": {
   "so": 0,
   "sostart": 0,
@@ -233,6 +305,24 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/alpine-tenafly.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/bradley-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/bronx.html": {
   "so": 0,
   "sostart": 0,
@@ -251,9 +341,72 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/edgewater.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/englewood.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/financial-district.html": {
   "so": 0,
   "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/fort-lee.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/greenwich-ct.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/hamptons.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/hoboken.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/jersey-city.html": {
+  "so": 0,
+  "sostart": 0,
   "which": 0,
   "places": 0,
   "triads": 0,
@@ -287,7 +440,61 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/long-island-macarthur-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/long-island.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/manhattan.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/midtown-manhattan.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/morristown-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/morristown.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/new-jersey.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -305,7 +512,70 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/newark-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/paramus.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/philadelphia-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/princeton.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/queens.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/republic-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/secaucus.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/short-hills-livingston.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -323,11 +593,47 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/stamford-ct.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/staten-island.html": {
   "so": 0,
   "sostart": 1,
   "which": 0,
   "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/stewart-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/summit.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/teterboro-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 1,
   "triads": 0,
   "colons": 0,
   "questions": 0
@@ -350,7 +656,106 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/weehawken-north-bergen.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/westchester-airport.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/westchester-county.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service/nyc-to-atlantic-city.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service/nyc-to-boston.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service/nyc-to-connecticut.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service/nyc-to-philadelphia.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "long-distance-car-service/nyc-to-washington-dc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "pet-friendly-car-service-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "privacy-policy.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "private-jet-car-service-nyc.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -366,6 +771,15 @@
   "places": 0,
   "triads": 1,
   "colons": 2,
+  "questions": 0
+ },
+ "roadshow-transportation-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
   "questions": 0
  },
  "schedule.html": {
@@ -395,7 +809,25 @@
   "colons": 0,
   "questions": 0
  },
+ "sprinter-van-service-nyc.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "terms-of-service.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "wedding-car-service-nyc.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,

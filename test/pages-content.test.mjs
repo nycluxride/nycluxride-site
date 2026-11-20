@@ -3,15 +3,26 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { CHILD_SEAT_CENTS } from "../api/_rates.mjs";
+import { CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const BASELINE = JSON.parse(readFileSync(join(ROOT, "test/fixtures/seo-baseline.json"), "utf8")).pages;
 const SEAT = `$${CHILD_SEAT_CENTS / 100} per seat`;
 
-const AREAS = { "locations/manhattan.html": "Manhattan", "locations/brooklyn.html": "Brooklyn", "locations/queens.html": "Queens", "locations/bronx.html": "The Bronx", "locations/staten-island.html": "Staten Island", "locations/financial-district.html": "Financial District", "locations/soho.html": "SoHo", "locations/upper-east-side.html": "Upper East Side", "locations/upper-west-side.html": "Upper West Side", "locations/long-island-city.html": "Long Island City" };
-const AIRPORTS = { "locations/jfk-airport.html": "JFK Airport", "locations/laguardia-airport.html": "LaGuardia Airport", "locations/newark-airport.html": "Newark Airport" };
-const MONEY = { "chauffeur-service-nyc.html": ["/services", "Services", "Chauffeur service"], "limousine-service-nyc.html": ["/services", "Services", "Limousine service"], "black-car-service-brooklyn.html": ["/locations", "Service areas", "Black car service, Brooklyn"], "car-service-with-car-seat-nyc.html": ["/services", "Services", "Car seats"] };
+const AREAS = { "locations/manhattan.html": "Manhattan", "locations/brooklyn.html": "Brooklyn", "locations/queens.html": "Queens", "locations/bronx.html": "The Bronx", "locations/staten-island.html": "Staten Island", "locations/financial-district.html": "Financial District", "locations/soho.html": "SoHo", "locations/upper-east-side.html": "Upper East Side", "locations/upper-west-side.html": "Upper West Side", "locations/long-island-city.html": "Long Island City", "locations/midtown-manhattan.html": "Midtown" };
+const AIRPORTS = { "locations/jfk-airport.html": "JFK Airport", "locations/laguardia-airport.html": "LaGuardia Airport", "locations/newark-airport.html": "Newark Airport", "locations/teterboro-airport.html": "Teterboro Airport" };
+// T-B airports priced by distance, T-C towns outside New York City, T-E routes under the long distance hub.
+const AIRPORT_DISTANCE = { "locations/westchester-airport.html": "Westchester Airport", "locations/philadelphia-airport.html": "Philadelphia Airport", "locations/long-island-macarthur-airport.html": "MacArthur Airport", "locations/stewart-airport.html": "Stewart Airport", "locations/morristown-airport.html": "Morristown Airport", "locations/republic-airport.html": "Republic Airport", "locations/bradley-airport.html": "Bradley Airport" };
+const OUTSIDE = {
+  "locations/hoboken.html": "Hoboken", "locations/long-island.html": "Long Island", "locations/hamptons.html": "The Hamptons", "locations/westchester-county.html": "Westchester County", "locations/greenwich-ct.html": "Greenwich", "locations/stamford-ct.html": "Stamford",
+  "locations/new-jersey.html": "New Jersey", "locations/jersey-city.html": "Jersey City", "locations/weehawken-north-bergen.html": "Weehawken and North Bergen", "locations/secaucus.html": "Secaucus", "locations/newark-nj.html": "Newark",
+  "locations/fort-lee.html": "Fort Lee", "locations/edgewater.html": "Edgewater", "locations/englewood.html": "Englewood", "locations/paramus.html": "Paramus", "locations/alpine-tenafly.html": "Alpine and Tenafly",
+  "locations/short-hills-livingston.html": "Short Hills and Livingston", "locations/morristown.html": "Morristown", "locations/summit.html": "Summit", "locations/princeton.html": "Princeton",
+};
+const ROUTES = { "long-distance-car-service/nyc-to-philadelphia.html": "NYC to Philadelphia", "long-distance-car-service/nyc-to-boston.html": "NYC to Boston", "long-distance-car-service/nyc-to-washington-dc.html": "NYC to Washington, DC", "long-distance-car-service/nyc-to-atlantic-city.html": "NYC to Atlantic City", "long-distance-car-service/nyc-to-connecticut.html": "NYC to Connecticut" };
+const MONEY = { "chauffeur-service-nyc.html": ["/services", "Services", "Chauffeur service"], "limousine-service-nyc.html": ["/services", "Services", "Limousine service"], "black-car-service-brooklyn.html": ["/locations", "Service areas", "Black car service, Brooklyn"], "car-service-with-car-seat-nyc.html": ["/services", "Services", "Car seats"], "long-distance-car-service.html": ["/services", "Services", "Long-distance car service"],
+  "pet-friendly-car-service-nyc.html": ["/services", "Services", "Pet friendly car service"], "private-jet-car-service-nyc.html": ["/services", "Services", "Private jet car service"], "roadshow-transportation-nyc.html": ["/services", "Services", "Roadshow transportation"],
+  "sprinter-van-service-nyc.html": ["/services", "Services", "Sprinter van service"], "cruise-terminal-car-service-nyc.html": ["/services", "Services", "Cruise terminal car service"], "wedding-car-service-nyc.html": ["/services", "Services", "Wedding car service"] };
 
 const PHOTO = {
   "services.html": "/fleet/page-services-900.webp",
@@ -32,6 +43,47 @@ const PHOTO = {
   "locations/jfk-airport.html": "/fleet/page-jfk-airport-900.webp",
   "locations/laguardia-airport.html": "/fleet/page-laguardia-airport-900.webp",
   "locations/newark-airport.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/teterboro-airport.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/westchester-airport.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/hoboken.html": "/fleet/page-staten-island-900.webp",
+  "long-distance-car-service.html": "/fleet/page-schedule-900.webp",
+  "long-distance-car-service/nyc-to-philadelphia.html": "/fleet/page-contact-900.webp",
+  "cruise-terminal-car-service-nyc.html": "/fleet/page-long-island-city-900.webp",
+  "locations/alpine-tenafly.html": "/fleet/page-queens-900.webp",
+  "locations/bradley-airport.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/edgewater.html": "/fleet/page-long-island-city-900.webp",
+  "locations/englewood.html": "/fleet/page-contact-900.webp",
+  "locations/fort-lee.html": "/fleet/page-bronx-900.webp",
+  "locations/greenwich-ct.html": "/fleet/page-queens-900.webp",
+  "locations/hamptons.html": "/fleet/page-queens-900.webp",
+  "locations/jersey-city.html": "/fleet/page-long-island-city-900.webp",
+  "locations/long-island-macarthur-airport.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/long-island.html": "/fleet/page-contact-900.webp",
+  "locations/midtown-manhattan.html": "/fleet/page-chauffeur-service-nyc-900.webp",
+  "locations/morristown-airport.html": "/fleet/page-schedule-900.webp",
+  "locations/morristown.html": "/fleet/page-rates-900.webp",
+  "locations/new-jersey.html": "/fleet/page-staten-island-900.webp",
+  "locations/newark-nj.html": "/fleet/page-manhattan-900.webp",
+  "locations/paramus.html": "/fleet/page-contact-900.webp",
+  "locations/philadelphia-airport.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/princeton.html": "/fleet/page-about-900.webp",
+  "locations/republic-airport.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/secaucus.html": "/fleet/page-about-900.webp",
+  "locations/short-hills-livingston.html": "/fleet/page-queens-900.webp",
+  "locations/stamford-ct.html": "/fleet/page-financial-district-900.webp",
+  "locations/stewart-airport.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/summit.html": "/fleet/page-upper-west-side-900.webp",
+  "locations/weehawken-north-bergen.html": "/fleet/page-staten-island-900.webp",
+  "locations/westchester-county.html": "/fleet/page-queens-900.webp",
+  "long-distance-car-service/nyc-to-atlantic-city.html": "/fleet/page-rates-900.webp",
+  "long-distance-car-service/nyc-to-boston.html": "/fleet/page-404-900.webp",
+  "long-distance-car-service/nyc-to-connecticut.html": "/fleet/page-queens-900.webp",
+  "long-distance-car-service/nyc-to-washington-dc.html": "/fleet/page-about-900.webp",
+  "pet-friendly-car-service-nyc.html": "/fleet/page-contact-900.webp",
+  "private-jet-car-service-nyc.html": "/fleet/page-laguardia-airport-900.webp",
+  "roadshow-transportation-nyc.html": "/fleet/page-manhattan-900.webp",
+  "sprinter-van-service-nyc.html": "/fleet/page-fleet-900.webp",
+  "wedding-car-service-nyc.html": "/fleet/page-about-900.webp",
 };
 const BANNERS = Object.keys(PHOTO);
 const GOLD = {
@@ -53,6 +105,47 @@ const GOLD = {
   "locations/jfk-airport.html": "JFK Airport",
   "locations/laguardia-airport.html": "LaGuardia Airport",
   "locations/newark-airport.html": "Newark Airport",
+  "locations/teterboro-airport.html": "Teterboro Airport",
+  "locations/westchester-airport.html": "Westchester Airport",
+  "locations/hoboken.html": "Hoboken",
+  "long-distance-car-service.html": "Long distance car service",
+  "long-distance-car-service/nyc-to-philadelphia.html": "NYC to Philadelphia",
+  "cruise-terminal-car-service-nyc.html": "Cruise terminal car service",
+  "locations/alpine-tenafly.html": "Alpine and Tenafly",
+  "locations/bradley-airport.html": "Bradley Airport",
+  "locations/edgewater.html": "Edgewater",
+  "locations/englewood.html": "Englewood",
+  "locations/fort-lee.html": "Fort Lee",
+  "locations/greenwich-ct.html": "Greenwich",
+  "locations/hamptons.html": "Hamptons",
+  "locations/jersey-city.html": "Jersey City",
+  "locations/long-island-macarthur-airport.html": "MacArthur Airport",
+  "locations/long-island.html": "Long Island",
+  "locations/midtown-manhattan.html": "Midtown",
+  "locations/morristown-airport.html": "Morristown Airport",
+  "locations/morristown.html": "Morristown",
+  "locations/new-jersey.html": "New Jersey",
+  "locations/newark-nj.html": "Newark",
+  "locations/paramus.html": "Paramus",
+  "locations/philadelphia-airport.html": "Philadelphia Airport",
+  "locations/princeton.html": "Princeton",
+  "locations/republic-airport.html": "Republic Airport",
+  "locations/secaucus.html": "Secaucus",
+  "locations/short-hills-livingston.html": "Short Hills and Livingston",
+  "locations/stamford-ct.html": "Stamford",
+  "locations/stewart-airport.html": "Stewart Airport",
+  "locations/summit.html": "Summit",
+  "locations/weehawken-north-bergen.html": "Weehawken and North Bergen",
+  "locations/westchester-county.html": "Westchester County",
+  "long-distance-car-service/nyc-to-atlantic-city.html": "NYC to Atlantic City",
+  "long-distance-car-service/nyc-to-boston.html": "NYC to Boston",
+  "long-distance-car-service/nyc-to-connecticut.html": "NYC to Connecticut",
+  "long-distance-car-service/nyc-to-washington-dc.html": "NYC to Washington, DC",
+  "pet-friendly-car-service-nyc.html": "Pet friendly",
+  "private-jet-car-service-nyc.html": "Private jet",
+  "roadshow-transportation-nyc.html": "Roadshow transportation",
+  "sprinter-van-service-nyc.html": "Sprinter van with a driver",
+  "wedding-car-service-nyc.html": "Wedding car service",
 };
 const LUX = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
 const ZOOM = (slug) => {
@@ -65,21 +158,28 @@ const BANNER_SIZES = (src) => {
   const z = ZOOM(/^\/fleet\/([a-z0-9-]+?)-900\.webp$/.exec(src)[1]);
   return `(max-width: 1023px) ${z > 1 ? `calc((100vw - 48px) * ${z})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 };
-const SERVICES_JUMPS = [["#airport-transfers", "Airport transfers"], ["#hourly", "Hourly and as directed"], ["#corporate", "Corporate accounts"], ["#weddings", "Events"], ["#prom", "Prom"], ["#cruise", "Cruise terminals"]];
+const SERVICES_JUMPS = [["#airport-transfers", "Airport transfers"], ["#hourly", "Hourly and as directed"], ["#roadshow", "Roadshows"], ["#corporate", "Corporate accounts"], ["#private-jet", "Private jets"], ["#weddings", "Events"], ["#prom", "Prom"], ["#sprinter", "Sprinter vans"], ["#cruise", "Cruise terminals"], ["#dogs", "Dogs"], ["#long-distance", "Long distance"]];
 const POSTS = readdirSync(join(ROOT, "blog")).filter((f) => f.endsWith(".html")).sort().map((f) => `blog/${f}`);
 
 const CRUMBS = {};
-for (const [file, name] of Object.entries({ ...AREAS, ...AIRPORTS })) CRUMBS[file] = [["/locations", "Service areas"], [null, name]];
+for (const [file, name] of Object.entries({ ...AREAS, ...AIRPORTS, ...AIRPORT_DISTANCE, ...OUTSIDE })) CRUMBS[file] = [["/locations", "Service areas"], [null, name]];
+for (const [file, name] of Object.entries(ROUTES)) CRUMBS[file] = [["/services", "Services"], ["/long-distance-car-service", "Long-distance car service"], [null, name]];
 for (const [file, [href, text, name]] of Object.entries(MONEY)) CRUMBS[file] = [[href, text], [null, name]];
 CRUMBS["services.html"] = [["/", "Home"], [null, "Services"]];
 
 const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+const TRUST_PAGES = new Set(["jfk-airport", "laguardia-airport", "newark-airport", "teterboro-airport"].map((s) => `locations/${s}.html`));
 const kids = (el) => [...el.children];
 const tagOf = (el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${[...el.classList].map((c) => `.${c}`).join("")}`;
 
+// One parse per file: with 90 pages, a fresh JSDOM on every call runs the test out of memory.
+const READ = new Map();
 function read(file) {
+  if (READ.has(file)) return READ.get(file);
   const html = readFileSync(join(ROOT, file), "utf8");
-  return { html, lines: html.split("\n"), document: new JSDOM(html).window.document };
+  const page = { html, lines: html.split("\n"), document: new JSDOM(html).window.document };
+  READ.set(file, page);
+  return page;
 }
 
 let failures = 0;
@@ -95,7 +195,7 @@ function check(name, fn) {
 
 check("the SEO baseline lists every page this test reads", () => {
   for (const file of [...BANNERS, "locations.html", "blog.html", ...POSTS]) assert.ok(BASELINE[file], `${file} is not in the baseline`);
-  assert.equal(POSTS.length, 10);
+  assert.equal(POSTS.length, 17);
 });
 
 for (const file of BANNERS) {
@@ -120,9 +220,9 @@ for (const file of BANNERS) {
     for (const s of sources) assert.equal(s.getAttribute("sizes"), BANNER_SIZES(PHOTO[file]));
     assert.equal(document.querySelectorAll('img[loading="eager"]').length, 1, "more than one eager image");
   });
-  check(`${file}: banner body order is h1#page-h, div.banner__book, the lede, with no eyebrow on any Hero B banner`, () => {
+  check(`${file}: banner body order is h1#page-h, div.banner__book, ${TRUST_PAGES.has(file) ? "the trust section, " : ""}the lede, with no eyebrow on any Hero B banner`, () => {
     const body = banner.querySelector(":scope>div.banner__body");
-    assert.deepEqual(kids(body).map(tagOf), ["h1#page-h", "div.banner__book", "p.lede"]);
+    assert.deepEqual(kids(body).map(tagOf), ["h1#page-h", "div.banner__book", ...(TRUST_PAGES.has(file) ? ["section.trust"] : []), "p.lede"]);
     assert.deepEqual([...document.querySelectorAll("h1")].map((h) => norm(h.textContent)), BASELINE[file].h1);
   });
   check(`${file}: the H1 sets its key words, ${GOLD[file]}, in one span.h-gold and holds no other markup`, () => {
@@ -207,7 +307,7 @@ for (const file of BANNERS) {
     assert.deepEqual(kids(pair).map(tagOf), ["div.prose.c7-12", "figure.citymap.c1-6", "ul.c7-12"]);
     assert.deepEqual(kids(kids(pair)[0]).slice(0, 2).map((n) => norm(n.textContent)), ["Airports", "New York area airports"]);
     assert.ok(pair.querySelector(":scope>figure.citymap>svg"), "no borough map after the band");
-    assert.deepEqual([...pair.querySelectorAll(":scope>ul>li>a.loc-card")].map((a) => a.getAttribute("href")), ["/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport"]);
+    assert.deepEqual([...pair.querySelectorAll(":scope>ul>li>a.loc-card")].map((a) => a.getAttribute("href")), ["/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", "/locations/teterboro-airport"]);
     assert.equal(document.querySelectorAll("main figure.citymap").length, 1);
   });
   check("locations.html: the H1 sets its key words, New York City, in one span.h-gold and holds no other markup", () => {
@@ -281,7 +381,7 @@ const HOUR = ["By the hour", "Any class, with a 3-hour minimum."];
 const CHILD = ["Child seats", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`];
 const AHEAD = ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."];
 const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
-const IN_AREA = { manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
+const IN_AREA = { "midtown-manhattan": "in Midtown", manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
 const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
@@ -289,6 +389,34 @@ RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by clas
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
+const DISTANCE = ["Your price", "Priced by distance and time. You see the total before you pay."];
+const DOGS = ["Dogs", "Small and large dogs, charged once per booking. Service animals ride free."];
+const STOPS = ["Stops", "Up to 2 stops on the way, added when you book."];
+// Airports outside the flat rates are airport-other in the booking form, which sends a price.
+const QUOTE = ["Your price", "For this airport, we'll send you a price."];
+RAILS["locations/teterboro-airport.html"] = [["Your FBO", "The FBOs at Teterboro"], PRICE("New York City address"), CHILD, DOGS, AHEAD];
+for (const [file, name] of Object.entries(AIRPORT_DISTANCE)) RAILS[file] = [["Where we meet you", `How we meet you at ${name.replace(/ Airport$/, "")}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], QUOTE, FREE, CHILD, AHEAD];
+for (const file of Object.keys(OUTSIDE)) RAILS[file] = [DISTANCE, FREE, CHILD, DOGS, AHEAD];
+RAILS["long-distance-car-service.html"] = [["How far", "Up to 500 miles from New York City, booked online."], DISTANCE, STOPS, ["Coming back", "Add the return trip to the same booking."], CHILD];
+RAILS["long-distance-car-service/nyc-to-philadelphia.html"] = [["Distance", "About 97 miles from Midtown to Center City."], ["Drive", "Close to 2 hours with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+const DOG_PRICE = `$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog`;
+const FBO = (field) => [["Your FBO", `The FBOs at ${field}`], QUOTE, CHILD, DOGS, AHEAD];
+const UNLISTED = (at) => [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], QUOTE, FREE, CHILD, AHEAD];
+RAILS["locations/westchester-airport.html"] = [["Where we meet you", "How we meet you at Westchester"], ["Flight tracking", "For airline flights, we move the pickup if your flight lands early or late."], QUOTE, ["Free waiting", "45 minutes after a domestic airline landing and 60 after an international one."], CHILD, AHEAD];
+RAILS["locations/morristown-airport.html"] = FBO("Morristown");
+RAILS["locations/republic-airport.html"] = FBO("Republic");
+RAILS["locations/philadelphia-airport.html"] = UNLISTED("PHL");
+RAILS["locations/bradley-airport.html"] = UNLISTED("Bradley");
+RAILS["long-distance-car-service/nyc-to-boston.html"] = [["Distance", "About 210 miles from Midtown to Back Bay."], ["Drive", "About 4 hours 30 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-washington-dc.html"] = [["Distance", "About 228 miles from Midtown to Capitol Hill."], ["Drive", "Close to 4 hours 50 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-atlantic-city.html"] = [["Distance", "About 128 miles from Midtown to the Boardwalk."], ["Drive", "Close to 2 hours 45 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-connecticut.html"] = [["Distance", "About 31 miles to Greenwich, 78 miles to New Haven and 138 miles to Foxwoods."], ["Drive", "About 50 minutes to Greenwich and close to 2 hours to New Haven with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["pet-friendly-car-service-nyc.html"] = [["Dogs", "Up to 3 small and 3 large dogs on one booking, in any class."], ["Dog price", `${DOG_PRICE}, charged once per booking.`], ["Service animals", "Free on every trip, as the law requires."], CHILD, AHEAD];
+RAILS["private-jet-car-service-nyc.html"] = [["Airfields", "Six private airfields around New York"], ["Teterboro price", PRICE("New York City address")[1]], ["Other airfields", "For these airports, we'll send you a price."], ["For a passenger", "Add their name and mobile number, and the receipt comes to you."], CHILD, AHEAD];
+RAILS["roadshow-transportation-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Where it starts", "Any address in the five boroughs, JFK or LaGuardia."], ["Between meetings", "The same car and chauffeur stay with you all day."], ["Accounts", "Monthly billing for companies that book often."], AHEAD];
+RAILS["sprinter-van-service-nyc.html"] = [["Seats", "Up to 12 passengers in one van."], ["Bags", "10 large and 2 small bags."], DISTANCE, ["By the hour", "For a Luxury Sprinter by the hour, we'll send you a price."], AHEAD];
+RAILS["cruise-terminal-car-service-nyc.html"] = [["Terminals", "Manhattan, Brooklyn and Cape Liberty in Bayonne."], DISTANCE, ["Pier to airport", PRICE("New York City address")[1]], CHILD, AHEAD];
+RAILS["wedding-car-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Wedding party", "Up to 12 guests in one Luxury Sprinter."], ["Outside the city", DISTANCE[1]], CHILD, AHEAD];
 RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Choose the seats when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
 
 for (const [file, rows] of Object.entries(RAILS)) {
@@ -377,9 +505,9 @@ for (const [file, at, vals, ids] of [["locations/jfk-airport.html", "JFK", ["all
   });
 }
 
-const HOURLY_POSTS = ["manhattan-hourly-chauffeur-service-april-10", "corporate-black-car-nyc-april-3", "wedding-event-limo-nyc-march-27", "nyc-prom-limo-booking-guide-march-13", "nyc-limo-service-comparison-guide-april-29"].map((s) => `blog/${s}.html`);
+const HOURLY_POSTS = ["manhattan-hourly-chauffeur-service-april-10", "roadshow-day-manhattan-planning-november-19", "corporate-black-car-nyc-april-3", "wedding-event-limo-nyc-march-27", "nyc-prom-limo-booking-guide-march-13", "nyc-limo-service-comparison-guide-april-29"].map((s) => `blog/${s}.html`);
 const AIRPORT_POSTS = ["jfk-lga-ewr-airport-transfer-guide-april-17", "whatsapp-airport-pickup-coordination-nyc-april-24", "best-black-car-service-brooklyn-queens-march-20"].map((s) => `blog/${s}.html`);
-const POST_H2_IDS = {"blog/best-black-car-service-brooklyn-queens-march-20.html": ["which-airport-is-nearer-from-where", "the-bqe-and-its-narrow-middle", "over-newtown-creek-on-the-kosciuszko-bridge", "the-belt-the-jackie-robinson-and-the-van-wyck", "tolls-on-the-way-and-where-they-start", "when-a-train-is-the-simpler-answer"], "blog/chauffeur-service-nyc-booking-guide-april-30.html": ["three-licenses-behind-every-ride", "look-up-the-base-on-nyc-open-data", "check-the-car-and-the-driver", "where-illegal-rides-find-passengers", "questions-to-ask-before-you-pay", "what-a-written-quote-should-list"], "blog/corporate-black-car-nyc-april-3.html": ["what-a-black-car-base-is-in-new-york", "four-checks-before-signing", "line-items-on-a-new-york-invoice", "setting-up-an-account"], "blog/jfk-lga-ewr-airport-transfer-guide-april-17.html": ["three-airports-three-different-trips", "which-airport-a-flight-uses", "what-changes-at-jfk-in-2026-and-2027", "curb-rules-that-set-pickup-timing", "how-early-to-leave", "rail-links-and-when-a-car-is-simpler", "arriving-from-abroad", "when-hourly-service-is-the-better-option"], "blog/manhattan-hourly-chauffeur-service-april-10.html": ["how-three-hours-are-billed-by-class", "why-the-car-waits-nearby-not-at-the-door", "charges-below-60th-street-and-below-96th-street", "three-manhattan-days-written-out", "the-days-midtown-locks-up", "when-point-to-point-is-still-the-answer"], "blog/nyc-cruise-terminal-black-car-service-guide-march-6.html": ["which-terminal-your-ship-uses", "reaching-piers-88-and-90", "reaching-red-hook", "embarkation-morning-bags-pick-the-vehicle", "return-day-and-customs"], "blog/nyc-limo-service-comparison-guide-april-29.html": ["stretch-sprinter-or-suv", "when-the-clock-starts", "gratuity-waiting-time-and-extras", "surcharges-set-by-the-state-and-the-mta", "surge-pricing-and-a-quoted-rate", "questions-to-ask-before-you-book"], "blog/nyc-prom-limo-booking-guide-march-13.html": ["when-the-2027-prom-season-falls", "what-a-parent-can-check-before-the-night", "alcohol-and-new-york-law", "photo-stops-and-curb-rules", "a-prom-night-hour-by-hour", "what-to-send-dispatch-the-day-before", "one-sprinter-or-two-suvs"], "blog/wedding-event-limo-nyc-march-27.html": ["start-from-the-times-that-cannot-move", "a-wedding-day-timeline-template", "city-hall-ceremonies", "where-a-car-can-wait-at-a-venue", "dates-that-change-the-plan", "one-sprinter-several-cars-or-a-guest-shuttle"], "blog/whatsapp-airport-pickup-coordination-nyc-april-24.html": ["why-the-car-cannot-wait-at-the-door", "where-drivers-wait-for-your-message", "where-you-are-met", "four-messages-worth-sending", "when-the-flight-changes", "international-arrivals", "if-someone-offers-you-a-ride"]};
+const POST_H2_IDS = {"blog/best-black-car-service-brooklyn-queens-march-20.html": ["which-airport-is-nearer-from-where", "the-bqe-and-its-narrow-middle", "over-newtown-creek-on-the-kosciuszko-bridge", "the-belt-the-jackie-robinson-and-the-van-wyck", "tolls-on-the-way-and-where-they-start", "when-a-train-is-the-simpler-answer"], "blog/car-seats-nyc-car-service-parents-november-19.html": ["do-car-services-have-car-seats", "which-seat-for-which-age", "booking-a-seat", "airport-pickups-with-children", "seats-on-long-trips", "visits-outside-the-city", "hourly-days-with-children"], "blog/chauffeur-service-nyc-booking-guide-april-30.html": ["three-licenses-behind-every-ride", "look-up-the-base-on-nyc-open-data", "check-the-car-and-the-driver", "where-illegal-rides-find-passengers", "questions-to-ask-before-you-pay", "what-a-written-quote-should-list"], "blog/corporate-black-car-nyc-april-3.html": ["what-a-black-car-base-is-in-new-york", "four-checks-before-signing", "line-items-on-a-new-york-invoice", "setting-up-an-account"], "blog/dog-nyc-to-boston-or-dc-november-19.html": ["the-train-with-a-dog", "flying-with-a-dog", "the-drive-to-boston", "the-drive-to-washington", "stops-for-your-dog", "which-car-suits-a-large-dog", "what-to-pack-for-the-drive"], "blog/flying-from-new-jersey-jfk-laguardia-november-19.html": ["which-airport-your-flight-uses", "the-crossing-the-car-takes", "rush-hour-at-the-river", "drive-times-to-jfk-and-laguardia", "private-flights-teterboro-and-morristown", "booking-the-ride-from-new-jersey"], "blog/jfk-lga-ewr-airport-transfer-guide-april-17.html": ["three-airports-three-different-trips", "which-airport-a-flight-uses", "what-changes-at-jfk-in-2026-and-2027", "curb-rules-that-set-pickup-timing", "how-early-to-leave", "rail-links-and-when-a-car-is-simpler", "arriving-from-abroad", "when-hourly-service-is-the-better-option"], "blog/manhattan-hourly-chauffeur-service-april-10.html": ["how-three-hours-are-billed-by-class", "why-the-car-waits-nearby-not-at-the-door", "charges-below-60th-street-and-below-96th-street", "three-manhattan-days-written-out", "the-days-midtown-locks-up", "when-point-to-point-is-still-the-answer"], "blog/nyc-cruise-terminal-black-car-service-guide-march-6.html": ["which-terminal-your-ship-uses", "reaching-piers-88-and-90", "reaching-red-hook", "embarkation-morning-bags-pick-the-vehicle", "return-day-and-customs"], "blog/nyc-limo-service-comparison-guide-april-29.html": ["stretch-sprinter-or-suv", "when-the-clock-starts", "gratuity-waiting-time-and-extras", "surcharges-set-by-the-state-and-the-mta", "surge-pricing-and-a-quoted-rate", "questions-to-ask-before-you-book"], "blog/nyc-prom-limo-booking-guide-march-13.html": ["when-the-2027-prom-season-falls", "what-a-parent-can-check-before-the-night", "alcohol-and-new-york-law", "photo-stops-and-curb-rules", "a-prom-night-hour-by-hour", "what-to-send-dispatch-the-day-before", "one-sprinter-or-two-suvs"], "blog/nyc-to-philadelphia-kids-car-or-amtrak-november-19.html": ["door-to-door-time", "when-to-leave", "bags-and-strollers", "car-seats-for-the-drive", "groups-of-three-to-five", "where-in-philadelphia", "the-trip-home"], "blog/roadshow-day-manhattan-planning-november-19.html": ["what-to-send-before-the-day", "a-sample-schedule", "how-the-car-waits-between-meetings", "starting-at-an-airport-or-teterboro", "adding-stamford-or-greenwich", "more-people-or-a-second-car", "paying-for-the-day"], "blog/stewart-westchester-macarthur-airports-by-car-november-19.html": ["who-flies-from-each-airport", "where-each-airport-is", "the-drive-from-midtown", "when-a-smaller-airport-is-closer", "a-car-against-the-bus-and-the-train", "private-flights", "booking-the-ride"], "blog/teterboro-airport-fbos-manhattan-november-19.html": ["five-fbos-and-no-airline-terminal", "which-fbo-your-flight-uses", "lincoln-tunnel-or-george-washington-bridge", "how-long-the-drive-takes", "booking-a-car-to-your-fbo", "families-and-dogs-on-a-private-flight", "trips-beyond-manhattan"], "blog/wedding-event-limo-nyc-march-27.html": ["start-from-the-times-that-cannot-move", "a-wedding-day-timeline-template", "city-hall-ceremonies", "where-a-car-can-wait-at-a-venue", "dates-that-change-the-plan", "one-sprinter-several-cars-or-a-guest-shuttle"], "blog/whatsapp-airport-pickup-coordination-nyc-april-24.html": ["why-the-car-cannot-wait-at-the-door", "where-drivers-wait-for-your-message", "where-you-are-met", "four-messages-worth-sending", "when-the-flight-changes", "international-arrivals", "if-someone-offers-you-a-ride"]};
 for (const file of POSTS) {
   const { document, html } = read(file);
   const body = document.querySelector("main>article>section.section.frame>div.grid12>div.prose.c1-8");
@@ -435,7 +563,7 @@ for (const file of POSTS) {
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   check("blog.html: every card prints Updated Mon D, YYYY from its post's dateModified, and the featured card has one link in the Tab order", () => {
     const cards = [...document.querySelectorAll("main article")];
-    assert.equal(cards.length, 10);
+    assert.equal(cards.length, 17);
     for (const c of cards) {
       const href = c.querySelector("h2 a").getAttribute("href");
       const post = read(`${href.slice(1)}.html`).document;
@@ -453,9 +581,9 @@ for (const file of POSTS) {
 
 {
   const fix = [
-    ["locations/bronx.html", "On board", "Free Wi-Fi and charging ports in the executive fleet"],
-    ["locations/upper-west-side.html", "On board", "Free Wi-Fi and charging ports in the executive fleet"],
-    ["locations/laguardia-airport.html", "On board", "Free Wi-Fi and charging ports in the executive fleet"],
+    ["locations/bronx.html", "On board", "Free Wi-Fi in every class, charging ports in the executive fleet"],
+    ["locations/upper-west-side.html", "On board", "Free Wi-Fi in every class, charging ports in the executive fleet"],
+    ["locations/laguardia-airport.html", "On board", "Free Wi-Fi in every class, charging ports in the executive fleet"],
     ["locations/soho.html", "Confirmation", "In writing before your ride"],
     ["locations/financial-district.html", "Early rides", "Pickups at any hour, including before the markets open"],
     ["locations/upper-east-side.html", "Regular bookings", "Repeat pickups, set up once"],
@@ -492,8 +620,8 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
 
 {
   const { document } = read("services.html");
-  const ENDS = { "airport-transfers": [["/book", "Book an airport transfer"]], hourly: [["/book?trip-type=hour&hours=3", "Book by the hour"]], corporate: [["https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20ask%20about%20a%20corporate%20account.", "Ask about a corporate account on WhatsApp (opens in a new tab)"]], weddings: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], prom: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], cruise: [["/book", "Book a cruise transfer"]] };
-  check("services.html: each of the six sections ends with its one booking link, the Sprinter ones with the we'll send you a price line", () => {
+  const ENDS = { "airport-transfers": [["/book", "Book an airport transfer"]], hourly: [["/book?trip-type=hour&hours=3", "Book by the hour"]], corporate: [["https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20ask%20about%20a%20corporate%20account.", "Ask about a corporate account on WhatsApp (opens in a new tab)"]], weddings: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], prom: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], cruise: [["/book", "Book a cruise transfer"]], "long-distance": [["/book", "Book a long distance trip"]], roadshow: [["/book?trip-type=hour&hours=3", "Book a roadshow day"]], "private-jet": [["/book", "Book a car to your FBO"]], sprinter: [["/book?class=sprinter", "Book the Sprinter"]], dogs: [["/book", "Book a ride with your dog"]] };
+  check("services.html: each of the eleven sections ends with its one booking link, the Sprinter ones with the we'll send you a price line", () => {
     for (const [id, want] of Object.entries(ENDS)) {
       const text = document.getElementById(id).querySelector(".svc__text");
       const lnks = [...text.querySelectorAll("a.lnk")];
@@ -596,17 +724,17 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
 
 {
   const { document } = read("car-service-with-car-seat-nyc.html");
-  check("car-service-with-car-seat-nyc.html: the sections run How to ask, Count children as passengers, Airport pickups with children, Hourly days and big groups, then the questions, with no seat model or age section before the owner names the seats", () => {
+  check("car-service-with-car-seat-nyc.html: the sections run How to ask, Count children as passengers, Airport pickups with children, the four airports, Hourly days and big groups, long trips, families outside the city, dogs and kids, then the questions, with no seat model or age section before the owner names the seats", () => {
     const h2 = [...document.querySelectorAll("main h2")].filter((h) => !h.closest("form, aside")).map((h) => [h.id, norm(h.textContent)]);
-    assert.deepEqual(h2, [["ask", "How to ask for a car seat"], ["passengers", "Count children as passengers"], ["airports-h", "Airport pickups with children"], ["groups-h", "Hourly days and big groups"], ["", "Questions about car seats"], ["close-h", "Book a car with a car seat"]]);
+    assert.deepEqual(h2, [["ask", "How to ask for a car seat"], ["passengers", "Count children as passengers"], ["airports-h", "Airport pickups with children"], ["seat-airports-h", "Car seats at JFK, LaGuardia, Newark and Teterboro"], ["groups-h", "Hourly days and big groups"], ["long-trips-h", "Long trips with kids"], ["families-h", "Families in New Jersey, Long Island and Westchester"], ["dogs-kids-h", "Dogs and kids in one car"], ["", "Questions about car seats"], ["close-h", "Book a car with a car seat"]]);
     assert.doesNotMatch(document.querySelector("main").textContent, /\[|NHTSA|American Academy of Pediatrics|certified|trained/);
-    assert.deepEqual([...document.querySelectorAll("main details summary")].map((x) => norm(x.textContent)), ["Do your cars have car seats?", "Is there a charge for a car seat?", "Do you install the car seat?", "Do children count as passengers?", "Can I get a car seat for an airport pickup?", "Can my chauffeur meet us inside the terminal?", "What happens if our flight is late?"]);
+    assert.deepEqual([...document.querySelectorAll("main details summary")].map((x) => norm(x.textContent)), ["Do car services in NYC have car seats?", "Is there a charge for a car seat?", "Do you install the car seat?", "Do children count as passengers?", "Can I get a car seat to JFK?", "Can my dog ride with the children?"]);
   });
 }
 
 const SEAT_LINKS = [
   ["faq.html", "our car seat page"],
-  ["index.html", "How to ask for a car seat"],
+  ["index.html", "Car service with car seats"],
   ["rates.html", "Infant, toddler and booster seats"],
   ["services.html", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`],
   ["about.html", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`],
@@ -614,7 +742,7 @@ const SEAT_LINKS = [
   ["fleet.html", `Infant, toddler and booster seats are ${SEAT}, charged at booking.`],
   ["chauffeur-service-nyc.html", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`],
   ["black-car-service-brooklyn.html", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`],
-  ...[...Object.keys(AREAS), ...Object.keys(AIRPORTS)].map((f) => [f, `Infant, toddler and booster seats, ${SEAT}, charged at booking.`]),
+  ...[...Object.keys(AREAS), ...Object.keys(AIRPORTS), ...Object.keys(AIRPORT_DISTANCE), ...Object.keys(OUTSIDE), ...Object.keys(ROUTES), "long-distance-car-service.html"].map((f) => [f, `Infant, toddler and booster seats, ${SEAT}, charged at booking.`]),
   ["locations/jfk-airport.html", "our car seat page"],
   ["blog/jfk-lga-ewr-airport-transfer-guide-april-17.html", `Infant, toddler and booster seats are ${SEAT}, charged at booking.`],
   ["blog/best-black-car-service-brooklyn-queens-march-20.html", `Infant, toddler and booster seats are ${SEAT}, charged at booking.`],
@@ -658,7 +786,7 @@ check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered 
   const faq = read("faq.html").document;
   const answer = `Yes. Infant, toddler and booster seats are available on airport transfers, one-way trips and hourly bookings, for ${SEAT}, charged at booking.`;
   assert.equal(norm(seat.querySelector("main .lede").textContent), `Infant, toddler and booster seats are ${SEAT}, charged at booking, on airport transfers, one-way trips and by the hour. You choose the seats when you book, and we fit them before the car leaves.`);
-  assert.deepEqual([norm(seat.querySelector("#q-car-seats .acc__body").textContent), ldAnswer(seat, "Do your cars have car seats?")], [answer, answer]);
+  assert.deepEqual([norm(seat.querySelector("#q-car-seats .acc__body").textContent), ldAnswer(seat, "Do car services in NYC have car seats?")], [answer, answer]);
   assert.equal(ldNodes(seat).find((n) => n["@type"] === "Service").description, `Chauffeured airport transfers, one-way trips and hourly bookings in New York City with infant, toddler and booster seats at ${SEAT}, charged at booking.`);
   const charge = `Yes, ${SEAT}, charged once, even on a round trip.`;
   assert.deepEqual([norm(seat.querySelector("#q-seat-charge .acc__body").textContent), ldAnswer(seat, "Is there a charge for a car seat?")], [charge, charge]);
@@ -666,21 +794,21 @@ check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered 
   const install = "Yes. Choose the seats when you book, and we'll fit them before the car leaves.";
   assert.deepEqual([norm(seat.querySelector("#q-install .acc__body").textContent), ldAnswer(seat, "Do you install the car seat?")], [install, install]);
   const airport = "Yes, at JFK, LaGuardia, Newark and Teterboro. Each seat is added to your price when you book.";
-  assert.deepEqual([norm(seat.querySelector("#q-airport-seat .acc__body").textContent), ldAnswer(seat, "Can I get a car seat for an airport pickup?")], [airport, airport]);
+  assert.deepEqual([norm(seat.querySelector("#q-airport-seat .acc__body").textContent), ldAnswer(seat, "Can I get a car seat to JFK?")], [airport, airport]);
   const ask = [...seat.querySelectorAll("#ask ~ p")].map((p) => norm(p.textContent));
-  assert.equal(ask[0], `When you book online, choose the seats you need and add the children's ages in the notes. The price is ${SEAT}, charged once, even on a round trip.`);
+  assert.equal(ask[0], `When you book online, choose the seats you need and add the children's ages in the notes. The price is ${SEAT}, charged once, even on a round trip. Our seats are from Graco and Safety 1st.`);
   assert.doesNotMatch(norm(seat.querySelector("main").textContent), /step 3/i, "the seat counts show at step 3 for a priced trip and beside the request for a trip our dispatch team prices, so the page names no step");
   assert.ok(ask[1].endsWith("and tell us which seats you need."), ask[1]);
-  assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Child Car Seats in NYC | NYC LUX RIDE", "Book infant, toddler and booster seats with your ride. Chauffeured cars to JFK, LaGuardia, Newark and Teterboro at flat rates, or by the hour."]);
-  const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Are child safety seats available?");
+  assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Car Seats NYC, $15 per seat | NYC LUX RIDE", "Infant, toddler and booster seats on airport rides, trips and hourly bookings in NYC. $15 per seat, charged once, even on a round trip."]);
+  const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Do your cars have car seats?");
   const tail = "See our car seat page for more.";
-  assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Are child safety seats available?").endsWith(tail)], [true, true]);
+  assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Do your cars have car seats?").endsWith(tail)], [true, true]);
 });
-check("locations/staten-island.html and black-car-service-brooklyn.html: the toll and cost answers cover hourly and other trips, visible and in JSON-LD", () => {
+check("locations/staten-island.html and black-car-service-brooklyn.html: the toll answers say tolls are added at booking on distance trips and charged after the ride on hourly trips, and the cost answer covers every trip, visible and in JSON-LD", () => {
   const si = read("locations/staten-island.html").document;
   const bk = read("black-car-service-brooklyn.html").document;
-  assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On hourly and other trips, bridge tolls are charged after the ride.")), "the route paragraph");
-  const toll = "Yes, both ways. Airport rides include tolls. On hourly and other trips, tolls are charged after the ride, and a round trip over the bridge means two tolls.";
+  assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.")), "the route paragraph");
+  const toll = "Yes, both ways. Airport rides include tolls. On distance trips, tolls are added at booking, and on hourly trips they are charged after the ride. A round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
   const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
