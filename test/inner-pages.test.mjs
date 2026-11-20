@@ -19,7 +19,6 @@ const CLOSES = [
   "pet-friendly-car-service-nyc.html", "private-jet-car-service-nyc.html", "roadshow-transportation-nyc.html", "sprinter-van-service-nyc.html", "cruise-terminal-car-service-nyc.html", "wedding-car-service-nyc.html",
   ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan"].map((a) => `locations/${a}.html`),
 ];
-// Location pages outside the flat rate area: T-B distance airports and T-C towns outside New York City.
 const AIRPORT_DISTANCE = ["westchester-airport", "philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport"].map((a) => `locations/${a}.html`);
 const OUTSIDE = [
   "hoboken", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct",
@@ -100,12 +99,9 @@ const AIRPORT_HOME = { "locations/jfk-airport.html": "jfk", "locations/laguardia
 const AIRPORT_OF = (name) => (/\bJFK\b/.test(name) ? "jfk" : /LaGuardia/.test(name) ? "lga" : /Newark/.test(name) ? "ewr" : /Teterboro/.test(name) ? "teb" : null);
 const T1_LABELS = ["Airport price", "Free waiting", "By the hour", "Child seats", "Booking ahead"];
 const T1_AIRPORT = ["Where we meet you", "Flight tracking", "Airport price", "Free waiting", "Child seats", "Booking ahead"];
-// Teterboro leaves out the meeting, tracking and waiting rows until the owner answers G-JET.
 const T1_PRIVATE = ["Your FBO", "Airport price", "Child seats", "Dogs", "Booking ahead"];
 const T1_DISTANCE_AIRPORT = ["Where we meet you", "Flight tracking", "Your price", "Free waiting", "Child seats", "Booking ahead"];
 const T1_OUTSIDE = ["Your price", "Free waiting", "Child seats", "Dogs", "Booking ahead"];
-// Private fields (MMU, FRG) leave out the same rows as Teterboro. PHL and BDL, typed as airports, are
-// airport-other in the booking form like HPN, so they share its rail.
 const T1_PRIVATE_DISTANCE = ["Your FBO", "Your price", "Child seats", "Dogs", "Booking ahead"];
 const T1_UNLISTED_AIRPORT = T1_DISTANCE_AIRPORT;
 const T1_OWN = {

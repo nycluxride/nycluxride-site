@@ -11,7 +11,6 @@ const SEAT = `$${CHILD_SEAT_CENTS / 100} per seat`;
 
 const AREAS = { "locations/manhattan.html": "Manhattan", "locations/brooklyn.html": "Brooklyn", "locations/queens.html": "Queens", "locations/bronx.html": "The Bronx", "locations/staten-island.html": "Staten Island", "locations/financial-district.html": "Financial District", "locations/soho.html": "SoHo", "locations/upper-east-side.html": "Upper East Side", "locations/upper-west-side.html": "Upper West Side", "locations/long-island-city.html": "Long Island City", "locations/midtown-manhattan.html": "Midtown" };
 const AIRPORTS = { "locations/jfk-airport.html": "JFK Airport", "locations/laguardia-airport.html": "LaGuardia Airport", "locations/newark-airport.html": "Newark Airport", "locations/teterboro-airport.html": "Teterboro Airport" };
-// T-B airports priced by distance, T-C towns outside New York City, T-E routes under the long distance hub.
 const AIRPORT_DISTANCE = { "locations/westchester-airport.html": "Westchester Airport", "locations/philadelphia-airport.html": "Philadelphia Airport", "locations/long-island-macarthur-airport.html": "MacArthur Airport", "locations/stewart-airport.html": "Stewart Airport", "locations/morristown-airport.html": "Morristown Airport", "locations/republic-airport.html": "Republic Airport", "locations/bradley-airport.html": "Bradley Airport" };
 const OUTSIDE = {
   "locations/hoboken.html": "Hoboken", "locations/long-island.html": "Long Island", "locations/hamptons.html": "The Hamptons", "locations/westchester-county.html": "Westchester County", "locations/greenwich-ct.html": "Greenwich", "locations/stamford-ct.html": "Stamford",
@@ -172,7 +171,6 @@ const TRUST_PAGES = new Set(["jfk-airport", "laguardia-airport", "newark-airport
 const kids = (el) => [...el.children];
 const tagOf = (el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${[...el.classList].map((c) => `.${c}`).join("")}`;
 
-// One parse per file: with 90 pages, a fresh JSDOM on every call runs the test out of memory.
 const READ = new Map();
 function read(file) {
   if (READ.has(file)) return READ.get(file);
@@ -392,7 +390,6 @@ RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, 
 const DISTANCE = ["Your price", "Priced by distance and time. You see the total before you pay."];
 const DOGS = ["Dogs", "Small and large dogs, charged once per booking. Service animals ride free."];
 const STOPS = ["Stops", "Up to 2 stops on the way, added when you book."];
-// Airports outside the flat rates are airport-other in the booking form, which sends a price.
 const QUOTE = ["Your price", "For this airport, we'll send you a price."];
 RAILS["locations/teterboro-airport.html"] = [["Your FBO", "The FBOs at Teterboro"], PRICE("New York City address"), CHILD, DOGS, AHEAD];
 for (const [file, name] of Object.entries(AIRPORT_DISTANCE)) RAILS[file] = [["Where we meet you", `How we meet you at ${name.replace(/ Airport$/, "")}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], QUOTE, FREE, CHILD, AHEAD];

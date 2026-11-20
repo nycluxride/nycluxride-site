@@ -28,7 +28,6 @@ const PRICE_TYPE = /Offer|PriceSpecification|MonetaryAmount/;
 const SEAT_PRICE = `$${CHILD_SEAT_CENTS / 100} per seat`;
 const PET_CARD = "index.html";
 const PET_PRICES = [`$${SMALL_DOG_CENTS / 100} per dog`, `$${LARGE_DOG_CENTS / 100} per dog`];
-// Gate G-PET: the owner approved the dog prices on the pet page, written from api/_rates.mjs.
 const PET_PAGE = "pet-friendly-car-service-nyc.html";
 const PET_PAGE_PRICES = [`$${SMALL_DOG_CENTS / 100} per small dog`, `$${LARGE_DOG_CENTS / 100} per large dog`];
 const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;

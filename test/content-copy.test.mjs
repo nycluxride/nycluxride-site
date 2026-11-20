@@ -554,7 +554,6 @@ for (const file of FILES.filter((f) => f.startsWith("blog/"))) {
     assert.ok(post, "no BlogPosting with dateModified");
     const url = `https://www.nycluxride.com/${file.replace(/\.html$/, "")}`;
     assert.equal(listed.get(url), post.dateModified, `blog.html lists ${listed.get(url)}`);
-    // A post never updated shows one date, its published date, which then equals dateModified.
     const once = post.datePublished === post.dateModified ? p.document.querySelector("main time.note__date[datetime]") : null;
     const shown = p.document.querySelector(".note__date time:not(.note__date)") || once || [...p.document.querySelectorAll("main time")][1];
     assert.ok(shown, "no visible updated date");

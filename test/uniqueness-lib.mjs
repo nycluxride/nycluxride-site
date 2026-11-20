@@ -1,4 +1,3 @@
-// Body text and 8-word phrase measures shared by uniqueness.test.mjs and the page checker.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { JSDOM } from "jsdom";
@@ -7,7 +6,6 @@ export const MIN_UNIQUE_WORDS = 500;
 export const MAX_SHARED = 0.3;
 export const N = 8;
 
-// Pages that were live before the 2026-11 build. They are compared against, never held to the rule.
 export const EXISTING = new Set([
   "404.html", "about.html", "black-car-service-brooklyn.html", "blog.html", "book.html", "booking-confirmed.html", "car-service-with-car-seat-nyc.html", "card-authorization.html", "chauffeur-service-nyc.html", "contact.html", "corporate-car-service-nyc.html", "faq.html", "fleet.html", "index.html", "limousine-service-nyc.html", "locations.html", "privacy-policy.html", "rates.html", "schedule.html", "services.html", "terms-of-service.html",
   ...["bronx", "brooklyn", "financial-district", "jfk-airport", "laguardia-airport", "long-island-city", "manhattan", "newark-airport", "queens", "soho", "staten-island", "upper-east-side", "upper-west-side"].map((a) => `locations/${a}.html`),
@@ -16,7 +14,6 @@ export const EXISTING = new Set([
 const NYC_AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "midtown-manhattan"];
 const SERVICES = ["chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "corporate-car-service-nyc.html", "long-distance-car-service.html", "pet-friendly-car-service-nyc.html", "private-jet-car-service-nyc.html", "roadshow-transportation-nyc.html", "sprinter-van-service-nyc.html", "cruise-terminal-car-service-nyc.html", "wedding-car-service-nyc.html"];
 
-// The family a page is compared within, by its file path, or null for pages outside every family.
 export function familyOf(file) {
   const loc = /^locations\/([a-z0-9-]+)\.html$/.exec(file);
   if (loc) return /-airport$/.test(loc[1]) ? "airport" : NYC_AREAS.includes(loc[1]) ? "nyc-area" : "outside";
@@ -41,8 +38,6 @@ const BLOCKS = "p, li, dd, dt, td, th, caption, summary, h2, h3, h4, figcaption,
 const SKIP = "#book-form, nav.crumbs, aside.rail, .section--close, figure.citymap, nav.toc-post";
 const words = (s) => s.toLowerCase().replace(/[’']/g, "").match(/[a-z0-9$]+/g) || [];
 
-// The body text of a page as blocks of words: main, without the booking form, the crumbs,
-// the rider facts box, the closing card, the map and the table of contents.
 export function bodyBlocks(html) {
   const { document } = new JSDOM(html).window;
   const main = document.querySelector("main");
@@ -63,8 +58,6 @@ export function grams(blocks) {
   return set;
 }
 
-// Words of the page not covered by an 8-word phrase that a sibling also has. A block shorter
-// than 8 words counts unless a sibling has the same block word for word.
 export function uniqueWords(blocks, siblingGrams, siblingShort) {
   let n = 0;
   for (const b of blocks) {
@@ -96,7 +89,6 @@ export function measure(file, blocks, siblings) {
   return { file, words: blocks.reduce((a, b) => a + b.length, 0), unique: uniqueWords(blocks, allGrams, allShort), grams: own.size, shared };
 }
 
-// Measures every new page of a family against the other pages of its family.
 export function measureSite(root, only = null) {
   const files = htmlFiles(root);
   const blocks = new Map(files.filter((f) => familyOf(f)).map((f) => [f, bodyBlocks(readFileSync(join(root, f), "utf8"))]));

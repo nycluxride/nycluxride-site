@@ -82,7 +82,6 @@ const AREAS = {
   "midtown-manhattan": ["Midtown", "", "in Midtown"],
 };
 const SLOT_EYEBROWS = ["Nearby", "By the hour", "Questions", "Nearby areas", "Book"];
-// Slot labels of the 2026-11 templates: T-B distance airports, T-C towns outside New York City, T-E routes.
 const SLOTS = {
   "locations/westchester-airport.html": ["Nearby", "Questions", "Nearby areas", "Book"],
   "locations/hoboken.html": ["Nearby", "Questions", "Nearby areas", "Book"],
