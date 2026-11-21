@@ -250,6 +250,41 @@ export function placeRegion(details) {
 
 export const endRegion = (zone, given, text) => zoneRegion(zone) || given || textRegion(text);
 
+const PLACE_BOXES = {
+  bronx: [40.78, 40.925, -73.94, -73.74],
+  brooklyn: [40.56, 40.745, -74.05, -73.825],
+  queens: [40.535, 40.81, -73.965, -73.69],
+  "staten-island": [40.49, 40.655, -74.27, -74.045],
+  jfk: [40.615, 40.675, -73.835, -73.735],
+  lga: [40.755, 40.795, -73.895, -73.845],
+  ewr: [40.655, 40.715, -74.205, -74.145],
+  teb: [40.835, 40.875, -74.085, -74.045],
+};
+const STATE_BOXES = { NY: [40.47, 45.03, -79.78, -71.84], NJ: [38.91, 41.37, -75.57, -73.88], CT: [40.94, 42.06, -73.74, -71.77], PA: [39.71, 42.28, -80.53, -74.68] };
+const MANHATTAN_SHAPE = [[40.6788, -74.0192], [40.6856, -74.0077], [40.6856, -74.0054], [40.6897, -74.0025], [40.6893, -73.9997], [40.6919, -74.0011], [40.6938, -74.0002], [40.7037, -73.9941], [40.7049, -73.9924], [40.7043, -73.9866], [40.7048, -73.9808], [40.707, -73.975], [40.7085, -73.9728], [40.7065, -73.9705], [40.7073, -73.9687], [40.7093, -73.9691], [40.7162, -73.9668], [40.7237, -73.9607], [40.7288, -73.9601], [40.7329, -73.9615], [40.7389, -73.9618], [40.7457, -73.9584], [40.7665, -73.9407], [40.7701, -73.9346], [40.7721, -73.934], [40.773, -73.9368], [40.7735, -73.9369], [40.7765, -73.9357], [40.7775, -73.9337], [40.7773, -73.9322], [40.7755, -73.9301], [40.776, -73.9282], [40.7838, -73.9165], [40.7875, -73.9136], [40.7905, -73.9094], [40.7965, -73.9118], [40.7998, -73.9193], [40.803, -73.9226], [40.8032, -73.9268], [40.8088, -73.9315], [40.8332, -73.9326], [40.8355, -73.9322], [40.8453, -73.9274], [40.8563, -73.9193], [40.8663, -73.9101], [40.8713, -73.9084], [40.8727, -73.9063], [40.8765, -73.9063], [40.8794, -73.909], [40.88, -73.9117], [40.8763, -73.9155], [40.8771, -73.9194], [40.8793, -73.9221], [40.883, -73.9342], [40.8513, -73.9536], [40.8269, -73.9643], [40.7578, -74.0148], [40.7182, -74.0245], [40.7003, -74.0272], [40.6848, -74.0365]];
+const MANHATTAN_ISLES = [[40.6872, 40.6925, -74.049, -74.0415], [40.6955, 40.702, -74.045, -74.0365]];
+const inBox = ([south, north, west, east], lat, lng) => lat >= south && lat <= north && lng >= west && lng <= east;
+
+function inShape(shape, lat, lng) {
+  let inside = false;
+  for (let i = 0, j = shape.length - 1; i < shape.length; j = i++) {
+    const [[a, b], [c, d]] = [shape[i], shape[j]];
+    if (a > lat !== c > lat && lng < ((d - b) * (lat - a)) / (c - a) + b) inside = !inside;
+  }
+  return inside;
+}
+
+export function placeFits(zone, location, region = "") {
+  const lat = location && location.latitude;
+  const lng = location && location.longitude;
+  if (![lat, lng].every((n) => typeof n === "number" && Number.isFinite(n))) return true;
+  const state = inNewYork(region) ? "NY" : String(region || "");
+  if (owns(STATE_BOXES, state) && !inBox(STATE_BOXES[state], lat, lng)) return false;
+  if (/^[A-Z]{2}$/.test(state) && state !== "NY" && inShape(MANHATTAN_SHAPE, lat, lng)) return false;
+  if (zone === "manhattan") return inShape(MANHATTAN_SHAPE, lat, lng) || MANHATTAN_ISLES.some((box) => inBox(box, lat, lng));
+  return !owns(PLACE_BOXES, zone) || inBox(PLACE_BOXES[zone], lat, lng);
+}
+
 export function classifyPlace(details, label) {
   const parts = details && Array.isArray(details.addressComponents) ? details.addressComponents : [];
   const part = (type) => parts.find((item) => item && Array.isArray(item.types) && item.types.includes(type)) || {};

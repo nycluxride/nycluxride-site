@@ -275,6 +275,24 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAACQCgCdASpAACsAPr1SokunJSOhsBgOqOAXiWUAx29T/H+DJPG7ifLX+hNcP2qYeHgDhM9dppnk5u7J7Xgnps6brtlUj4O+ds66GB2/+xy6ftStLQtUK4KfgcpkKWAA/vTR1KiwT7IJu0rhnvWnN+5MCy/CiJr+chsMRyssvrTbeBWletm39YRlDK5QfxnDuYNYXdVaEzCV6vmt6psPjjieXKA/QynuLMC8J8/HYC7vxvYii21jwmGRc82r8Ck51eHGE4dyMXSrmL9I0ApqrWAanij8JEd6UpkT7ltdQrmuYAAA"
   },
+  "sprinter-executive-cabin.webp": {
+    "sha256": "f70e09f9d5448b03e8dec9f34a6b231b3971e4ba7befed6a523de78a4dd94cb3",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRsoAAABXRUJQVlA4IL4AAAAwCQCdASpAACsAPqlGnUumJCMhuqwAwBUJZQDKt1PaATGWe887iS6w+SagOLa9HhMUIIv5KIXe3uHugaxrcjz9TjHcaf92l3plXIrXCzoTKecAAP4Uc+KL9GHtBvG4UImy6YttoPX+E7y2LKZg3mDaqx9wJugu3KEgWHm2kIjrhftTHdcE03fwtoI+UN44P7AbWpq5dH1+tP9jVtO7B9Ss8K6blD/RksqUvpeoL9rD0W+ww0c+bWqdZljigAAA"
+  },
+  "sprinter-executive-lounge.webp": {
+    "sha256": "38066733aa8cd467691c4dbed098fb48a730cfe2a11d69c233c5903482eb325b",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRuoAAABXRUJQVlA4IN4AAABQCACdASpAACsAPtFQoUwoJCMiLVmdsQAaCUAXjWp7JWPDl4FuBHao+Vu2k+sGMsDqtJB43e/UHUFueMJraxYJT8AMENS2h/ltbAAA/uw+d/U7T3DMfQ/BoovxPURaWoIiRDocPCv5HT1zZxdXDNONPoA0aeXnH+6aLrU1XA5vWM+0bEtKXoagQILhFK9eO88qvL7ZMkDJZUPwVXQ+9y7qQjNS8yCQbWxZziJpPEmwKqwkw+HSWb6alfFGWXnlEaeMyLI980qGOV9EMGhEwmmQybpnRhIdEWdQycwAAAA="
+  },
+  "sprinter-executive-night.webp": {
+    "sha256": "026b3e0ed3694437f941de2f04a72ed4d3bb335547ca8ec126b2169f26424ab5",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRtwAAABXRUJQVlA4INAAAACQCgCdASpAACsAPtFWpEwoJKOiMBgMAQAaCWUAqwgr0XyTdi7EtBCbr88Po7/ObuFmbtlzyEjkXsOpZGoYCi0JGqBM6qgZJYXlXW3xhmEAU3Dy5FSSJU6Zi44j7pAA/p2U2vuf57I69m5uUDI+mBdDWCJD6SZ+cDQFvZcPx04WT+Euz1rxCsRrLu1aVX7PxrMKgrTkFYjA4FlhlqIToBxeHU6uUhNeFLSstYspVltIHqVS9J+XeBDvjHF/1Ma11VAZefSr1jHuA6ByzzSLgAAA"
+  },
   "sprinter-jet.webp": {
     "sha256": "cd8a1f01685974b2ce164f593a8bd64b1f352e9b32187c6e4b2b080714a74410",
     "width": 64,
@@ -287,10 +305,46 @@
     "height": 79,
     "src": "data:image/webp;base64,UklGRvoAAABXRUJQVlA4IO4AAADQDACdASpAAE8APr1SnUunJSKntntqqPAXiWcA059T3DdlPKny9UZD9mKCgxzWX1sqV3G4MSDFpQBoNAbXPmVdCTiB0ewtACWlsXJyrjsPTEnZwmSMnARs88RowqkU8xoGS0Cec3u//A168UpjmtAA/vltU1rHQOEO1ObWk5W5Gpzydeyt8w9aZ2Sf3DxSxAGEx2q1JqtOHSx1S99huFJT0+nrcec/Bc/7ULL6d0a/W4+dOvYTvsEMkEdtSna/3Ewwks4VHacSnh4ahZXhP3F+qD4gSbkC9FDs5i8isSD1w/pO2GI7gWFxylR9vQAA"
   },
+  "sprinter-limo-castle.webp": {
+    "sha256": "e0cc2beafb866be42db2dbe970766b7e59d63f75414e571e1ea87a8ecb1e2add",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRuIAAABXRUJQVlA4INYAAACwCACdASpAACsAPqlMmEumJSKhvVooAMAVCWUAxQw+0Xys0GxvyXW+9nUnIi7pgVb9+gD5gMsBwsXh3nPGCn7TzJ9V81dJFG9ojvt75AAA/uca9e2zDU6TDSs76uJV9O0uzkKmCE+clwjvrCmAnGrMagdJ6qFo7Oijk34YeT2eUD0ih+rqKVazLI7Jr+QMl9L4FiZZVg0Ls+opkwM/RVae7fymxI/08c/uxrSiN8RWFPgovXfR0LBpMiqWh8Cs9XylsPWg43tQZRwQt6FbsNwVK8ZRuAAA"
+  },
+  "sprinter-limo-lounge.webp": {
+    "sha256": "947cf4e692782c8c2ee4c0450923781a5b4b329d302572dc8190e4aa0f095799",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAABwCACdASpAACsAPsVQoEunpKMhsB1dUPAYiUAYC4TYRzsW1abeisWIz+P/2jYypvN2N6P0tdt6B4hMYMyzBDJxgUpeTRrsz1z9qu1wAP6CV6W3UlgtG53dHJxdr6+WhJSMAA1L+XWUk79dmUunzbeVecxK8JEip2UMDr+4wrorp5vdpvO2FXX59GvWmw6vwZcBQfFWGX8cR5/1Bf0dPMlPEbTgqd7G2XJTdwnwuP7nUlD56HkalD6gISEL6EawDs2lvJ9Rt2ux3hYFfevZ74ttJwikx6gxmHL3Ehq2Kyk25Dx3Gn+16+9VdAAAAA=="
+  },
+  "sprinter-limo-white.webp": {
+    "sha256": "c8cc7651a8f1ea84483cf96aa8ea80532fee86dcf4892ee777dddef2ed8882db",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAABwCgCdASpAACsAPtFip08oJaOiKBqpyQAaCUAWJAEZNmHEEjA8PQk+NuGGHkIHpapHOP3FKP8wdqVJprutVUYkOmxVoufIsgHOTrFo4TC2KiAKKpG2mAxJDBZNAAD9TGE5NqNODxUEZTj4vSZd1qMC2UN6eSB2ZDCFCtM1KKY7eDw9FXk+WYMzfjxq0dKZmFPiNUYw+dZP9g6Fzq5fEnCzX+CnLRcYnIT3N8Nd/hTFqmidz8enibbYoM08AQSTB6lAfOd3W0xgcvYva2BkFT492uLhC9X3KVo2XnqvG3pvXHMMaFBnnkf+aJQMuHICW1pbBYnWXnuD3B0tDfNnP4X5vagZRT4V4O2hAAAA"
+  },
   "sprinter-limo.webp": {
     "sha256": "715df6105c7e4b3d62b32e06fc3dcb27a9e26452b607825a6bdec41cc9cd5dc8",
     "width": 64,
     "height": 34,
     "src": "data:image/webp;base64,UklGRtAAAABXRUJQVlA4IMQAAABwCACdASpAACIAPqVEmEumJCKhvV6IAMAUiWcACG+mcrmMnY0RdLwEJiNyoKNlgNBbc/xIKlooNcNSphSVhF00P8p60qW3M/C42sgAAP7kWSYvgrVw0ekdasvU0v9WjwYfeFUO31nG9PloatbClA83I9XgDT21IVE8608P0r+9l1yO1zAiwk6gzzaoS7vhR73+/tdOb+1NXTjKQoJtBR5YpcL14AQGEm4qxKMDzzss9o+0hErdq7ACv6ZWn0jlcUhAGYAA"
+  },
+  "sprinter-shuttle-luggage.webp": {
+    "sha256": "227f8cc6fa83499faf24340c703534f7f6c2c5faa1a457ece73bdd333376adf9",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRsoAAABXRUJQVlA4IL4AAABQCQCdASpAACsAPtFgq04oJaQiKrQLAQAaCWcA0QtT2Vxn9TpZQI/OUIbqZR26ipUZ+JGGjkxNL7LSOZUGiG58mWLdUaUUKqAvXdfnjtF5dO8SAAD+7uomGmgpsVr5MCuDh+BxSBPsnkVc6CvT1hydteq7DK+ppKQjVs09KehJlJvtHmHsbT+Fn+1WrWfXMD/g40ApBqdvhn9VplH724qHdFBN4+8XoiiQgZxwzXgnjdxQwcwovekmRPfcn3AA"
+  },
+  "sprinter-shuttle-seats.webp": {
+    "sha256": "a861f2341586ca7fb467de3aed1200c025ee67abca20abfa38e44ae0c07c27c8",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAAAwCwCdASpAACsAPslQokunpKMhsrSeYPAZCUAZ8v+KL5dj5htB6Rhy2KhPtCIMIcHNULls2wkjQtZA3lLcih1PlNKj5Z1laPrwKw/vCctJ250MvkkuK1b06F3eTZlrlYQYAAD++RRe5phf74Qo0zntB//DWtgKo49/DWgP7Ke6ZUSHfs2KhfUGhFHkaXWyOfo0TrVJD+eKEt38y6gEmjhyzCzguVAE9J2ae4HsD7/2h6WFIi3Ohg73EaED+2FSiyhiZJKzM11qNyHAtWtDD2OvbOOI7aVcEFAw9K5a5Dp8AAAA"
+  },
+  "sprinter-shuttle-side.webp": {
+    "sha256": "1daa94e774c1648b8413d48a9cc33b032f34d5904f00f98cc98071f64c5fd41f",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAACQCQCdASpAACsAPsVSokunpKMhsrSeYPAYiWMAyRNSxOkTz+QjILJ0X2aVU6cWynV/OBv2X6NwbR4ZWNHCOu9bsuVK3po/YmsnnVXTIoqH+aG+quwgAP3vWdOgXxbh7nNGXCmCmdNMfzy8ag/DzSPkJ8rBLudJZ6Rmvab13Q4EXq99pm+QcPVyYoTU4XOAOBPDz3y0uPM2QNN+93eSoyNLVXkx3Mxb0a5zP92p9Dj/IIoxo7e/sEbEsjT0trVivzQhON19Bo8f4+VNmpMwWer7CFNi+uXRriw0IfSmKKIuMRCRyQFy+WAj5XAAAA=="
   }
 }

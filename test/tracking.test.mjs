@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 
 const SRC = readFileSync(fileURLToPath(new URL("../assets/tracking.js", import.meta.url)), "utf8");
-const LABEL_LINE = 'var PURCHASE_LABEL = "";';
+const LABEL_LINE = 'var PURCHASE_LABEL = "t37RCPLvhLsdEIX4gOJD";';
+const PAID_LABEL = "t37RCPLvhLsdEIX4gOJD";
 const TEST_LABEL = "TESTPURCHASELABEL";
 const ADS_ID = "AW-18190711813";
 const GA4_ID = "G-9MT2ZW7LPV";
@@ -45,16 +46,60 @@ test("tracking.js carries no comments", () => {
   assert.doesNotMatch(SRC, /\/\*|(^|[^:"'])\/\/(?!wa\.me)/m);
 });
 
-test("the purchase label line is exactly the empty constant", () => {
+test("the purchase label line is exactly the Paid Booking label", () => {
   assert.equal(SRC.split("\n").filter((l) => l.includes("PURCHASE_LABEL =")).map((l) => l.trim()).join("|"), LABEL_LINE);
 });
 
-test("with a purchase label, nlrPurchase sends the GA4 purchase and one Ads conversion with value, currency and the Stripe session id as the transaction id for a live session", () => {
-  const { window, conversions, purchases } = boot("https://www.nycluxride.com/booking-confirmed", "", true);
-  assert.equal(window.nlrPurchase("cs_live_a1b2c3d4e5f6", "48213590", 22300), true);
-  assert.deepEqual(purchases(), [["event", "purchase", { send_to: GA4_ID, transaction_id: "cs_live_a1b2c3d4e5f6", value: 223, currency: "USD" }]]);
-  assert.deepEqual(conversions(), [["event", "conversion", { send_to: `${ADS_ID}/${TEST_LABEL}`, value: 223, currency: "USD", transaction_id: "cs_live_a1b2c3d4e5f6" }]]);
+test("for a live session nlrPaidBooking sends one GA4 purchase and one Paid Booking conversion, each with the booking reference as the transaction id and nothing else", () => {
+  const { window, calls, conversions, purchases } = boot("https://www.nycluxride.com/booking-confirmed");
+  assert.equal(window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "48213590"), true);
+  assert.deepEqual(purchases(), [["event", "purchase", { send_to: GA4_ID, transaction_id: "48213590" }]]);
+  assert.deepEqual(conversions(), [["event", "conversion", { send_to: `${ADS_ID}/${PAID_LABEL}`, transaction_id: "48213590" }]]);
+  assert.equal(calls.length, 2);
 });
+
+test("the Paid Booking conversion goes to AW-18190711813/t37RCPLvhLsdEIX4gOJD", () => {
+  const { window, conversions } = boot("https://www.nycluxride.com/booking-confirmed");
+  window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "48213590");
+  assert.deepEqual(conversions().map((c) => c[2].send_to), ["AW-18190711813/t37RCPLvhLsdEIX4gOJD"]);
+});
+
+test("the paid booking events carry no value and no currency, even when a caller passes an amount", () => {
+  const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
+  assert.equal(window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "48213590", 22300), true);
+  const sent = JSON.parse(JSON.stringify(calls)).map((c) => c[2]);
+  assert.equal(sent.length, 2);
+  for (const params of sent) {
+    assert.equal("value" in params, false);
+    assert.equal("currency" in params, false);
+    assert.ok(!JSON.stringify(params).includes("223"), JSON.stringify(params));
+  }
+  assert.doesNotMatch(SRC, /currency|valueCents|value_cents/);
+});
+
+test("the transaction id of both events is the booking reference, never the Stripe session id, and at most 64 characters", () => {
+  const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
+  window.nlrPaidBooking("cs_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9", "69042564");
+  const ids = JSON.parse(JSON.stringify(calls)).map((c) => c[2].transaction_id);
+  assert.deepEqual(ids, ["69042564", "69042564"]);
+  assert.ok(ids.every((id) => id.length <= 64 && !id.startsWith("cs_")));
+});
+
+test("the paid booking events send no customer data: no user_data, no email, phone or name, and no enhanced conversions", () => {
+  const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
+  window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "48213590");
+  for (const [, , params] of JSON.parse(JSON.stringify(calls))) assert.deepEqual(Object.keys(params).sort(), ["send_to", "transaction_id"]);
+  assert.deepEqual(calls.filter((c) => c[0] !== "event"), []);
+  assert.doesNotMatch(SRC, /user_data|enhanced|email_address|phone_number|first_name|last_name/);
+});
+
+for (const [why, ref] of [["no reference", undefined], ["an empty reference", ""], ["an email address", "ana.lopez@example.com"], ["a name with a space", "Ana Lopez"], ["a reference over 64 characters", "1".repeat(65)], ["a number", 48213590]]) {
+  test(`nlrPaidBooking fires nothing for a live session with ${why}`, () => {
+    const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
+    assert.equal(window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", ref), false);
+    assert.deepEqual(calls, []);
+  });
+}
 
 for (const [why, url, id] of [
   ["a test session", "https://www.nycluxride.com/booking-confirmed", "cs_test_a1b2c3d4e5f6"],
@@ -63,23 +108,23 @@ for (const [why, url, id] of [
   ["the bare domain", "https://nycluxride.com/booking-confirmed", "cs_live_a1b2c3d4e5f6"],
   ["a local server", "http://127.0.0.1:4173/booking-confirmed", "cs_live_a1b2c3d4e5f6"],
 ]) {
-  test(`nlrPurchase fires nothing for ${why}`, () => {
+  test(`nlrPaidBooking fires nothing for ${why}`, () => {
     const { window, calls } = boot(url, "", true);
-    assert.equal(window.nlrPurchase(id, "NLR-7K3Q2P", 16500), false);
+    assert.equal(window.nlrPaidBooking(id, "NLR-7K3Q2P"), false);
     assert.deepEqual(calls, []);
   });
 }
 
-test("with the real empty label, nlrPurchase sends one GA4 purchase with transaction_id, value and currency USD and no Ads conversion", () => {
-  const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed");
-  assert.equal(window.nlrPurchase("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P", 16500), true);
-  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["event", "purchase", { send_to: GA4_ID, transaction_id: "cs_live_a1b2c3d4e5f6", value: 165, currency: "USD" }]]);
+test("with a test label in place of the real one, nlrPaidBooking sends the conversion to that label with the same reference", () => {
+  const { window, calls } = boot("https://www.nycluxride.com/booking-confirmed", "", true);
+  assert.equal(window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P"), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [["event", "purchase", { send_to: GA4_ID, transaction_id: "NLR-7K3Q2P" }], ["event", "conversion", { send_to: `${ADS_ID}/${TEST_LABEL}`, transaction_id: "NLR-7K3Q2P" }]]);
 });
 
-test("nlrPurchase returns false without throwing when the tag is absent", () => {
+test("nlrPaidBooking returns false without throwing when the tag is absent", () => {
   const dom = new JSDOM("<!doctype html><body></body>", { url: "https://www.nycluxride.com/booking-confirmed", runScripts: "outside-only" });
   dom.window.eval(SRC.replace(LABEL_LINE, `var PURCHASE_LABEL = "${TEST_LABEL}";`));
-  assert.equal(dom.window.nlrPurchase("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P", 16500), false);
+  assert.equal(dom.window.nlrPaidBooking("cs_live_a1b2c3d4e5f6", "NLR-7K3Q2P"), false);
 });
 
 const LINKS = '<a id="book" href="/book">Book a car</a><a id="bookq" href="/book?trip-type=one">Book a car</a><a id="bookh" href="/book#resume">Book a car</a><a id="booking" href="/booking-guide">Guide</a><a id="tel" href="tel:+16467750556">Call</a><a id="wa" href="https://wa.me/16467750556">WhatsApp</a><a id="mail" href="mailto:info@nycluxride.com">Email</a><a id="rates" href="/rates">Rates</a>';
@@ -225,6 +270,15 @@ test("GA4 events go to G-9MT2ZW7LPV through the existing tag only, and the Ads l
   assert.equal(SRC.split("\n").filter((l) => l.includes("G-9MT2ZW7LPV")).map((l) => l.trim()).join("|"), 'var GA4_ID = "G-9MT2ZW7LPV";');
   assert.doesNotMatch(SRC, /gtag\/js|"config"/);
   for (const label of ["0YD2COGt8L8cEIX4gOJD", "Sz9RCOSt8L8cEIX4gOJD", "yIstCOet8L8cEIX4gOJD"]) assert.equal(SRC.split(label).length, 2, label);
+});
+
+test("the confirmation script counts a paid booking through nlrPaidBooking with the session id and the reference, and never calls the release 1 nlrPurchase", () => {
+  const names = readdirSync(fileURLToPath(new URL("../assets/", import.meta.url))).filter((n) => /^done\.[A-Za-z0-9_-]{6,}\.js$/.test(n));
+  assert.equal(names.length, 1);
+  const done = readFileSync(fileURLToPath(new URL(`../assets/${names[0]}`, import.meta.url)), "utf8");
+  assert.match(done, /w\.nlrPaidBooking&&\(S\(k,1\),w\.nlrPaidBooking\(id,RF\)\)/);
+  assert.doesNotMatch(done, /nlrPurchase/);
+  assert.doesNotMatch(SRC, /nlrPurchase/);
 });
 
 test("tracking.js no longer names the old hero form", () => {

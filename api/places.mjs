@@ -1,5 +1,5 @@
 import { json, clean, jsonRequest, clientBudget, instanceBudget } from "./_http.mjs";
-import { AREA_LABELS, AIRPORT_ZONES, ADDRESS_TYPES, classifyText, classifyPlace, placeRegion, localById, areaText, placeLevel, clearMatch } from "./_places.mjs";
+import { AREA_LABELS, AIRPORT_ZONES, ADDRESS_TYPES, classifyText, classifyPlace, placeRegion, placeFits, localById, areaText, placeLevel, clearMatch } from "./_places.mjs";
 import { googleOn, mapOn, mapJsOn, autocomplete, placeDetails, reverseGeocode, geocodeAddress, geocodePlace, spot } from "./_google.mjs";
 import { signTicket, verifyTicket, placeProof, proofOk } from "./_ticket.mjs";
 import { airportZip } from "./_trip.mjs";
@@ -79,8 +79,13 @@ async function pick(request, data) {
     console.error("places-pick", "label");
     return json(200, { kind: "error" });
   }
+  const region = placeRegion(result.details);
+  if (!placeFits(zone, result.details.location, region)) {
+    console.error("places-pick", "spot");
+    return json(200, { kind: "error" });
+  }
   const level = placeLevel(kinds(result.details), zone);
-  const ticket = signTicket(id, zone, label, Date.now(), level, placeRegion(result.details));
+  const ticket = signTicket(id, zone, label, Date.now(), level, region);
   if (!ticket) {
     console.error("places-pick", "ticket");
     return json(200, { kind: "error" });
@@ -104,12 +109,13 @@ async function here(request, data) {
   if (!found) return json(200, { kind: "none" });
   const label = clean(found.formattedAddress.replace(/, USA$/, ""), MAX_TEXT);
   const zone = classifyPlace(found, label);
-  if (!label || !PLACE_ID.test(found.placeId) || conflicts(classifyText(label).zone, zone)) {
+  const region = placeRegion(found);
+  if (!label || !PLACE_ID.test(found.placeId) || conflicts(classifyText(label).zone, zone) || !placeFits(zone, found.location, region)) {
     console.error("places-here", "label");
     return json(200, { kind: "error" });
   }
   if (zone === "abroad") return json(200, { kind: "far" });
-  const ticket = signTicket(found.placeId, zone, label, Date.now(), 0, placeRegion(found));
+  const ticket = signTicket(found.placeId, zone, label, Date.now(), 0, region);
   if (!ticket) {
     console.error("places-here", "ticket");
     return json(200, { kind: "error" });

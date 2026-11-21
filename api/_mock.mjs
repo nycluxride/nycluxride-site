@@ -1,4 +1,5 @@
 import { norm } from "./_places.mjs";
+import { arcsOf, project } from "./_tolls.mjs";
 
 const part = (types, longText, shortText = longText) => ({ longText, shortText, types });
 const state = (code, name) => part(["administrative_area_level_1", "political"], name, code);
@@ -87,6 +88,14 @@ const FIXTURES = [
     at: [40.644166, -73.782425],
     kinds: ["airport", "establishment", "point_of_interest"],
     components: [state("NY", "New York"), county("Queens County"), borough("Queens"), zip("11430"), US],
+  },
+  {
+    trigger: "far pin",
+    item: { id: "mock-far-pin", main: "350 5th Ave", secondary: "New York, NY", types: ["subpremise", "geocode"] },
+    address: "350 5th Ave, New York, NY 10118, USA",
+    at: [41.01182, -73.69933],
+    kinds: ["subpremise"],
+    components: [state("NY", "New York"), county("New York County"), borough("Manhattan"), zip("10118"), US],
   },
   {
     trigger: "cn tower",
@@ -265,8 +274,67 @@ function mockDrive(waypoints) {
   return { minutes, miles, ...tollInfo(cents) };
 }
 
-export function mockRoute(size, waypoints) {
-  const drive = { ...mockDrive(waypoints), ...(Array.isArray(waypoints) && waypoints.length > 1 && mockPath(waypoints)) };
+const OUT_PATH = [[40.68881, -74.19111], [40.69714, -74.18469], [40.70376, -74.18322], [40.70636, -74.17821], [40.71058, -74.17702], [40.71047, -74.16409], [40.70776, -74.15546], [40.70545, -74.15165], [40.71009, -74.14777], [40.71618, -74.13566], [40.72522, -74.13206], [40.7327, -74.12425], [40.74441, -74.12162], [40.75047, -74.11636], [40.75627, -74.10352], [40.75804, -74.08486], [40.7676, -74.06538], [40.78168, -74.05512], [40.80424, -74.03361], [40.8115, -74.02936], [40.82611, -74.02645], [40.83594, -74.01958], [40.86359, -74.01097], [40.87205, -73.99859], [40.87539, -73.99037], [40.87458, -73.98424], [40.86578, -73.97528], [40.85804, -73.97572], [40.85356, -73.96411], [40.84999, -73.94453], [40.84475, -73.92525], [40.84322, -73.89184], [40.83708, -73.87969], [40.83565, -73.8689], [40.82794, -73.84407], [40.8302, -73.833], [40.83629, -73.82458], [40.85723, -73.82646], [40.8712, -73.8337], [40.87894, -73.83309], [40.8847, -73.82329], [40.88733, -73.80271], [40.90018, -73.79574], [40.917, -73.78117], [40.94145, -73.75117], [40.96054, -73.73966], [40.96528, -73.72889], [40.97448, -73.72183], [40.9749, -73.70348], [40.9868, -73.6822], [40.98844, -73.66616], [41.01784, -73.63497], [41.02716, -73.604], [41.03557, -73.59436], [41.0399, -73.58281], [41.03995, -73.5764], [41.04171, -73.5787], [41.04108, -73.58634], [41.03305, -73.58798], [41.03234, -73.58183]];
+const BACK_PATH = [[41.03234, -73.58183], [41.03388, -73.57951], [41.0376, -73.57931], [41.03672, -73.58334], [41.04102, -73.58313], [41.04158, -73.57881], [41.03504, -73.59581], [41.02747, -73.60374], [41.01812, -73.63486], [40.98836, -73.66664], [40.98692, -73.68224], [40.97512, -73.70314], [40.97473, -73.72162], [40.96501, -73.72947], [40.96075, -73.73972], [40.94164, -73.75122], [40.91714, -73.78124], [40.90021, -73.79589], [40.88771, -73.80265], [40.88469, -73.82383], [40.87843, -73.83377], [40.87175, -73.83423], [40.85733, -73.82669], [40.83593, -73.82513], [40.83049, -73.83266], [40.82894, -73.84607], [40.8357, -73.86857], [40.83713, -73.87938], [40.84335, -73.89195], [40.84484, -73.9249], [40.85012, -73.94433], [40.85394, -73.96278], [40.85723, -73.97294], [40.86573, -73.97466], [40.87411, -73.98264], [40.87592, -73.98837], [40.87423, -73.99549], [40.8641, -74.01168], [40.83294, -74.0224], [40.81977, -74.0389], [40.81249, -74.0585], [40.79108, -74.08685], [40.76147, -74.11431], [40.74474, -74.12213], [40.73327, -74.1249], [40.72493, -74.13319], [40.71628, -74.13787], [40.70834, -74.15179], [40.70901, -74.15761], [40.71165, -74.1647], [40.70874, -74.16917], [40.70811, -74.18013], [40.69939, -74.18675], [40.69351, -74.18717]];
+const STOP_AT = 52;
+const STOP_PATH = [...OUT_PATH.slice(0, STOP_AT), [41.0215, -73.6245], ...OUT_PATH.slice(STOP_AT)];
+const TURNPIKE_OUT = { from: [40.70776, -74.15546], to: [40.8115, -74.02936] };
+const GWB_OUT = { from: [40.85356, -73.96411], to: [40.84999, -73.94453] };
+const SPLIT_ROUTES = [
+  { names: [EWR, RIVERSIDE], minutes: 79, miles: 52.5, path: OUT_PATH, stops: [], tolls: [TURNPIKE_OUT, GWB_OUT] },
+  { names: [RIVERSIDE, EWR], minutes: 81, miles: 50.9, path: BACK_PATH, stops: [], tolls: [{ from: [40.81249, -74.0585], to: [40.70834, -74.15179] }] },
+  { names: [EWR, STEAMBOAT, RIVERSIDE], minutes: 87, miles: 55.1, path: STOP_PATH, stops: [STOP_AT], tolls: [TURNPIKE_OUT, GWB_OUT] },
+];
+const TOLL_WEEK = ["2026-11-09", "2026-11-15"];
+const NEW_YORK_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
+const inWeek = (when) => {
+  const day = when instanceof Date && Number.isFinite(when.getTime()) ? NEW_YORK_DAY.format(when) : "";
+  return day >= TOLL_WEEK[0] && day <= TOLL_WEEK[1];
+};
+const splitRoute = (waypoints, when) => (Array.isArray(waypoints) && inWeek(when) ? SPLIT_ROUTES.find(({ names }) => same(names, waypoints.map(point))) : null) || null;
+
+function nearest(path, arcs, at, from) {
+  let best = null;
+  for (let i = Math.max(1, from); i < path.length; i++) {
+    const hit = project(path, arcs, at, i);
+    if (!best || hit.gap < best.gap) best = { ...hit, i };
+  }
+  return best;
+}
+
+export function mockSplit(body) {
+  const stops = (body.intermediates || []).filter((item) => !item.location);
+  const fixture = splitRoute([body.origin, ...stops, body.destination], new Date(body.departureTime));
+  if (!fixture) return { routes: [] };
+  const { path, minutes, miles } = fixture;
+  const arcs = arcsOf(path);
+  const total = arcs[arcs.length - 1];
+  const edges = [0];
+  let from = 1;
+  let stop = 0;
+  for (const item of body.intermediates) {
+    if (item.location) {
+      const hit = nearest(path, arcs, [item.location.latLng.latitude, item.location.latLng.longitude], from);
+      edges.push(hit.at);
+      from = hit.i;
+    } else {
+      edges.push(arcs[fixture.stops[stop++]]);
+    }
+  }
+  edges.push(total);
+  const spans = fixture.tolls.map((span) => ({ ...span, at: (nearest(path, arcs, span.from, 1).at + nearest(path, arcs, span.to, 1).at) / 2 }));
+  const legs = edges.slice(1).map((end, n) => {
+    const inside = spans.filter(({ at }) => at >= edges[n] && at < end);
+    const cents = inside.some((span) => !Number.isInteger(span.cents)) ? null : inside.reduce((sum, span) => sum + span.cents, 0);
+    return { distanceMeters: Math.round(((end - edges[n]) / total) * miles * 1609.344), duration: `${Math.round(((end - edges[n]) / total) * minutes * 60)}s`, ...(inside.length && tollInfo(cents === null ? undefined : cents)) };
+  });
+  return { routes: [{ distanceMeters: legs.reduce((sum, leg) => sum + leg.distanceMeters, 0), legs }] };
+}
+
+export function mockRoute(size, waypoints, when) {
+  const split = splitRoute(waypoints, when);
+  const fixed = split && { minutes: split.minutes, miles: split.miles, travelAdvisory: { tollInfo: {} }, polyline: encode(split.path), points: [0, ...split.stops, split.path.length - 1].map((i) => split.path[i]), start: { lat: split.path[0][0], lng: split.path[0][1] }, end: { lat: split.path.at(-1)[0], lng: split.path.at(-1)[1] } };
+  const drive = fixed || { ...mockDrive(waypoints), ...(Array.isArray(waypoints) && waypoints.length > 1 && mockPath(waypoints)) };
   if (!size) return drive;
   const src = `data:image/svg+xml,${encodeURIComponent(mapSvg(size.width, size.height))}`;
   return { ...drive, map: { src, src2x: src, ...size } };

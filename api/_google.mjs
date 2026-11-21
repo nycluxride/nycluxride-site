@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
-import { googleMock, mapMock } from "./_http.mjs";
-import { mockSuggest, mockDetails, mockRoute, mockReverse, mockLocate } from "./_mock.mjs";
+import { googleMock, mapMock, instanceBudget } from "./_http.mjs";
+import { mockSuggest, mockDetails, mockRoute, mockSplit, mockReverse, mockLocate } from "./_mock.mjs";
+import { tollCents, decodePath, tollPlan, priceSplit } from "./_tolls.mjs";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL = "https://places.googleapis.com/v1/places/";
@@ -13,10 +14,12 @@ const DETAILS_MASK = "id,formattedAddress,shortFormattedAddress,addressComponent
 const REVERSE_MASK = "results.placeId,results.location,results.granularity,results.formattedAddress,results.addressComponents,results.types";
 const ROUTE_MASK = "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation";
 const TOLL_MASK = "routes.travelAdvisory.tollInfo";
-export const TOLL_PASSES = ["US_NY_EZPASSNY", "US_NJ_EZPASSNJ", "US_PA_EZPASSPA", "US_DE_EZPASSDE", "US_MD_EZPASSMD", "US_MA_EZPASSMA", "US_RI_EZPASSRI", "US_NH_EZPASSNH", "US_ME_EZPASSME"];
+const SPLIT_MASK = "routes.distanceMeters,routes.legs.distanceMeters,routes.legs.duration,routes.legs.travelAdvisory.tollInfo";
+export const TOLL_PASSES = ["US_NY_EZPASSNY"];
 const BIAS = { circle: { center: { latitude: 40.758, longitude: -73.9855 }, radius: 50000 } };
 const PLACES_TIMEOUT_MS = 2500;
 const ROUTES_TIMEOUT_MS = 3000;
+const SPLIT_INSTANCE = 60;
 const MAX_ITEMS = 5;
 const MAX_URL = 16000;
 const MAP_W = [120, 640];
@@ -39,17 +42,17 @@ const DOWN_MS = 300000;
 let downUntil = 0;
 export const googleUp = () => googleOn() && Date.now() > downUntil;
 
-async function call(url, init, timeout) {
+async function call(url, init, timeout, mark = true) {
   try {
     const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
     if (!res.ok) {
-      if (res.status >= 500 || res.status === 403 || res.status === 429) downUntil = Date.now() + DOWN_MS;
+      if (mark && (res.status >= 500 || res.status === 403 || res.status === 429)) downUntil = Date.now() + DOWN_MS;
       return { ok: false, status: res.status };
     }
-    downUntil = 0;
+    if (mark) downUntil = 0;
     return { ok: true, body: await res.json() };
   } catch {
-    downUntil = Date.now() + DOWN_MS;
+    if (mark) downUntil = Date.now() + DOWN_MS;
     return { ok: false, status: 0 };
   }
 }
@@ -114,42 +117,54 @@ const point = (location) => {
 const round6 = (value) => Math.round(value * 1e6) / 1e6;
 export const spot = (location) => (location && [location.latitude, location.longitude].every((n) => typeof n === "number" && Number.isFinite(n)) ? { lat: round6(location.latitude), lng: round6(location.longitude) } : null);
 
-const UNITS = /^\d{1,6}$/;
+export { tollCents };
 
-export function tollCents(route) {
-  const info = route && route.travelAdvisory && route.travelAdvisory.tollInfo;
-  if (!info) return 0;
-  const prices = Array.isArray(info.estimatedPrice) ? info.estimatedPrice : [];
-  if (!prices.length) return null;
-  let nanos = 0;
-  for (const price of prices) {
-    if (!price || typeof price !== "object" || price.currencyCode !== "USD") return null;
-    const units = price.units === undefined ? "0" : String(price.units);
-    const part = price.nanos === undefined ? 0 : price.nanos;
-    if (!UNITS.test(units) || !Number.isInteger(part) || part < 0 || part > 999999999) return null;
-    nanos += Number(units) * 1e9 + part;
-  }
-  return Math.round(nanos / 1e7);
+const routeBody = (waypoints, intermediates, departure, tolls) => ({
+  origin: waypoints[0],
+  destination: waypoints[waypoints.length - 1],
+  intermediates,
+  travelMode: "DRIVE",
+  routingPreference: "TRAFFIC_AWARE",
+  departureTime: departure.toISOString(),
+  languageCode: "en-US",
+  units: "IMPERIAL",
+  ...(tolls && { extraComputations: ["TOLLS"], routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: TOLL_PASSES } }),
+});
+
+function missed(reason) {
+  console.error("route-tolls", reason);
+  return null;
 }
+
+async function splitTolls(waypoints, departure, first) {
+  const path = decodePath(first.polyline);
+  if (path.length < 2) return null;
+  const stops = waypoints.length > 2 && first.points.length === waypoints.length ? first.points.slice(1, -1) : [];
+  if (stops.length !== waypoints.length - 2 || !stops.every(Array.isArray)) return missed("stop");
+  const plan = tollPlan(path, stops);
+  if (plan.reason) return plan.reason === "none" ? null : missed(plan.reason);
+  if (!instanceBudget("route-split", SPLIT_INSTANCE)) return missed("budget");
+  const intermediates = plan.marks.map((mark) => (mark.cut ? { location: { latLng: { latitude: mark.cut.latitude, longitude: mark.cut.longitude }, heading: mark.cut.heading } } : waypoints[mark.stop + 1]));
+  const body = routeBody(waypoints, intermediates, departure, true);
+  const key = serverKey();
+  const headers = { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": SPLIT_MASK };
+  const result = googleMock() ? { ok: true, body: mockSplit(body) } : key ? await call(ROUTES_URL, { method: "POST", headers, body: JSON.stringify(body) }, ROUTES_TIMEOUT_MS, false) : { ok: false, status: 0 };
+  if (!result.ok) return missed(`google ${result.status}`);
+  const route = result.body && Array.isArray(result.body.routes) ? result.body.routes[0] : null;
+  const priced = priceSplit(plan, route, departure, first.meters);
+  return priced.reason ? missed(priced.reason) : priced.cents;
+}
+
+const fallback = async (waypoints, departure, tolls, first) => (tolls === null ? splitTolls(waypoints, departure, first) : tolls);
 
 export async function computeRoute(waypoints, departure, size, tolls = true) {
   if (googleMock()) {
-    const { travelAdvisory, ...route } = mockRoute(size, waypoints);
-    return { ok: true, mock: true, ...route, ...(tolls && { tolls: tollCents({ travelAdvisory }) }) };
+    const { travelAdvisory, ...route } = mockRoute(size, waypoints, departure);
+    return { ok: true, mock: true, ...route, ...(tolls && { tolls: await fallback(waypoints, departure, tollCents({ travelAdvisory }), { polyline: route.polyline, points: route.points || [], meters: route.miles * 1609.344 }) }) };
   }
   const key = serverKey();
   if (!key || waypoints.length < 2) return { ok: false, status: 0 };
-  const body = {
-    origin: waypoints[0],
-    destination: waypoints[waypoints.length - 1],
-    intermediates: waypoints.slice(1, -1),
-    travelMode: "DRIVE",
-    routingPreference: "TRAFFIC_AWARE",
-    departureTime: departure.toISOString(),
-    languageCode: "en-US",
-    units: "IMPERIAL",
-    ...(tolls && { extraComputations: ["TOLLS"], routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: TOLL_PASSES } }),
-  };
+  const body = routeBody(waypoints, waypoints.slice(1, -1), departure, tolls);
   const result = await call(
     ROUTES_URL,
     { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": tolls ? `${ROUTE_MASK},${TOLL_MASK}` : ROUTE_MASK }, body: JSON.stringify(body) },
@@ -161,15 +176,17 @@ export async function computeRoute(waypoints, departure, size, tolls = true) {
   const meters = route ? Number(route.distanceMeters) : NaN;
   if (!Number.isFinite(seconds) || !Number.isFinite(meters)) return { ok: false, status: 0 };
   const legs = Array.isArray(route.legs) ? route.legs : [];
+  const polyline = route.polyline && typeof route.polyline.encodedPolyline === "string" ? route.polyline.encodedPolyline : "";
+  const points = legs.length ? [...legs.map((item) => point(item.startLocation)), point(legs[legs.length - 1].endLocation)].map((item) => item && [round6(item.lat), round6(item.lng)]) : [];
   return {
     ok: true,
     minutes: Math.ceil(seconds / 60),
     miles: Math.round((meters / 1609.344) * 10) / 10,
-    ...(tolls && { tolls: tollCents(route) }),
-    polyline: route.polyline && typeof route.polyline.encodedPolyline === "string" ? route.polyline.encodedPolyline : "",
+    ...(tolls && { tolls: await fallback(waypoints, departure, tollCents(route), { polyline, points, meters }) }),
+    polyline,
     start: legs.length ? point(legs[0].startLocation) : null,
     end: legs.length ? point(legs[legs.length - 1].endLocation) : null,
-    points: legs.length ? [...legs.map((item) => point(item.startLocation)), point(legs[legs.length - 1].endLocation)].map((item) => item && [round6(item.lat), round6(item.lng)]) : [],
+    points,
   };
 }
 

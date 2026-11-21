@@ -34,7 +34,7 @@ import {
   CONTACT,
 } from "./_rates.mjs";
 import { LABELS, NOTES, POLICY, MESSAGE, MAIL } from "./_copy.mjs";
-import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, placeRegion, endRegion, zoneRegion, inNewYork, localById, areaText, routeText, typedZip } from "./_places.mjs";
+import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, placeRegion, placeFits, endRegion, zoneRegion, inNewYork, localById, areaText, routeText, typedZip } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, routeRide, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
 import { googleOn, placeDetails, computeRoute } from "./_google.mjs";
@@ -42,7 +42,7 @@ import { readPhone } from "./_phone.mjs";
 import { headerText } from "./_smtp.mjs";
 
 const ENDS = ["from", "stop1", "stop2", "to"];
-const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), "hours", "class", "vehicle", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
+const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), "hours", "class", "vehicle", "sprinter", "event", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 const ROUTED = ["no-airport", "outside-city"];
@@ -148,7 +148,9 @@ export function readInput(fields) {
   const route = value("route", MAX_TICKET + 1);
   let cls = has(CLASSES, raw.class) ? raw.class : "";
   if (!cls && action === "options") cls = "suv";
-  const suvVehicle = has(VEHICLES, raw.vehicle) && VEHICLES[raw.vehicle].cls === "suv" ? raw.vehicle : CLASS_DEFAULT_VEHICLE.suv;
+  const pick = (key, kind) => (has(VEHICLES, key) && VEHICLES[key].cls === kind ? key : "");
+  const suvVehicle = pick(raw.vehicle, "suv") || CLASS_DEFAULT_VEHICLE.suv;
+  const sprinterVehicle = pick(raw.sprinter, "sprinter") || pick(raw.vehicle, "sprinter") || CLASS_DEFAULT_VEHICLE.sprinter;
   const tips = TIP_PERCENTS.map(String);
   const rider = value("rider", 8) || "me";
   const other = rider === "other";
@@ -181,8 +183,10 @@ export function readInput(fields) {
     dogs: Object.fromEntries(DOG_SIZES.map((k) => [k, canonical(raw[`${k}_dogs`])])),
     hours: hour ? canonical(raw.hours) : "",
     class: cls,
-    vehicle: hour && cls ? (cls === "suv" ? suvVehicle : CLASS_DEFAULT_VEHICLE[cls]) : "",
+    vehicle: cls === "sprinter" ? sprinterVehicle : hour && cls ? (cls === "suv" ? suvVehicle : CLASS_DEFAULT_VEHICLE[cls]) : "",
     suvVehicle: hour ? suvVehicle : "",
+    sprinterVehicle: hour ? sprinterVehicle : "",
+    event: hour ? (raw.event === "1" ? true : raw.event === "0" ? false : null) : false,
     meet: raw.meet === "1",
     tip: raw.tip === "" ? 0 : raw.tip === "custom" ? "custom" : tips.includes(raw.tip) ? Number(raw.tip) : null,
     tip_amount: raw.tip === "custom" ? canonical(raw.tip_amount) : "",
@@ -289,22 +293,25 @@ export async function resolveEnd(end, trip, context = {}) {
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const ticket = trip[`${end}_ticket`] ? verifyTicket(trip[`${end}_ticket`], text, now) : null;
   if (ticket && !ticket.expired) return { text, zone: ticket.zone, place: ticket.id, id: "", ...regionOf(endRegion(ticket.zone, ticket.region, text)), ...marks(ticket) };
+  const lost = () => ({ text, zone: "unknown", place: "", id: "", ...marks(ticket) });
   if (ticket && googleOn()) {
     const known = placeZones.get(ticket.id);
-    if (known && known.until > now) return { text, zone: known.zone, place: ticket.id, id: "", ...regionOf(endRegion(known.zone, known.region, text)), ...marks(ticket) };
+    if (known && known.until > now) return known.zone === "unknown" ? lost() : { text, zone: known.zone, place: ticket.id, id: "", ...regionOf(endRegion(known.zone, known.region, text)), ...marks(ticket) };
     const allowed = (!context.request || clientBudget(context.request, "places-pick", PICK_IP)) && instanceBudget("places-pick", PICK_INSTANCE);
     const result = allowed ? await placeDetails(ticket.id, "") : { ok: false, status: 429 };
     if (result.ok) {
-      const zone = classifyPlace(result.details, text);
+      const found = classifyPlace(result.details, text);
       const region = placeRegion(result.details);
+      const zone = placeFits(found, result.details.location, region) ? found : "unknown";
+      if (zone !== found) console.error("places-pick", "spot");
       placeZones.delete(ticket.id);
       placeZones.set(ticket.id, { zone, region, until: now + TICKET_TTL * 1000 });
       if (placeZones.size > PLACE_ZONES) placeZones.delete(placeZones.keys().next().value);
-      return { text, zone, place: ticket.id, id: "", ...regionOf(endRegion(zone, region, text)), ...marks(ticket) };
+      return zone === "unknown" ? lost() : { text, zone, place: ticket.id, id: "", ...regionOf(endRegion(zone, region, text)), ...marks(ticket) };
     }
     console.error("places-pick", result.status);
   }
-  if (ticket) return { text, zone: "unknown", place: "", id: "", ...marks(ticket) };
+  if (ticket) return lost();
   const row = localById(trip[`${end}_id`]);
   if (row && norm(row.label) === norm(text)) return { text, zone: row.zone, place: row.id, id: row.id, ...regionOf(endRegion(row.zone, "", row.addr)) };
   const { zone, id } = classifyText(text);
@@ -409,14 +416,18 @@ export const flatPart = (trip) => (distanceTrip(trip) && trip.legs.some((item) =
 
 function vehicleFor(trip, cls) {
   if (cls === trip.class && has(VEHICLES, trip.vehicle)) return trip.vehicle;
-  if (cls === "suv" && has(VEHICLES, trip.suvVehicle)) return trip.suvVehicle;
-  return CLASS_DEFAULT_VEHICLE[cls];
+  const picked = cls === "suv" ? trip.suvVehicle : cls === "sprinter" ? trip.sprinterVehicle : "";
+  return has(VEHICLES, picked) ? picked : CLASS_DEFAULT_VEHICLE[cls];
 }
+
+export const eventRate = (trip) => trip.trip_type === "hour" && trip.event === true && has(VEHICLES, trip.vehicle) && Number.isInteger(VEHICLES[trip.vehicle].event);
+export const hourlyRate = (key, event) => (event && Number.isInteger(VEHICLES[key].event) ? VEHICLES[key].event : VEHICLES[key].hourly);
 
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
-  if (trip.trip_type === "hour" && VEHICLES[vehicleFor(trip, cls)].hourly === null) return "sprinter-hourly";
-  if (Number(trip.passengers) > CLASSES[cls].seats) return "seats";
+  const vehicle = VEHICLES[vehicleFor(trip, cls)];
+  if (trip.trip_type === "hour" && Number(trip.hours) < (vehicle.minHours || HOURS.min)) return "min-hours";
+  if (Number(trip.passengers) > (vehicle.seats || CLASSES[cls].seats)) return "seats";
   return "";
 }
 
@@ -483,6 +494,9 @@ export function checkTrip(trip, now, settings) {
   if (hour && !INTEGER.test(trip.hours)) return invalid("hours");
   if (!has(CLASSES, trip.class)) return invalid("class");
   if (hour && !has(VEHICLES, trip.vehicle)) return invalid("vehicle");
+  if (!hour && has(VEHICLES, trip.vehicle) && VEHICLES[trip.vehicle].hourlyOnly) return invalid("sprinter");
+  if (hour && VEHICLES[trip.vehicle].minHours > Number(trip.hours)) return invalid("sprinter-hours");
+  if (hour && trip.action === "pay" && trip.event === null && Number.isInteger(VEHICLES[trip.vehicle].event)) return invalid("event");
   if (trip.flight && !FLIGHT.test(trip.flight)) return invalid("flight");
   if (one && trip.return && trip.return_flight && !FLIGHT.test(trip.return_flight)) return invalid("return_flight");
   if (trip.tip === "custom" && !tipAmountOk(trip.tip_amount)) return invalid("tip_amount");
@@ -573,8 +587,8 @@ export function legLines(cls, airport, percent) {
   return { lines: [line(LABELS.fare, fare), ...feeLines(tax, bcf), line(LABELS.tolls, tolls)], total };
 }
 
-export function hourlyLines(vehicle, hours) {
-  const fare = VEHICLES[vehicle].hourly * Number(hours);
+export function hourlyLines(vehicle, hours, event) {
+  const fare = hourlyRate(vehicle, event) * Number(hours);
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { lines: [line(fill(LABELS.fareHours, { hours }), fare), ...feeLines(tax, bcf)], total: fare + tax + bcf };
@@ -615,7 +629,7 @@ if (Object.keys(DISTANCE_RATES).some((cls) => !has(CLASSES, cls)) || !(DISTANCE_
 
 export function classTotal(trip, cls) {
   if (classReason(trip, cls)) return null;
-  return priceTrip({ ...trip, class: cls, vehicle: trip.trip_type === "hour" ? vehicleFor(trip, cls) : trip.vehicle }).total;
+  return priceTrip({ ...trip, class: cls, vehicle: trip.trip_type === "hour" || cls === "sprinter" ? vehicleFor(trip, cls) : "" }).total;
 }
 
 const legPercent = (item) => (item.salesTax ? item.salesTax.percent : undefined);
@@ -642,7 +656,7 @@ export function priceTrip(input, settings) {
   const plain = service === "airport";
   const legs = hourly ? [] : trip.legs.map((item) => legPrice(trip.class, item));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
-  const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
+  const fare = hourly ? hourlyRate(trip.vehicle, eventRate(trip)) * Number(trip.hours) : sum("fare");
   const tax = hourly ? percentCents(fare, NYC_TAX_PERCENT) : sum("tax");
   const bcf = hourly ? percentCents(fare, BCF_PERCENT) : sum("bcf");
   const tolls = hourly ? 0 : sum("tolls");
@@ -703,18 +717,25 @@ export function shownLines(lines) {
   return shown;
 }
 
-export function vehicleLabel(key) {
-  const { cls, model } = VEHICLES[key];
-  return model ? `${model} (${CLASSES[cls].name})` : CLASSES[cls].name;
+export function vehicleLabel(key, event) {
+  const { cls, model, name } = VEHICLES[key];
+  const label = name || (model ? `${model} (${CLASSES[cls].name})` : CLASSES[cls].name);
+  return event && Number.isInteger(VEHICLES[key].event) ? fill(LABELS.forEvent, { vehicle: label }) : label;
 }
 
-export function describe({ hourly, cls, vehicle, hours, count, direction, airport, tenths, minutes, flat }) {
-  if (hourly) return has(VEHICLES, vehicle) ? fill(LABELS.hourlyLine, { vehicle: vehicleLabel(vehicle), hours }) : "";
+export function vehicleName(cls, vehicle, event) {
+  if (has(VEHICLES, vehicle) && VEHICLES[vehicle].cls === cls && VEHICLES[vehicle].name) return vehicleLabel(vehicle, event);
+  return has(CLASSES, cls) ? CLASSES[cls].name : "";
+}
+
+export function describe({ hourly, cls, vehicle, event, hours, count, direction, airport, tenths, minutes, flat }) {
+  if (hourly) return has(VEHICLES, vehicle) ? fill(LABELS.hourlyLine, { vehicle: vehicleLabel(vehicle, event), hours }) : "";
   if (!has(CLASSES, cls)) return "";
-  if (Number.isInteger(tenths) && Number.isInteger(minutes)) return fill(flat === "return" ? LABELS.returnFlat : flat === "out" ? LABELS.outFlat : count > 1 ? LABELS.distanceLegs : LABELS.distance, { class: CLASSES[cls].name, legs: count, transfers: count - 1, miles: (tenths / 10).toFixed(1), minutes });
-  if (count > 1) return fill(LABELS.legs, { class: CLASSES[cls].name, legs: count });
+  const name = vehicleName(cls, vehicle);
+  if (Number.isInteger(tenths) && Number.isInteger(minutes)) return fill(flat === "return" ? LABELS.returnFlat : flat === "out" ? LABELS.outFlat : count > 1 ? LABELS.distanceLegs : LABELS.distance, { class: name, legs: count, transfers: count - 1, miles: (tenths / 10).toFixed(1), minutes });
+  if (count > 1) return fill(LABELS.legs, { class: name, legs: count });
   if (!AIRPORT_PLACES.includes(airport) || (direction !== "to-airport" && direction !== "from-airport")) return "";
-  return fill(direction === "to-airport" ? LABELS.to : LABELS.from, { airport: PLACES[airport], class: CLASSES[cls].name });
+  return fill(direction === "to-airport" ? LABELS.to : LABELS.from, { airport: PLACES[airport], class: name });
 }
 
 export function rideTotals(trip) {
@@ -726,7 +747,7 @@ export function serviceLabel(input) {
   const trip = chargedTrip(input);
   const legs = trip.legs || legsOf(trip);
   const first = legs[0] || {};
-  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, flat: flatPart(trip), ...rideTotals(trip) });
+  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, event: eventRate(trip), hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, flat: flatPart(trip), ...rideTotals(trip) });
 }
 
 export const REF = /^[1-9]\d{7}$/;
@@ -788,7 +809,7 @@ export function routeSummary(metadata, from, to) {
 export function subjectParts(metadata) {
   const data = bookingData(metadata);
   const f = (name) => metaText(data[name]);
-  return { car: has(CLASSES, f("class")) ? CLASSES[f("class")].name : "", from: shortPlace(f("from_text"), f("from_zone")), to: shortPlace(f("to_text"), f("to_zone")) };
+  return { car: vehicleName(f("class"), f("vehicle"), f("service") === "hourly" && f("event") === "1"), from: shortPlace(f("from_text"), f("from_zone")), to: shortPlace(f("to_text"), f("to_zone")) };
 }
 
 export function ownerSubject(metadata, ref) {
@@ -824,8 +845,8 @@ export function composeMessage(trip, ref, totalCents) {
   if (one && trip.return && validDate(trip.return_date) && TIME.test(trip.return_time || "")) lines.push(`Return: ${formatDate(trip.return_date)}, ${formatTime(trip.return_time)}`);
   if (one && trip.return && trip.return_flight) lines.push(`Return flight: ${trip.return_flight}`);
   if (trip.passengers) lines.push(`Passengers: ${trip.passengers}`);
-  if (one && has(CLASSES, trip.class)) lines.push(`Vehicle: ${CLASSES[trip.class].name}`);
-  if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle)}`);
+  if (one && has(CLASSES, trip.class)) lines.push(`Vehicle: ${vehicleName(trip.class, trip.vehicle)}`);
+  if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle, eventRate(trip))}`);
   if (trip.meet) lines.push("Meet and greet: Yes");
   for (const [k, n] of Object.entries(seatCounts(trip))) if (n) lines.push(`${LABELS.seatTypes[k]}: ${n}`);
   for (const [k, n] of Object.entries(dogCounts(trip))) if (n) lines.push(`${LABELS.dogTypes[k]}: ${n}`);
@@ -862,6 +883,7 @@ export function receipt(metadata, settings, taxCents) {
     hourly,
     cls: data.class,
     vehicle: data.vehicle,
+    event: hourly && data.event === "1",
     hours: data.hours,
     count,
     direction: data.direction,

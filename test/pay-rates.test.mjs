@@ -47,6 +47,8 @@ const row = (id) => {
 };
 const suvVehicles = Object.entries(VEHICLES).filter(([key]) => key.startsWith("suv-"));
 const hourlyFigures = Object.values(VEHICLES).map((v) => v.hourly).filter((v) => v !== null);
+const sprinters = Object.entries(VEHICLES).filter(([, v]) => v.cls === "sprinter");
+const eventFigures = sprinters.map(([, v]) => v.event).filter(Number.isInteger);
 
 let failures = 0;
 function test(name, fn) {
@@ -151,12 +153,11 @@ const hourlyRows = [
   ["business-premium-suv", "premium", "premium"],
   ["first-class", "first", "first"],
   ["sedan-electric", "sedan", "sedan"],
-  ["luxury-sprinter", "sprinter", "sprinter"],
 ];
 
 test("the hourly rows follow CLASSES order and the hourly rates are the owner's: First Class $175, every other rate unchanged", () => {
-  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "sedan-electric", "luxury-sprinter"]);
-  assert.deepEqual(Object.fromEntries(Object.entries(VEHICLES).map(([k, v]) => [k, v.hourly])), { "suv-suburban": 9500, "suv-denali": 10000, "suv-navigator": 10000, premium: 10500, sedan: 8500, first: 17500, sprinter: null });
+  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "sedan-electric", "hourly-shuttle", "hourly-jet", "hourly-executive", "hourly-limo"]);
+  assert.deepEqual(Object.fromEntries(Object.entries(VEHICLES).map(([k, v]) => [k, v.hourly])), { "suv-suburban": 9500, "suv-denali": 10000, "suv-navigator": 10000, premium: 10500, sedan: 8500, first: 17500, "sprinter-shuttle": 13500, "sprinter-jet": 17500, "sprinter-executive": 22500, "sprinter-limo": 25000 });
   assert.deepEqual(cents(squash(row("first-class"))), [17500, 52500]);
   assert.equal(squash(row("business-premium-suv").querySelector("th small")), VEHICLES.premium.model);
 });
@@ -178,9 +179,38 @@ for (const [id, cls, vehicle] of hourlyRows) {
   });
 }
 
-test("VEHICLES.sprinter.hourly is null against the word From", () => {
-  assert.equal(VEHICLES.sprinter.hourly, null);
-  assert.ok(squash(row("luxury-sprinter")).includes("From"));
+test("the four Sprinters are priced by the hour with a 4-hour minimum, the owner's rates and event rates, and no From on the rates page", () => {
+  assert.deepEqual(sprinters.map(([k, v]) => [k, v.name, v.seats, v.hourly, v.event ?? v.hourly, v.minHours, Boolean(v.hourlyOnly)]), [
+    ["sprinter-shuttle", "Shuttle Sprinter", 14, 13500, 13500, 4, false],
+    ["sprinter-jet", "Jet Sprinter", 14, 17500, 17500, 4, false],
+    ["sprinter-executive", "Executive Sprinter", 14, 22500, 23500, 4, false],
+    ["sprinter-limo", "Limo Sprinter", 10, 25000, 26000, 4, true],
+  ]);
+  assert.equal(CLASSES.sprinter.seats, Math.max(...sprinters.map(([, v]) => v.seats)));
+  assert.doesNotMatch(squash(row("hourly")), /\bFrom\b/);
+});
+
+test("the Sprinter table lists each Sprinter with its seats, hourly rate and weddings, proms and events rate, says the 4-hour minimum and that the Limo Sprinter is booked by the hour only", () => {
+  const table = row("luxury-sprinter");
+  assert.equal(table.tagName, "TABLE");
+  assert.equal(table.closest("section").id, "hourly");
+  assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Sprinter", "Seats", "Per hour", "Weddings, proms and events"]);
+  assert.equal(squash(table.querySelector("caption")), "Luxury Sprinter hourly rates, with a 4-hour minimum. The Limo Sprinter is booked by the hour only.");
+  const rows = [...table.querySelectorAll("tbody tr")];
+  assert.deepEqual(rows.map((tr) => tr.id), sprinters.map(([k]) => k.replace("sprinter-", "hourly-")));
+  for (const [i, [key, v]] of sprinters.entries()) {
+    const [seats, perHour, event] = [...rows[i].querySelectorAll("td")].map(squash);
+    assert.equal(own(rows[i].querySelector("th")), v.name, key);
+    assert.equal(rows[i].dataset.seats, String(v.seats), key);
+    assert.equal(Number(seats), v.seats, key);
+    assert.deepEqual(cents(perHour), [v.hourly], key);
+    assert.deepEqual(cents(event), [v.event ?? v.hourly], key);
+    assert.equal(rows[i].querySelector("a").getAttribute("href"), `/book?trip-type=hour&hours=${v.minHours}&class=sprinter&sprinter=${key}`, key);
+  }
+  assert.ok(squash(row("hourly").querySelector(".prose")).includes("Sprinters have a 4-hour minimum."));
+  assert.equal(own(row("airport-sprinter").querySelector("th")), CLASSES.sprinter.name);
+  assert.equal(squash(row("airport-sprinter").querySelector("th small")), "Shuttle, Jet and Executive Sprinter");
+  assert.doesNotMatch(squash(row("airport")), /Limo Sprinter/);
 });
 
 test("each model and figure in #business-suv matches one suv- entry, in both directions", () => {
@@ -343,12 +373,13 @@ test("the airport section says that a trip between JFK, LaGuardia, Newark or Tet
 
 test("every $ figure in the four rate tables is reproducible from the config", () => {
   const tables = [...page.querySelectorAll("table.rate-table")];
-  assert.equal(tables.length, 4);
+  assert.equal(tables.length, 5);
   const legs = CLASS_KEYS.flatMap((cls) => AIRPORT_PLACES.map((airport) => leg(cls, airport)));
   const known = new Set([
     ...legs.flatMap((l) => [l.fare, l.tax, l.bcf, l.tolls, l.total]),
     ...hourlyFigures,
     ...hourlyFigures.map((v) => v * HOURS.min),
+    ...eventFigures,
     example.fare,
     example.tax,
     example.bcf,
@@ -361,7 +392,6 @@ test("every $ figure in the four rate tables is reproducible from the config", (
   const unknown = [];
   for (const cell of tables.flatMap((t) => [...t.querySelectorAll("td, th")])) {
     const text = squash(cell);
-    if (text.startsWith("From") && cell.closest("tr").id === "luxury-sprinter") continue;
     for (const figure of cents(text)) if (!known.has(figure)) unknown.push(`${figure / 100} in "${text}"`);
   }
   assert.deepEqual(unknown, [], `not reproducible from the config:\n${unknown.join("\n")}`);
@@ -371,7 +401,7 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   const nodes = [...page.querySelectorAll('script[type="application/ld+json"]')].flatMap((s) => JSON.parse(s.textContent)["@graph"] || []);
   const catalog = nodes.find((n) => n["@type"] === "OfferCatalog");
   assert.ok(catalog, "rates.html has no OfferCatalog");
-  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS]);
+  const known = new Set([...Object.values(AIRPORT_TOTALS).flatMap((byAirport) => Object.values(byAirport)), ...hourlyFigures, ...eventFigures, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS]);
   const unknown = [];
   assert.deepEqual(catalog.itemListElement.filter((o) => o.name === "Child seat").map((o) => [Number(o.price) * 100, Number(o.priceSpecification.price) * 100]), [[CHILD_SEAT_CENTS, CHILD_SEAT_CENTS]]);
   assert.deepEqual(catalog.itemListElement.filter((o) => / dog$/.test(o.name)).map((o) => [o.name, Number(o.price) * 100, Number(o.priceSpecification.price) * 100, o.priceSpecification.valueAddedTaxIncluded, o.url]), [["Small dog", SMALL_DOG_CENTS, SMALL_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"], ["Large dog", LARGE_DOG_CENTS, LARGE_DOG_CENTS, false, "https://www.nycluxride.com/rates#add-ons"]]);
@@ -409,8 +439,8 @@ test("the reason sentences agree with MIN_NOTICE_MINUTES, HOURS and MAX_ADVANCE_
 test("the reasons drop class-airport and first-lga, and the class and stop sentences agree with CLASSES and AIRPORT_PLACES", () => {
   assert.equal(REASONS["class-airport"], undefined);
   assert.equal(REASONS["first-lga"], undefined);
-  assert.ok(REASONS["sprinter-hourly"].text.includes(CLASSES.sprinter.name), REASONS["sprinter-hourly"].text);
-  assert.equal(VEHICLES.sprinter.hourly, null);
+  assert.equal(REASONS["sprinter-hourly"], undefined);
+  assert.ok(sprinters.length === 4 && sprinters.every(([, v]) => Number.isInteger(v.hourly)));
   const names = AIRPORT_PLACES.map((p) => ({ jfk: "JFK", lga: "LaGuardia", ewr: "Newark", teb: "Teterboro" })[p]);
   assert.equal(names.length, 4);
   assert.equal(REASONS["stop-leg"].text, "We can't price this trip with stops online. Send it to us and we'll reply with a price.");

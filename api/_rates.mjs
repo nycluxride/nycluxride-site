@@ -6,7 +6,7 @@ export const CLASSES = {
   premium: { name: "Business Premium SUV", seats: 5, bags: "3 large plus 3 small bags" },
   first: { name: "First Class", seats: 3, bags: "2 large plus 1 small bag" },
   sedan: { name: "Sedan & Electric", seats: 3, bags: "" },
-  sprinter: { name: "Luxury Sprinter", seats: 12, bags: "10 large plus 2 small bags" },
+  sprinter: { name: "Luxury Sprinter", seats: 14, bags: "10 large plus 2 small bags" },
 };
 export const VEHICLES = {
   "suv-suburban": { cls: "suv", model: "Chevrolet Suburban or similar", hourly: 9500 },
@@ -15,9 +15,12 @@ export const VEHICLES = {
   premium: { cls: "premium", model: "Cadillac Escalade ESV", hourly: 10500 },
   sedan: { cls: "sedan", model: "", hourly: 8500 },
   first: { cls: "first", model: "", hourly: 17500 },
-  sprinter: { cls: "sprinter", model: "", hourly: null },
+  "sprinter-shuttle": { cls: "sprinter", name: "Shuttle Sprinter", hourly: 13500, seats: 14, minHours: 4 },
+  "sprinter-jet": { cls: "sprinter", name: "Jet Sprinter", hourly: 17500, seats: 14, minHours: 4 },
+  "sprinter-executive": { cls: "sprinter", name: "Executive Sprinter", hourly: 22500, event: 23500, seats: 14, minHours: 4 },
+  "sprinter-limo": { cls: "sprinter", name: "Limo Sprinter", hourly: 25000, event: 26000, seats: 10, minHours: 4, hourlyOnly: true },
 };
-export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", sprinter: "sprinter" };
+export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", sprinter: "sprinter-shuttle" };
 export const PLACES = {
   manhattan: "Manhattan",
   brooklyn: "Brooklyn",
@@ -72,13 +75,26 @@ export const CHILD_SEATS = ["infant", "toddler", "booster"];
 export const DOG_SIZES = ["small", "large"];
 export const MAX_DOGS = 3;
 export const HOURS = { min: 3, max: 12 };
-export const PASSENGERS = { min: 1, max: 12 };
+export const PASSENGERS = { min: 1, max: 14 };
 export const MIN_NOTICE_MINUTES = 90;
 export const PAID_NOTICE_MINUTES = 60;
 export const AUTO_LEAD_MINUTES = 5;
 export const AUTO_GUARD_MINUTES = 2;
 export const MAX_ADVANCE_DAYS = 365;
 export const DESCRIPTOR_CODES = { jfk: "JFK", lga: "LGA", ewr: "EWR", teb: "TEB", hourly: "HOUR", distance: "RIDE" };
+export const TOLL_CLASS = { suv: "1", premium: "1", first: "1", sedan: "1", sprinter: "1" };
+export const PA_TOLLS = { 1: { offPeak: 1479, peak: 1679 }, 2: { offPeak: 4334, peak: 4534 }, "8A": { offPeak: 1680, peak: 2100 } };
+export const PA_PEAK = { weekday: [[360, 600], [960, 1200]], weekend: [[660, 1260]] };
+export const NJTP_TOLLS = {
+  1: {
+    13: { "13A": 141, 14: 229, "18E": 750, "18W": 750 },
+    "13A": { 13: 141, 14: 141, "18E": 750, "18W": 750 },
+    14: { 13: 229, "13A": 141, "18E": 571, "18W": 571 },
+    "18E": { 13: 750, "13A": 750, 14: 571 },
+    "18W": { 13: 750, "13A": 750, 14: 571 },
+  },
+};
+export const TOLL_TABLE_UNTIL = "2027-01-01T00:00:00-05:00";
 export const TLC_BASE_LICENSE = "";
 export const CONTACT = { phone: "+1 (646) 775-0556", tel: "tel:+16467750556", whatsapp: "https://wa.me/16467750556", email: "info@nycluxride.com" };
 export const SITE_ORIGIN = "https://www.nycluxride.com";

@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { CLASSES, DISTANCE_RATES, CHILD_SEAT_CENTS } from "../api/_rates.mjs";
+import { CLASSES, VEHICLES, DISTANCE_RATES, CHILD_SEAT_CENTS } from "../api/_rates.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const BASELINE = JSON.parse(readFileSync(join(ROOT, "test/fixtures/seo-baseline.json"), "utf8"));
@@ -32,8 +32,8 @@ function check(name, fn) {
 
 const CARDS = [
   ["/services#airport-transfers", "Airport transfers", "One flat price to or from JFK, LaGuardia, Newark and Teterboro, from anywhere in New York City. Tolls, airport fees and taxes are included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
-  ["/chauffeur-service-nyc", "Hourly chauffeur", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum.", "bmw-7-series", 1607, 979, "Dark gray BMW 7 Series outside a stone building at night"],
-  ["/limousine-service-nyc", "Weddings, prom and groups", "Luxury Sprinters for up to 12 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside the Jet Sprinter: two leather captain's chairs facing a screen"],
+  ["/chauffeur-service-nyc", "Hourly chauffeur", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum, or 4 hours in a Sprinter.", "bmw-7-series", 1607, 979, "Dark gray BMW 7 Series outside a stone building at night"],
+  ["/limousine-service-nyc", "Weddings, prom and groups", "Four kinds of Sprinter for up to 14 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside the Jet Sprinter: two leather captain's chairs facing a screen"],
   ["/services#corporate", "Corporate accounts", "Monthly billing and priority scheduling for your company.", "lincoln-navigator", 1536, 1024, "Black Lincoln Navigator in a showroom"],
 ];
 const LUX = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^lux\..+\.css$/.test(n))), "utf8");
@@ -56,10 +56,13 @@ const ARROW = '<svg class="icon" aria-hidden="true" focusable="false"><use href=
 const EXT = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span>';
 const REVIEWS = `<p><a class="lnk" href="https://www.google.com/maps?cid=15477906940128800338" target="_blank" rel="noopener">Read the reviews on Google <span class="nowrap">Maps<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>`;
 const TRUST = '<ul class="assure-row assure-row--page" role="list"><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Flat airport rates include tolls, airport fees and taxes</li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg>We answer 24 hours a day, every day</li></ul>';
-const FITS = '<fieldset class="fits"><legend>Who is traveling?</legend><label><input type="radio" name="fits" value="0" checked="">All</label><label><input type="radio" name="fits" value="3">1 to 3</label><label><input type="radio" name="fits" value="5">4 or 5</label><label><input type="radio" name="fits" value="12">6 to 12</label></fieldset>';
+const FITS = '<fieldset class="fits"><legend>Who is traveling?</legend><label><input type="radio" name="fits" value="0" checked="">All</label><label><input type="radio" name="fits" value="3">1 to 3</label><label><input type="radio" name="fits" value="5">4 or 5</label><label><input type="radio" name="fits" value="10">6 to 10</label><label><input type="radio" name="fits" value="14">11 to 14</label></fieldset>';
 const P1 = "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.";
 const NOTE = "This form opens your email app with a message to info@nycluxride.com. Nothing is sent until you press send there. For a faster answer, call or use WhatsApp.";
 const KEYS = Object.keys(CLASSES);
+const SPRINTERS = Object.values(VEHICLES).filter((v) => v.cls === "sprinter");
+const SPRINTER_KEY = new Map(Object.entries(VEHICLES).filter(([, v]) => v.cls === "sprinter").map(([k, v]) => [v, k]));
+const BY_HOUR = KEYS.filter((k) => k !== "sprinter");
 
 {
   const doc = load("index.html");
@@ -242,7 +245,7 @@ check("fleet.html: the class jump list of #fleet-all is tabs, one per class in c
   const ul = doc.querySelector('#fleet-all nav[aria-label="Vehicle classes"] > ul');
   assert.equal(ul.className, "jumps jumps--tabs");
   assert.deepEqual([...ul.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["#fleet-all", "All vehicles"], ["#business-suv", "Business SUV"], ["#business-premium-suv", "Business Premium SUV"], ["#first-class", "First Class"], ["#sedan-electric", "Sedan & Electric"], ["#luxury-sprinter", "Luxury Sprinter"]]);
-  assert.deepEqual([...doc.querySelectorAll(".fleet-set")].map((set) => [set.id, set.querySelectorAll(".fleet-card").length]), [["business-suv", 3], ["business-premium-suv", 1], ["first-class", 2], ["sedan-electric", 4], ["luxury-sprinter", 2]]);
+  assert.deepEqual([...doc.querySelectorAll(".fleet-set")].map((set) => [set.id, set.querySelectorAll(".fleet-card").length]), [["business-suv", 3], ["business-premium-suv", 1], ["first-class", 2], ["sedan-electric", 4], ["luxury-sprinter", 4]]);
   assert.deepEqual([...doc.querySelectorAll("#business-premium-suv .fleet-card__name")].map((h) => norm(h.textContent)), ["Cadillac Escalade ESV"]);
 });
 
@@ -304,7 +307,7 @@ for (const [file, fields] of Object.entries(FORMS)) {
     assert.deepEqual([...dl[0].querySelectorAll("dt")].map((dt) => [norm(dt.textContent), norm(dt.nextElementSibling.textContent)]), [
       ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."],
       ["Free waiting", "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup."],
-      ["By the hour", "Any class, with a 3-hour minimum."],
+      ["By the hour", "Any class, with a 3-hour minimum, or 4 hours in a Sprinter."],
       ["First booking", "We may ask for a card authorization."],
       ["Cancellation", P1],
     ]);
@@ -405,12 +408,12 @@ check("privacy-policy.html: section 2 names the small and large dog counts the b
   assert.ok(text.includes("the vehicle class or vehicle, the number of infant, toddler and booster seats, the number of small and large dogs, meet and greet, an optional gratuity and an optional flight number for the pickup and the return."));
   assert.ok(!text.includes("the number of infant, toddler and booster seats, meet and greet"));
 });
-check("privacy-policy.html: Last Updated November 17, 2026 and WebPage dateModified 2026-11-17", () => {
+check("privacy-policy.html: Last Updated November 20, 2026 and WebPage dateModified 2026-11-20", () => {
   const doc = load("privacy-policy.html");
   const page = graph(doc).find((n) => n["@type"] === "WebPage");
-  assert.equal(page.dateModified, "2026-11-17");
+  assert.equal(page.dateModified, "2026-11-20");
   const lines = [...doc.querySelectorAll("main p")].map((p) => norm(p.textContent)).filter((t) => t.startsWith("Last Updated:"));
-  assert.deepEqual(lines, ["Last Updated: November 17, 2026"]);
+  assert.deepEqual(lines, ["Last Updated: November 20, 2026"]);
 });
 check("privacy-policy.html: section 3 says the booking details are emailed to the customer and to NYC LUX RIDE through Gmail, right after the Stripe sentence, and nowhere else", () => {
   const doc = load("privacy-policy.html");
@@ -419,12 +422,12 @@ check("privacy-policy.html: section 3 says the booking details are emailed to th
   assert.ok(next.includes(said), next);
   assert.equal(norm(doc.querySelector("main").textContent).split("are emailed").length, 2);
 });
-check("privacy-policy.html: the lede names email clicks, section 2 says the Google tag also sends each page view and an event for call, WhatsApp and email taps and for a paid booking with its value and payment reference to Google Analytics and names its _ga and _ga_9MT2ZW7LPV cookies, and section 6 links the Google policy for Google Analytics and Gmail", () => {
+check("privacy-policy.html: the lede names email clicks, section 2 says the Google tag also sends each page view and an event for call, WhatsApp and email taps and a count of paid bookings with the booking reference and no amount to Google and names its _ga and _ga_9MT2ZW7LPV cookies, and section 6 links the Google policy for Google Analytics and Gmail", () => {
   const doc = load("privacy-policy.html");
   const ps = [];
   for (let n = doc.getElementById("information-we-collect").nextElementSibling; n && n.tagName !== "H2"; n = n.nextElementSibling) ps.push(norm(n.textContent));
   const tag = ps.find((t) => t.startsWith("Every page loads the Google Ads tag"));
-  assert.ok(tag.includes("in your browser's local storage. The tag also sends each page view to Google Analytics, and an event when you tap to call, message us on WhatsApp or email us, and when you pay for a booking, with its value and payment reference. Google Analytics sets the _ga and _ga_9MT2ZW7LPV cookies on this site. Third-party vendors"), tag);
+  assert.ok(tag.includes("in your browser's local storage. The tag also sends each page view to Google Analytics, and an event when you tap to call, message us on WhatsApp or email us. When you pay for a booking, Google gets a count of paid bookings with the booking reference, not the amount. Google Analytics sets the _ga and _ga_9MT2ZW7LPV cookies on this site. Third-party vendors"), tag);
   assert.ok(norm(doc.querySelector("main .lede").textContent).includes("the Google Ads tag that measures ad results such as Book a car, call, WhatsApp and email clicks."), norm(doc.querySelector("main .lede").textContent));
   assert.deepEqual([...doc.querySelectorAll('main a[href="https://policies.google.com/privacy"]')].map((a) => norm(a.textContent)), ["Google Privacy Policy (Google Ads, Google Analytics, Gmail, Maps) (opens in a new tab)"]);
 });
@@ -529,16 +532,17 @@ check("the three posts that gained links keep their dateModified, so a new lastm
   const rows = (sel) => [...doc.querySelectorAll(sel)];
   check("rates.html: each airport row ends with Book in its LaGuardia cell, each hourly row with Book by the hour in its Three hours cell, never in the th (C-06, F42)", () => {
     assert.deepEqual(rows("#airport-rates tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?class=${k}">Book<span class="sr-only"> a ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`));
-    assert.deepEqual(rows("#hourly tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=3&amp;class=${k}">Book by the hour<span class="sr-only">, ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`));
+    assert.deepEqual(rows("#hourly tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...BY_HOUR.map((k) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=3&amp;class=${k}">Book by the hour<span class="sr-only">, ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`), ...SPRINTERS.map((v) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=${v.minHours}&amp;class=sprinter&amp;sprinter=${SPRINTER_KEY.get(v)}">Book by the hour<span class="sr-only">, ${v.name}</span></a>`)]);
     assert.equal(doc.querySelectorAll(".rate-table th a, .rate-table td:not(:last-child) a.lnk--row").length, 0);
   });
   check("rates.html: Who is traveling? chips right before the airport table, data-seats and the two fit spans in each row header after the class name (C-23)", () => {
     const f = doc.querySelector("fieldset.fits");
     assert.equal(f.outerHTML, FITS);
     assert.ok(f.nextElementSibling.matches(".table-scroll") && f.nextElementSibling.querySelector("#airport-rates"), "the chips do not sit right before the airport table");
-    for (const sel of ["#airport-rates tbody tr", "#hourly tbody tr"]) {
-      assert.deepEqual(rows(sel).map((tr) => tr.dataset.seats), KEYS.map((k) => String(CLASSES[k].seats)));
-      assert.deepEqual(rows(sel).map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML).slice(0, 2)]; }), KEYS.map((k) => [CLASSES[k].name, ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`]]));
+    const fit = (seats) => ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${seats}</span>`];
+    for (const [sel, want] of [["#airport-rates tbody tr", KEYS.map((k) => [CLASSES[k].name, CLASSES[k].seats])], ["#hourly tbody tr", [...BY_HOUR.map((k) => [CLASSES[k].name, CLASSES[k].seats]), ...SPRINTERS.map((v) => [v.name, v.seats])]]]) {
+      assert.deepEqual(rows(sel).map((tr) => tr.dataset.seats), want.map(([, seats]) => String(seats)));
+      assert.deepEqual(rows(sel).map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML).slice(0, 2)]; }), want.map(([name, seats]) => [name, fit(seats)]));
     }
   });
   check("rates.html: each distance row carries data-seats and the two fit spans after the class name, so Who is traveling? marks it as in the airport and hourly tables", () => {
@@ -556,13 +560,16 @@ check("the three posts that gained links keep their dateModified, so a new lastm
   const doc = load("fleet.html");
   const cards = [...doc.querySelectorAll("article.fleet-card")];
   const SET = { "business-suv": "suv", "business-premium-suv": "premium", "first-class": "first", "sedan-electric": "sedan", "luxury-sprinter": "sprinter" };
-  check("fleet.html: the 12 rate links point at the airport row of their class, the 12 Book a car links carry ?class=, text and aria-label kept (C-05, C-06)", () => {
-    assert.equal(cards.length, 12);
+  const vehicleOf = (c) => SPRINTERS.find((v) => v.name === norm(c.querySelector("h3.fleet-card__name").textContent));
+  check("fleet.html: the 14 rate links point at the airport row of their class, or the Sprinter hourly rates for the Limo Sprinter, the 14 Book a car links carry ?class=, the Sprinter ones their Sprinter too, the Limo Sprinter's by the hour, text and aria-label kept (C-05, C-06)", () => {
+    assert.equal(cards.length, 14);
     for (const c of cards) {
       const k = SET[c.closest(".fleet-set").id];
       const [rates, book] = c.querySelectorAll(".fleet-card__cta a");
-      assert.equal(rates.getAttribute("href"), `/rates#airport-${k}`);
-      assert.equal(book.getAttribute("href"), `/book?class=${k}`);
+      const only = (vehicleOf(c) || {}).hourlyOnly;
+      assert.equal(rates.getAttribute("href"), only ? "/rates#luxury-sprinter" : `/rates#airport-${k}`);
+      const pick = vehicleOf(c) ? `&sprinter=${SPRINTER_KEY.get(vehicleOf(c))}` : "";
+      assert.equal(book.getAttribute("href"), only ? `/book?trip-type=hour&hours=${vehicleOf(c).minHours}&class=${k}${pick}` : `/book?class=${k}${pick}`);
       assert.equal(norm(rates.textContent), "Rates for this class");
       assert.equal(norm(book.textContent), "Book a car");
       assert.match(book.getAttribute("aria-label"), /^Book a car \(/);
@@ -572,11 +579,12 @@ check("the three posts that gained links keep their dateModified, so a new lastm
     assert.equal(doc.querySelectorAll('main use[href="#i-seat"]').length, 0);
     for (const c of cards) {
       const k = SET[c.closest(".fleet-set").id];
-      assert.equal(c.dataset.seats, String(CLASSES[k].seats));
+      const seats = k === "sprinter" ? vehicleOf(c).seats : CLASSES[k].seats;
+      assert.equal(c.dataset.seats, String(seats));
       assert.equal(c.querySelector(".fleet-card__specs use").getAttribute("href"), "#i-user");
       const name = c.querySelector(".fleet-card__link > h3.fleet-card__name");
       assert.equal(name.nextElementSibling.outerHTML, '<span class="fits-yes">Fits your group</span>');
-      assert.equal(name.nextElementSibling.nextElementSibling.outerHTML, `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`);
+      assert.equal(name.nextElementSibling.nextElementSibling.outerHTML, `<span class="fits-no">Seats ${seats}</span>`);
     }
     const f = doc.querySelector("#fleet-all > .grid12 > fieldset.fits");
     assert.equal(f.outerHTML, FITS);

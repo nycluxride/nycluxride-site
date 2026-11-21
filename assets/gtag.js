@@ -18,11 +18,18 @@
   } catch (e) {}
 
   try {
+    var confirmed = location.pathname === "/booking-confirmed", clean;
+    if (confirmed) {
+      clean = new URL(location.href);
+      clean.searchParams.delete("session_id");
+    }
+
     window.nlrGtag("js", new Date());
-    window.nlrGtag("config", ADS_TAG_ID);
+    if (confirmed) window.nlrGtag("config", ADS_TAG_ID, { page_location: clean.href });
+    else window.nlrGtag("config", ADS_TAG_ID);
 
     window.__nlrForwardNumber = null;
-    window.nlrGtag("config", ADS_TAG_ID + "/s5hCCPecteMcEIX4gOJD", {
+    var call = {
       "phone_conversion_number": "+16467750556",
       "phone_conversion_callback": function (formatted_number, mobile_number) {
         window.__nlrForwardNumber = {
@@ -33,7 +40,9 @@
           window.__nlrApplyForwardNumber();
         }
       }
-    });
+    };
+    if (confirmed) call.page_location = clean.href;
+    window.nlrGtag("config", ADS_TAG_ID + "/s5hCCPecteMcEIX4gOJD", call);
 
     var added = false, early = ["pointerdown", "keydown"];
     var add = function () {

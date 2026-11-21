@@ -2,7 +2,7 @@
   var BOOK_NOW_LABEL = "0YD2COGt8L8cEIX4gOJD";
   var CALL_LABEL = "Sz9RCOSt8L8cEIX4gOJD";
   var WHATSAPP_LABEL = "yIstCOet8L8cEIX4gOJD";
-  var PURCHASE_LABEL = "";
+  var PURCHASE_LABEL = "t37RCPLvhLsdEIX4gOJD";
   var GA4_ID = "G-9MT2ZW7LPV";
 
   function fire(debugEvent, label) {
@@ -61,24 +61,13 @@
     } catch (e2) {}
   }
 
-  window.nlrPurchase = function (sessionId, ref, valueCents) {
+  window.nlrPaidBooking = function (sessionId, ref) {
     try {
       if (typeof window.nlrGtag !== "function") return false;
       if (String(sessionId).indexOf("cs_live_") !== 0 || location.hostname !== "www.nycluxride.com") return false;
-      window.nlrGtag("event", "purchase", {
-        send_to: GA4_ID,
-        transaction_id: sessionId,
-        value: valueCents / 100,
-        currency: "USD"
-      });
-      if (PURCHASE_LABEL) {
-        window.nlrGtag("event", "conversion", {
-          send_to: window.NLR_ADS_ID + "/" + PURCHASE_LABEL,
-          value: valueCents / 100,
-          currency: "USD",
-          transaction_id: sessionId
-        });
-      }
+      if (typeof ref !== "string" || !/^[A-Za-z0-9-]{1,64}$/.test(ref)) return false;
+      window.nlrGtag("event", "purchase", { send_to: GA4_ID, transaction_id: ref });
+      window.nlrGtag("event", "conversion", { send_to: window.NLR_ADS_ID + "/" + PURCHASE_LABEL, transaction_id: ref });
       return true;
     } catch (e) {
       return false;

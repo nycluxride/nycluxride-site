@@ -161,7 +161,8 @@ await test("the input codes of 7.3 in order: form, trip_type, from, to, date, da
 });
 
 await test("the input codes of 7.3 in order: passengers, hours, class, vehicle, flight, return_flight, tip", async () => {
-  for (const passengers of ["", "0", "13", "two", "1.5"]) await isError({ ...BASE, passengers }, "passengers");
+  for (const passengers of ["", "0", "15", "two", "1.5"]) await isError({ ...BASE, passengers }, "passengers");
+  assert.equal((await priced({ ...BASE, class: "sprinter", passengers: "14" })).total, AIRPORT_TOTALS.sprinter.jfk);
   await isError({ ...HOURLY, hours: "" }, "hours");
   await isError({ ...HOURLY, hours: "3.5" }, "hours");
   await isError({ ...BASE, class: "" }, "class");
@@ -171,6 +172,9 @@ await test("the input codes of 7.3 in order: passengers, hours, class, vehicle, 
   const result = checkTrip(trip, NOW, ON);
   assert.deepEqual(result, { kind: "invalid", code: "vehicle" });
   seenErrors.add(result.code);
+  await isError({ ...BASE, class: "sprinter", sprinter: "sprinter-limo" }, "sprinter");
+  await isError({ ...HOURLY, class: "sprinter", sprinter: "sprinter-jet", hours: "3" }, "sprinter-hours");
+  for (const sprinter of ["sprinter-executive", "sprinter-limo"]) for (const event of ["", "yes"]) await isError({ ...HOURLY, class: "sprinter", sprinter, hours: "4", passengers: "2", event }, "event");
   await isError({ ...FROM_JFK, flight: "DL#401" }, "flight");
   await isError({ ...FROM_JFK, flight: "X".repeat(21) }, "flight");
   await isError({ ...BASE, return: "1", return_date: "2026-10-18", return_time: "18:00", return_flight: "DL_401" }, "return_flight");
@@ -230,12 +234,16 @@ await test("legsOf: pickup to stop 1 to stop 2 to drop-off, plus the return leg 
   assert.deepEqual(one.legs.map((leg) => [leg.airport, leg.direction, leg.reason]), [["jfk", "from-airport", ""], ["jfk", "to-airport", ""]]);
 });
 
-await test("hourly reasons: outside-hourly, hours-range, then the class reasons sprinter-hourly and seats", async () => {
+await test("hourly reasons: outside-hourly, hours-range, the Sprinter 4-hour minimum, then the class reason seats with the Limo Sprinter's 10 seats", async () => {
   for (const from_text of ["Newark Liberty (EWR)", "Teterboro (TEB)", "Hoboken, NJ", "Westchester County (HPN)"]) await isQuote({ ...HOURLY, from_text }, "outside-hourly");
   await isQuote({ ...HOURLY, hours: "2" }, "hours-range");
   await isQuote({ ...HOURLY, hours: "13" }, "hours-range");
   assert.equal((await priced({ ...HOURLY, hours: "12" })).fare, 102000);
-  await isClass({ ...HOURLY, class: "sprinter" }, "sprinter-hourly");
+  await isError({ ...HOURLY, class: "sprinter" }, "sprinter-hours");
+  assert.equal((await priced({ ...HOURLY, class: "sprinter", hours: "4" })).fare, 54000);
+  await isClass({ ...HOURLY, class: "sprinter", sprinter: "sprinter-limo", event: "0", hours: "4", passengers: "11" }, "seats");
+  assert.equal((await priced({ ...HOURLY, class: "sprinter", sprinter: "sprinter-limo", event: "0", hours: "4", passengers: "10" })).fare, 100000);
+  assert.equal((await priced({ ...HOURLY, class: "sprinter", sprinter: "sprinter-executive", event: "0", hours: "4", passengers: "14" })).fare, 90000);
   await isClass({ ...HOURLY, class: "premium", passengers: "6" }, "seats");
   await isClass({ ...HOURLY, class: "suv", vehicle: "suv-navigator", passengers: "6" }, "seats");
   await isClass({ ...BASE, class: "premium", passengers: "6" }, "seats");
@@ -399,7 +407,7 @@ const MESSAGE = [
   "Flight: DL 401",
   "Return: Sun, Oct 18, 2026, 6:00 PM",
   "Passengers: 2",
-  "Vehicle: Luxury Sprinter",
+  "Vehicle: Shuttle Sprinter",
   "Meet and greet: Yes",
   "Total shown: $1,234.50",
 ].join("\n");
@@ -441,7 +449,7 @@ await test("the WhatsApp, email and phone links: encoded message, %20 in the ema
 await test("readInput keeps the new fields, drops the old ones, and hourly drops the drop-off, the stops and the return", async () => {
   const trip = readInput({ ...BASE, from: "jfk", to: "manhattan", from_zone: "jfk", stop1_text: "s1", stop2_text: "s2", return: "1", return_date: "2026-10-18", return_time: "18:00", return_flight: "DL 402" });
   assert.deepEqual([trip.from, trip.to, trip.from_zone], ["", "", undefined]);
-  const KEYS = "trip_type from_text from_id from_ticket stop1_text stop1_id stop1_ticket stop2_text stop2_id stop2_ticket to_text to_id to_ticket date time flight return return_date return_time return_flight passengers seats dogs hours class vehicle suvVehicle meet tip tip_amount action nonce nlr_hp route from to ends legs meetOffered details";
+  const KEYS = "trip_type from_text from_id from_ticket stop1_text stop1_id stop1_ticket stop2_text stop2_id stop2_ticket to_text to_id to_ticket date time flight return return_date return_time return_flight passengers seats dogs hours class vehicle suvVehicle sprinterVehicle event meet tip tip_amount action nonce nlr_hp route from to ends legs meetOffered details";
   assert.deepEqual(Object.keys(trip).sort(), KEYS.split(" ").sort());
   assert.deepEqual([trip.stop1_text, trip.stop2_text, trip.return, trip.return_date, trip.return_time, trip.return_flight], ["s1", "s2", true, "2026-10-18", "18:00", "DL 402"]);
   const hourly = readInput({ ...HOURLY, to_text: "JFK", to_id: "jfk", stop1_text: "s1", return: "1", return_date: "2026-10-18", return_time: "18:00" });
@@ -457,7 +465,7 @@ await test("hourly vehicle: suv with an suv-* key keeps it, otherwise the class 
   assert.equal(readInput({ ...HOURLY, class: "suv", vehicle: "nope" }).vehicle, "suv-suburban");
   assert.equal(readInput({ ...HOURLY, class: "first", vehicle: "suv-denali" }).vehicle, "first");
   assert.equal(readInput({ ...HOURLY, class: "first", vehicle: "suv-denali" }).suvVehicle, "suv-denali");
-  assert.equal(readInput({ ...HOURLY, class: "sprinter" }).vehicle, "sprinter");
+  assert.equal(readInput({ ...HOURLY, class: "sprinter" }).vehicle, "sprinter-shuttle");
 });
 
 await test("the flight is kept only at an airport pickup, the return flight only when the drop-off is an airport", async () => {
@@ -1563,7 +1571,7 @@ await test("the seat limit: at most one child seat per passenger, counted over t
   for (const ok of ["", "0", "00", " 2 ", "02"]) assert.deepEqual((await run({ ...BASE, infant_seats: ok })).result, { kind: "price", reason: "", hold: "" }, ok);
   assert.equal((await priced({ ...BASE, passengers: "2", infant_seats: "2" })).seatCount, 2);
   assert.equal((await priced({ ...HOURLY, passengers: "2", infant_seats: "1", booster_seats: "1" })).seatCount, 2);
-  await isError({ ...BASE, passengers: "13", infant_seats: "1" }, "passengers");
+  await isError({ ...BASE, passengers: "15", infant_seats: "1" }, "passengers");
   assert.deepEqual(ERRORS.child_seats, { field: "child_seats", text: "Choose at most one child seat per passenger. Children count as passengers." });
 });
 
@@ -1584,7 +1592,7 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
   const links = contactLinks(trip, "48213590", price.total);
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nInfant seats: 1\nBooster seats: 2\n"), href);
   assert.ok(!/seats: /.test(composeMessage((await run(FROM_JFK)).trip, "48213590", 18500)));
-  for (const fields of [{ ...RIDE, to_text: "Niagara Falls, ON L2E 6T2", toddler_seats: "1" }, { ...HOURLY, class: "sprinter", vehicle: "sprinter", toddler_seats: "1" }, { ...BASE, stop1_text: BROOKLYN, toddler_seats: "1" }]) {
+  for (const fields of [{ ...RIDE, to_text: "Niagara Falls, ON L2E 6T2", toddler_seats: "1" }, { ...HOURLY, hours: "13", toddler_seats: "1" }, { ...BASE, stop1_text: BROOKLYN, toddler_seats: "1" }]) {
     const out = await run(fields);
     assert.ok(["quote", "price"].includes(out.result.kind) && (out.result.reason || out.result.kind === "quote"), JSON.stringify(out.result));
     assert.ok(composeMessage(out.trip, "48213590").includes("\nToddler seats: 1"), JSON.stringify(fields));
@@ -2439,7 +2447,7 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nSmall dogs: 1\nLarge dogs: 2\n"), href);
   assert.ok(!/dogs: /.test(composeMessage((await run(FROM_JFK)).trip, "48213590", 18500)));
   assert.ok(composeMessage((await run({ ...BASE, large_dogs: "1" })).trip, "48213590").includes("\nLarge dogs: 1") && !composeMessage((await run({ ...BASE, large_dogs: "1" })).trip, "48213590").includes("Small dogs"));
-  for (const fields of [{ ...RIDE, to_text: "Niagara Falls, ON L2E 6T2", small_dogs: "2" }, { ...HOURLY, class: "sprinter", vehicle: "sprinter", small_dogs: "2" }, { ...BASE, stop1_text: BROOKLYN, small_dogs: "2" }]) {
+  for (const fields of [{ ...RIDE, to_text: "Niagara Falls, ON L2E 6T2", small_dogs: "2" }, { ...HOURLY, hours: "13", small_dogs: "2" }, { ...BASE, stop1_text: BROOKLYN, small_dogs: "2" }]) {
     const out = await run(fields);
     assert.ok(["quote", "price"].includes(out.result.kind) && (out.result.reason || out.result.kind === "quote"), JSON.stringify(out.result));
     assert.ok(composeMessage(out.trip, "48213590").includes("\nSmall dogs: 2"), JSON.stringify(fields));

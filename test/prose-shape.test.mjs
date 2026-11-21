@@ -56,7 +56,7 @@ const FORMS_64 = new Set([
   "For a pickup within the next 90 minutes, email or WhatsApp us.",
   `Infant, toddler and booster seats, ${SEAT}, charged at booking.`,
   "We move the pickup if your flight lands early or late.",
-  "For a Luxury Sprinter by the hour, we'll send you a price.",
+  "A Sprinter by the hour has a 4-hour minimum.",
 ]);
 const VALUE_FORMS = {
   "Free waiting": "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup.",

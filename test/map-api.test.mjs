@@ -146,6 +146,17 @@ await test("U2 here: the Bedford fixture gives its label, Brooklyn and a ticket 
   assert.deepEqual((await places({ action: "here", ...BEDFORD })).body, { kind: "off" });
 });
 
+await test("U2 here: a spot whose nearest Google record says 350 5th Ave, New York, NY with Manhattan parts while its pin sits in Westchester gives the lookup error and no ticket, and logs places-here label", async () => {
+  mock();
+  logs.length = 0;
+  const r = await places({ action: "here", lat: 41.01182, lng: -73.69933 });
+  assert.deepEqual([r.status, r.body], [200, { kind: "error" }]);
+  assert.deepEqual(logs, ["places-here label"]);
+  const near = await places({ action: "here", ...BEDFORD });
+  assert.deepEqual([near.body.kind, near.body.zone], ["ok", "brooklyn"]);
+  assert.equal(calls.length, 0);
+});
+
 await test("U3 classifyPlace reads Geocoding v4 results like Place Details: airports by ZIP and grounds, boroughs by county, outside otherwise", () => {
   const ny = [state("NY", "New York")];
   const nj = [state("NJ", "New Jersey")];

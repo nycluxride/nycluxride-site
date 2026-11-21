@@ -104,7 +104,7 @@ const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips anywhere in the U
 
 const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
 const RATES_DESCRIPTION = "Airport transfers to JFK, Newark and Teterboro from $170, LaGuardia from $145, with tolls, fees and taxes included. Hourly from $85, 3-hour minimum.";
-const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly bookings have a 3-hour minimum. There's no meter and no surge pricing.";
+const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly minimums start at 3 hours. There's no meter and no surge pricing.";
 const RATES_HOURLY_CAPTION = "Taxes and fees are added at booking. Tolls and parking are charged after the ride.";
 const RATES_FACTS = {
   "Meet and greet": "Inside the terminal with a name sign, $25 charged at booking, plus any airport parking charged after the ride",
@@ -120,7 +120,7 @@ const RATES_CANCELLATION = "You pay the total at checkout when you book. After t
 const RATES_FAQ = [
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450."],
-  ["What is the shortest hourly booking?", "Three hours. For Sedan & Electric that's $255 plus taxes and fees, with tolls and parking after the ride."],
+  ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For Sedan & Electric that's $255 plus taxes and fees, with tolls and parking after the ride."],
   ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];
 const RATES_CLASSES = [
@@ -128,7 +128,7 @@ const RATES_CLASSES = [
   ["airport-premium", "Business Premium SUV", "Cadillac Escalade ESV", "220", "190"],
   ["airport-first", "First Class", "Mercedes-Benz S-Class, BMW 7 Series", "310", "250"],
   ["airport-sedan", "Sedan & Electric", "Cadillac Lyriq or similar, Cadillac CT5 or CT6, Cadillac XT6, Lincoln Continental", "170", "145"],
-  ["airport-sprinter", "Luxury Sprinter", "Limo Sprinter, Jet Sprinter", "500", "450"],
+  ["airport-sprinter", "Luxury Sprinter", "Shuttle, Jet and Executive Sprinter", "500", "450"],
 ];
 const RATES_AIRPORT_OFFERS = RATES_CLASSES.flatMap(([id, name, , far, lga]) => [
   [`Airport transfer, JFK, Newark or Teterboro, ${name}`, id, far, ["JFK", "EWR", "TEB"]],
@@ -333,10 +333,10 @@ check("services.html: the Rates list names the three bookable extras, with pets 
   assert.equal(pages.get("faq.html").document.getElementById("q-pets").getAttribute("data-k"), "pet pets puppy animal service guide");
 });
 
-check("faq.html: the family answer gives the Luxury Sprinter its 12 seats and flat airport rate, and sends a price only for hourly Sprinter bookings, exact, visible and in json-ld", () => {
+check("faq.html: the family answer gives the Luxury Sprinter its 14 seats and flat airport rate, and the 4-hour minimum by the hour, exact, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "Which car fits a family of 6 or more?";
-  const want = "Book a Luxury Sprinter. It seats up to 12 and has a flat airport rate. For a Luxury Sprinter by the hour, we'll send you a price.";
+  const want = "Book a Luxury Sprinter. It seats up to 14 and has a flat airport rate. By the hour, a Sprinter has a 4-hour minimum.";
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
 });
@@ -345,7 +345,7 @@ check("about.html: What we do says other one-way trips anywhere in the United St
   const p = pages.get("about.html");
   const para = [...p.document.querySelectorAll("main p")].find((x) => squash(x.textContent).startsWith("Airport rides have a flat price from anywhere in New York City"));
   assert.ok(para, "no What we do paragraph");
-  assert.ok(squash(para.textContent).endsWith("with a 3-hour minimum. Other one-way trips anywhere in the United States are priced by distance and time."), squash(para.textContent));
+  assert.ok(squash(para.textContent).endsWith("with a 3-hour minimum, or 4 hours in a Sprinter. Other one-way trips anywhere in the United States are priced by distance and time."), squash(para.textContent));
   assert.deepEqual([...para.querySelectorAll('a[href="/rates#distance"]')].map((a) => squash(a.textContent)), ["priced by distance and time"]);
 });
 
@@ -460,7 +460,8 @@ check("rates.html: the OfferCatalog has an airport offer per class for JFK, Newa
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
   assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);
-  assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "175", undefined]]);
+  assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "135", "260"]]);
+  assert.deepEqual(hourly[4].priceSpecification.eligibleQuantity, { "@type": "QuantitativeValue", minValue: 4, unitCode: "HUR" });
 });
 
 const { MIN_NOTICE_MINUTES } = await import(join(ROOT, "api/_rates.mjs"));

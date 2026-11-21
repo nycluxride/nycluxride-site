@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { CLASSES, VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
-import { MAIL, CALENDAR } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, fill, validDate, nycToUtc, seatText, dogText, dogParts, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
+import { VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
+import { MAIL, CALENDAR, LABELS } from "./_copy.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, fill, validDate, nycToUtc, seatText, dogText, dogParts, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
@@ -102,9 +102,14 @@ function bookingOf(session) {
   };
 }
 
-function vehicleOf(b) {
+function eventOf(b) {
   const f = b.field;
-  return b.hourly && has(VEHICLES, f("vehicle")) ? vehicleLabel(f("vehicle")) : has(CLASSES, f("class")) ? CLASSES[f("class")].name : "";
+  return b.hourly && f("event") === "1" && has(VEHICLES, f("vehicle")) && Number.isInteger(VEHICLES[f("vehicle")].event);
+}
+
+function vehicleOf(b, event) {
+  const f = b.field;
+  return b.hourly && has(VEHICLES, f("vehicle")) ? vehicleLabel(f("vehicle"), event) : vehicleName(f("class"), f("vehicle"));
 }
 
 function seatsOf(b) {
@@ -133,6 +138,7 @@ function tripRows(b) {
     [L.backFlight, b.back ? f("return_flight") : ""],
     [L.passengers, f("passengers")],
     [L.vehicle, vehicle],
+    [L.occasion, eventOf(b) ? LABELS.event : ""],
     [L.flight, f("flight")],
     [L.meet, meet ? L.yes : ""],
     [L.sign, meet ? f("sign_name") : ""],
@@ -267,7 +273,7 @@ export function bookingText(session) {
     [clipName(b.name), b.phone].filter(Boolean).join(", "),
     pickupWhen(f("date"), f("time")),
     routeSummary(metadataOf(session), clipPlace(shortPlace(f("from_text"), f("from_zone"))), clipPlace(shortPlace(f("to_text"), f("to_zone")))),
-    vehicleOf(b),
+    vehicleOf(b, eventOf(b)),
     seats ? `${L.seats}: ${seats}` : "",
     dogs ? `${L.dogs}: ${dogs}` : "",
     b.total === null ? "" : `${MAIL.paid} ${money(b.total)}`,

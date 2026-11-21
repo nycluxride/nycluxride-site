@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
-import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, placeRegion, textRegion, zipRegion, zoneRegion, inNewYork, localById, areaText, routeText, placeLevel, clearMatch } from "../api/_places.mjs";
+import { PLACE_LIST, ZONES, AIRPORT_ZONES, AREA_LABELS, NEIGHBORHOODS, norm, lite, zipBorough, classifyText, classifyPlace, placeRegion, placeFits, textRegion, zipRegion, zoneRegion, inNewYork, localById, areaText, routeText, placeLevel, clearMatch } from "../api/_places.mjs";
+import { mockDetails, mockLocate } from "../api/_mock.mjs";
 import { TICKET, TICKET_TTL, ticketKey, labelHash, signTicket, verifyTicket, placeProof, proofOk } from "../api/_ticket.mjs";
-import { PLACES, AIRPORT_FARES, AIRPORT_TOTALS } from "../api/_rates.mjs";
+import { PLACES, AIRPORT_FARES, AIRPORT_TOTALS, NYC_TAX_AREA } from "../api/_rates.mjs";
 import { POST } from "../api/places.mjs";
 import { readInput, readSettings, resolveTrip, resolveEnd, checkTrip, priceTrip } from "../api/_trip.mjs";
 import { LABELS, REASONS } from "../api/_copy.mjs";
@@ -745,6 +746,144 @@ await test("GOOGLE_MOCK: the fixtures of 13.6, prefix and contains matching, pic
   }
   assert.deepEqual(zones, { "mock-edition": "manhattan", "mock-bedford": "brooklyn", "mock-hoboken": "outside", "mock-hpn": "airport-other", "mock-jfk-t4": "jfk", "mock-cn-tower": "abroad" });
   assert.deepEqual((await call(pick("mock-unknown", "x"))).body, { kind: "error" });
+  assert.equal(calls.length, 0);
+});
+
+await test("placeFits: a zone's pin must sit inside its box, so the Manhattan record whose pin is in Harrison fails, the Empire State Building, every city and airport fixture and every airport point pass, and a place with no location or a zone with no box always passes", () => {
+  const at = ([latitude, longitude]) => ({ latitude, longitude });
+  assert.equal(placeFits("manhattan", at([41.01182, -73.69933])), false);
+  assert.equal(placeFits("manhattan", at([40.748441, -73.985664])), true);
+  for (const [id, zone] of [["mock-edition", "manhattan"], ["mock-bedford", "brooklyn"], ["mock-williamsburg", "brooklyn"], ["mock-bronx", "bronx"], ["mock-arthur", "bronx"], ["mock-jfk-t4", "jfk"], ["mock-hoboken", "outside"], ["mock-hpn", "airport-other"], ["mock-faneuil", "outside"]]) {
+    assert.equal(classifyPlace(mockDetails(id), ""), zone, id);
+    assert.equal(placeFits(zone, mockDetails(id).location), true, id);
+  }
+  for (const [text, zone] of [["John F. Kennedy International Airport, Queens, NY 11430", "jfk"], ["John F. Kennedy International Airport Terminal 1, Queens, NY 11430", "jfk"], ["John F. Kennedy International Airport Terminal 8, Queens, NY 11430", "jfk"], ["LaGuardia Airport, East Elmhurst, NY 11371", "lga"], ["Newark Liberty International Airport, Newark, NJ 07114", "ewr"], ["Teterboro Airport, Teterboro, NJ 07608", "teb"], ["350 5th Ave, New York, NY 10118", "manhattan"], ["277 Bedford Ave, Brooklyn, NY 11211", "brooklyn"], ["200 Park Ave, New York, NY 10166", "manhattan"]]) {
+    const { location } = mockLocate(text);
+    assert.equal(placeFits(zone, { latitude: location.lat, longitude: location.lng }), true, text);
+  }
+  for (const zone of ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb"]) {
+    assert.equal(placeFits(zone, at([41.01182, -73.69933])), false, zone);
+    assert.equal(placeFits(zone, undefined), true, zone);
+    assert.equal(placeFits(zone, {}), true, zone);
+    assert.equal(placeFits(zone, { latitude: NaN, longitude: -73.9 }), true, zone);
+  }
+  for (const zone of ["outside", "airport-other", "abroad", "unknown"]) assert.equal(placeFits(zone, at([41.01182, -73.69933])), true, zone);
+  assert.deepEqual([placeFits("staten-island", at([40.5795, -74.1502])), placeFits("queens", at([40.7282, -73.7949])), placeFits("bronx", at([40.8448, -73.8648])), placeFits("brooklyn", at([40.6782, -73.9442]))], [true, true, true, true]);
+});
+
+await test("placeFits by address state and the Manhattan shape: a pin outside the coarse NY, NJ, CT or PA box of its address state fails, a New Jersey, Connecticut or Pennsylvania address pinned in Manhattan fails, and Manhattan refuses the New Jersey waterfront, Long Island City, Williamsburg and DUMBO while keeping every part of the borough, Liberty and Ellis Islands included", () => {
+  const at = ([latitude, longitude]) => ({ latitude, longitude });
+  const cases = [
+    ["outside", [41.03234, -73.58183], "CT", true],
+    ["outside", [40.748441, -73.985664], "CT", false],
+    ["outside", [40.85, -73.97], "CT", false],
+    ["outside", [40.743991, -74.032363], "NJ", true],
+    ["outside", [40.748441, -73.985664], "NJ", false],
+    ["outside", [41.5, -73.5], "NJ", false],
+    ["outside", [39.952584, -75.165953], "PA", true],
+    ["outside", [40.735, -74.172], "PA", false],
+    ["outside", [40.748441, -73.985664], "PA", false],
+    ["outside", [41.066959, -73.707575], "NY", true],
+    ["outside", [42.360083, -71.05888], "NY", false],
+    ["outside", [39.952584, -75.165953], NYC_TAX_AREA, false],
+    ["outside", [40.748441, -73.985664], "MA", false],
+    ["outside", [42.360083, -71.05888], "MA", true],
+    ["outside", [41.03234, -73.58183], "US", true],
+    ["outside", [41.03234, -73.58183], "", true],
+    ["abroad", [43.642566, -79.387057], "", true],
+    ["ewr", [40.688484, -74.176864], "NJ", true],
+    ["jfk", [40.644166, -73.782425], NYC_TAX_AREA, true],
+    ["manhattan", [40.748441, -73.985664], NYC_TAX_AREA, true],
+  ];
+  for (const [zone, point, region, fits] of cases) assert.equal(placeFits(zone, at(point), region), fits, `${zone} ${point} ${region}`);
+  const inside = { "Empire State Building": [40.748441, -73.985664], "The Battery": [40.7033, -74.017], "Inwood Hill Park": [40.8723, -73.9266], "Marble Hill": [40.876, -73.91], "Roosevelt Island": [40.7615, -73.9505], "Randalls Island": [40.7932, -73.9212], "Governors Island": [40.6895, -74.0168], "Statue of Liberty": [40.689249, -74.0445], "Ellis Island": [40.699475, -74.039559], "Harlem": [40.8116, -73.9465], "Washington Heights": [40.8417, -73.9394], "Battery Park City": [40.7116, -74.0158], "Stuyvesant Cove": [40.7343, -73.9745], "Hudson Yards": [40.7536, -74.0017], "The New York EDITION": [40.741389, -73.987193] };
+  for (const [name, point] of Object.entries(inside)) assert.equal(placeFits("manhattan", at(point), NYC_TAX_AREA), true, name);
+  const outside = { "Fort Lee": [40.8517, -73.9692], "Edgewater": [40.8115, -73.9788], "Port Imperial, Weehawken": [40.776, -74.0155], "Lincoln Harbor, Weehawken": [40.7598, -74.0213], "Hoboken": [40.743991, -74.032363], "Sinatra Drive, Hoboken": [40.7445, -74.0262], "Exchange Place, Jersey City": [40.7163, -74.0327], "Hunters Point, Long Island City": [40.7447, -73.9573], "Kent Avenue, Williamsburg": [40.7135, -73.9665], "DUMBO": [40.7033, -73.9881], "Astoria Park": [40.779, -73.922], "Spuyten Duyvil": [40.881, -73.917], "Port Morris": [40.801, -73.915], "Harrison": [41.01182, -73.69933] };
+  for (const [name, point] of Object.entries(outside)) assert.equal(placeFits("manhattan", at(point), NYC_TAX_AREA), false, name);
+});
+
+await test("placeFits on the zone edges, with the pins the live site returned on November 20, 2026: the four Teterboro FBOs, Newark Liberty, a Tottenville and a Glen Oaks address fit, and points just inside the widened Teterboro, Staten Island, Queens and Bronx edges fit", () => {
+  const at = ([latitude, longitude]) => ({ latitude, longitude });
+  const live = [
+    ["teb", [40.856026, -74.063547], "NJ", "Atlantic Aviation TEB, Industrial Avenue"],
+    ["teb", [40.854115, -74.054731], "NJ", "Signature Aviation TEB East, Fred Wehran Drive"],
+    ["teb", [40.841902, -74.066215], "NJ", "Jet Aviation Teterboro, Lindbergh Drive"],
+    ["teb", [40.851191, -74.068843], "NJ", "Signature Aviation (formerly Meridian), Industrial Avenue"],
+    ["ewr", [40.688484, -74.176864], "NJ", "Newark Liberty International Airport (EWR)"],
+    ["staten-island", [40.509612, -74.245043], NYC_TAX_AREA, "7455 Amboy Rd, Staten Island"],
+    ["queens", [40.749475, -73.711316], NYC_TAX_AREA, "263-07 76th Ave, Glen Oaks"],
+  ];
+  for (const [zone, point, region, name] of live) assert.equal(placeFits(zone, at(point), region), true, name);
+  const edges = [["teb", [40.836, -74.084], "NJ"], ["teb", [40.874, -74.046], "NJ"], ["staten-island", [40.5, -74.265], NYC_TAX_AREA], ["queens", [40.808, -73.8], NYC_TAX_AREA], ["queens", [40.74, -73.692], NYC_TAX_AREA], ["bronx", [40.922, -73.85], NYC_TAX_AREA], ["ewr", [40.657, -74.2], "NJ"], ["lga", [40.79, -73.888], NYC_TAX_AREA], ["jfk", [40.618, -73.83], NYC_TAX_AREA]];
+  for (const [zone, point, region] of edges) assert.equal(placeFits(zone, at(point), region), true, `${zone} ${point}`);
+  const beyond = [["teb", [40.834, -74.06], "NJ"], ["teb", [40.85, -74.044], "NJ"], ["staten-island", [40.5, -74.275], NYC_TAX_AREA], ["queens", [40.812, -73.8], NYC_TAX_AREA], ["bronx", [40.927, -73.85], NYC_TAX_AREA]];
+  for (const [zone, point, region] of beyond) assert.equal(placeFits(zone, at(point), region), false, `${zone} ${point}`);
+});
+
+await test("pick and the expired ticket lookup check the pin against the address state: a Connecticut record pinned in Manhattan and a Manhattan record pinned in Fort Lee answer the lookup error and log places-pick spot, the same records with their own pins pick as usual, and an expired ticket for the Connecticut record pinned in Manhattan resolves to the ZIP code request", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  logs.length = 0;
+  const riverside = details({ state: "CT", county: "Fairfield County", city: "Greenwich", zip: "06878", country: "US", address: "19 Coventry Ln, Riverside, CT 06878, USA" });
+  const plaza = details({ state: "NY", county: "New York County", sub: "Manhattan", city: "New York", zip: "10019", country: "US", address: "768 5th Ave, New York, NY 10019, USA" });
+  const located = (record, [latitude, longitude]) => answer(200, { ...record, location: { latitude, longitude } });
+  const cases = [
+    [riverside, [40.748441, -73.985664], "19 Coventry Ln, Riverside, CT", "203.0.113.81", null],
+    [riverside, [41.03234, -73.58183], "19 Coventry Ln, Riverside, CT", "203.0.113.82", "outside"],
+    [plaza, [40.8517, -73.9692], "768 5th Ave, New York, NY", "203.0.113.83", null],
+    [plaza, [40.764533, -73.974507], "768 5th Ave, New York, NY", "203.0.113.84", "manhattan"],
+  ];
+  for (const [record, point, label, ip, zone] of cases) {
+    reply = located(record, point);
+    const res = await call(pick("ChIJtest", label), { ip });
+    assert.deepEqual([res.status, res.body.kind, res.body.zone], [200, zone ? "ok" : "error", zone || undefined], `${label} ${point}`);
+  }
+  assert.deepEqual(logs, ["places-pick spot", "places-pick spot"]);
+  logs.length = 0;
+  calls.length = 0;
+  const label = "19 Coventry Ln, Riverside, CT";
+  const old = signTicket("ChIJfarstate", "outside", label, NOW - (TICKET_TTL + 60) * 1000);
+  reply = located(riverside, [40.748441, -73.985664]);
+  const end = await resolveEnd("to", { to_text: label, to_ticket: old }, { now: NOW });
+  assert.deepEqual([end.zone, end.place, calls.length, logs], ["unknown", "", 1, ["places-pick spot"]]);
+});
+
+await test("GOOGLE_MOCK: a Google record with Manhattan text and components but a pin in Westchester, 350 5th Ave, New York, NY at 41.01182, -73.69933, is listed but its pick answers the lookup error with no ticket, logs places-pick spot and fetches nothing, while The New York EDITION and 277 Bedford Avenue still pick Manhattan and Brooklyn", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  logs.length = 0;
+  const ip = "203.0.113.77";
+  const listed = (await call(suggest("far pin"), { ip })).body.items;
+  assert.deepEqual(listed.map((item) => [item.id, item.main, item.secondary, item.types]), [["mock-far-pin", "350 5th Ave", "New York, NY", ["subpremise", "geocode"]]]);
+  assert.equal(classifyPlace(mockDetails("mock-far-pin"), "350 5th Ave, New York, NY"), "manhattan");
+  assert.equal(classifyText("350 5th Ave, New York, NY").zone, "manhattan");
+  const res = await call(pick("mock-far-pin", "350 5th Ave, New York, NY"), { ip });
+  assert.deepEqual([res.status, res.body], [200, { kind: "error" }]);
+  assert.deepEqual(logs, ["places-pick spot"]);
+  assert.equal((await call(suggest("350 5th Ave", { session: SESSION }), { ip })).body.items.some((item) => item.id === "mock-far-pin"), false);
+  const edition = await call(pick("mock-edition", "The New York EDITION, Madison Avenue, New York, NY, USA"), { ip });
+  const bedford = await call(pick("mock-bedford", "277 Bedford Avenue, Brooklyn, NY, USA"), { ip });
+  assert.deepEqual([edition.body.kind, edition.body.zone, bedford.body.kind, bedford.body.zone], ["ok", "manhattan", "ok", "brooklyn"]);
+  assert.deepEqual(edition.body.location, { lat: 40.741389, lng: -73.987193 });
+  assert.deepEqual(logs, ["places-pick spot"]);
+  assert.equal(calls.length, 0);
+});
+
+await test("GOOGLE_MOCK: an expired ticket for the record with the Westchester pin is looked up again and resolves to the ZIP code request, never Manhattan, also from the zone cache, so the trip is never priced or routed to that pin", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  logs.length = 0;
+  const label = "350 5th Ave, New York, NY";
+  const now = Date.parse("2026-11-01T16:00:00.000Z");
+  const old = signTicket("mock-far-pin", "manhattan", label, now - (TICKET_TTL + 60) * 1000);
+  assert.equal(verifyTicket(old, label, now).expired, true);
+  const fields = { trip_type: "one", from_text: "277 Bedford Ave, Brooklyn, NY 11211", to_text: label, to_ticket: old, date: "2026-11-10", time: "14:00", passengers: "2", class: "suv", action: "options" };
+  for (let i = 0; i < 2; i++) {
+    const trip = readInput(fields);
+    const end = await resolveEnd("to", trip, { now });
+    assert.deepEqual([end.zone, end.place, end.region], ["unknown", "", undefined], `try ${i + 1}`);
+    const resolved = await resolveTrip(trip, { now });
+    const check = checkTrip(resolved, now, readSettings({ PAYMENTS_ENABLED: "true" }));
+    assert.deepEqual([check.kind, check.reason, check.field, resolved.route, resolved.ends.to.zone], ["quote", "unplaced", "to_text", "", "unknown"], `try ${i + 1}`);
+  }
+  assert.deepEqual(logs, ["places-pick spot"]);
   assert.equal(calls.length, 0);
 });
 

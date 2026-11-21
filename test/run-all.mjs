@@ -43,8 +43,9 @@ const STATIC = [
   "tolls",
   "seo-weekly",
   "release1",
+  "sprinter",
 ];
-const BROWSER = ["redesign-browser", "book-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser", "trust-browser"];
+const BROWSER = ["redesign-browser", "book-browser", "sprinter-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser", "trust-browser"];
 
 const files = process.argv.includes("--static") ? STATIC : [...STATIC, ...BROWSER];
 const failed = [];

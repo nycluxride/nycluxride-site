@@ -375,7 +375,7 @@ for (const file of ["services.html", "locations.html", "blog.html"]) {
 }
 
 const FREE = ["Free waiting", "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup."];
-const HOUR = ["By the hour", "Any class, with a 3-hour minimum."];
+const HOUR = ["By the hour", "Any class, with a 3-hour minimum, or 4 hours in a Sprinter."];
 const CHILD = ["Child seats", `Infant, toddler and booster seats, ${SEAT}, charged at booking.`];
 const AHEAD = ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."];
 const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
@@ -384,8 +384,8 @@ const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
 RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees and any taxes included."];
-RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
-RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 12 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Send us the trip. We reply with the fare and a payment link."], ["No smoking", "In any of our vehicles."], AHEAD];
+RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
+RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 14 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Book and pay online, with a 4-hour minimum."], ["No smoking", "In any of our vehicles."], AHEAD];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
 const DISTANCE = ["Your price", "Priced by distance and time. You see the total before you pay."];
 const DOGS = ["Dogs", "Small and large dogs, charged once per booking. Service animals ride free."];
@@ -410,10 +410,10 @@ RAILS["long-distance-car-service/nyc-to-atlantic-city.html"] = [["Distance", "Ab
 RAILS["long-distance-car-service/nyc-to-connecticut.html"] = [["Distance", "About 31 miles to Greenwich, 78 miles to New Haven and 138 miles to Foxwoods."], ["Drive", "About 50 minutes to Greenwich and close to 2 hours to New Haven with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
 RAILS["pet-friendly-car-service-nyc.html"] = [["Dogs", "Up to 3 small and 3 large dogs on one booking, in any class."], ["Dog price", `${DOG_PRICE}, charged once per booking.`], ["Service animals", "Free on every trip, as the law requires."], CHILD, AHEAD];
 RAILS["private-jet-car-service-nyc.html"] = [["Airfields", "Six private airfields around New York"], ["Teterboro price", PRICE("New York City address")[1]], ["Other airfields", "For these airports, we'll send you a price."], ["For a passenger", "Add their name and mobile number, and the receipt comes to you."], CHILD, AHEAD];
-RAILS["roadshow-transportation-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Where it starts", "Any address in the five boroughs, JFK or LaGuardia."], ["Between meetings", "The same car and chauffeur stay with you all day."], ["Accounts", "Monthly billing for companies that book often."], AHEAD];
-RAILS["sprinter-van-service-nyc.html"] = [["Seats", "Up to 12 passengers in one van."], ["Bags", "10 large and 2 small bags."], DISTANCE, ["By the hour", "For a Luxury Sprinter by the hour, we'll send you a price."], AHEAD];
+RAILS["roadshow-transportation-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Where it starts", "Any address in the five boroughs, JFK or LaGuardia."], ["Between meetings", "The same car and chauffeur stay with you all day."], ["Accounts", "Monthly billing for companies that book often."], AHEAD];
+RAILS["sprinter-van-service-nyc.html"] = [["Seats", "Up to 14 passengers in one van."], ["Bags", "10 large and 2 small bags."], DISTANCE, ["By the hour", "A Sprinter by the hour has a 4-hour minimum."], AHEAD];
 RAILS["cruise-terminal-car-service-nyc.html"] = [["Terminals", "Manhattan, Brooklyn and Cape Liberty in Bayonne."], DISTANCE, ["Pier to airport", PRICE("New York City address")[1]], CHILD, AHEAD];
-RAILS["wedding-car-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum."], ["Wedding party", "Up to 12 guests in one Luxury Sprinter."], ["Outside the city", DISTANCE[1]], CHILD, AHEAD];
+RAILS["wedding-car-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Wedding party", "Up to 14 guests in one Luxury Sprinter."], ["Outside the city", DISTANCE[1]], CHILD, AHEAD];
 RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Choose the seats when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
 
 for (const [file, rows] of Object.entries(RAILS)) {
@@ -595,7 +595,7 @@ for (const file of POSTS) {
     const soho = read("locations/soho.html").document;
     assert.ok([...soho.querySelectorAll("main p")].some((p) => norm(p.textContent) === "The most common mix-up is West Broadway, a different street from Broadway, four short blocks to the west past Mercer, Greene and Wooster Streets. Another is the same house number on two streets. 100 Greene Street and 100 Wooster Street are one block apart and look almost the same from a car. Give us the cross street with the number, and neither is a problem."));
     const ues = read("locations/upper-east-side.html").document;
-    assert.ok([...ues.querySelectorAll("main p")].some((p) => norm(p.textContent) === "If you have rides that repeat, like a weekly appointment on York Avenue or a school run, ask us to set them up as regular bookings. Then you don't book each one. You can book any class by the hour, with a 3-hour minimum. See hourly rates."));
+    assert.ok([...ues.querySelectorAll("main p")].some((p) => norm(p.textContent) === "If you have rides that repeat, like a weekly appointment on York Avenue or a school run, ask us to set them up as regular bookings. Then you don't book each one. You can book any class by the hour, with a 3-hour minimum, or 4 hours in a Sprinter. See hourly rates."));
   });
   check("the strings the honesty fixes removed appear on no page", () => {
     const gone = ["Wireless internet", "which is why every booking in this area asks for one", "Evening bookings acknowledged the day before", "Pre-market departures accepted", "household account", "Route knowledge is the last piece", "A chauffeur who has driven the same district for years"];
@@ -617,8 +617,8 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
 
 {
   const { document } = read("services.html");
-  const ENDS = { "airport-transfers": [["/book", "Book an airport transfer"]], hourly: [["/book?trip-type=hour&hours=3", "Book by the hour"]], corporate: [["https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20ask%20about%20a%20corporate%20account.", "Ask about a corporate account on WhatsApp (opens in a new tab)"]], weddings: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], prom: [["/book?trip-type=hour&hours=3&class=sprinter", "Book a Sprinter by the hour"]], cruise: [["/book", "Book a cruise transfer"]], "long-distance": [["/book", "Book a long distance trip"]], roadshow: [["/book?trip-type=hour&hours=3", "Book a roadshow day"]], "private-jet": [["/book", "Book a car to your FBO"]], sprinter: [["/book?class=sprinter", "Book the Sprinter"]], dogs: [["/book", "Book a ride with your dog"]] };
-  check("services.html: each of the eleven sections ends with its one booking link, the Sprinter ones with the we'll send you a price line", () => {
+  const ENDS = { "airport-transfers": [["/book", "Book an airport transfer"]], hourly: [["/book?trip-type=hour&hours=3", "Book by the hour"]], corporate: [["https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20ask%20about%20a%20corporate%20account.", "Ask about a corporate account on WhatsApp (opens in a new tab)"]], weddings: [["/book?trip-type=hour&hours=4&class=sprinter", "Book a Sprinter by the hour"]], prom: [["/book?trip-type=hour&hours=4&class=sprinter", "Book a Sprinter by the hour"]], cruise: [["/book", "Book a cruise transfer"]], "long-distance": [["/book", "Book a long distance trip"]], roadshow: [["/book?trip-type=hour&hours=3", "Book a roadshow day"]], "private-jet": [["/book", "Book a car to your FBO"]], sprinter: [["/book?class=sprinter", "Book the Sprinter"]], dogs: [["/book", "Book a ride with your dog"]] };
+  check("services.html: each of the eleven sections ends with its one booking link, the Sprinter ones with the 4-hour minimum line", () => {
     for (const [id, want] of Object.entries(ENDS)) {
       const text = document.getElementById(id).querySelector(".svc__text");
       const lnks = [...text.querySelectorAll("a.lnk")];
@@ -629,7 +629,7 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
       if (sprinter) {
         assert.deepEqual([...end.children].map((e) => e.tagName), ["P", "P"], `${id}: the link and its line share one block`);
         assert.ok(end.firstElementChild.contains(lnks[0]));
-        assert.equal(norm(end.lastElementChild.textContent), "For a Luxury Sprinter by the hour, we'll send you a price.");
+        assert.equal(norm(end.lastElementChild.textContent), "A Sprinter by the hour has a 4-hour minimum.");
       }
     }
     const wa = document.querySelector("#corporate a.lnk");
@@ -642,7 +642,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
   const { document } = read(file);
   check(`${file}: the fleet card Book links carry their class and the seat glyph is #i-user`, () => {
     const links = [...document.querySelectorAll("main .fleet-card a.lnk")].filter((a) => norm(a.textContent) === "Book a car");
-    assert.deepEqual(links.map((a) => a.getAttribute("href")), classes.map((c) => prefix + c));
+    assert.deepEqual(links.map((a) => a.getAttribute("href")), classes.map((c) => (file === "limousine-service-nyc.html" && c === "sprinter" ? "/book?trip-type=hour&hours=4&class=" : prefix) + c + (file === "limousine-service-nyc.html" && c === "sprinter" ? "&sprinter=sprinter-limo" : "")));
     for (const a of links) assert.match(a.getAttribute("aria-label"), /^Book a car \(/);
     assert.equal(document.querySelectorAll('main use[href="#i-seat"]').length, 0);
     assert.ok(document.querySelectorAll('main .fleet-card use[href="#i-user"]').length >= 4);
@@ -807,13 +807,19 @@ check("locations/staten-island.html and black-car-service-brooklyn.html: the tol
   assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.")), "the route paragraph");
   const toll = "Yes, both ways. Airport rides include tolls. On distance trips, tolls are added at booking, and on hourly trips they are charged after the ride. A round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
-  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, for days with several stops. See all rates.";
+  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, or 4 hours in a Sprinter, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
 check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport rides to or from New York City and hourly bookings, and says other one-way trips are priced by distance and time at the pickup time, visible and in JSON-LD", () => {
   const { document } = read("corporate-car-service-nyc.html");
   const answer = "Not on airport rides to or from New York City or on hourly bookings. Those have set prices with no surge. Other one-way trips are priced by distance and time at your pickup time. See all rates.";
   assert.deepEqual([norm(document.querySelector("#q-busy-times .acc__body").textContent), ldAnswer(document, "Do busy times change the price?")], [answer, answer]);
+});
+
+check("about.html: the vehicle count in At a glance equals the vehicles listed on fleet.html", () => {
+  const fleet = read("fleet.html").document.querySelectorAll("h3.fleet-card__name").length;
+  const dt = [...read("about.html").document.querySelectorAll("dt")].find((d) => d.textContent.trim() === "Vehicles");
+  assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [14, "14"]);
 });
 
 if (failures) {

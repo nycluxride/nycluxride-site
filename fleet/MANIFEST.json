@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T14:11:56.908Z",
+  "generatedAt": "2026-11-20T17:17:26.826Z",
   "generator": "scripts/images.mjs",
   "targetWidths": [
     300,
@@ -210,10 +210,10 @@
     "webp": "cwebp -q 80 -m 6 -sharp_yuv -af -pass 10 -quiet {tmp.png} -o {out.webp}"
   },
   "totals": {
-    "masters": 50,
-    "masterBytes": 22296022,
-    "variantCount": 682,
-    "variantBytes": 52114497,
+    "masters": 59,
+    "masterBytes": 22796486,
+    "variantCount": 736,
+    "variantBytes": 53005824,
     "cropCount": 8,
     "cropBytes": 271325
   },
@@ -6289,6 +6289,201 @@
       }
     },
     {
+      "slug": "sprinter-executive-cabin",
+      "master": {
+        "path": "fleet/sprinter-executive-cabin.webp",
+        "url": "/fleet/sprinter-executive-cabin.webp",
+        "width": 600,
+        "height": 400,
+        "bytes": 67730,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-executive-cabin-300.avif",
+          "url": "/fleet/sprinter-executive-cabin-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 7822
+        },
+        {
+          "path": "fleet/sprinter-executive-cabin-300.webp",
+          "url": "/fleet/sprinter-executive-cabin-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 11980
+        },
+        {
+          "path": "fleet/sprinter-executive-cabin-400.avif",
+          "url": "/fleet/sprinter-executive-cabin-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 12345
+        },
+        {
+          "path": "fleet/sprinter-executive-cabin-400.webp",
+          "url": "/fleet/sprinter-executive-cabin-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 19104
+        },
+        {
+          "path": "fleet/sprinter-executive-cabin-600.avif",
+          "url": "/fleet/sprinter-executive-cabin-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 24973
+        },
+        {
+          "path": "fleet/sprinter-executive-cabin-600.webp",
+          "url": "/fleet/sprinter-executive-cabin-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 38088
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-executive-cabin-300.avif 300w, /fleet/sprinter-executive-cabin-400.avif 400w, /fleet/sprinter-executive-cabin-600.avif 600w",
+        "webp": "/fleet/sprinter-executive-cabin-300.webp 300w, /fleet/sprinter-executive-cabin-400.webp 400w, /fleet/sprinter-executive-cabin-600.webp 600w"
+      }
+    },
+    {
+      "slug": "sprinter-executive-lounge",
+      "master": {
+        "path": "fleet/sprinter-executive-lounge.webp",
+        "url": "/fleet/sprinter-executive-lounge.webp",
+        "width": 450,
+        "height": 300,
+        "bytes": 29806,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-executive-lounge-300.avif",
+          "url": "/fleet/sprinter-executive-lounge-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 6727
+        },
+        {
+          "path": "fleet/sprinter-executive-lounge-300.webp",
+          "url": "/fleet/sprinter-executive-lounge-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 9180
+        },
+        {
+          "path": "fleet/sprinter-executive-lounge-400.avif",
+          "url": "/fleet/sprinter-executive-lounge-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 9920
+        },
+        {
+          "path": "fleet/sprinter-executive-lounge-400.webp",
+          "url": "/fleet/sprinter-executive-lounge-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 13060
+        },
+        {
+          "path": "fleet/sprinter-executive-lounge-450.avif",
+          "url": "/fleet/sprinter-executive-lounge-450.avif",
+          "format": "avif",
+          "width": 450,
+          "height": 300,
+          "bytes": 12035
+        },
+        {
+          "path": "fleet/sprinter-executive-lounge-450.webp",
+          "url": "/fleet/sprinter-executive-lounge-450.webp",
+          "format": "webp",
+          "width": 450,
+          "height": 300,
+          "bytes": 15044
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-executive-lounge-300.avif 300w, /fleet/sprinter-executive-lounge-400.avif 400w, /fleet/sprinter-executive-lounge-450.avif 450w",
+        "webp": "/fleet/sprinter-executive-lounge-300.webp 300w, /fleet/sprinter-executive-lounge-400.webp 400w, /fleet/sprinter-executive-lounge-450.webp 450w"
+      }
+    },
+    {
+      "slug": "sprinter-executive-night",
+      "master": {
+        "path": "fleet/sprinter-executive-night.webp",
+        "url": "/fleet/sprinter-executive-night.webp",
+        "width": 450,
+        "height": 300,
+        "bytes": 30598,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-executive-night-300.avif",
+          "url": "/fleet/sprinter-executive-night-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 6611
+        },
+        {
+          "path": "fleet/sprinter-executive-night-300.webp",
+          "url": "/fleet/sprinter-executive-night-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 8084
+        },
+        {
+          "path": "fleet/sprinter-executive-night-400.avif",
+          "url": "/fleet/sprinter-executive-night-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 10243
+        },
+        {
+          "path": "fleet/sprinter-executive-night-400.webp",
+          "url": "/fleet/sprinter-executive-night-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 11878
+        },
+        {
+          "path": "fleet/sprinter-executive-night-450.avif",
+          "url": "/fleet/sprinter-executive-night-450.avif",
+          "format": "avif",
+          "width": 450,
+          "height": 300,
+          "bytes": 12523
+        },
+        {
+          "path": "fleet/sprinter-executive-night-450.webp",
+          "url": "/fleet/sprinter-executive-night-450.webp",
+          "format": "webp",
+          "width": 450,
+          "height": 300,
+          "bytes": 14346
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-executive-night-300.avif 300w, /fleet/sprinter-executive-night-400.avif 400w, /fleet/sprinter-executive-night-450.avif 450w",
+        "webp": "/fleet/sprinter-executive-night-300.webp 300w, /fleet/sprinter-executive-night-400.webp 400w, /fleet/sprinter-executive-night-450.webp 450w"
+      }
+    },
+    {
       "slug": "sprinter-jet",
       "master": {
         "path": "fleet/sprinter-jet.webp",
@@ -6499,6 +6694,201 @@
       }
     },
     {
+      "slug": "sprinter-limo-castle",
+      "master": {
+        "path": "fleet/sprinter-limo-castle.webp",
+        "url": "/fleet/sprinter-limo-castle.webp",
+        "width": 600,
+        "height": 400,
+        "bytes": 96124,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-limo-castle-300.avif",
+          "url": "/fleet/sprinter-limo-castle-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 9664
+        },
+        {
+          "path": "fleet/sprinter-limo-castle-300.webp",
+          "url": "/fleet/sprinter-limo-castle-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 15320
+        },
+        {
+          "path": "fleet/sprinter-limo-castle-400.avif",
+          "url": "/fleet/sprinter-limo-castle-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 15753
+        },
+        {
+          "path": "fleet/sprinter-limo-castle-400.webp",
+          "url": "/fleet/sprinter-limo-castle-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 25674
+        },
+        {
+          "path": "fleet/sprinter-limo-castle-600.avif",
+          "url": "/fleet/sprinter-limo-castle-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 35490
+        },
+        {
+          "path": "fleet/sprinter-limo-castle-600.webp",
+          "url": "/fleet/sprinter-limo-castle-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 57168
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-limo-castle-300.avif 300w, /fleet/sprinter-limo-castle-400.avif 400w, /fleet/sprinter-limo-castle-600.avif 600w",
+        "webp": "/fleet/sprinter-limo-castle-300.webp 300w, /fleet/sprinter-limo-castle-400.webp 400w, /fleet/sprinter-limo-castle-600.webp 600w"
+      }
+    },
+    {
+      "slug": "sprinter-limo-lounge",
+      "master": {
+        "path": "fleet/sprinter-limo-lounge.webp",
+        "url": "/fleet/sprinter-limo-lounge.webp",
+        "width": 450,
+        "height": 300,
+        "bytes": 41086,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-limo-lounge-300.avif",
+          "url": "/fleet/sprinter-limo-lounge-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 7396
+        },
+        {
+          "path": "fleet/sprinter-limo-lounge-300.webp",
+          "url": "/fleet/sprinter-limo-lounge-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 13242
+        },
+        {
+          "path": "fleet/sprinter-limo-lounge-400.avif",
+          "url": "/fleet/sprinter-limo-lounge-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 11318
+        },
+        {
+          "path": "fleet/sprinter-limo-lounge-400.webp",
+          "url": "/fleet/sprinter-limo-lounge-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 19472
+        },
+        {
+          "path": "fleet/sprinter-limo-lounge-450.avif",
+          "url": "/fleet/sprinter-limo-lounge-450.avif",
+          "format": "avif",
+          "width": 450,
+          "height": 300,
+          "bytes": 13855
+        },
+        {
+          "path": "fleet/sprinter-limo-lounge-450.webp",
+          "url": "/fleet/sprinter-limo-lounge-450.webp",
+          "format": "webp",
+          "width": 450,
+          "height": 300,
+          "bytes": 22840
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-limo-lounge-300.avif 300w, /fleet/sprinter-limo-lounge-400.avif 400w, /fleet/sprinter-limo-lounge-450.avif 450w",
+        "webp": "/fleet/sprinter-limo-lounge-300.webp 300w, /fleet/sprinter-limo-lounge-400.webp 400w, /fleet/sprinter-limo-lounge-450.webp 450w"
+      }
+    },
+    {
+      "slug": "sprinter-limo-white",
+      "master": {
+        "path": "fleet/sprinter-limo-white.webp",
+        "url": "/fleet/sprinter-limo-white.webp",
+        "width": 600,
+        "height": 400,
+        "bytes": 68456,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-limo-white-300.avif",
+          "url": "/fleet/sprinter-limo-white-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 7083
+        },
+        {
+          "path": "fleet/sprinter-limo-white-300.webp",
+          "url": "/fleet/sprinter-limo-white-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 11192
+        },
+        {
+          "path": "fleet/sprinter-limo-white-400.avif",
+          "url": "/fleet/sprinter-limo-white-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 11951
+        },
+        {
+          "path": "fleet/sprinter-limo-white-400.webp",
+          "url": "/fleet/sprinter-limo-white-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 17970
+        },
+        {
+          "path": "fleet/sprinter-limo-white-600.avif",
+          "url": "/fleet/sprinter-limo-white-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 26808
+        },
+        {
+          "path": "fleet/sprinter-limo-white-600.webp",
+          "url": "/fleet/sprinter-limo-white-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 37194
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-limo-white-300.avif 300w, /fleet/sprinter-limo-white-400.avif 400w, /fleet/sprinter-limo-white-600.avif 600w",
+        "webp": "/fleet/sprinter-limo-white-300.webp 300w, /fleet/sprinter-limo-white-400.webp 400w, /fleet/sprinter-limo-white-600.webp 600w"
+      }
+    },
+    {
       "slug": "sprinter-limo",
       "master": {
         "path": "fleet/sprinter-limo.webp",
@@ -6609,6 +6999,201 @@
       "srcset": {
         "avif": "/fleet/sprinter-limo-300.avif 300w, /fleet/sprinter-limo-400.avif 400w, /fleet/sprinter-limo-600.avif 600w, /fleet/sprinter-limo-900.avif 900w, /fleet/sprinter-limo-1100.avif 1100w, /fleet/sprinter-limo-1236.avif 1236w",
         "webp": "/fleet/sprinter-limo-300.webp 300w, /fleet/sprinter-limo-400.webp 400w, /fleet/sprinter-limo-600.webp 600w, /fleet/sprinter-limo-900.webp 900w, /fleet/sprinter-limo-1100.webp 1100w, /fleet/sprinter-limo-1236.webp 1236w"
+      }
+    },
+    {
+      "slug": "sprinter-shuttle-luggage",
+      "master": {
+        "path": "fleet/sprinter-shuttle-luggage.webp",
+        "url": "/fleet/sprinter-shuttle-luggage.webp",
+        "width": 600,
+        "height": 400,
+        "bytes": 60508,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-shuttle-luggage-300.avif",
+          "url": "/fleet/sprinter-shuttle-luggage-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 5811
+        },
+        {
+          "path": "fleet/sprinter-shuttle-luggage-300.webp",
+          "url": "/fleet/sprinter-shuttle-luggage-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 8670
+        },
+        {
+          "path": "fleet/sprinter-shuttle-luggage-400.avif",
+          "url": "/fleet/sprinter-shuttle-luggage-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 9914
+        },
+        {
+          "path": "fleet/sprinter-shuttle-luggage-400.webp",
+          "url": "/fleet/sprinter-shuttle-luggage-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 14202
+        },
+        {
+          "path": "fleet/sprinter-shuttle-luggage-600.avif",
+          "url": "/fleet/sprinter-shuttle-luggage-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 22740
+        },
+        {
+          "path": "fleet/sprinter-shuttle-luggage-600.webp",
+          "url": "/fleet/sprinter-shuttle-luggage-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 30430
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-shuttle-luggage-300.avif 300w, /fleet/sprinter-shuttle-luggage-400.avif 400w, /fleet/sprinter-shuttle-luggage-600.avif 600w",
+        "webp": "/fleet/sprinter-shuttle-luggage-300.webp 300w, /fleet/sprinter-shuttle-luggage-400.webp 400w, /fleet/sprinter-shuttle-luggage-600.webp 600w"
+      }
+    },
+    {
+      "slug": "sprinter-shuttle-seats",
+      "master": {
+        "path": "fleet/sprinter-shuttle-seats.webp",
+        "url": "/fleet/sprinter-shuttle-seats.webp",
+        "width": 450,
+        "height": 300,
+        "bytes": 35784,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-shuttle-seats-300.avif",
+          "url": "/fleet/sprinter-shuttle-seats-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 7109
+        },
+        {
+          "path": "fleet/sprinter-shuttle-seats-300.webp",
+          "url": "/fleet/sprinter-shuttle-seats-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 10144
+        },
+        {
+          "path": "fleet/sprinter-shuttle-seats-400.avif",
+          "url": "/fleet/sprinter-shuttle-seats-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 11360
+        },
+        {
+          "path": "fleet/sprinter-shuttle-seats-400.webp",
+          "url": "/fleet/sprinter-shuttle-seats-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 15612
+        },
+        {
+          "path": "fleet/sprinter-shuttle-seats-450.avif",
+          "url": "/fleet/sprinter-shuttle-seats-450.avif",
+          "format": "avif",
+          "width": 450,
+          "height": 300,
+          "bytes": 14831
+        },
+        {
+          "path": "fleet/sprinter-shuttle-seats-450.webp",
+          "url": "/fleet/sprinter-shuttle-seats-450.webp",
+          "format": "webp",
+          "width": 450,
+          "height": 300,
+          "bytes": 19596
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-shuttle-seats-300.avif 300w, /fleet/sprinter-shuttle-seats-400.avif 400w, /fleet/sprinter-shuttle-seats-450.avif 450w",
+        "webp": "/fleet/sprinter-shuttle-seats-300.webp 300w, /fleet/sprinter-shuttle-seats-400.webp 400w, /fleet/sprinter-shuttle-seats-450.webp 450w"
+      }
+    },
+    {
+      "slug": "sprinter-shuttle-side",
+      "master": {
+        "path": "fleet/sprinter-shuttle-side.webp",
+        "url": "/fleet/sprinter-shuttle-side.webp",
+        "width": 600,
+        "height": 400,
+        "bytes": 70372,
+        "aspectRatio": 1.5
+      },
+      "variants": [
+        {
+          "path": "fleet/sprinter-shuttle-side-300.avif",
+          "url": "/fleet/sprinter-shuttle-side-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 200,
+          "bytes": 8219
+        },
+        {
+          "path": "fleet/sprinter-shuttle-side-300.webp",
+          "url": "/fleet/sprinter-shuttle-side-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 200,
+          "bytes": 12118
+        },
+        {
+          "path": "fleet/sprinter-shuttle-side-400.avif",
+          "url": "/fleet/sprinter-shuttle-side-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 267,
+          "bytes": 13383
+        },
+        {
+          "path": "fleet/sprinter-shuttle-side-400.webp",
+          "url": "/fleet/sprinter-shuttle-side-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 267,
+          "bytes": 18756
+        },
+        {
+          "path": "fleet/sprinter-shuttle-side-600.avif",
+          "url": "/fleet/sprinter-shuttle-side-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 400,
+          "bytes": 27595
+        },
+        {
+          "path": "fleet/sprinter-shuttle-side-600.webp",
+          "url": "/fleet/sprinter-shuttle-side-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 400,
+          "bytes": 37484
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/sprinter-shuttle-side-300.avif 300w, /fleet/sprinter-shuttle-side-400.avif 400w, /fleet/sprinter-shuttle-side-600.avif 600w",
+        "webp": "/fleet/sprinter-shuttle-side-300.webp 300w, /fleet/sprinter-shuttle-side-400.webp 400w, /fleet/sprinter-shuttle-side-600.webp 600w"
       }
     }
   ]

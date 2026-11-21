@@ -143,6 +143,42 @@ for (const url of ["http://127.0.0.1:4173/", "https://nycluxride-git-main.vercel
   });
 }
 
+test("on www the confirmation page sends a paid booking through the Google tag to the Paid Booking label with only the booking reference", () => {
+  const window = boot("https://www.nycluxride.com/booking-confirmed?session_id=cs_live_a1");
+  window.eval(TRACKING);
+  assert.equal(window.nlrPaidBooking("cs_live_a1", "48213590"), true);
+  const sent = JSON.parse(JSON.stringify([...window.nlrDataLayer].filter((a) => a[0] === "event").map((a) => [...a])));
+  assert.deepEqual(sent, [["event", "purchase", { send_to: "G-9MT2ZW7LPV", transaction_id: "48213590" }], ["event", "conversion", { send_to: `${ADS_ID}/t37RCPLvhLsdEIX4gOJD`, transaction_id: "48213590" }]]);
+});
+
+test("on www gtag.js sends no customer data: no set command, no user_data and no enhanced conversions in any config", () => {
+  const window = boot("https://www.nycluxride.com/booking-confirmed?session_id=cs_live_a1");
+  window.eval(TRACKING);
+  window.nlrPaidBooking("cs_live_a1", "48213590");
+  const layer = [...window.nlrDataLayer];
+  assert.deepEqual(layer.filter((a) => a[0] === "set"), []);
+  assert.deepEqual(configs(window).map((a) => Object.keys(a[2] || {}).sort()), [["page_location"], ["page_location", "phone_conversion_callback", "phone_conversion_number"]]);
+  assert.ok(!JSON.stringify(layer.map((a) => [...a])).includes("user_data"));
+  assert.doesNotMatch(SRC, /user_data|enhanced/);
+});
+
+test("on the confirmation page the Google tag reads the address without the session id, and the address in the browser keeps it for a reload", () => {
+  const window = boot("https://www.nycluxride.com/booking-confirmed?session_id=cs_live_a1");
+  assert.deepEqual(configs(window).map((a) => a[2].page_location), ["https://www.nycluxride.com/booking-confirmed", "https://www.nycluxride.com/booking-confirmed"]);
+  assert.ok(!JSON.stringify([...window.nlrDataLayer].map((a) => [...a])).includes("cs_live_a1"));
+  assert.equal(window.location.href, "https://www.nycluxride.com/booking-confirmed?session_id=cs_live_a1");
+});
+
+test("on the confirmation page other parameters stay in the address the Google tag reads", () => {
+  const window = boot("https://www.nycluxride.com/booking-confirmed?session_id=cs_live_a1&gclid=TESTGCLID");
+  assert.deepEqual(configs(window).map((a) => a[2].page_location), ["https://www.nycluxride.com/booking-confirmed?gclid=TESTGCLID", "https://www.nycluxride.com/booking-confirmed?gclid=TESTGCLID"]);
+});
+
+test("on other pages gtag.js passes no page address, so the tag reads the page as it is", () => {
+  const window = boot("https://www.nycluxride.com/rates?session_id=cs_live_a1");
+  assert.deepEqual(configs(window).map((a) => (a[2] || {}).page_location), [undefined, undefined]);
+});
+
 test("on www the Vercel bypass parameters leave the address before the tag reads it", () => {
   const window = boot("https://www.nycluxride.com/book?utm_source=test&x-vercel-protection-bypass=SECRET123&x-vercel-set-bypass-cookie=true&gclid=TESTGCLID");
   assert.equal(window.location.href, "https://www.nycluxride.com/book?utm_source=test&gclid=TESTGCLID");

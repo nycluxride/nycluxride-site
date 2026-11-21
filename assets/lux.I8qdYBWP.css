@@ -890,8 +890,8 @@ html.pri-in :is(.site-header__desk .btn,.actionbar__cell--book):active{backgroun
 @supports selector(:has(*)){.pick-say{display:none}#arrival:has(:checked:not([value=all])) .pick-say[data-t=all],#arrival:has([value="1"]:checked) .pick-say[data-t="1"],#arrival:has([value="4"]:checked) .pick-say[data-t="4"],#arrival:has([value="5"]:checked) .pick-say[data-t="5"],#arrival:has([value="7"]:checked) .pick-say[data-t="7"],#arrival:has([value="8"]:checked) .pick-say[data-t="8"],#arrival:has([value=B]:checked) .pick-say[data-t=B],#arrival:has([value=C]:checked) .pick-say[data-t=C]{display:block}}
 .fits-yes,.fits-no{display:none;justify-self:start;margin-inline-start:8px;padding:2px 8px;border-radius:var(--radius-pill);font:500 var(--type-caption) var(--font-sans);letter-spacing:var(--tracking-caption);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line)}
 .fits-yes{background:var(--gold-100);color:var(--ink);box-shadow:none}
-main:has(.fits [value="3"]:checked) [data-seats] .fits-yes,main:has(.fits [value="5"]:checked) :is([data-seats="5"],[data-seats="12"]) .fits-yes,main:has(.fits [value="12"]:checked) [data-seats="12"] .fits-yes,main:has(.fits [value="5"]:checked) [data-seats="3"] .fits-no,main:has(.fits [value="12"]:checked) [data-seats]:not([data-seats="12"]) .fits-no{display:inline-block}
-main:has(.fits [value="5"]:checked) .fleet-card[data-seats="3"] .plate,main:has(.fits [value="12"]:checked) .fleet-card:not([data-seats="12"]) .plate{opacity:.5}
+main:has(.fits [value="3"]:checked) [data-seats] .fits-yes,main:has(.fits [value="5"]:checked) [data-seats]:not([data-seats="3"]) .fits-yes,main:has(.fits [value="10"]:checked) :is([data-seats="10"],[data-seats="14"]) .fits-yes,main:has(.fits [value="14"]:checked) [data-seats="14"] .fits-yes,main:has(.fits [value="5"]:checked) [data-seats="3"] .fits-no,main:has(.fits [value="10"]:checked) :is([data-seats="3"],[data-seats="5"]) .fits-no,main:has(.fits [value="14"]:checked) [data-seats]:not([data-seats="14"]) .fits-no{display:inline-block}
+main:has(.fits [value="5"]:checked) .fleet-card[data-seats="3"] .plate,main:has(.fits [value="10"]:checked) .fleet-card:is([data-seats="3"],[data-seats="5"]) .plate,main:has(.fits [value="14"]:checked) .fleet-card:not([data-seats="14"]) .plate{opacity:.5}
 .toc-post ol{display:grid;gap:8px;margin-block-start:12px}
 .in-short{padding:24px;border-radius:var(--radius-lg);background:var(--cream)}
 .toc-post ol,.toc,nav[aria-label="On this page"] .jumps{scroll-target-group:auto}
@@ -1200,3 +1200,4 @@ a[href^="http"]::after,a[href^="/"]::after{content:" (" attr(href) ")";font-size
 .site-footer{padding-block-end:0}
 *{box-shadow:none}
 }
+.fleet-photos{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-block-start:24px}.fleet-photos__h{grid-column:1/-1;font:500 var(--type-subhead-sm) var(--font-sans);color:var(--ink)}

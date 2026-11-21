@@ -114,7 +114,7 @@ await test("route: the Routes request has the field mask, TRAFFIC_AWARE, the dep
     languageCode: "en-US",
     units: "IMPERIAL",
     extraComputations: ["TOLLS"],
-    routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: ["US_NY_EZPASSNY", "US_NJ_EZPASSNJ", "US_PA_EZPASSPA", "US_DE_EZPASSDE", "US_MD_EZPASSMD", "US_MA_EZPASSMA", "US_RI_EZPASSRI", "US_NH_EZPASSNH", "US_ME_EZPASSME"] },
+    routeModifiers: { vehicleInfo: { emissionType: "GASOLINE" }, tollPasses: ["US_NY_EZPASSNY"] },
   });
   assert.ok(!init.body.includes(SERVER_KEY) && !init.body.includes(label));
   assert.ok(init.signal instanceof AbortSignal);
