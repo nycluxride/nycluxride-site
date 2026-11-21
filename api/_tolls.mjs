@@ -220,7 +220,7 @@ export function priceSplit(plan, route, departure, meters) {
       cents += mark.kind === "pa" ? crossingCents(new Date(at)) : mark.cents;
     } else {
       const part = tollCents(leg);
-      if (part === null) return { reason: "unpriced" };
+      if (part === null) return { reason: "unpriced", detail: `leg ${i + 1}/${legs.length} ${Math.round(Number(leg.distanceMeters) || 0)}m plan ${plan.legs.map((m) => (m ? m.kind : "g")).join(",")}` };
       cents += part;
     }
     const seconds = parseFloat(String(leg.duration || ""));

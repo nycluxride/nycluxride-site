@@ -152,7 +152,7 @@ async function splitTolls(waypoints, departure, first) {
   if (!result.ok) return missed(`google ${result.status}`);
   const route = result.body && Array.isArray(result.body.routes) ? result.body.routes[0] : null;
   const priced = priceSplit(plan, route, departure, first.meters);
-  return priced.reason ? missed(priced.reason) : priced.cents;
+  return priced.reason ? missed(priced.detail ? `${priced.reason} ${priced.detail}` : priced.reason) : priced.cents;
 }
 
 const fallback = async (waypoints, departure, tolls, first) => (tolls === null ? splitTolls(waypoints, departure, first) : tolls);

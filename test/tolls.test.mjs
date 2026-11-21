@@ -561,7 +561,7 @@ await test("when the fallback can not price every part it keeps today's behavior
   const cases = [
     [{ status: 503 }, "route-tolls google 503"],
     [{ thrown: true }, "route-tolls google 0"],
-    [{ legs: [...SPLIT_LEGS.slice(0, 4), leg(2710, 48308, { travelAdvisory: { tollInfo: {} } })] }, "route-tolls unpriced"],
+    [{ legs: [...SPLIT_LEGS.slice(0, 4), leg(2710, 48308, { travelAdvisory: { tollInfo: {} } })] }, "route-tolls unpriced leg 5/5 48308m plan g,njtp,g,pa,g"],
     [{ legs: [SPLIT_LEGS[0], leg(1070, 19016), ...SPLIT_LEGS.slice(2)] }, "route-tolls facility"],
     [{ total: Math.round(84490 * 1.03) }, "route-tolls detour"],
     [{ legs: SPLIT_LEGS.slice(0, 4) }, "route-tolls legs"],
