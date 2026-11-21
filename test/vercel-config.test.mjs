@@ -266,7 +266,7 @@ test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New 
     { path: "/api/ride-reminders", schedule: "0 21 * * *" },
     { path: "/api/ride-reminders", schedule: "0 22 * * *" },
     { path: "/api/ride-reminders", schedule: "0 23 * * *" },
-    { path: "/api/owner-update", schedule: "0 14 * * *" },
+    { path: "/api/owner-update", schedule: "0 16 * * *" },
   ]);
   for (const route of ["seo-weekly.mjs", "ride-reminders.mjs", "owner-update.mjs"]) assert.ok(existsSync(join(ROOT, "api", route)), route);
 });

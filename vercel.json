@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/owner-update",
-      "schedule": "0 14 * * *"
+      "schedule": "0 16 * * *"
     }
   ],
   "redirects": [
