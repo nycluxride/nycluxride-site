@@ -13,7 +13,7 @@ const SUGGEST_MASK = "suggestions.placePrediction.placeId,suggestions.placePredi
 const DETAILS_MASK = "id,formattedAddress,shortFormattedAddress,addressComponents,types,location";
 const REVERSE_MASK = "results.placeId,results.location,results.granularity,results.formattedAddress,results.addressComponents,results.types";
 const ROUTE_MASK = "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation";
-const TOLL_MASK = "routes.travelAdvisory.tollInfo";
+const TOLL_MASK = "routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo";
 const SPLIT_MASK = "routes.distanceMeters,routes.legs.distanceMeters,routes.legs.duration,routes.legs.travelAdvisory.tollInfo";
 export const TOLL_PASSES = ["US_NY_EZPASSNY"];
 const BIAS = { circle: { center: { latitude: 40.758, longitude: -73.9855 }, radius: 50000 } };
@@ -182,7 +182,7 @@ export async function computeRoute(waypoints, departure, size, tolls = true) {
     ok: true,
     minutes: Math.ceil(seconds / 60),
     miles: Math.round((meters / 1609.344) * 10) / 10,
-    ...(tolls && { tolls: await fallback(waypoints, departure, tollCents(route), { polyline, points, meters }) }),
+    ...(tolls && { tolls: await fallback(waypoints, departure, legs.some((item) => tollCents(item) === null) ? null : tollCents(route), { polyline, points, meters }) }),
     polyline,
     start: legs.length ? point(legs[0].startLocation) : null,
     end: legs.length ? point(legs[legs.length - 1].endLocation) : null,

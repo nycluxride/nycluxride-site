@@ -102,7 +102,7 @@ await test("route: the Routes request has the field mask, TRAFFIC_AWARE, the dep
   assert.deepEqual(init.headers, {
     "Content-Type": "application/json",
     "X-Goog-Api-Key": SERVER_KEY,
-    "X-Goog-FieldMask": "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation,routes.travelAdvisory.tollInfo",
+    "X-Goog-FieldMask": "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation,routes.legs.endLocation,routes.travelAdvisory.tollInfo,routes.legs.travelAdvisory.tollInfo",
   });
   assert.deepEqual(JSON.parse(init.body), {
     origin: { placeId: "ChIJedition" },

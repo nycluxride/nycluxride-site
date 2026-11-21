@@ -6,20 +6,21 @@ const UNITS = /^\d{1,6}$/;
 const GAP_M = 50;
 const STOP_M = 1000;
 const DETOUR = 0.02;
+const JOIN_M = 5000;
 const AXIS_DEG = 35;
 const TABLE_UNTIL = Date.parse(TOLL_TABLE_UNTIL);
 const CROSSINGS = [
-  { id: "gwb", a: [40.8537, -73.9642], b: [40.85, -73.9446], radius: 200, lead: 500, trail: 300, span: 3000 },
+  { id: "gwb", a: [40.8537, -73.9642], b: [40.85, -73.9446], radius: 200, lead: 500, trail: 300, span: 3000, after: ["18E", "18W"] },
   { id: "goethals", a: [40.6369, -74.2003], b: [40.62875, -74.1841], radius: 150, lead: 300, trail: 300, span: 3000 },
   { id: "bayonne", a: [40.6471, -74.1401], b: [40.6329, -74.1456], radius: 150, lead: 300, trail: 300, span: 3000 },
   { id: "outerbridge", a: [40.5243, -74.2552], b: [40.52545, -74.2338], radius: 150, lead: 300, trail: 300, span: 3000 },
 ];
 const GATES = [
-  { id: "13", at: [40.64095, -74.20992], radius: 100, margin: 400 },
-  { id: "13A", at: [40.66891, -74.18406], radius: 100, margin: 400 },
-  { id: "14", at: [40.70858, -74.15627], radius: 100, margin: 400 },
-  { id: "18E", at: [40.8115, -74.0294], radius: 150, margin: 1200, axis: 17 },
-  { id: "18W", at: [40.8115, -74.0601], radius: 150, margin: 400, axis: 53 },
+  { id: "13", at: [40.64095, -74.20992], radius: 100, margin: 2000 },
+  { id: "13A", at: [40.66891, -74.18406], radius: 100, margin: 2000 },
+  { id: "14", at: [40.70858, -74.15627], radius: 100, margin: 2000 },
+  { id: "18E", at: [40.8115, -74.0294], radius: 150, margin: 2000, axis: 17 },
+  { id: "18W", at: [40.8115, -74.0601], radius: 150, margin: 2000, axis: 53 },
 ];
 
 export function tollClassOf(map) {
@@ -140,7 +141,7 @@ function crossingsOn(path, arcs) {
     const ends = visits(path, arcs, item.b, item.radius);
     for (const start of visits(path, arcs, item.a, item.radius)) {
       const end = ends.find((at) => at > start && at - start <= item.span);
-      if (end !== undefined) hits.push({ kind: "pa", id: item.id, from: start, to: end, start: start - item.lead, end: end + item.trail });
+      if (end !== undefined) hits.push({ kind: "pa", id: item.id, after: item.after || [], from: start, to: end, start: start - item.lead, end: end + item.trail });
     }
   }
   return hits;
@@ -156,7 +157,7 @@ function turnpikeOn(path, arcs, bounds) {
       const [entry, exit] = [group[i].gate, group[i + 1].gate];
       const table = NJTP_TOLLS[TOLL_GROUP][entry.id] || {};
       if (!Number.isInteger(table[exit.id])) return null;
-      hits.push({ kind: "njtp", id: `${entry.id}-${exit.id}`, cents: table[exit.id], from: group[i].at, to: group[i + 1].at, start: group[i].at - entry.margin, end: group[i + 1].at + exit.margin });
+      hits.push({ kind: "njtp", id: `${entry.id}-${exit.id}`, exit: exit.id, cents: table[exit.id], from: group[i].at, to: group[i + 1].at, start: group[i].at - entry.margin, end: group[i + 1].at + exit.margin });
     }
   }
   return hits;
@@ -173,23 +174,31 @@ export function tollPlan(path, stops = []) {
   if (!turnpike) return { reason: "turnpike" };
   const hits = [...crossingsOn(path, arcs), ...turnpike].sort((a, b) => a.from - b.from);
   if (!hits.length) return { reason: "none" };
-  const marks = middle.map((at, i) => ({ at, stop: i }));
-  for (let i = 0; i < hits.length; i++) {
-    const hit = hits[i];
+  const blocks = [];
+  for (const hit of hits) {
     const leg = bounds.findIndex((at, n) => n > 0 && hit.from < at);
     if (leg < 1 || hit.to > bounds[leg]) return { reason: "stop" };
-    const prior = hits[i - 1];
-    if (prior && prior.leg === leg && hit.start < prior.raw + GAP_M) return { reason: "overlap" };
-    const [low, high] = [bounds[leg - 1], bounds[leg]];
-    Object.assign(hit, { leg, raw: hit.end, start: hit.start <= low + GAP_M ? low : hit.start, end: hit.end >= high - GAP_M ? high : hit.end });
-    if (hit.start > low) marks.push({ at: hit.start, cut: pointAt(path, arcs, hit.start) });
-    if (hit.end < high) marks.push({ at: hit.end, cut: pointAt(path, arcs, hit.end) });
+    const prior = blocks[blocks.length - 1];
+    if (prior && prior.leg === leg && hit.from < prior.to + GAP_M) return { reason: "overlap" };
+    const last = prior && prior.hits[prior.hits.length - 1];
+    if (prior && prior.leg === leg && (hit.start - prior.end < JOIN_M || (hit.kind === "pa" && last.kind === "njtp" && hit.after.includes(last.exit)))) Object.assign(prior, { to: hit.to, end: Math.max(prior.end, hit.end), hits: [...prior.hits, hit] });
+    else blocks.push({ leg, to: hit.to, start: hit.start, end: hit.end, hits: [hit] });
+  }
+  const marks = middle.map((at, i) => ({ at, stop: i }));
+  const reach = (hit) => (hit.kind === "njtp" ? JOIN_M : GAP_M);
+  for (const block of blocks) {
+    const [low, high] = [bounds[block.leg - 1], bounds[block.leg]];
+    if (block.start - low < reach(block.hits[0])) block.start = low;
+    if (high - block.end < reach(block.hits[block.hits.length - 1])) block.end = high;
+    if (block.start > low) marks.push({ at: block.start, cut: pointAt(path, arcs, block.start) });
+    if (block.end < high) marks.push({ at: block.end, cut: pointAt(path, arcs, block.end) });
   }
   marks.sort((a, b) => a.at - b.at);
   const edges = [0, ...marks.map((mark) => mark.at), total];
   const legs = edges.slice(1).map((end, n) => {
-    const hit = hits.find((item) => item.start <= edges[n] + 1 && item.end >= end - 1);
-    return hit ? { kind: hit.kind, id: hit.id, ...(hit.kind === "njtp" && { cents: hit.cents }) } : null;
+    const block = blocks.find((item) => item.start <= edges[n] + 1 && item.end >= end - 1);
+    const share = (at) => Math.round(((at - edges[n]) / (end - edges[n])) * 1000) / 1000;
+    return block ? { tolls: block.hits.map((hit) => ({ kind: hit.kind, id: hit.id, share: share(hit.from), ...(hit.kind === "njtp" && { cents: hit.cents }) })) } : null;
   });
   return { marks: marks.map(({ stop, cut }) => (cut ? { cut } : { stop })), legs };
 }
@@ -204,6 +213,8 @@ export function crossingCents(when, group = TOLL_GROUP) {
   return windows.some(([from, to]) => minute >= from && minute < to) ? rate.peak : rate.offPeak;
 }
 
+const planText = (plan) => plan.legs.map((mark) => (mark ? mark.tolls.map((item) => item.kind).join("+") : "g")).join(",");
+
 export function priceSplit(plan, route, departure, meters) {
   const legs = route && Array.isArray(route.legs) ? route.legs : [];
   if (legs.length !== plan.legs.length) return { reason: "legs" };
@@ -214,17 +225,20 @@ export function priceSplit(plan, route, departure, meters) {
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i] || {};
     const mark = plan.legs[i];
-    if (mark) {
-      if (!(at < TABLE_UNTIL)) return { reason: "stale" };
-      if (!(leg.travelAdvisory && leg.travelAdvisory.tollInfo)) return { reason: "facility" };
-      cents += mark.kind === "pa" ? crossingCents(new Date(at)) : mark.cents;
-    } else {
-      const part = tollCents(leg);
-      if (part === null) return { reason: "unpriced", detail: `leg ${i + 1}/${legs.length} ${Math.round(Number(leg.distanceMeters) || 0)}m plan ${plan.legs.map((m) => (m ? m.kind : "g")).join(",")}` };
-      cents += part;
-    }
     const seconds = parseFloat(String(leg.duration || ""));
     if (!Number.isFinite(seconds) || seconds < 0) return { reason: "legs" };
+    if (mark) {
+      if (!(leg.travelAdvisory && leg.travelAdvisory.tollInfo)) return { reason: "facility" };
+      for (const item of mark.tolls) {
+        const reach = at + seconds * 1000 * item.share;
+        if (!(reach < TABLE_UNTIL)) return { reason: "stale" };
+        cents += item.kind === "pa" ? crossingCents(new Date(reach)) : item.cents;
+      }
+    } else {
+      const part = tollCents(leg);
+      if (part === null) return { reason: "unpriced", detail: `leg ${i + 1}/${legs.length} ${Math.round(Number(leg.distanceMeters) || 0)}m plan ${planText(plan)}` };
+      cents += part;
+    }
     at += seconds * 1000;
   }
   return { cents };
