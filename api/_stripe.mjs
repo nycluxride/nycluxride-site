@@ -263,6 +263,10 @@ export function sessionsForIntent(intent, key, timeout) {
   return call(`${SESSIONS}?${new URLSearchParams({ payment_intent: intent })}`, { method: "GET", headers: {} }, key, timeout);
 }
 
+export function listSessions(query, key, timeout) {
+  return call(`${SESSIONS}?${new URLSearchParams(query)}`, { method: "GET", headers: {} }, key, timeout);
+}
+
 export function expireSession(id, key) {
   return call(`${SESSIONS}/${encodeURIComponent(id)}/expire`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "" }, key);
 }

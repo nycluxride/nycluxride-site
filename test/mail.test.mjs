@@ -515,21 +515,23 @@ await test("one way trip, live: both emails' headers, the whole plain text and t
   assert.deepEqual(customer.to, [{ name: "Ana Lopez", address: "ana.lopez@example.com" }]);
   assert.deepEqual(owner.to, OWNERS.map((address) => ({ name: "", address })));
   assert.deepEqual(owner.replyTo, { name: "Ana Lopez", address: "ana.lopez@example.com" });
-  const steps = ["What happens next", "Paid: Stripe emails your receipt with your reference.", "Confirmed in writing: We confirm your car and chauffeur in writing before your ride.", "On the day: Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.", ""];
+  const steps = ["What happens next", "Paid: Stripe emails your receipt with your reference.", "Confirmed in writing: We confirm your car and chauffeur in writing before your ride.", "", "Where to meet your chauffeur", "Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.", ""];
   const trip = ["Reference: 83558982", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", ""];
   const pay = ["Fare: $168.46", "Taxes and fees: $3.79", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", ""];
   const change = ["To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference 83558982.", "WhatsApp: https://wa.me/16467750556", "Terms of service: https://www.nycluxride.com/terms-of-service", "Rates and cancellation terms: https://www.nycluxride.com/rates#cancellation"];
   assert.equal(customer.text, [`Payment received`, "", "Your trip", ...trip, "Your payment", ...pay, ...steps.slice(0, 1), ...steps.slice(1), ...change, "", "NYC LUX RIDE", "+1 (646) 775-0556", "https://www.nycluxride.com", ""].join("\n"));
   assert.equal(owner.text, ["New booking 83558982", "", "Customer", "Name: Ana Lopez", "Email: ana.lopez@example.com", "Phone: +1 212 555 0100", "Preferred contact: WhatsApp", "", "Trip", ...trip, "Payment", ...pay, `Open the payment in Stripe: https://dashboard.stripe.com/payments/${session.payment_intent}`, "", "What the customer email says", ...steps.slice(1), ...change, ""].join("\n"));
   const doc = checkHtml(customer);
-  assert.deepEqual([...doc.querySelectorAll("h2")].map((h) => h.textContent), ["Your trip", "Your payment", "What happens next"]);
+  assert.deepEqual([...doc.querySelectorAll("h2")].map((h) => h.textContent), ["Your trip", "Your payment", "What happens next", "Where to meet your chauffeur"]);
   assert.equal(doc.querySelector("h1").textContent, "Payment received");
   assert.deepEqual(tripTable(doc)[0][1], trip.slice(0, -1).map((line) => line.split(": ")));
   assert.deepEqual(tripTable(doc)[1][1], [["Fare", "$168.46"], ["Taxes and fees", "$3.79"], ["Tolls", "$12.75"], ["Paid", "$185.00"]]);
   assert.deepEqual([session.metadata.fare_cents, session.metadata.tax_cents, session.metadata.bcf_cents], ["16846", "0", "379"], "Manhattan to Newark is interstate: no New York sales tax");
-  assert.deepEqual([...doc.querySelectorAll("ol li")].map((li) => [li.querySelector("strong").textContent, li.textContent.slice(li.querySelector("strong").textContent.length)]), [["Paid", "Stripe emails your receipt with your reference."], ["Confirmed in writing", "We confirm your car and chauffeur in writing before your ride."], ["On the day", "Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time."]]);
+  assert.deepEqual([...doc.querySelectorAll("ol li")].map((li) => [li.querySelector("strong").textContent, li.textContent.slice(li.querySelector("strong").textContent.length)]), [["Paid", "Stripe emails your receipt with your reference."], ["Confirmed in writing", "We confirm your car and chauffeur in writing before your ride."]]);
+  const where = [...doc.querySelectorAll("h2")].find((h) => h.textContent === "Where to meet your chauffeur").nextElementSibling;
+  assert.deepEqual([where.tagName, where.innerHTML], ["P", "Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time."]);
   const odoc = checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });
-  assert.deepEqual([...odoc.querySelectorAll("h2")].map((h) => h.textContent), ["Customer", "Trip", "Payment", "What the customer email says"]);
+  assert.deepEqual([...odoc.querySelectorAll("h2")].map((h) => h.textContent), ["Customer", "Trip", "Payment", "What the customer email says", "Where to meet your chauffeur"]);
   assert.deepEqual(tripTable(odoc)[0][1], [["Name", "Ana Lopez"], ["Email", "ana.lopez@example.com"], ["Phone", "+1 212 555 0100"], ["Preferred contact", "WhatsApp"]]);
   assert.equal(odoc.querySelector(`a[href="https://dashboard.stripe.com/payments/${session.payment_intent}"]`).textContent, "Open the payment in Stripe");
   const total = receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0);
@@ -558,7 +560,7 @@ await test("both emails show the price as the site does (owner change 2): one Ta
   }
 });
 
-await test("round trip with meet and greet, the sign name, notes and someone else riding: the return, the flight, the passenger and the On the day wording", async () => {
+await test("round trip with meet and greet, the sign name, notes and someone else riding: the return, the flight, the passenger and where to meet the chauffeur on each pickup", async () => {
   setEnv();
   const session = paid(ROUND);
   const [customer, owner] = bookingLetters(session, SETTINGS);
@@ -566,7 +568,8 @@ await test("round trip with meet and greet, the sign name, notes and someone els
   assert.equal(owner.subject, "[TEST] New booking 83558982: Thu Nov 12, 7:30 AM, Business Premium SUV, JFK to 350 5th Ave, return Sun Nov 15, 6:00 PM");
   assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: Round trip", "Pickup: John F. Kennedy (JFK), Terminal 4", "Drop-off: 350 5th Ave, New York, NY 10118", "Date: Thu, Nov 12, 2026", "Time: 7:30 AM, New York time", "Return: Sun, Nov 15, 2026, 6:00 PM, New York time", "Passengers: 3", "Vehicle: Business Premium SUV", "Flight: DL 401", "Meet and greet: Yes", "Name for the sign: Ortiz Party", "Notes for the chauffeur: Infant seat, please", "  Two large cases"]);
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $373.00", "Taxes and fees: $41.50", "Tolls: $25.50", "Meet and greet: $25.00", "Gratuity for your chauffeur (15%): $55.95", "Paid: $520.95"]);
-  assert.ok(customer.text.includes("\nOn the day: Your chauffeur waits inside the terminal with a name sign.\n"));
+  assert.deepEqual(sectionOf(customer.text, "Where to meet your chauffeur"), [`Ride out: ${MAIL.where.insideOther} ${MAIL.day.tracked} ${MAIL.where.landing}`, `Return ride: ${MAIL.where.address}`]);
+  assert.ok(customer.text.includes("\nRide out: Your chauffeur waits inside the terminal near baggage claim with a name sign and takes their bags. We track your flight. You get 45 minutes of free waiting after a domestic landing and 60 minutes after an international landing.\nReturn ride: Your chauffeur comes to the pickup address.\n"));
   assert.ok(customer.text.includes("\nYour chauffeur contacts Ben Ortiz on the day of the ride. Your confirmation, receipt and any changes go to your email.\n"));
   assert.ok(customer.text.includes("\nThu, Nov 12, 2026, 7:30 AM. Return Sun, Nov 15, 2026, 6:00 PM. Business Premium SUV, 2 airport transfers.\n"));
   assert.ok(customer.text.startsWith("Test booking. No real payment was taken.\n\nPayment received\n"));
@@ -580,11 +583,13 @@ await test("round trip with meet and greet, the sign name, notes and someone els
   assert.deepEqual(tripTable(doc)[0][1].at(-1), ["Notes for the chauffeur", "Infant seat, please<br>Two large cases"]);
   assert.deepEqual(tripTable(doc)[0][1][1], ["Trip", "Round trip"]);
   const odoc = checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` });
-  assert.deepEqual([...odoc.querySelectorAll("h2")].map((h) => h.textContent), ["Customer", "Passenger", "Trip", "Payment", "What the customer email says"]);
+  assert.deepEqual([...odoc.querySelectorAll("h2")].map((h) => h.textContent), ["Customer", "Passenger", "Trip", "Payment", "What the customer email says", "Where to meet your chauffeur"]);
+  const where = [...doc.querySelectorAll("h2")].find((h) => h.textContent === MAIL.where.heading).nextElementSibling;
+  assert.deepEqual([where.tagName, where.innerHTML, where.nextElementSibling.innerHTML], ["P", `<strong>Ride out</strong><br>${MAIL.where.insideOther} ${MAIL.day.tracked} ${MAIL.where.landing}`, `<strong>Return ride</strong><br>${MAIL.where.address}`]);
   assert.deepEqual(tripTable(odoc).find(([heading]) => heading === MAIL.ownerTrip)[1][1], ["Trip", "Round trip"]);
 });
 
-await test("hourly booking: the hours, the vehicle model, the typed gratuity, the hourly note and the hourly On the day wording, for the rider and for someone else", async () => {
+await test("hourly booking: the hours, the vehicle model, the typed gratuity, the hourly note and the hourly meeting wording, for the rider and for someone else", async () => {
   setEnv();
   const session = paid(HOURLY, { live: true });
   const [customer, owner] = bookingLetters(session, SETTINGS);
@@ -593,13 +598,13 @@ await test("hourly booking: the hours, the vehicle model, the typed gratuity, th
   assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: By the hour, 4 hours", "Pickup: 1 Main Street, Brooklyn, NY 11201", "Date: Tue, Dec 1, 2026", "Time: 2:00 PM, New York time", "Passengers: 1", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)", "Notes for the chauffeur: A toddler seat, please"]);
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare, 4 hours: $420.00", "Taxes and fees: $46.73", "Gratuity for your chauffeur: $40.00", "Paid: $506.73"]);
   assert.ok(customer.text.includes(`\n${NOTES.hourly}\n`));
-  assert.ok(customer.text.includes("\nOn the day: The same car and chauffeur stay with you for the hours you booked. If your day might run long, message us an hour ahead so we can keep the car for you.\n"));
+  assert.ok(customer.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. The same car and chauffeur stay with you for the hours you booked. If your day might run long, message us an hour ahead so we can keep the car for you.\n"));
   assert.doesNotMatch(customer.text, /Drop-off|Stop 1|Tolls:|Tolls and airport fees:/);
   checkHtml(customer);
   checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });
   const other = paid(HOURLY, { metadata: { rider: "other", passenger_name: "Ben Ortiz", passenger_phone: "+1 917 555 0199" } });
   const [forOther] = bookingLetters(other, SETTINGS);
-  assert.ok(forOther.text.includes("\nOn the day: The same car and chauffeur stay with them for the hours you booked. If your day might run long"));
+  assert.ok(forOther.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. The same car and chauffeur stay with them for the hours you booked. If your day might run long"));
 });
 
 await test("airport trip from New Jersey: priced by distance and time, no tolls line, the outside note, the miles and minutes, and an escaped class name", async () => {
@@ -612,23 +617,24 @@ await test("airport trip from New Jersey: priced by distance and time, no tolls 
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $153.79", "Taxes and fees: $3.46", "Gratuity for your chauffeur (20%): $30.76", "Paid: $188.01"]);
   assert.ok(customer.text.includes(`\n${POLICY.later.outside}\n`));
   assert.ok(customer.text.includes("\nFri, Nov 20, 2026, 5:15 AM. Sedan & Electric, 9.0 miles and 18 min.\n"));
-  assert.ok(customer.text.includes("\nOn the day: Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.\n"));
+  assert.ok(customer.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.\n"));
   const doc = checkHtml(customer);
   assert.ok(customer.html.includes("Sedan &#38; Electric") && !customer.html.includes("Sedan & Electric"));
   assert.equal(tripTable(doc)[0][1].find(([label]) => label === "Vehicle")[1], "Sedan &amp; Electric");
   checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` });
 });
 
-await test("a trip to JFK Terminal 5 with a return pickup there: the pickup wording, the return bags wording for someone else and the Terminals 5 and 7 note", async () => {
+await test("a trip to JFK Terminal 5 with a return pickup there: the pickup wording, the return wording for someone else with the Terminals 5 and 7 note, and the flight lines only on the first pickup", async () => {
   setEnv();
   const [customer] = bookingLetters(paid(TERMINAL), SETTINGS);
   assert.ok(customer.text.includes("\nTrip: Round trip\n"));
   assert.ok(customer.text.includes("\nReturn flight: B6 1234\n"));
-  assert.ok(customer.text.includes(`\nOn the day: ${MAIL.day.pickup} ${MAIL.day.backOther} ${MAIL.day.terminals}\n`));
+  assert.deepEqual(sectionOf(customer.text, MAIL.where.heading), [`Ride out: ${MAIL.day.pickup}`, `Return ride: ${MAIL.where.terminalsOther} ${MAIL.day.bagsOther}`]);
   const [mine] = bookingLetters(paid(TERMINAL, { metadata: { rider: "me", passenger_name: "", passenger_phone: "" } }), SETTINGS);
-  assert.ok(mine.text.includes(`\nOn the day: ${MAIL.day.pickup} ${MAIL.day.back} ${MAIL.day.terminals}\n`));
+  assert.deepEqual(sectionOf(mine.text, MAIL.where.heading), [`Ride out: ${MAIL.day.pickup}`, `Return ride: ${MAIL.day.terminals} ${MAIL.day.bags}`]);
   const [pickup] = bookingLetters(paid(ROUND, { metadata: { meet: "0", meet_cents: "0", sign_name: "", rider: "me", from_place: "jfk-t5", from_text: "John F. Kennedy (JFK), Terminal 5" } }), SETTINGS);
-  assert.ok(pickup.text.includes(`\nOn the day: ${MAIL.day.tracked} ${MAIL.day.bags} ${MAIL.day.terminals}\n`));
+  assert.deepEqual(sectionOf(pickup.text, MAIL.where.heading), [`Ride out: ${MAIL.day.terminals} ${MAIL.day.bags} ${MAIL.day.tracked} ${MAIL.where.landing}`, `Return ride: ${MAIL.where.address}`]);
+  assert.ok(!pickup.text.includes(MAIL.where.curb) && !customer.text.includes(MAIL.where.curbOther), "the Terminals 5 and 7 lot stands in for the curb sentence");
 });
 
 await test("a trip with two stops: Stop 1 and Stop 2 in order between the pickup and the drop-off, in the text and the HTML of both emails, with every price line and the airport pickup wording", async () => {
@@ -641,7 +647,7 @@ await test("a trip with two stops: Stop 1 and Stop 2 in order between the pickup
   assert.deepEqual(sectionOf(owner.text, "Trip").slice(2, 6), route);
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $137.01", "Taxes and fees: $15.24", "Tolls: $12.75", "Extra stops (2 x $20.00): $40.00", "Paid: $205.00"]);
   assert.ok(customer.text.includes("\nSat, Nov 21, 2026, 9:00 AM. From LaGuardia (LGA), Business SUV.\n"));
-  assert.ok(customer.text.includes(`\nOn the day: ${MAIL.day.tracked} ${MAIL.day.bags}\n`));
+  assert.deepEqual(sectionOf(customer.text, MAIL.where.heading), [`${MAIL.where.curb} ${MAIL.day.bags} ${MAIL.where.signs} ${MAIL.day.tracked} ${MAIL.where.landing}`]);
   for (const letter of [customer, owner]) {
     const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
     const [, rows] = tripTable(doc).find(([heading]) => heading === (letter.kind === "owner" ? MAIL.ownerTrip : MAIL.trip));
@@ -684,38 +690,45 @@ await test("a round trip with a stop priced over the whole route and a flat retu
 await test("an airport pickup, or a return pickup at an airport, with no flight number asks for it in both emails, on WhatsApp with the reference, where the confirmation page shows its flight number link", async () => {
   setEnv();
   const ask = "Send us your flight number on WhatsApp with your reference 83558982.";
+  const askReturn = "Send us your return flight number on WhatsApp with your reference 83558982.";
   const linked = `<a href="https://wa.me/16467750556" style="color:#0b4fa8;text-decoration:underline">WhatsApp</a>`;
-  for (const [fix, day] of [[NO_FLIGHT, [MAIL.day.bags, ask]], [NO_RETURN_FLIGHT, [MAIL.day.pickup, MAIL.day.back, ask]]]) {
+  for (const [fix, where] of [[NO_FLIGHT, [["", `${MAIL.where.curb} ${MAIL.day.bags}`], ["", ask]]], [NO_RETURN_FLIGHT, [["Ride out", MAIL.day.pickup], ["Return ride", `${MAIL.where.curb} ${MAIL.day.bags}`], ["", askReturn]]]]) {
     const session = paid(fix);
     const [customer, owner] = bookingLetters(session, SETTINGS);
-    const steps = [`Paid: ${MAIL.steps[0][1]}`, `Confirmed in writing: ${MAIL.steps[1][1]}`, `On the day: ${day.join(" ")}`];
+    const steps = [`Paid: ${MAIL.steps[0][1]}`, `Confirmed in writing: ${MAIL.steps[1][1]}`];
+    const lines = where.map(([label, value]) => (label ? `${label}: ${value}` : value));
     assert.deepEqual(sectionOf(customer.text, "What happens next"), steps);
     assert.deepEqual(sectionOf(owner.text, "What the customer email says"), steps);
-    assert.ok(!customer.text.includes(MAIL.day.tracked));
+    assert.deepEqual(sectionOf(customer.text, MAIL.where.heading), lines);
+    assert.deepEqual(sectionOf(owner.text, MAIL.where.heading), lines);
+    assert.ok(!customer.text.includes(MAIL.day.tracked) && !customer.text.includes(MAIL.where.landing));
     for (const letter of [customer, owner]) {
       const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
-      assert.equal([...doc.querySelectorAll("ol li")].at(-1).innerHTML, `<strong>On the day</strong><br>${day.join(" ").replace("WhatsApp", linked)}`);
+      const heading = [...doc.querySelectorAll("h2")].find((h) => h.textContent === MAIL.where.heading);
+      const paragraphs = [];
+      for (let at = heading.nextElementSibling; at && at.tagName === "P" && !at.textContent.startsWith("To change") && !at.textContent.startsWith("Your chauffeur contacts"); at = at.nextElementSibling) paragraphs.push(at.innerHTML);
+      assert.deepEqual(paragraphs, where.map(([label, value]) => `${label ? `<strong>${label}</strong><br>` : ""}${value.replace("WhatsApp", linked)}`));
     }
   }
 });
 
 await test("an airport pickup for someone else, a one way drop-off at JFK Terminal 5 and an hourly booking from JFK with meet and greet: the bags wording for them, no Terminals 5 and 7 note on a drop-off, the flight row by the hour and the meet and greet sentence before the hourly ones", async () => {
   setEnv();
-  const day = (letter) => sectionOf(letter.text, "What happens next").at(-1);
+  const day = (letter) => sectionOf(letter.text, MAIL.where.heading).join(" ");
   const [other] = bookingLetters(paid(FOR_OTHER), SETTINGS);
   assert.deepEqual(sectionOf(other.text, "Your trip"), ["Reference: 83558982", "Trip: One way", "Pickup: LaGuardia (LGA)", "Drop-off: 350 5th Ave, New York, NY 10118", "Date: Thu, Nov 12, 2026", "Time: 7:30 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "Flight: UA 523"]);
-  assert.equal(day(other), `On the day: ${MAIL.day.tracked} ${MAIL.day.bagsOther}`);
+  assert.equal(day(other), `${MAIL.where.curbOther} ${MAIL.day.bagsOther} ${MAIL.where.signs} ${MAIL.day.tracked} ${MAIL.where.landing}`);
   assert.ok(other.text.includes("\nYour chauffeur contacts Ben Ortiz on the day of the ride. Your confirmation, receipt and any changes go to your email.\n"));
   const [drop] = bookingLetters(paid(TO_T5), SETTINGS);
   assert.deepEqual(sectionOf(drop.text, "Your trip").slice(1, 4), ["Trip: One way", "Pickup: 350 5th Ave, New York, NY 10118", "Drop-off: John F. Kennedy (JFK), Terminal 5"]);
-  assert.equal(day(drop), `On the day: ${MAIL.day.pickup}`);
+  assert.equal(day(drop), MAIL.day.pickup);
   assert.ok(!drop.text.includes("Terminals 5 and 7") && !drop.html.includes("Terminals 5 and 7"));
   const session = paid(HOURLY_JFK);
   const [hourly, owner] = bookingLetters(session, SETTINGS);
   const rows = ["Reference: 83558982", "Trip: By the hour, 4 hours", "Pickup: John F. Kennedy (JFK), Terminal 4", "Date: Tue, Dec 1, 2026", "Time: 2:00 PM, New York time", "Passengers: 1", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)", "Flight: BA 117", "Meet and greet: Yes", "Name for the sign: Ana Lopez"];
   assert.deepEqual(sectionOf(hourly.text, "Your trip"), rows);
   assert.deepEqual(sectionOf(owner.text, "Trip"), rows);
-  assert.equal(day(hourly), `On the day: ${MAIL.day.meet} ${fill(MAIL.day.hourly, { who: MAIL.day.you })} ${MAIL.day.long}`);
+  assert.equal(day(hourly), `${MAIL.where.inside} ${MAIL.day.tracked} ${fill(MAIL.day.hourly, { who: MAIL.day.you })} ${MAIL.day.long}`);
   assert.deepEqual(tripTable(checkHtml(hourly))[0][1].find(([label]) => label === "Flight"), ["Flight", "BA 117"]);
   checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` });
 });
@@ -740,7 +753,7 @@ await test("once the pickup, and the return when there is one, has passed, the c
   const ahead = bookingLetters(round, SETTINGS);
   assert.deepEqual(bookingLetters(round, SETTINGS, Date.parse("2026-11-13T12:00:00.000Z")).map((l) => l.text), ahead.map((l) => l.text));
   const [back, backOwner] = bookingLetters(round, SETTINGS, Date.parse("2026-11-15T23:00:00.000Z"));
-  assert.ok(ahead[0].text.includes("\nWhat happens next\n") && !back.text.includes("What happens next") && !back.text.includes(MAIL.day.meet) && !back.text.includes("contacts Ben Ortiz"));
+  assert.ok(ahead[0].text.includes("\nWhat happens next\n") && !back.text.includes("What happens next") && !back.text.includes(MAIL.where.heading) && !back.text.includes(MAIL.where.insideOther) && !back.text.includes("contacts Ben Ortiz"));
   assert.ok(!backOwner.text.includes(MAIL.ownerNext) && backOwner.text.includes("\nPassenger\nName: Ben Ortiz\n"));
   setEnv(mailEnv());
   withContext();

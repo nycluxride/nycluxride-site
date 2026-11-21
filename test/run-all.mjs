@@ -42,6 +42,7 @@ const STATIC = [
   "calendar",
   "tolls",
   "seo-weekly",
+  "ride-reminders",
   "release1",
   "sprinter",
 ];

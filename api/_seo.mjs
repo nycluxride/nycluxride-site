@@ -33,9 +33,9 @@ const one = (value) => (Math.round(value * 10) / 10).toFixed(1);
 const brand = (query) => BRAND_TEST.test(query);
 const byClicks = (a, b) => b.clicks - a.clicks || b.impressions - a.impressions;
 
-export function cronAllowed(request) {
+export function cronAllowed(request, least = MIN_SECRET) {
   const secret = String(process.env.CRON_SECRET || "");
-  if (secret.length < MIN_SECRET || /\s/.test(secret)) return false;
+  if (secret.length < Math.max(least, MIN_SECRET) || /\s/.test(secret)) return false;
   return timingSafeEqual(digest(request.headers.get("authorization") || ""), digest(`Bearer ${secret}`));
 }
 

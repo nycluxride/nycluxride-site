@@ -7,6 +7,7 @@ import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
 import { smsSettings, sendText, fitText } from "./_sms.mjs";
 import { calendarSettings, addEvents, updateEvents } from "./_calendar.mjs";
+import { localById } from "./_places.mjs";
 
 const DEFAULTS = { host: "smtp.gmail.com", port: "465", from: "NYC LUX RIDE <info@nycluxride.com>", owners: "info@nycluxride.com,nycluxride@gmail.com" };
 const HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
@@ -15,6 +16,9 @@ const INTENT = /^pi_[A-Za-z0-9]{6,200}$/;
 const AIRPORT_ZONE = /^(jfk|lga|ewr|teb|airport-other)$/;
 const AIRPORT_PLACE = /^(jfk|lga|ewr|teb)(-|$)/;
 const KINDS = ["customer", "owner"];
+const SIGN_AIRPORTS = ["lga", "ewr"];
+const LANDING_AIRPORTS = ["jfk", "lga", "ewr"];
+const NIGHT_BEFORE = "05:00";
 const DATA_STAGES = ["data", "message"];
 const SMTP_MS = 8000;
 const STRIPE_MS = 5000;
@@ -51,7 +55,6 @@ const STYLE = {
 const text = (value) => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
 const has = (object, key) => typeof key === "string" && Object.prototype.hasOwnProperty.call(object, key);
 const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
-const atAirport = (spot, zone) => AIRPORT_PLACE.test(spot) || AIRPORT_ZONE.test(zone);
 const terminal57 = (spot, zone, words) => /^jfk-t[57]$/.test(spot) || (zone === "jfk" && /\bterminal ?[57]\b/i.test(words));
 const metadataOf = (object) => bookingData(object && object.metadata);
 const intentOf = (session) => {
@@ -149,26 +152,52 @@ function tripRows(b) {
   return rows.filter(([, value]) => value);
 }
 
-function dayText(b) {
+function airportOf(spot, zone) {
+  const code = (AIRPORT_PLACE.exec(spot) || AIRPORT_ZONE.exec(zone) || [])[1] || "";
+  return code === "airport-other" ? "other" : code;
+}
+
+function whereText(b, leg) {
+  const W = MAIL.where;
   const D = MAIL.day;
   const f = b.field;
-  const fromAirport = atAirport(f("from_place"), f("from_zone"));
-  const backAirport = b.back && atAirport(f("to_place"), f("to_zone"));
+  const back = leg === "b";
+  const end = back ? "to" : "from";
+  const spot = f(`${end}_place`);
+  const zone = f(`${end}_zone`);
+  const airport = airportOf(spot, zone);
+  const far = terminal57(spot, zone, f(`${end}_text`));
+  const flight = back ? "" : f("flight");
+  const o = b.other;
+  const fbo = airport === "teb" || (localById(spot) || {}).kind === "fbo";
   const parts = [];
-  if (f("meet") === "1") parts.push(D.meet);
-  else if (fromAirport) parts.push(...(f("flight") ? [D.tracked] : []), b.other ? D.bagsOther : D.bags);
-  else if (!b.hourly) parts.push(D.pickup);
-  if (b.hourly) parts.push(fill(D.hourly, { who: b.other ? D.them : D.you }), D.long);
-  if (backAirport) parts.push(b.other ? D.backOther : D.back);
-  if (terminal57(f("from_place"), f("from_zone"), f("from_text")) || (b.back && terminal57(f("to_place"), f("to_zone"), f("to_text")))) parts.push(D.terminals);
-  if ((fromAirport && !f("flight")) || (backAirport && !f("return_flight"))) parts.push(fill(D.askFlight, { ref: b.ref }));
+  if (fbo) parts.push(o ? W.lobbyOther : W.lobby);
+  else if (airport && !back && f("meet") === "1") parts.push(o ? W.insideOther : W.inside, ...(far ? [o ? W.farCarOther : W.farCar] : []));
+  else if (airport) parts.push(...(far ? [o ? W.terminalsOther : D.terminals] : LANDING_AIRPORTS.includes(airport) ? [o ? W.curbOther : W.curb] : []), o ? D.bagsOther : D.bags, ...(SIGN_AIRPORTS.includes(airport) ? [W.signs] : []));
+  else parts.push(back || b.hourly ? W.address : D.pickup);
+  if (airport && flight) parts.push(D.tracked, ...(b.hourly || !LANDING_AIRPORTS.includes(airport) ? [] : [W.landing]));
+  if (b.hourly) parts.push(fill(D.hourly, { who: o ? D.them : D.you }), D.long);
   return parts.join(" ");
 }
 
+function flightMissing(b, leg) {
+  const end = leg === "b" ? "to" : "from";
+  return Boolean(airportOf(b.field(`${end}_place`), b.field(`${end}_zone`))) && !b.field(leg === "b" ? "return_flight" : "flight");
+}
+
+function whereBlocks(b, legs, ask) {
+  const found = legs.map((leg) => [leg, whereText(b, leg)]).filter(([, value]) => value);
+  const both = found.length > 1;
+  const texts = found.map(([leg, value]) => [both ? (leg === "b" ? MAIL.reminder.returnLeg : MAIL.where.outLeg) : "", value]);
+  const missing = ask ? legs.filter((leg) => flightMissing(b, leg)) : [];
+  if (missing.length) texts.push(["", fill(missing.join("") === "b" ? MAIL.where.askReturn : MAIL.day.askFlight, { ref: b.ref })]);
+  return texts.length ? [{ h2: MAIL.where.heading }, { where: texts }] : [];
+}
+
 function told(b) {
-  const day = dayText(b);
   return [
-    { steps: [...MAIL.steps, ...(day ? [[MAIL.day.label, day]] : [])] },
+    { steps: MAIL.steps },
+    ...whereBlocks(b, b.back ? ["a", "b"] : ["a"], true),
     ...(b.other ? [{ p: fill(MAIL.other, { name: b.field("passenger_name") || MAIL.thePassenger }) }] : []),
     { change: fill(MAIL.change, { ref: b.ref }) },
     { links: [[MAIL.terms, `${SITE_ORIGIN}/terms-of-service`], [MAIL.rates, `${SITE_ORIGIN}/rates#cancellation`]] },
@@ -189,11 +218,13 @@ export function textOf(blocks) {
     else if (block.rows) out.push(...block.rows.map(row), "");
     else if (block.prices) out.push(...[...block.prices, ...(block.total ? [block.total] : [])].map(row), "");
     else if (block.steps) out.push(...block.steps.map(row), "");
+    else if (block.where) out.push(...block.where.map(([label, value]) => (label ? row([label, value]) : value)), "");
+    else if (block.help) out.push(fill(MAIL.reminder.help, { phone: CONTACT.phone }), "");
     else if (block.p) out.push(block.p, "");
     else if (block.change) out.push(block.change, `WhatsApp: ${CONTACT.whatsapp}`);
     else if (block.links) out.push(...block.links.map(row), "");
     else if (block.list) out.push(...block.list.map(([label, value], i) => `${i + 1}. ${label}\n   ${value}`), "");
-    else if (block.footer) out.push(MAIL.brand, CONTACT.phone, SITE_ORIGIN);
+    else if (block.footer) out.push(...(out.at(-1) === "" ? [] : [""]), MAIL.brand, CONTACT.phone, SITE_ORIGIN);
   }
   return `${out.join("\n").trim()}\n`;
 }
@@ -212,6 +243,8 @@ export function htmlOf(title, blocks) {
       const total = block.total ? `<tr><th scope="row" style="${STYLE.th};${STYLE.rule}">${esc(block.total[0])}</th><td style="${STYLE.amount};${STYLE.rule};font-weight:bold">${esc(block.total[1])}</td></tr>` : "";
       parts.push(`<table style="${STYLE.table}">${block.prices.map(([label, value]) => cells(label, value, STYLE.amount)).join("")}${total}</table>`);
     } else if (block.steps) parts.push(`<ol style="${STYLE.list}">${block.steps.map(([label, value]) => `<li style="${STYLE.item}"><strong>${esc(label)}</strong><br>${whatsapp(esc(value))}</li>`).join("")}</ol>`);
+    else if (block.where) parts.push(...block.where.map(([label, value]) => `<p style="${STYLE.p}">${label ? `<strong>${esc(label)}</strong><br>` : ""}${whatsapp(esc(value))}</p>`));
+    else if (block.help) parts.push(`<p style="${STYLE.p}">${whatsapp(esc(fill(MAIL.reminder.help, { phone: CONTACT.phone })).replace(esc(CONTACT.phone), link(CONTACT.tel, CONTACT.phone)))}</p>`);
     else if (block.p) parts.push(`<p style="${STYLE.p}">${esc(block.p)}</p>`);
     else if (block.change) parts.push(`<p style="${STYLE.p}">${whatsapp(esc(block.change).replace(CONTACT.email, link(`mailto:${CONTACT.email}`, CONTACT.email)))}</p>`);
     else if (block.links) parts.push(`<ul style="${STYLE.list}">${block.links.map(([label, href]) => `<li style="${STYLE.item}">${link(href, label)}</li>`).join("")}</ul>`);
@@ -260,6 +293,54 @@ export function bookingLetters(session, settings, now = Date.now()) {
     letters.push({ kind: "owner", to: settings.owners.map((address) => ({ name: "", address })), replyTo: b.email ? { name: b.name, address: b.email } : null, subject, text: textOf(blocks), html: htmlOf(subject, blocks), id: id("owner") });
   }
   return letters;
+}
+
+function reminderRows(b, legs) {
+  const L = MAIL.labels;
+  const f = b.field;
+  const back = legs[0] === "b";
+  const both = legs.length > 1;
+  const [date, time, from, to, flight] = back ? [f("return_date"), f("return_time"), f("to_text"), f("from_text"), f("return_flight")] : [f("date"), f("time"), f("from_text"), f("to_text"), f("flight")];
+  const rows = [
+    [L.ref, b.ref],
+    [L.trip, b.hourly ? (/^\d+$/.test(f("hours")) ? fill(L.hourly, { hours: f("hours") }) : "") : back ? MAIL.reminder.returnLeg : ""],
+    [L.date, formatDate(date)],
+    [L.time, fill(L.clock, { time: formatTime(time) })],
+    [L.from, placeText(from)],
+    ...(b.hourly ? [] : [...(back ? [] : [[L.stop1, placeText(f("stop1_text"))], [L.stop2, placeText(f("stop2_text"))]]), [L.to, placeText(to)]]),
+    [L.back, both ? fill(L.clock, { time: `${formatDate(f("return_date"))}, ${formatTime(f("return_time"))}` }) : ""],
+    [L.flight, flight],
+    [L.backFlight, both ? f("return_flight") : ""],
+    [L.sign, !back && f("meet") === "1" ? f("sign_name") : ""],
+    [L.vehicle, vehicleOf(b)],
+    [L.passengers, f("passengers")],
+    [MAIL.passenger, b.other ? f("passenger_name") : ""],
+  ];
+  return rows.filter(([, value]) => value);
+}
+
+export function reminderLetter(session, legs) {
+  const b = bookingOf(session);
+  const f = b.field;
+  const R = MAIL.reminder;
+  const [date, time] = legs[0] === "b" ? [f("return_date"), f("return_time")] : [f("date"), f("time")];
+  const night = validDate(date) && TIME.test(time) && time < NIGHT_BEFORE;
+  const eve = night ? formatDate(new Date(nycToUtc(date, "00:00").getTime() - 43200000).toISOString().slice(0, 10)).split(", ").slice(0, 2).join(", ") : "";
+  const subject = `${b.test ? MAIL.test : ""}${fill(night ? R.subjectNight : R.subject, { when: pickupWhen(date, time), ref: b.ref })}`;
+  const blocks = [
+    ...(b.test ? [{ notice: MAIL.testNote }] : []),
+    { h1: night ? R.headingNight : R.heading },
+    ...(night ? [{ p: fill(R.overnight, { time: formatTime(time), eve }) }] : []),
+    ...whereBlocks(b, legs, false),
+    ...(b.other ? [{ p: fill(R.other, { name: f("passenger_name") || MAIL.thePassenger }) }] : []),
+    { h2: MAIL.trip },
+    { rows: reminderRows(b, legs) },
+    { help: true },
+    { change: fill(MAIL.change, { ref: b.ref }) },
+    { footer: true },
+  ];
+  const id = `reminder.${createHash("sha256").update(`${session.id} reminder ${legs.join("")}`).digest("hex").slice(0, 32)}`;
+  return { kind: "reminder", to: [{ name: b.name, address: b.email }], replyTo: { name: MAIL.brand, address: CONTACT.email }, subject, text: textOf(blocks), html: htmlOf(subject, blocks), id };
 }
 
 export function bookingText(session) {

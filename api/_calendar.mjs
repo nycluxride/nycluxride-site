@@ -116,3 +116,20 @@ export async function updateEvents(settings, changes, oidc, ref) {
     return "failed";
   }
 }
+
+export async function readToken(settings, oidc) {
+  const subject = oidcToken(oidc);
+  if (!subject || !instanceBudget("google-calendar", CALLS_PER_WINDOW)) return "";
+  const access = await googleToken(settings, subject, EVENTS_SCOPE, CALL_MS);
+  return access.token || "";
+}
+
+export async function readEvent(settings, token, id) {
+  if (!instanceBudget("google-calendar", CALLS_PER_WINDOW)) return { state: "unknown" };
+  const result = await call(`${API}/${encodeURIComponent(settings.calendar)}/events/${encodeURIComponent(id)}`, { method: "GET", headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+  if (result.status === 404) return { state: "missing" };
+  if (result.status === 410 || (result.ok && result.body && result.body.status === "cancelled")) return { state: "deleted" };
+  if (!result.ok || !result.body) return { state: "unknown" };
+  const stored = result.body.extendedProperties && result.body.extendedProperties.private && result.body.extendedProperties.private[REFUNDED];
+  return { state: "found", summary: typeof result.body.summary === "string" ? result.body.summary : "", refunded: /^\d{1,12}$/.test(stored || "") ? Number(stored) : 0 };
+}
