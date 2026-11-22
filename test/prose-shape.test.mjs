@@ -57,6 +57,7 @@ const FORMS_64 = new Set([
   `Infant, toddler and booster seats, ${SEAT}, charged at booking.`,
   "We move the pickup if your flight lands early or late.",
   "A Sprinter by the hour has a 4-hour minimum.",
+  "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.",
 ]);
 const VALUE_FORMS = {
   "Free waiting": "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup.",

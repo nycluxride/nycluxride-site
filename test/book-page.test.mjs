@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES } = await load("_rates.mjs");
+const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES, SITE_ORIGIN } = await load("_rates.mjs");
 const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
@@ -161,7 +161,9 @@ check("booking-confirmed.html static copy works without javascript: seal, H1, th
   assert.ok($("cf-trip", cf).matches("section.bk-trip[hidden]") && $("cf-route", cf).matches("ol.bk-trip__route.bk-route") && $("cf-rows", cf).matches("dl.bk-trip__rows") && !$("cf-route", cf).children.length && !$("cf-rows", cf).children.length);
   assert.ok($("cf-next", cf).matches('ol.next[role="list"]'));
   assert.deepEqual([...$("cf-next", cf).children].map((li) => [li.id, li.hidden, norm(li.querySelector("b").textContent), norm(li.querySelector("span").textContent)]), [["", false, "Paid", "Stripe emails your receipt with your reference."], ["", false, "Confirmed in writing", "We confirm your car and chauffeur in writing before your ride."], ["cf-day", true, "On the day", ""]]);
-  assert.ok($("cf-policy", cf).matches("p.bk-policy") && norm($("cf-policy", cf).textContent) === POLICY.cancel);
+  assert.ok($("cf-policy", cf).matches("p.bk-policy") && norm($("cf-policy", cf).textContent) === `${POLICY.cancelShort} ${POLICY.howTo} See the ${POLICY.link.toLowerCase()}.`);
+  assert.equal($("cf-policy", cf).querySelector("a").getAttribute("href"), "/rates#policies");
+  assert.equal($("cf-policy", cf).dataset.cal, `${POLICY.cancelShort} ${POLICY.howTo} ${POLICY.link}: ${SITE_ORIGIN}/rates#policies`, "the calendar event carries the free cancellation line, how to cancel and the full address of the terms");
   assert.ok($("cf-acts", cf).matches("p.btn-row[hidden]") && $("cf-ics", cf).matches('button.btn[type=button][aria-disabled="true"]') && norm($("cf-ics", cf).textContent) === "Add to calendar");
   assert.ok($("cf-return", cf).matches('a.btn.btn--ghost[href="/book#trip"][hidden]') && norm($("cf-return", cf).textContent) === "Book the return trip");
   assert.ok($("cf-quiet", cf).matches("p.bk-quiet[hidden]"));
@@ -188,7 +190,7 @@ check("booking-confirmed.html static copy works without javascript: seal, H1, th
 
 check("booking-confirmed.html: the cancellation sentence says email or WhatsApp and names no phone number", () => {
   const t = $("cf-policy", cf).textContent.replace(/\s+/g, " ");
-  assert.ok(t.includes("To change or cancel, email info@nycluxride.com or WhatsApp us with your reference"), t);
+  assert.ok(t.includes("To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference."), t);
   assert.doesNotMatch(t, /\+1 \(646\)/);
 });
 check("booking-confirmed.html main uses only booking classes that lux.css or book.css styles, and no vehicle card class", () => {
@@ -199,11 +201,13 @@ check("booking-confirmed.html main uses only booking classes that lux.css or boo
 });
 
 for (const [name, { document }] of [["book.html", book], ["booking-confirmed.html", confirmed]]) {
-  check(`${name}: no dollar figure, percent or USD in text or attributes`, () => {
+  check(`${name}: no dollar figure, percent or USD in text or attributes${name === "book.html" ? ", apart from the cancellation charges of POLICY.cancel once beside the pay button" : ""}`, () => {
     const body = document.body.cloneNode(true);
     for (const n of body.querySelectorAll("script, style")) n.remove();
     const attrs = [...document.querySelectorAll("*")].map((el) => [...el.attributes].map((a) => a.value)).flat();
-    const all = [document.title, body.textContent, ...attrs].join(" ");
+    const text = body.textContent.replace(/\s+/g, " ");
+    assert.equal(text.split(POLICY.cancel).length, name === "book.html" ? 2 : 1);
+    const all = [document.title, text.split(POLICY.cancel).join(" "), ...attrs].join(" ");
     assert.equal(all.match(/\$\s*\d|\d\s*%|\bUSD\b/), null);
   });
 

@@ -439,11 +439,11 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 @media (prefers-reduced-motion:no-preference){.bk-delta{animation:bk-dl 1.98s both}}
 @keyframes bk-dl{0%{opacity:0;translate:0 calc(-50% + 4px);animation-timing-function:var(--ease-quick)}17%{opacity:1;translate:0 -50%}92%{opacity:1;animation-timing-function:var(--ease-exit)}to{opacity:0}}
 :is(.bk-later,#cf-notes)>li{display:grid;grid-template-columns:16px minmax(0,1fr);gap:8px;font:var(--t4);color:var(--ink-2)}
-:is(.bk-later,#cf-notes) .icon{width:16px;height:16px;margin-top:2px;color:var(--gold-700)}
+:is(.bk-later,#cf-notes)>li>.icon{width:16px;height:16px;margin-top:2px;color:var(--gold-700)}
 :is(.bk-consent,.bk-drive,.bk-policy,.bk-nopay,.bk-under,.bk-helpline){font:var(--t4);color:var(--ink-2)}
 .bk-consent a,.bk-policy .lnk{font:var(--t5);white-space:nowrap}
 .bk-policy .lnk{display:inline;min-height:0}
-:is(.bk-consent,.bk-policy) .icon{width:14px;height:14px;margin-inline-start:4px;vertical-align:-2px}
+:is(.bk-consent,.bk-policy,.bk-later a) .icon{width:14px;height:14px;margin-inline-start:4px;vertical-align:-2px}
 .bk-nopay{text-align:center}
 .bk-under{display:flex;align-items:start;justify-content:center;gap:8px;text-align:start}
 .bk-under .icon{flex:none;width:16px;height:16px;margin-top:2px;color:var(--gold-700)}

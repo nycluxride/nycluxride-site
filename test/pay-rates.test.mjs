@@ -24,6 +24,8 @@ import {
   CONSENT_TERMS_LIVE,
   DISTANCE_RATES,
   STOP_FEE_CENTS,
+  WAIT_CENTS_PER_MINUTE,
+  CANCEL_TIERS,
 } from "../api/_rates.mjs";
 import * as copy from "../api/_copy.mjs";
 import * as trip from "../api/_trip.mjs";
@@ -260,7 +262,7 @@ test("the gratuity line says it is optional and lists TIP_PERCENTS after none", 
   assert.ok(text.endsWith("of the fare, or your own amount, before you pay"), text);
 });
 
-test("the taxes line says taxes are added at booking and included in airport prices, the hourly caption says taxes and fees are added at booking, none with a percent, and the only percents on the page are the gratuity choices", () => {
+test("the taxes line says taxes are added at booking and included in airport prices, the hourly caption says taxes and fees are added at booking, none with a percent, and the only percents on the page are the gratuity choices and the cancellation charges of CANCEL_TIERS", () => {
   assert.equal(facts.Taxes, "Added at booking on hourly and distance trips. Airport prices already include them");
   assert.ok(/^Added at booking\b/.test(facts.Taxes) && facts.Taxes.endsWith("Airport prices already include them"), facts.Taxes);
   assert.ok(squash(page.getElementById("hourly-caption")).includes("Taxes and fees are added at booking."));
@@ -268,7 +270,7 @@ test("the taxes line says taxes are added at booking and included in airport pri
   const all = [squash(page.body), page.title, ...[...page.querySelectorAll('script[type="application/ld+json"], meta[content]')].map((n) => n.textContent || n.getAttribute("content"))].join(" ");
   for (const percent of [NYC_TAX_PERCENT, BCF_PERCENT]) assert.doesNotMatch(all, new RegExp(`(?<![\\d.$])${percent.replace(".", "\\.")}(?!\\d)`), percent);
   const percents = [...squash(page.body).matchAll(/(\d+(?:\.\d+)?)%/g)].map((m) => m[1]);
-  const allowed = new Set(TIP_PERCENTS.filter((t) => t > 0).map(String));
+  const allowed = new Set([...TIP_PERCENTS.filter((t) => t > 0), ...CANCEL_TIERS.map((t) => t.percent).filter((p) => p > 0 && p < 100)].map(String));
   assert.deepEqual(percents.filter((p) => !allowed.has(p)), []);
 });
 
@@ -371,9 +373,9 @@ test("the airport section says that a trip between JFK, LaGuardia, Newark or Tet
   }
 });
 
-test("every $ figure in the four rate tables is reproducible from the config", () => {
+test("every $ figure in the rate tables, the waiting table included, is reproducible from the config", () => {
   const tables = [...page.querySelectorAll("table.rate-table")];
-  assert.equal(tables.length, 5);
+  assert.equal(tables.length, 6);
   const legs = CLASS_KEYS.flatMap((cls) => AIRPORT_PLACES.map((airport) => leg(cls, airport)));
   const known = new Set([
     ...legs.flatMap((l) => [l.fare, l.tax, l.bcf, l.tolls, l.total]),
@@ -388,6 +390,7 @@ test("every $ figure in the four rate tables is reproducible from the config", (
     ...["base", "miles", "time", "fare", "tax", "bcf"].map((k) => distanceExample[k]),
     distanceExample.fare + distanceExample.tax + distanceExample.bcf,
     distanceExample.fare + distanceExample.bcf,
+    ...Object.values(WAIT_CENTS_PER_MINUTE),
   ]);
   const unknown = [];
   for (const cell of tables.flatMap((t) => [...t.querySelectorAll("td, th")])) {
@@ -457,7 +460,7 @@ function sectionText(doc, id) {
 
 test("payments open in production only once the pages the consent box links to carry published, non-draft terms", () => {
   const links = [...CHECKOUT.terms.matchAll(/\]\(https:\/\/www\.nycluxride\.com\/([a-z-]+)#([a-z-]+)\)/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(links, [["terms-of-service", "payments"], ["rates", "cancellation"]]);
+  assert.deepEqual(links, [["terms-of-service", "payments"], ["rates", "policies"]]);
   assert.equal(typeof CONSENT_TERMS_LIVE, "boolean");
   if (!CONSENT_TERMS_LIVE) return;
   for (const [file, id] of links) assert.doesNotMatch(sectionText(file === "rates" ? page : load(`${file}.html`), id), /DRAFT|\[|\]/, `${file}.html #${id}`);

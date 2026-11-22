@@ -11,7 +11,7 @@ import { JSDOM } from "jsdom";
 import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc, bookingData } from "../api/_trip.mjs";
 import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
-import { MAIL, CHECKOUT, NOTES, POLICY } from "../api/_copy.mjs";
+import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
 import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges } from "../api/_mail.mjs";
 import { GET } from "../api/book.mjs";
@@ -374,7 +374,7 @@ const luminance = (hex) => {
 };
 const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
 const SETTINGS = { owners: OWNERS, from: { name: "NYC LUX RIDE", address: "info@nycluxride.com" } };
-const ALLOWED_LINKS = ["mailto:info@nycluxride.com", "https://wa.me/16467750556", "https://www.nycluxride.com/terms-of-service", "https://www.nycluxride.com/rates#cancellation", "tel:+16467750556", "https://www.nycluxride.com"];
+const ALLOWED_LINKS = ["mailto:info@nycluxride.com", "https://wa.me/16467750556", "https://www.nycluxride.com/terms-of-service", "https://www.nycluxride.com/rates#policies", "tel:+16467750556", "https://www.nycluxride.com"];
 
 function checkHtml(letter, { stripeLink = "" } = {}) {
   const { document } = new JSDOM(letter.html).window;
@@ -519,7 +519,8 @@ await test("one way trip, live: both emails' headers, the whole plain text and t
   const steps = ["What happens next", "Paid: Stripe emails your receipt with your reference.", "Confirmed in writing: We confirm your car and chauffeur in writing before your ride.", "", "Where to meet your chauffeur", "Your chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.", ""];
   const trip = ["Reference: 83558982", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", ""];
   const pay = ["Fare: $168.46", "Taxes and fees: $3.79", "Tolls: $12.75", "Paid: $185.00", "", NOTES.included, "", POLICY.later.airport, "", "Sun, Nov 8, 2026, 10:00 AM. To Newark Liberty (EWR), Business SUV.", ""];
-  const change = ["To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference 83558982.", "WhatsApp: https://wa.me/16467750556", "Terms of service: https://www.nycluxride.com/terms-of-service", "Rates and cancellation terms: https://www.nycluxride.com/rates#cancellation"];
+  const change = ["Free cancellation up to 24 hours before pickup. Under 24 hours, the charge is 25% of the price. Under 12 hours, it's 50%. Under 2 hours, it's the full price.", "", "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference 83558982.", "WhatsApp: https://wa.me/16467750556", "Terms of service: https://www.nycluxride.com/terms-of-service", "Cancellation, no-show and waiting terms: https://www.nycluxride.com/rates#policies"];
+  assert.equal(change[0], POLICY.cancel);
   assert.equal(customer.text, [`Payment received`, "", "Your trip", ...trip, "Your payment", ...pay, ...steps.slice(0, 1), ...steps.slice(1), ...change, "", "NYC LUX RIDE", "+1 (646) 775-0556", "https://www.nycluxride.com", ""].join("\n"));
   assert.equal(owner.text, ["New booking 83558982", "", "Customer", "Name: Ana Lopez", "Email: ana.lopez@example.com", "Phone: +1 212 555 0100", "Preferred contact: WhatsApp", "", "Trip", ...trip, "Payment", ...pay, `Open the payment in Stripe: https://dashboard.stripe.com/payments/${session.payment_intent}`, "", "What the customer email says", ...steps.slice(1), ...change, ""].join("\n"));
   const doc = checkHtml(customer);
@@ -707,7 +708,7 @@ await test("an airport pickup, or a return pickup at an airport, with no flight 
       const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
       const heading = [...doc.querySelectorAll("h2")].find((h) => h.textContent === MAIL.where.heading);
       const paragraphs = [];
-      for (let at = heading.nextElementSibling; at && at.tagName === "P" && !at.textContent.startsWith("To change") && !at.textContent.startsWith("Your chauffeur contacts"); at = at.nextElementSibling) paragraphs.push(at.innerHTML);
+      for (let at = heading.nextElementSibling; at && at.tagName === "P" && !at.textContent.startsWith("To change") && !at.textContent.startsWith(POLICY.cancelShort) && !at.textContent.startsWith("Your chauffeur contacts"); at = at.nextElementSibling) paragraphs.push(at.innerHTML);
       assert.deepEqual(paragraphs, where.map(([label, value]) => `${label ? `<strong>${label}</strong><br>` : ""}${value.replace("WhatsApp", linked)}`));
     }
   }
@@ -1938,6 +1939,31 @@ await test("no log line holds the Twilio secret, the Basic auth string, a Twilio
   const secrets = [API_SECRET, Buffer.from(`${API_KEY_SID}:${API_SECRET}`).toString("base64"), API_KEY_SID, ACCOUNT_SID, "6467750556", "2125550199", "NYC LUX RIDE", "Reference 83558982", "Paid $", "could not send", "203.0.113.9", "twilio.com"];
   for (const secret of secrets) assert.ok(!all.includes(secret), secret);
   for (const line of history.filter((l) => l.startsWith("sms-"))) assert.match(line, /^sms-(off|config|sent|retry|fail|unmarked|inherited) 83558982( [A-Za-z0-9_]+){0,3}$/);
+});
+
+await test("both booking emails state the cancellation tiers of POLICY.cancel once, before how to change or cancel, and link the cancellation, no-show and waiting terms at /rates#policies, for a one way trip, a round trip, an hourly booking and a trip with child seats", async () => {
+  setEnv();
+  for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS]) {
+    const letters = bookingLetters(paid(fix), SETTINGS);
+    assert.equal(letters.length, 2);
+    for (const letter of letters) {
+      assert.equal(letter.text.split(POLICY.cancel).length, 2, letter.kind);
+      assert.ok(letter.text.indexOf(POLICY.cancel) < letter.text.indexOf("To change or cancel"), letter.kind);
+      assert.ok(letter.text.includes(`\n${POLICY.link}: https://www.nycluxride.com/rates#policies\n`), letter.kind);
+      const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: [...new JSDOM(letter.html).window.document.querySelectorAll('a[href^="https://dashboard.stripe.com/"]')].map((a) => a.getAttribute("href"))[0] } : {});
+      assert.deepEqual([...doc.querySelectorAll('a[href="https://www.nycluxride.com/rates#policies"]')].map((a) => a.textContent), [POLICY.link], letter.kind);
+      assert.ok([...doc.querySelectorAll("p")].some((x) => x.textContent === POLICY.cancel), letter.kind);
+      assert.doesNotMatch(letter.text, /rates#cancellation|Rates and cancellation terms/);
+    }
+  }
+});
+
+await test("a booking with child seats asks for each child's age, weight and height and the seat they'd like with the reference in both emails, and a booking without seats does not", async () => {
+  setEnv();
+  const ask = fill(SEAT_COPY.mail, { ref: REF });
+  assert.equal(ask, `For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference ${REF}, by WhatsApp or email.`);
+  for (const letter of bookingLetters(paid(SEATS), SETTINGS)) assert.equal(letter.text.split(ask).length, 2, letter.kind);
+  for (const letter of bookingLetters(paid(ONE_WAY), SETTINGS)) assert.ok(!letter.text.includes("For the child seats"), letter.kind);
 });
 
 smtp.server.close();

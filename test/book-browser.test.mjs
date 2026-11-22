@@ -16,7 +16,7 @@ const { HEADINGS, NOTES, REASONS, POLICY } = await api("_copy.mjs");
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET", "FLIGHT_API_KEY", "PLACE_TICKET_SECRET", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT"];
 const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + days * 864e5));
 const nyClock = (ms) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms)).map((x) => [x.type, x.value])); return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`; };
-const { MIN_NOTICE_MINUTES } = await api("_rates.mjs");
+const { MIN_NOTICE_MINUTES, SITE_ORIGIN } = await api("_rates.mjs");
 const nyNow = () => nyClock(Date.now() + MIN_NOTICE_MINUTES * 6e4 + 59999);
 const firstDay = () => { const n = nyNow(); return n.slice(11) <= "23:50" ? n.slice(0, 10) : new Date(Date.parse(n.slice(0, 10)) + 864e5).toISOString().slice(0, 10); };
 const inWindow = () => { const t = nyClock(Math.ceil((Date.now() + 15 * 6e4) / 6e5) * 6e5); return { date: t.slice(0, 10), time: t.slice(11) }; };
@@ -202,7 +202,7 @@ const panel = (page) =>
   page.evaluate(() => ({
     lines: [...document.querySelectorAll("#price-lines tr:not(.bk-hint)")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]),
     total: (document.getElementById("price-total").firstChild || {}).textContent,
-    notes: document.getElementById("price-notes").textContent,
+    notes: ((n) => { const c = n.cloneNode(true); c.querySelectorAll(".sr-only").forEach((x) => x.remove()); return c.textContent; })(document.getElementById("price-notes")),
   }));
 const cards = (page) => page.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
 const scopes = (page) => page.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-scope") || {}).textContent || ""));
@@ -640,7 +640,9 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(JFK_CARDS, CLASS_KEYS.map((k) => cash(AIRPORT_TOTALS[k].jfk)));
     assert.deepEqual(await panel(page), { lines: AIRPORT_LINES, total: cash(TOTAL), notes: NOTES.included + POLICY.later.airport });
     assert.deepEqual([(await page.textContent("#price-lines")).includes(L_TAX), (await page.textContent("#price-lines")).includes(L_BCF), TAX + BCF + TOLLS + FARE], [false, false, TOTAL], "one Taxes and fees line, the sales tax plus the Black Car Fund, and the same total (owner change 2)");
-    assert.deepEqual(await page.$$eval("#price-notes li", (l) => l.map((x) => [x.querySelector("use").getAttribute("href"), x.textContent])), [["#i-check", NOTES.included], ["#i-clock", POLICY.later.airport]]);
+    assert.deepEqual(await page.$$eval("#price-notes li", (l) => l.map((x) => [x.querySelector("use").getAttribute("href"), x.querySelector("span:not(.sr-only)").textContent.replace(" (opens in a new tab)", "")])), [["#i-check", NOTES.included], ["#i-clock", POLICY.later.airport]]);
+    assert.deepEqual(await page.$$eval("#price-notes a", (l) => l.map((a) => [a.getAttribute("href"), a.target, a.rel, a.firstChild.textContent, a.querySelector(".sr-only").textContent])), [["/rates#waiting", "_blank", "noopener", "Extra waiting", " (opens in a new tab)"]], "the after the ride note links its extra waiting words to the waiting charges");
+    assert.deepEqual(await page.$eval("#price-notes a", (a) => { const i = a.querySelector("svg.icon"), s = getComputedStyle(i); return [i.getAttribute("aria-hidden"), i.querySelector("use").getAttribute("href"), s.width, s.height, s.marginInlineStart, s.marginTop, getComputedStyle(a).whiteSpace, i.getBoundingClientRect().width > 0]; }), ["true", "#i-external", "14px", "14px", "4px", "0px", "nowrap", true], "the waiting link shows the new tab icon, sized like the other new tab links on the form");
     assert.deepEqual(await page.$$eval("#price-lines tr.bk-hint", (r) => r.map((x) => [x.cells.length, x.cells[0].colSpan, x.textContent])), [[1, 2, "The same in every class."]]);
     assert.deepEqual(await page.$$eval("#bk-tip-opts label", (l) => l.map((x) => [...x.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(""))), ["None", "Other", "25%", "20%", "15%", "10%"], "None, Other, then the percents from the highest (owner request 1)");
     assert.deepEqual(await page.$$eval("#bk-tip-opts input", (l) => l.map((x) => x.value)), ["0", "custom", ...TIP_PERCENTS.filter(Boolean).sort((a, b) => b - a).map(String)]);
@@ -2448,7 +2450,7 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     const p = await open(ctx, G, "/book");
     await typedTrip(p, { to: "10 Richmond Terrace, Staten Island, NY 10301" });
     await p.route("**/api/book", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
-    const note = () => p.evaluate(() => { const n = document.getElementById("price-notes"); return { text: n.textContent, items: n.children.length, height: n.getBoundingClientRect().height }; });
+    const note = () => p.evaluate(() => { const n = document.getElementById("price-notes"); return { text: ((n) => { const c = n.cloneNode(true); c.querySelectorAll(".sr-only").forEach((x) => x.remove()); return c.textContent; })(n), items: n.children.length, height: n.getBoundingClientRect().height }; });
     await p.click("#bk-view");
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && !document.getElementById("price").hidden);
     const loading = await note();
@@ -3141,6 +3143,11 @@ for (const motion of ["no-preference", "reduce"]) {
     const want = `${DATE.replace(/-/g, "")}T${String(12 - offset).padStart(2, "0")}4000Z`;
     assert.match(ics[1], new RegExp(`\\r\\nDTSTART:${want}\\r\\n`), ics[1]);
     assert.ok(/^BEGIN:VCALENDAR\r\nVERSION:2\.0\r\nPRODID:-\/\/NYC LUX RIDE\/\/Booking\/\/EN\r\nBEGIN:VEVENT\r\nUID:[1-9]\d{7}@nycluxride\.com\r\n/.test(ics[1]) && ics[1].includes(`\r\nUID:${ref}@nycluxride.com\r\n`) && ics[1].endsWith("END:VEVENT\r\nEND:VCALENDAR\r\n") && !/BEGIN:VALARM/.test(ics[1]) && ics[1].split("\r\n").every((l) => new TextEncoder().encode(l).length <= 75), "the file shape, no alarm, lines folded at 75 octets");
+    const cal = `${POLICY.cancelShort} ${POLICY.howTo} ${POLICY.link}: ${SITE_ORIGIN}/rates#policies`;
+    const desc = ics[1].replace(/\r\n /g, "").split("\r\n").find((l) => l.startsWith("DESCRIPTION:")).slice(12).replace(/\\n/g, "\n").replace(/\\([\\,;])/g, "$1");
+    assert.ok(desc.endsWith("\n" + cal), desc);
+    const gcal = await p.evaluate(() => new URL(document.getElementById("cf-gcal").href).searchParams.get("details"));
+    assert.ok(gcal.endsWith("\n" + cal), gcal);
     await p.evaluate(() => { window.__share = null; navigator.share = undefined; });
     await p.click("#cf-share");
     await p.waitForTimeout(100);
@@ -6792,7 +6799,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await p.route("**/api/book", async (route) => { if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
     await p.click("#bk-view");
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
-    const first = await p.evaluate(() => [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, document.getElementById("bk-p-sprinter").textContent, document.getElementById("bk-p-suv").textContent]);
+    const first = await p.evaluate(() => [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), ((n) => { const c = n.cloneNode(true); c.querySelectorAll(".sr-only").forEach((x) => x.remove()); return c.textContent; })(document.getElementById("price-notes")), document.getElementById("bk-p-sprinter").textContent, document.getElementById("bk-p-suv").textContent]);
     assert.deepEqual(first.slice(0, 2), [["Fare", "Taxes and fees"], POLICY.later.waiting]);
     assert.ok(first[2].startsWith("...") && first[2] === first[3], first.slice(2).join(" | "));
     await priced(p);
@@ -7599,7 +7606,7 @@ for (const [width, height] of [[390, 844], [1024, 900], [1440, 900]]) {
   };
   const firstFrame = (p) => p.evaluate(() => {
     const [van, suv] = ["sprinter", "suv"].map((k) => document.getElementById(`bk-p-${k}`).textContent);
-    return [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), document.getElementById("price-notes").textContent, van.startsWith("...") && van === suv];
+    return [[...document.querySelectorAll("#price-lines tr:not(.bk-hint) th")].map((x) => x.textContent), ((n) => { const c = n.cloneNode(true); c.querySelectorAll(".sr-only").forEach((x) => x.remove()); return c.textContent; })(document.getElementById("price-notes")), van.startsWith("...") && van === suv];
   });
   const PLACEHOLDER = [["Fare", "Taxes and fees"], POLICY.later.waiting, true];
   for (const [name, setTrip, sprinter] of [["a New Jersey address to JFK", async (p) => { await outsideEnd(p, "from"); await place(p, "to", "jfk", "John F. Kennedy (JFK)"); }, 44834], ["a JFK pickup to a New Jersey address", async (p) => { await place(p, "from", "jfk", "John F. Kennedy (JFK)"); await outsideEnd(p, "to"); }, 44834]]) {
@@ -9184,7 +9191,7 @@ for (const width of [1440, 390]) {
         assert.deepEqual([await p.getAttribute("#book-form", "data-step"), await p.isVisible("#bk-kids"), await p.evaluate(() => document.getElementById("bk-kids").parentElement.id), await p.evaluate(() => document.getElementById("bk-kids").nextElementSibling.id), await p.evaluate(() => document.getElementById("bk-pets").nextElementSibling.id)], ["options", true, "quote", "bk-pets", "bk-qnotes-f"]);
         const ys = await p.evaluate((q) => [`#q-${q} p`, "#bk-kids", "#bk-qnotes", "#q-mail"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().top)), pick);
         assert.ok(ys.every((y, i) => !i || y > ys[i - 1]), `request text, seats, notes, Email to reserve ${ys}`);
-        assert.equal(await p.textContent("#bk-qnotes-h"), "For example the children's ages, your dog's size or large luggage.");
+        assert.equal(await p.textContent("#bk-qnotes-h"), "For example each child's age, weight and height, your dog's size or large luggage.");
         await settle(p, 700);
         await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
         await seats(p, "infant", 1);

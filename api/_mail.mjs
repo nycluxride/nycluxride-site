@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
-import { MAIL, CALENDAR, LABELS } from "./_copy.mjs";
+import { MAIL, CALENDAR, LABELS, POLICY, SEATS } from "./_copy.mjs";
 import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
@@ -9,6 +9,7 @@ import { smsSettings, sendText, fitText } from "./_sms.mjs";
 import { calendarSettings, addEvents, updateEvents } from "./_calendar.mjs";
 import { localById } from "./_places.mjs";
 
+const POLICIES_URL = `${SITE_ORIGIN}/rates#policies`;
 const DEFAULTS = { host: "smtp.gmail.com", port: "465", from: "NYC LUX RIDE <info@nycluxride.com>", owners: "info@nycluxride.com,nycluxride@gmail.com" };
 const HOST = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -204,8 +205,10 @@ function told(b) {
     { steps: MAIL.steps },
     ...whereBlocks(b, b.back ? ["a", "b"] : ["a"], true),
     ...(b.other ? [{ p: fill(MAIL.other, { name: b.field("passenger_name") || MAIL.thePassenger }) }] : []),
+    ...(seatsOf(b) ? [{ p: fill(SEATS.mail, { ref: b.ref }) }] : []),
+    { p: POLICY.cancel },
     { change: fill(MAIL.change, { ref: b.ref }) },
-    { links: [[MAIL.terms, `${SITE_ORIGIN}/terms-of-service`], [MAIL.rates, `${SITE_ORIGIN}/rates#cancellation`]] },
+    { links: [[MAIL.terms, `${SITE_ORIGIN}/terms-of-service`], [MAIL.rates, POLICIES_URL]] },
   ];
 }
 
@@ -343,6 +346,7 @@ export function reminderLetter(session, legs) {
     { rows: reminderRows(b, legs) },
     { help: true },
     { change: fill(MAIL.change, { ref: b.ref }) },
+    { links: [[MAIL.rates, POLICIES_URL]] },
     { footer: true },
   ];
   const id = `reminder.${createHash("sha256").update(`${session.id} reminder ${legs.join("")}`).digest("hex").slice(0, 32)}`;

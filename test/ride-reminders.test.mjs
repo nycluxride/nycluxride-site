@@ -295,7 +295,7 @@ const sectionOf = (text, heading) => {
   const end = all.indexOf("", start);
   return all.slice(start + 1, end < 0 ? undefined : end);
 };
-const ALLOWED_LINKS = ["mailto:info@nycluxride.com", "https://wa.me/16467750556", "tel:+16467750556", "https://www.nycluxride.com"];
+const ALLOWED_LINKS = ["mailto:info@nycluxride.com", "https://wa.me/16467750556", "tel:+16467750556", "https://www.nycluxride.com", "https://www.nycluxride.com/rates#policies"];
 
 function checkLetter(letter) {
   const { document } = new JSDOM(letter.html).window;
@@ -738,10 +738,11 @@ await test("letters for every pickup type: an address, JFK at the curb, JFK Term
     assert.deepEqual(trip.slice(0, fix === HOURLY || fix === HOURLY_JFK ? 4 : 3), ["Reference: 83558982", ...(fix === HOURLY || fix === HOURLY_JFK ? ["Trip: By the hour, 4 hours"] : []), "Date: Sun, Nov 22, 2026", "Time: 3:30 PM, New York time"], at);
     assert.deepEqual(trip.slice(fix === HOURLY || fix === HOURLY_JFK ? 4 : 3), rows, at);
     assert.ok(letter.text.startsWith("Your ride is tomorrow\n\nWhere to meet your chauffeur\n"), at);
-    assert.ok(letter.text.endsWith(`\n\n${fill(MAIL.reminder.help, { phone: "+1 (646) 775-0556" })}\n\n${fill(MAIL.change, { ref: REF })}\nWhatsApp: https://wa.me/16467750556\n\nNYC LUX RIDE\n+1 (646) 775-0556\nhttps://www.nycluxride.com\n`), at);
+    assert.ok(letter.text.endsWith(`\n\n${fill(MAIL.reminder.help, { phone: "+1 (646) 775-0556" })}\n\n${fill(MAIL.change, { ref: REF })}\nWhatsApp: https://wa.me/16467750556\n${MAIL.rates}: https://www.nycluxride.com/rates#policies\n\nNYC LUX RIDE\n+1 (646) 775-0556\nhttps://www.nycluxride.com\n`), at);
     assert.equal(letter.text.includes("contacts Ben Ortiz on the day of the ride.\n"), fix === OTHER, at);
     assert.doesNotMatch(letter.text, /\$|Paid|Fare|Notes for the chauffeur|ana\.lopez@example\.com|\+1 212 555 0100|\+44 20/, at);
     const doc = checkLetter(letter);
+    assert.deepEqual([...doc.querySelectorAll('a[href="https://www.nycluxride.com/rates#policies"]')].map((a) => a.textContent), ["Cancellation, no-show and waiting terms"], at);
     assert.deepEqual([...doc.querySelectorAll("h2")].map((h) => h.textContent), [MAIL.where.heading, MAIL.trip], at);
     assert.equal(doc.querySelector("h1").textContent, "Your ride is tomorrow");
     assert.deepEqual([...doc.querySelectorAll("tr")].map((tr) => `${tr.children[0].textContent}: ${tr.children[1].textContent}`), trip, at);

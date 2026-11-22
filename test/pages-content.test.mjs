@@ -721,9 +721,9 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
 
 {
   const { document } = read("car-service-with-car-seat-nyc.html");
-  check("car-service-with-car-seat-nyc.html: the sections run How to ask, Count children as passengers, Airport pickups with children, the four airports, Hourly days and big groups, long trips, families outside the city, dogs and kids, then the questions, with no seat model or age section before the owner names the seats", () => {
+  check("car-service-with-car-seat-nyc.html: the sections run How to ask, Our seats with the three seats on the owner's sheet, Count children as passengers, Airport pickups with children, the four airports, Hourly days and big groups, long trips, families outside the city, dogs and kids, then the questions", () => {
     const h2 = [...document.querySelectorAll("main h2")].filter((h) => !h.closest("form, aside")).map((h) => [h.id, norm(h.textContent)]);
-    assert.deepEqual(h2, [["ask", "How to ask for a car seat"], ["passengers", "Count children as passengers"], ["airports-h", "Airport pickups with children"], ["seat-airports-h", "Car seats at JFK, LaGuardia, Newark and Teterboro"], ["groups-h", "Hourly days and big groups"], ["long-trips-h", "Long trips with kids"], ["families-h", "Families in New Jersey, Long Island and Westchester"], ["dogs-kids-h", "Dogs and kids in one car"], ["", "Questions about car seats"], ["close-h", "Book a car with a car seat"]]);
+    assert.deepEqual(h2, [["ask", "How to ask for a car seat"], ["seats", "Our seats"], ["passengers", "Count children as passengers"], ["airports-h", "Airport pickups with children"], ["seat-airports-h", "Car seats at JFK, LaGuardia, Newark and Teterboro"], ["groups-h", "Hourly days and big groups"], ["long-trips-h", "Long trips with kids"], ["families-h", "Families in New Jersey, Long Island and Westchester"], ["dogs-kids-h", "Dogs and kids in one car"], ["", "Questions about car seats"], ["close-h", "Book a car with a car seat"]]);
     assert.doesNotMatch(document.querySelector("main").textContent, /\[|NHTSA|American Academy of Pediatrics|certified|trained/);
     assert.deepEqual([...document.querySelectorAll("main details summary")].map((x) => norm(x.textContent)), ["Do car services in NYC have car seats?", "Is there a charge for a car seat?", "Do you install the car seat?", "Do children count as passengers?", "Can I get a car seat to JFK?", "Can my dog ride with the children?"]);
   });
@@ -793,9 +793,9 @@ check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered 
   const airport = "Yes, at JFK, LaGuardia, Newark and Teterboro. Each seat is added to your price when you book.";
   assert.deepEqual([norm(seat.querySelector("#q-airport-seat .acc__body").textContent), ldAnswer(seat, "Can I get a car seat to JFK?")], [airport, airport]);
   const ask = [...seat.querySelectorAll("#ask ~ p")].map((p) => norm(p.textContent));
-  assert.equal(ask[0], `When you book online, choose the seats you need and add the children's ages in the notes. The price is ${SEAT}, charged once, even on a round trip. Our seats are from Graco and Safety 1st.`);
+  assert.equal(ask[0], `When you book online, choose the seats you need and add each child's age, weight and height in the notes. The price is ${SEAT}, charged once, even on a round trip. Our seats are the Nuna RAVA, the Safety 1st Grow and Go and a backless booster.`);
   assert.doesNotMatch(norm(seat.querySelector("main").textContent), /step 3/i, "the seat counts show at step 3 for a priced trip and beside the request for a trip our dispatch team prices, so the page names no step");
-  assert.ok(ask[1].endsWith("and tell us which seats you need."), ask[1]);
+  assert.ok(ask[1].endsWith("Tell us which seats you need, with each child's age, weight and height. If you've already booked, add your reference and travel date."), ask[1]);
   assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Car Seats NYC, $15 per seat | NYC LUX RIDE", "Infant, toddler and booster seats on airport rides, trips and hourly bookings in NYC. $15 per seat, charged once, even on a round trip."]);
   const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Do your cars have car seats?");
   const tail = "See our car seat page for more.";

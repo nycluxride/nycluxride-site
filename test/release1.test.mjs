@@ -18,6 +18,7 @@ function htmlFiles(dir) {
   return out.sort();
 }
 
+const COPY = await import(join(ROOT, "api", "_copy.mjs"));
 const files = htmlFiles(ROOT);
 const pages = new Map(files.map((f) => [f, new JSDOM(readFileSync(join(ROOT, f), "utf8")).window.document]));
 const main = (f) => norm(pages.get(f).querySelector("main")?.textContent);
@@ -137,8 +138,27 @@ check("every page's business entity serves New York, New Jersey, Connecticut, Ph
   assert.match(ldAnswer("long-distance-car-service.html", "How far will you drive?"), /anywhere in the United States or to Canada, send us the details and we'll send you a price\.$/);
 });
 
-check("child seats name only Graco and Safety 1st, and no page tells parents to bring their own seat", () => {
-  assert.match(main("car-service-with-car-seat-nyc.html"), /Our seats are from Graco and Safety 1st\./);
+check("child seats name the three seats on the owner's sheet, the Nuna RAVA, the Safety 1st Grow and Go and a backless booster, no page names Graco, and no page tells parents to bring their own seat", () => {
+  const { SEATS } = COPY;
+  assert.equal(SEATS.line, "Our seats are the Nuna RAVA, the Safety 1st Grow and Go and a backless booster.");
+  for (const f of ["car-service-with-car-seat-nyc.html", "faq.html", "blog/car-seats-nyc-car-service-parents-november-19.html"]) assert.ok(main(f).includes(SEATS.line), f);
+  assert.deepEqual(files.filter((f) => /\bGraco\b/i.test(readFileSync(join(ROOT, f), "utf8"))), []);
+  assert.deepEqual(files.filter((f) => /Our seats are from/.test(main(f))), []);
+  assert.deepEqual(files.filter((f) => /\bRAVA Premium\b|Grow and Go 3-in-1/.test(readFileSync(join(ROOT, f), "utf8"))), []);
+  const list = [...new JSDOM(readFileSync(join(ROOT, "car-service-with-car-seat-nyc.html"), "utf8")).window.document.querySelectorAll("#seats ~ ul li b")].map((b) => b.textContent);
+  assert.deepEqual(list, ["Nuna RAVA.", "Safety 1st Grow and Go.", "Backless booster."]);
+});
+
+check("parents tell us the seat they'd like, as the owner's sheet asks: the car seat page, the booking hint and the seat email ask for it, and the Nuna RAVA height limit covers both directions", () => {
+  const { SEATS } = COPY;
+  const d = new JSDOM(readFileSync(join(ROOT, "car-service-with-car-seat-nyc.html"), "utf8")).window.document;
+  const items = [...d.querySelectorAll("#seats ~ ul li")].map((li) => li.textContent.replace(/\s+/g, " ").trim());
+  assert.equal(items[0], "Nuna RAVA. A convertible seat. Rear-facing from 5 to 50 lb, and forward-facing from 30 to 65 lb from age 2. Up to 49 inches tall.");
+  assert.equal(d.querySelector("#seats ~ ul").nextElementSibling.textContent, "Infant and toddler seats are the Nuna RAVA or the Safety 1st Grow and Go. The booster seat is the backless booster. Tell us which seat you'd like. We check it suits each child's age, weight and height.");
+  assert.ok(!main("car-service-with-car-seat-nyc.html").includes("We choose the right seat"));
+  assert.equal(SEATS.mail, "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.");
+  assert.equal(SEATS.hint, "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.");
+  for (const f of ["locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) assert.equal(main(f).split("weight and height and the seat you'd like in the notes.").length, 3, f);
   assert.deepEqual(files.filter((f) => /\bNova\b/.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /bring (your|their) own (car )?seat/i.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /ride in their own seats/i.test(main(f))), []);

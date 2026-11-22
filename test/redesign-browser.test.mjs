@@ -330,8 +330,8 @@ for (const route of ["/faq", "/fleet", "/"]) {
     assert.ok(r.text > 800, `only ${r.text} chars of text`);
   });
   if (route === "/faq") {
-    check(`/faq: 23 native details elements render in main without javascript, the pets question among them`, () => {
-      assert.equal(r.details, 23);
+    check(`/faq: 25 native details elements render in main without javascript, the pets question among them`, () => {
+      assert.equal(r.details, 25);
     });
     const answers = await p.evaluate(() => document.body.textContent);
     check(`/faq: answers are in the static html, not javascript`, () => {
@@ -1295,8 +1295,8 @@ async function engineChecks(engine, b) {
       check(`${engine}: /faq: child's seat finds the child seat answer with either apostrophe, and driver finds the answers about the chauffeur's waiting, pickup and fees`, () => {
         assert.equal(words.error, undefined);
         assert.deepEqual([words["child's seat"], words["child’s seat"]], [["q-child-seats"], ["q-child-seats"]]);
-        assert.deepEqual(words.driver, ["q-hourly-service", "q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-tolls-and-gratuity"]);
-        assert.deepEqual(words["driver wait"], ["q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges"]);
+        assert.deepEqual(words.driver, ["q-hourly-service", "q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-no-show", "q-tolls-and-gratuity"]);
+        assert.deepEqual(words["driver wait"], ["q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-no-show"]);
         assert.deepEqual(words["will the driver wait"], ["q-jfk-pickup-point", "q-waiting-charges"]);
       });
     }

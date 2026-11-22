@@ -7,7 +7,7 @@ import { JSDOM } from "jsdom";
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
 const { CLASSES, VEHICLES, HOURS, PASSENGERS, MAX_DOGS, MAX_BAGS } = await load("_rates.mjs");
-const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS } = await load("_copy.mjs");
+const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS, SEATS } = await load("_copy.mjs");
 const { PLACE_LIST, norm } = await load("_places.mjs");
 const { COUNTRIES, MAIN_BY_DIAL, TRUNK } = await load("_phone.mjs");
 
@@ -42,13 +42,13 @@ const INCL_FACTS = ["Free waiting after you land", "15 minutes of free waiting a
 const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"><button class="bk-pill" type="button" tabindex="-1" data-c="suv"><span>Business SUV</span><span id="bk-pp-suv"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="premium"><span>Business Premium SUV</span><span id="bk-pp-premium"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="first"><span>First Class</span><span id="bk-pp-first"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sedan"><span>Sedan &amp; Electric</span><span id="bk-pp-sedan"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sprinter"><span>Luxury Sprinter</span><span id="bk-pp-sprinter"></span></button></div>';
 const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Book and pay online</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>`;
 const EXT = `${ICON("i-external")}<span class="sr-only"> (opens in a new tab)</span>`;
-const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#cancellation" target="_blank" rel="noopener">rates and cancellation terms${EXT}</a>.</p>`;
+const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#policies" target="_blank" rel="noopener">cancellation, no-show and waiting <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>.</p>`;
 const ASSURE = `<ul class="assure-row" id="bk-assure" role="list"><li>${ICON("i-check")}Flat airport rates include tolls, airport fees and taxes</li><li>${ICON("i-clock")}Free waiting after you land</li><li>${ICON("i-phone")}We answer 24 hours a day, every day</li></ul>`;
 const ASSURE_PRIVATE = ASSURE.replace("Free waiting after you land", "Free waiting after airline landings");
 const PRIVATE_PAGES = ["locations/teterboro-airport.html", "private-jet-car-service-nyc.html", "locations/morristown-airport.html", "locations/republic-airport.html", "locations/westchester-airport.html"];
 const MONITOR = "Set the pickup time to your scheduled landing time. We track your flight.";
 const MONITOR_TEB = "For a private flight, add the details as a note in the Details step.";
-const P1_TERMS = POLICY.cancel.slice(POLICY.cancel.indexOf(". ") + 2);
+const P1_TERMS = POLICY.cancelShort;
 const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Shuttle, Jet, Executive or Limo" };
 
 const nt = (s) => s.replace(/\s+/g, " ").trim();
@@ -332,7 +332,7 @@ check("step 3: the child seats fieldset follows meet and greet and the sign name
   assert.deepEqual([...f.querySelectorAll(":scope > div.field")].map((d) => [d.querySelector("label").getAttribute("for"), nt(d.querySelector("label").textContent), d.querySelector("select").id, d.querySelector("select").name, d.querySelector("select").getAttribute("aria-describedby")]), [["bk-k-infant", "Infant", "bk-k-infant", "infant_seats", "bk-kids-h"], ["bk-k-toddler", "Toddler", "bk-k-toddler", "toddler_seats", "bk-kids-h"], ["bk-k-booster", "Booster", "bk-k-booster", "booster_seats", "bk-kids-h"]]);
   for (const s of f.querySelectorAll("select")) assert.deepEqual([...s.options].map((o) => [o.value, o.textContent, o.defaultSelected]), Array.from({ length: PASSENGERS.max + 1 }, (_, n) => [String(n), String(n), n === 0]), s.id);
   assert.deepEqual([...f.children].map((c) => c.id || c.tagName.toLowerCase() + "." + c.className), ["legend.", "div.field", "div.field", "div.field", "bk-kids-h", "bk-kids-n", "e-child_seats"]);
-  assert.ok($("bk-kids-h").matches("p.field__hint:not(.bk-e,.bk-js-only)") && nt($("bk-kids-h").textContent) === "Each seat is charged once, even on a round trip. Add the children's ages in the notes.");
+  assert.ok($("bk-kids-h").matches("p.field__hint:not(.bk-e,.bk-js-only)") && nt($("bk-kids-h").textContent) === SEATS.hint && SEATS.hint === "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.");
   assert.equal($("bk-kids-n").outerHTML, `<p class="bk-nj" id="bk-kids-n"><a class="lnk" href="/rates#add-ons" target="_blank" rel="noopener">See the child seat price${EXT}</a></p>`);
   assert.ok($("e-child_seats").matches("p.bk-e.field__hint") && nt($("e-child_seats").textContent) === ERRORS.child_seats.text);
   assert.doesNotMatch(f.textContent, /\$|\bfree\b|included/i);
@@ -410,7 +410,7 @@ check("step 2: trips our dispatch team prices show the notes field before Email 
   const f = $("bk-qnotes-f");
   assert.ok(f.matches('div.field.bk-js-only[data-show="options"]') && f.parentElement === $("quote") && f.previousElementSibling === $("q-fix") && $("quote").nextElementSibling === $("bk-go"));
   assert.deepEqual([nt(f.querySelector('label[for="bk-qnotes"]').textContent), $("bk-qnotes").tagName, $("bk-qnotes").getAttribute("maxlength"), $("bk-qnotes").getAttribute("rows"), $("bk-qnotes").getAttribute("aria-describedby"), $("bk-qnotes").hasAttribute("name")], [nt(form.querySelector('label[for="bk-notes"]').textContent), "TEXTAREA", "500", "3", "bk-qnotes-h", false]);
-  assert.deepEqual([nt($("bk-qnotes-h").textContent), nt($("bk-notes-h").textContent)], ["For example the children's ages, your dog's size or large luggage.", "For example the children's ages, your dog's size or large luggage."], "a trip our dispatch team prices shows the seat counts above its notes, as the payment step does");
+  assert.deepEqual([nt($("bk-qnotes-h").textContent), nt($("bk-notes-h").textContent)], [SEATS.notes, SEATS.notes], "a trip our dispatch team prices shows the seat counts above its notes, as the payment step does");
   const css = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^book\.[A-Za-z0-9_-]+\.css$/.test(n))}`);
   assert.ok(css.includes(".bk-quote:not(:has(.bk-q:target,.bk-q.is-on)){display:none}"), "the request block, and the notes field in it, show without a dispatch quote");
   const pay = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^pay\.[A-Za-z0-9_-]+\.js$/.test(n))}`);
@@ -506,8 +506,9 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.deepEqual([$("q-wa").className, $("q-wa").getAttribute("href"), $("q-wa").hasAttribute("data-wa"), $("q-wa").getAttribute("target"), $("q-wa").getAttribute("rel"), !!$("q-wa").querySelector('use[href="#i-whatsapp"]'), nt($("q-wa").textContent)], ["btn btn--ghost", "https://wa.me/16467750556", false, "_blank", "noopener", true, "WhatsApp to reserve"]);
   assert.equal($("q-call"), null);
   assert.ok($("q-sent").matches('div.notice.bk-js-only[role="status"][hidden]') && $("q-sent").textContent === "");
-  assert.equal($("bk-policy").innerHTML, `${P1_TERMS} <a class="lnk" href="/rates#cancellation" target="_blank" rel="noopener">Rates and cancellation <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>`);
-  assert.equal(P1_TERMS, "Your written confirmation includes the cancellation terms.");
+  assert.equal($("bk-policy").innerHTML, `${P1_TERMS} <a class="lnk" href="/rates#policies" target="_blank" rel="noopener">Cancellation, no-show and waiting <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>`);
+  assert.equal(P1_TERMS, "Free cancellation up to 24 hours before pickup.");
+  assert.equal(nt($("bk-policy").querySelector("a").textContent), `${POLICY.link} (opens in a new tab)`);
   assert.ok(parts["book.html"].includes(CONSENT), "the consent line and its two links in a new tab");
   assert.ok($("bk-next").matches('button.btn.bk-js-only[type=button][aria-describedby="bk-nopay"]') && nt($("bk-next").textContent) === "Book and pay online");
   assert.equal(nt($("bk-nopay").textContent), "Next you add your details. Then you pay on a Stripe payment page.");
@@ -545,7 +546,7 @@ check("step 3: the step count, the error summary, Someone else is riding, passen
   assert.deepEqual(f("bk-dflight"), ["Flight number", "text", "20", null, "For example DL 1234", null, "next", "characters"]);
   assert.deepEqual(f("bk-sign"), ["Name for the sign (meet and greet)", "text", "45", null, "", "bk-sign-h", "next", "words"]);
   assert.deepEqual([nt(form.querySelector('label[for="bk-notes"]').textContent), $("bk-notes").tagName, $("bk-notes").getAttribute("maxlength"), $("bk-notes").getAttribute("rows"), $("bk-notes").getAttribute("aria-describedby"), $("bk-notes").getAttribute("enterkeyhint")], ["Notes for your chauffeur (optional)", "TEXTAREA", "500", "3", "bk-notes-h", "done"]);
-  assert.deepEqual(["bk-phone-h", "bk-sign-h", "bk-notes-h"].map((id) => $(id).matches("p.field__hint:not(.bk-e)") && nt($(id).textContent)), ["We use this number to arrange your pickup. Outside the US, start with + and the country code.", "Your chauffeur holds a sign with this name inside the terminal.", "For example the children's ages, your dog's size or large luggage."]);
+  assert.deepEqual(["bk-phone-h", "bk-sign-h", "bk-notes-h"].map((id) => $(id).matches("p.field__hint:not(.bk-e)") && nt($(id).textContent)), ["We use this number to arrange your pickup. Outside the US, start with + and the country code.", "Your chauffeur holds a sign with this name inside the terminal.", "For example each child's age, weight and height, your dog's size or large luggage."]);
   assert.deepEqual([...$("bk-det").querySelectorAll("p.field__hint:not(.bk-e,.bk-js-only)")].map((h) => h.id), ["bk-phone-h", "bk-notes-h"], "the details hold one hint before the notes open");
   assert.deepEqual([["bk-email-s", $("bk-email")], ["bk-phone-s", $("bk-phone-h")], ["bk-pphone-s", $("bk-pphone").parentElement]].map(([s, p]) => $(s).matches("p.field__hint.bk-js-only[hidden]") && $(s).previousElementSibling === p && $(s).textContent === ""), [true, true, true]);
   assert.ok($("bk-pphone").parentElement.matches("div.bk-row.bk-tel"), "the passenger hint slot follows the number row");
@@ -553,7 +554,7 @@ check("step 3: the step count, the error summary, Someone else is riding, passen
   assert.equal($("bk-signcard").previousElementSibling, $("bk-sign-h"));
   assert.deepEqual(["type", "aria-expanded", "aria-controls", "aria-describedby"].map((a) => $("bk-notes-add").getAttribute(a)).concat(nt($("bk-notes-add").textContent), $("bk-notes-add").className), ["button", "false", "bk-notes-f", null, "Add a note", "lnk-btn bk-js-only"]);
   assert.ok($("bk-next3").matches('ul.bk-fine[role="list"]'));
-  assert.deepEqual([...$("bk-next3").children].map((li) => [li.tagName, li.children.length, nt(li.textContent)]), [["LI", 0, "Stripe emails your receipt with your reference."], ["LI", 0, "We confirm your car and chauffeur in writing before your ride."], ["LI", 0, "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms."]]);
+  assert.deepEqual([...$("bk-next3").children].map((li) => [li.tagName, li.children.length, nt(li.textContent)]), [["LI", 0, "Stripe emails your receipt with your reference."], ["LI", 0, "We confirm your car and chauffeur in writing before your ride."], ["LI", 0, `${POLICY.cancel} ${POLICY.howTo}`]]);
   assert.deepEqual([$("bk-pname-f").dataset.show, $("bk-pphone-f").dataset.show, $("bk-dflight-f").dataset.show, $("bk-sign-f").dataset.show], ["other", "other", "from-airport", "meet"]);
   assert.ok($("bk-dflight-f").matches(".field.bk-js-only"));
   assert.deepEqual([...$("bk-det").querySelectorAll("[required]")], []);
@@ -645,9 +646,12 @@ for (const f of WIDGET) {
     assert.deepEqual([...d.getElementById("bk-pax").options].map((o) => [o.value, o.textContent]), Array.from({ length: PASSENGERS.max - PASSENGERS.min + 1 }, (_, i) => [`${PASSENGERS.min + i}`, `${PASSENGERS.min + i}`]));
     assert.equal(d.getElementById("bk-pax").value, "1");
   });
-  check(`${f}: no dollar figure, percent figure or USD in the static component`, () => {
+  check(`${f}: no dollar figure, percent figure or USD in the static component, apart from the cancellation charges of POLICY.cancel once in #bk-next3 on a full booking form`, () => {
     const attrs = [...fm.querySelectorAll("*")].flatMap((el) => [...el.attributes].map((a) => a.value));
-    assert.equal([fm.textContent, ...attrs].join(" ").match(/\$\s*\d|\d\s*%|\bUSD\b/), null);
+    const text = nt(fm.textContent), next3 = fm.querySelector("#bk-next3");
+    assert.equal(text.split(POLICY.cancel).length, next3 ? 2 : 1);
+    if (next3) assert.ok(nt(next3.textContent).includes(POLICY.cancel));
+    assert.equal([text.split(POLICY.cancel).join(" "), ...attrs].join(" ").match(/\$\s*\d|\d\s*%|\bUSD\b/), null);
   });
   check(`${f}: no em dash, en dash or semicolon in the visible copy of the component`, () => {
     const attrs = [...fm.querySelectorAll("*")].flatMap((el) => ["alt", "aria-label", "placeholder", "title", "value"].map((a) => el.getAttribute(a) || ""));

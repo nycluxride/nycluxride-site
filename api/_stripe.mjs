@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
-import { CHECKOUT, LABELS } from "./_copy.mjs";
+import { CHECKOUT, LABELS, POLICY } from "./_copy.mjs";
 import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, eventRate, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
@@ -68,7 +68,8 @@ const sentence = (part) => {
 
 function fareDescription(trip, ref) {
   const back = trip.trip_type === "one" && trip.return ? ` Return ${formatDate(trip.return_date)}, ${formatTime(trip.return_time)}.` : "";
-  return `${serviceLabel(trip)}. Reference ${ref}. ${formatDate(trip.date)}, ${formatTime(trip.time)}.${back} ${passengerText(trip.passengers)}.${bagText(trip) ? ` ${bagText(trip)}.` : ""}`;
+  const wait = trip.trip_type === "hour" ? "" : ` ${fill(POLICY.waitRate, { price: POLICY.waitPrices[trip.class] })}`;
+  return `${serviceLabel(trip)}. Reference ${ref}. ${formatDate(trip.date)}, ${formatTime(trip.time)}.${back} ${passengerText(trip.passengers)}.${bagText(trip) ? ` ${bagText(trip)}.` : ""}${wait}`;
 }
 
 function intentDescription(trip, metadata, ref) {

@@ -64,7 +64,7 @@ function strip(value, keys) {
   return value;
 }
 
-const ALLOWED_LINK_CHANGES = {"fleet.html":[["/rates#business-suv","/rates#airport-suv"],["/rates#business-premium-suv","/rates#airport-premium"],["/rates#first-class","/rates#airport-first"],["/rates#sedan-electric","/rates#airport-sedan"],["/rates#luxury-sprinter","/rates#airport-sprinter"]]};
+const ALLOWED_LINK_CHANGES = {"fleet.html":[["/rates#business-suv","/rates#airport-suv"],["/rates#business-premium-suv","/rates#airport-premium"],["/rates#first-class","/rates#airport-first"],["/rates#sedan-electric","/rates#airport-sedan"],["/rates#luxury-sprinter","/rates#airport-sprinter"]],"book.html":[["/rates#cancellation","/rates#policies"]],"index.html":[["/rates#cancellation","/rates#policies"]],"locations/jfk-airport.html":[["/rates#cancellation","/rates#policies"]],"locations/laguardia-airport.html":[["/rates#cancellation","/rates#policies"]],"locations/newark-airport.html":[["/rates#cancellation","/rates#policies"]],"locations/teterboro-airport.html":[["/rates#cancellation","/rates#policies"]]};
 
 let failures = 0;
 function check(name, fn) {

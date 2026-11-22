@@ -3,7 +3,8 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DISTANCE_RATES, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS } from "../api/_rates.mjs";
+import { DISTANCE_RATES, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS, CLASSES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS } from "../api/_rates.mjs";
+import { POLICY } from "../api/_copy.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RATES = "rates.html";
@@ -30,8 +31,9 @@ const PET_CARD = "index.html";
 const PET_PRICES = [`$${SMALL_DOG_CENTS / 100} per dog`, `$${LARGE_DOG_CENTS / 100} per dog`];
 const PET_PAGE = "pet-friendly-car-service-nyc.html";
 const PET_PAGE_PRICES = [`$${SMALL_DOG_CENTS / 100} per small dog`, `$${LARGE_DOG_CENTS / 100} per large dog`];
+const CANCEL_PAGES = ["faq.html", "terms-of-service.html", "card-authorization.html", "schedule.html", "book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"];
 const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;
-const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "cancellation"];
+const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "policies", "waiting", "cancellation", "no-show", "changes"];
 
 function htmlFiles(dir) {
   const out = [];
@@ -96,9 +98,9 @@ const pages = new Map(FILES.map((f) => [f, read(f)]));
 
 for (const [file, p] of pages) {
   if (file === RATES) continue;
-  const allowed = [...(ALLOWED[file] || []), ...(file === PET_CARD ? PET_PRICES : []), ...(file === PET_PAGE ? PET_PAGE_PRICES : [])];
+  const allowed = [...(ALLOWED[file] || []), ...(file === PET_CARD ? PET_PRICES : []), ...(file === PET_PAGE ? PET_PAGE_PRICES : []), ...(CANCEL_PAGES.includes(file) ? [POLICY.cancel] : [])];
 
-  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}${file === PET_CARD ? ` and the pets card prices ${PET_PRICES.join(" and ")}` : ""}${file === PET_PAGE ? ` and the dog prices ${PET_PAGE_PRICES.join(" and ")}` : ""}`, () => {
+  check(`${file}: no NYC LUX RIDE price in text, title, attributes or json-ld apart from the child seat price written ${SEAT_PRICE}${file === PET_CARD ? ` and the pets card prices ${PET_PRICES.join(" and ")}` : ""}${file === PET_PAGE ? ` and the dog prices ${PET_PAGE_PRICES.join(" and ")}` : ""}${CANCEL_PAGES.includes(file) ? ", and the cancellation charges only inside POLICY.cancel word for word" : ""}`, () => {
     const hits = [];
     const scan = (where, s, re = PROSE_PRICE) => {
       const rest = unseat(strip(String(s), allowed));
@@ -242,6 +244,38 @@ if (rates) {
     const told = [rates.title, rates.document.querySelector('meta[name="description"]').content, ...nodes.filter((n) => n["@type"] === "FAQPage").flatMap((f) => f.mainEntity.map((q) => q.acceptedAnswer.text))].join(" ");
     for (const m of told.matchAll(/\$\d+/g)) if (!new RegExp(`\\${m[0]}(?!\\d)`).test(tables)) bad.push(`${m[0]} is not in a rates table`);
     assert.deepEqual(bad, [], bad.join(" | "));
+  });
+}
+
+check(`the cancellation charges appear outside the rates page only on ${CANCEL_PAGES.join(", ")}, and only as POLICY.cancel word for word, built from CANCEL_TIERS`, () => {
+  const [free, late, later, last] = CANCEL_TIERS;
+  assert.deepEqual([free.percent, last.percent, last.hours], [0, 100, 0]);
+  assert.equal(POLICY.cancel, `Free cancellation up to ${free.hours} hours before pickup. Under ${free.hours} hours, the charge is ${late.percent}% of the price. Under ${late.hours} hours, it's ${later.percent}%. Under ${later.hours} hours, it's the full price.`);
+  for (const file of CANCEL_PAGES) {
+    const p = pages.get(file);
+    const text = [p.text, JSON.stringify(p.ld)].join(" ");
+    assert.ok(p.text.includes(POLICY.cancel), `${file} does not show POLICY.cancel`);
+    const left = text.split(POLICY.cancel).join(" ");
+    assert.doesNotMatch(left, /\d\s*%/, `${file}: a percent outside POLICY.cancel`);
+  }
+});
+
+if (rates) {
+  check(`${RATES}: #waiting lists every class of api/_rates.mjs with its WAIT_CENTS_PER_MINUTE price per minute, in class order, the Sprinter row for every Sprinter, after POLICY.waiting`, () => {
+    const rows = [...rates.document.querySelectorAll("#waiting-rates tbody tr")].map((tr) => [tr.id, tr.querySelector("th").firstChild.textContent, tr.querySelector("td").textContent]);
+    assert.deepEqual(rows, Object.keys(CLASSES).map((k) => [`waiting-${k}`, CLASSES[k].name, `$${(WAIT_CENTS_PER_MINUTE[k] / 100).toFixed(2)}`]));
+    assert.deepEqual(Object.entries(WAIT_CENTS_PER_MINUTE).sort(), Object.entries({ sedan: 120, suv: 150, premium: 180, first: 280, sprinter: 400 }).sort());
+    assert.equal(rates.document.querySelector("#waiting-sprinter small").textContent, "Every Sprinter");
+    assert.equal(rates.document.querySelector("#waiting p").textContent.replace(/\s+/g, " "), POLICY.waiting);
+  });
+  check(`${RATES}: #cancellation lists POLICY.cancel sentence by sentence, and the Extra waiting fact gives the lowest and highest rate of WAIT_CENTS_PER_MINUTE`, () => {
+    const items = [...rates.document.querySelectorAll("#cancellation li")].map((li) => li.textContent);
+    assert.equal(items.length, CANCEL_TIERS.length);
+    assert.equal(items.join(" "), POLICY.cancel);
+    const cents = Object.values(WAIT_CENTS_PER_MINUTE);
+    const fact = [...rates.document.querySelectorAll("#add-ons dt")].find((dt) => dt.textContent === "Extra waiting").nextElementSibling;
+    assert.equal(fact.textContent, `$${(Math.min(...cents) / 100).toFixed(2)} to $${(Math.max(...cents) / 100).toFixed(2)} a minute after the free waiting, by vehicle class`);
+    assert.equal(fact.querySelector("a").getAttribute("href"), "#waiting");
   });
 }
 

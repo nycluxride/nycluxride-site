@@ -10,7 +10,7 @@ import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters } from "../api/_mail.mjs";
 import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY } from "../api/_copy.mjs";
-import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES } from "../api/_rates.mjs";
+import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES, CLASSES, WAIT_CENTS_PER_MINUTE } from "../api/_rates.mjs";
 import { ROUTE, signTicket, signRoute, routeKey } from "../api/_ticket.mjs";
 import { localById } from "../api/_places.mjs";
 
@@ -27,7 +27,7 @@ const DESCRIPTOR_PREFIX = "NYCLUXRIDE";
 const ENV_KEYS = ["BOOKING_REF_SECRET", "PLACE_TICKET_SECRET", "STRIPE_SECRET_KEY", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "SALES_TAX_RATE_ID", "SALES_TAX_PERCENT", "BOOK_MOCK", "VERCEL_ENV", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MOCK", "FLIGHT_MOCK", "FLIGHT_API_KEY", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PORT", "MAIL_FROM", "OWNER_EMAILS", "STRIPE_WEBHOOK_SECRET"];
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
 const TERMS =
-  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.";
+  "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [cancellation, no-show and waiting terms](https://www.nycluxride.com/rates#policies). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.";
 const SUBMIT =
   "You pay the total shown today. Extra waiting, stops added during the ride and parking are charged to this card after the ride, with a receipt.";
 const SUBMIT_HOURLY =
@@ -122,7 +122,7 @@ const EXPECTED = {
     {
       ...common("69042564", { email: ME.email }),
       ...lines([
-        ["Fare", 15500, "From JFK, Business SUV. Reference 69042564. Wed, Oct 14, 2026, 7:30 AM. 2 passengers."],
+        ["Fare", 15500, "From JFK, Business SUV. Reference 69042564. Wed, Oct 14, 2026, 7:30 AM. 2 passengers. Extra waiting is $1.50 a minute."],
         [FEES, 1376 + 349],
         [TOLLS_SHOWN, 1275],
         ["Meet and greet", 2500, MEET_TEXT],
@@ -171,7 +171,7 @@ const EXPECTED = {
     "11131522",
     {
       ...common("11131522"),
-      ...lines([["Fare", 15500, "To JFK, Business SUV. Reference 11131522. Wed, Oct 14, 2026, 7:30 AM. 2 passengers."], [FEES, 1376 + 349], [TOLLS_SHOWN, 1275]]),
+      ...lines([["Fare", 15500, "To JFK, Business SUV. Reference 11131522. Wed, Oct 14, 2026, 7:30 AM. 2 passengers. Extra waiting is $1.50 a minute."], [FEES, 1376 + 349], [TOLLS_SHOWN, 1275]]),
       "payment_intent_data[description]": `New booking 11131522: Wed Oct 14, 7:30 AM, Business SUV, 350 5th Ave to JFK. 2 passengers. Pickup "${MANHATTAN}". Drop-off "John F. Kennedy (JFK)".`,
       "payment_intent_data[statement_descriptor_suffix]": "JFK OCT14",
       ...bothMetadata({
@@ -248,7 +248,7 @@ const EXPECTED = {
     {
       ...common(ROUND_REF, { email: ME.email }),
       ...lines([
-        ["Fare", 53498, `First Class, 2 airport transfers. Reference ${ROUND_REF}. Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. 3 passengers.`],
+        ["Fare", 53498, `First Class, 2 airport transfers. Reference ${ROUND_REF}. Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. 3 passengers. Extra waiting is $2.80 a minute.`],
         [FEES, 4748 + 1204],
         [TOLLS_SHOWN, 2550],
         ["Gratuity for your chauffeur (10%)", 5350, TIP_TEXT],
@@ -296,7 +296,7 @@ const EXPECTED = {
     {
       ...common(CUSTOM_REF, { email: ME.email }),
       ...lines([
-        ["Fare", 15500, `To JFK, Business SUV. Reference ${CUSTOM_REF}. Wed, Oct 14, 2026, 7:30 AM. 2 passengers.`],
+        ["Fare", 15500, `To JFK, Business SUV. Reference ${CUSTOM_REF}. Wed, Oct 14, 2026, 7:30 AM. 2 passengers. Extra waiting is $1.50 a minute.`],
         [FEES, 1376 + 349],
         [TOLLS_SHOWN, 1275],
         ["Gratuity for your chauffeur", 4000, TIP_TEXT],
@@ -2207,7 +2207,7 @@ await test("builder: a return trip priced by distance and time equals the comple
       ...common(DISTANCE_REF, { email: ME.email }),
       "custom_text[submit][message]": SUBMIT_DISTANCE,
       ...lines([
-        ["Fare", 29400, `${service}. Reference ${DISTANCE_REF}. Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers.`],
+        ["Fare", 29400, `${service}. Reference ${DISTANCE_REF}. Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers. Extra waiting is $1.20 a minute.`],
         [FEES, 662],
         ["Gratuity for your chauffeur (15%)", 4410, TIP_TEXT],
       ]),
@@ -2385,7 +2385,7 @@ await test("builder: a JFK pickup to New Jersey with meet and greet and a 15% gr
       ...common(NJ_REF, { email: ME.email }),
       "custom_text[submit][message]": SUBMIT_OUTSIDE,
       ...lines([
-        ["Fare", 16830, `${service}. Reference ${NJ_REF}. Wed, Oct 14, 2026, 7:30 AM. 2 passengers.`],
+        ["Fare", 16830, `${service}. Reference ${NJ_REF}. Wed, Oct 14, 2026, 7:30 AM. 2 passengers. Extra waiting is $1.50 a minute.`],
         [FEES, 379],
         ["Meet and greet", 2500, MEET_TEXT],
         ["Gratuity for your chauffeur (15%)", 2525, TIP_TEXT],
@@ -3094,7 +3094,7 @@ await test("builder: a round trip with a stop, LaGuardia to 26 Ann St then 55 Ch
     const service = "Business SUV, 2 airport transfers";
     assert.deepEqual([0, 1, 2, 3].map((i) => [form[`line_items[${i}][price_data][product_data][name]`], form[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(2 * home.fare)], [FEES, String(2 * home.tax + 2 * home.bcf)], [TOLLS_SHOWN, String(2 * home.tolls)], ["Extra stop", "2000"]]);
     assert.deepEqual([form["line_items[4][quantity]"], stripeTotal(built.params.toString()), form["custom_text[submit][message]"]], [undefined, 2 * home.total + STOP_FEE_CENTS, SUBMIT]);
-    assert.equal(form["line_items[0][price_data][product_data][description]"], `${service}. Reference ${built.ref}. Wed, Oct 14, 2026, 9:00 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers.`);
+    assert.equal(form["line_items[0][price_data][product_data][description]"], `${service}. Reference ${built.ref}. Wed, Oct 14, 2026, 9:00 AM. Return Sun, Oct 18, 2026, 6:00 PM. 2 passengers. Extra waiting is $1.50 a minute.`);
     const metadata = metadataFor(built.trip, built.price, built.ref);
     assert.deepEqual(["service", "legs", "miles", "minutes", "fare_cents", "tax_cents", "bcf_cents", "tolls_cents", "stops_cents", "total_cents", "stop1_text"].map((key) => metadata[key]), ["airport", "2", undefined, undefined, "27402", "2432", "616", "2550", "2000", "35000", ANN]);
     assert.deepEqual(receipt(metadata, ON), {
@@ -3195,7 +3195,7 @@ await test("builder: bags ride to Stripe in the passengers value of both metadat
     const intent = params.get("payment_intent_data[description]");
     assert.ok(intent.includes(`. 2 passengers. ${said}. Meet and greet. Pickup `), intent);
     assert.ok(intent.startsWith(ownerSubject(metadataOf(params), plain.ref)), "the payment description keeps the owner subject format");
-    assert.equal(params.get("line_items[0][price_data][product_data][description]"), `${plain.params.get("line_items[0][price_data][product_data][description]")} ${said}.`);
+    assert.equal(params.get("line_items[0][price_data][product_data][description]"), plain.params.get("line_items[0][price_data][product_data][description]").replace(" Extra waiting is $1.50 a minute.", ` ${said}. Extra waiting is $1.50 a minute.`));
     const meta = metadataOf(params);
     assert.deepEqual(shownLines(receipt(meta, ON).lines), stripeItems(params));
     assert.deepEqual(receipt(meta, ON), receipt(metadataOf(plain.params), ON));
@@ -3293,6 +3293,22 @@ await test("handler: BOOK_MOCK pays an airport pickup with bags, with JavaScript
   const id = new URL(res.headers.get("location"), LOCAL).searchParams.get("session_id");
   assert.deepEqual((await readJson(await get(id), 200)).total_cents, plain.total_cents);
   assert.equal(calls.length, 0);
+});
+
+await test("builder: the Stripe fare line of every class gives that class's extra waiting price per minute from WAIT_CENTS_PER_MINUTE, as its last sentence, with nothing about waiting in the metadata, and an hourly booking gives none", async () => {
+  const base = await build(DROPOFF, ON, "nonce-wait-rate-base-00001");
+  for (const cls of Object.keys(CLASSES)) {
+    const { params } = await build({ ...DROPOFF, class: cls, passengers: "2" }, ON, `nonce-wait-rate-${cls}`.padEnd(26, "0"));
+    const description = params.get("line_items[0][price_data][product_data][description]");
+    const price = `$${(WAIT_CENTS_PER_MINUTE[cls] / 100).toFixed(2)}`;
+    assert.ok(description.endsWith(` Extra waiting is ${price} a minute.`), `${cls}: ${description}`);
+    assert.equal(description.split("Extra waiting").length, 2, description);
+    assert.deepEqual([...params].filter(([k, v]) => /metadata/.test(k) && /waiting|a minute/i.test(`${k} ${v}`)), []);
+  }
+  const hourly = await build(HOURLY, ON, "nonce-wait-rate-hourly-001");
+  assert.doesNotMatch(hourly.params.get("line_items[0][price_data][product_data][description]"), /Extra waiting|a minute/);
+  assert.equal(base.params.get("custom_text[terms_of_service_acceptance][message]"), CHECKOUT.terms);
+  assert.ok(CHECKOUT.terms.includes(`[${POLICY.link.toLowerCase()}](https://www.nycluxride.com/rates#policies)`), CHECKOUT.terms);
 });
 
 server.child.kill();

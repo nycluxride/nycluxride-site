@@ -1,3 +1,5 @@
+import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS } from "./_rates.mjs";
+
 export const HEADINGS = {
   price: "Get a price for this trip",
   phone: "Reserve this trip by email or WhatsApp",
@@ -56,8 +58,22 @@ export const ERRORS = {
   pname: { field: "pname", text: "Add the passenger's full name." },
   pphone: { field: "pphone", text: "Add the passenger's mobile number, and check its country code." },
 };
+const [FREE, LATE, LATER] = CANCEL_TIERS;
+const FREE_WAIT = `You get ${FREE_WAIT_MINUTES.domestic} minutes of free waiting after a domestic landing, ${FREE_WAIT_MINUTES.international} minutes after an international landing, and ${FREE_WAIT_MINUTES.local} minutes at any other pickup.`;
+const EXTRA_WAIT = "After the free waiting, we charge by the minute at the rate for your vehicle.";
+const FREE_CANCEL = `Free cancellation up to ${FREE.hours} hours before pickup.`;
 export const POLICY = {
-  cancel: "To change or cancel, email info@nycluxride.com or WhatsApp us with your reference, as early as you can. Your written confirmation includes the cancellation terms.",
+  freeWait: FREE_WAIT,
+  extraWait: EXTRA_WAIT,
+  waiting: `${FREE_WAIT} ${EXTRA_WAIT}`,
+  waitRate: "Extra waiting is {price} a minute.",
+  waitPrices: Object.fromEntries(Object.entries(WAIT_CENTS_PER_MINUTE).map(([cls, cents]) => [cls, `$${(cents / 100).toFixed(2)}`])),
+  cancelShort: FREE_CANCEL,
+  cancel: `${FREE_CANCEL} Under ${FREE.hours} hours, the charge is ${LATE.percent}% of the price. Under ${LATE.hours} hours, it's ${LATER.percent}%. Under ${LATER.hours} hours, it's the full price.`,
+  howTo: "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.",
+  noShow: "If you're not at the pickup when your free waiting ends and haven't asked us to change or cancel, your chauffeur tries to reach you. If we still can't reach you, it's a no-show. The full price applies, with no waiting charge on top.",
+  changes: "Changes depend on availability and can change the price. Events, holidays, groups and custom trips can have a different cancellation deadline. If yours does, we tell you by email or WhatsApp before you pay.",
+  link: "Cancellation, no-show and waiting terms",
   later: {
     airport: "Extra waiting, stops added during the ride and parking are charged to your card after the ride.",
     hourly: "Tolls and parking are charged to your card after the ride.",
@@ -68,9 +84,15 @@ export const POLICY = {
     waiting: "Extra waiting and parking are charged to your card after the ride.",
   },
 };
+export const SEATS = {
+  line: "Our seats are the Nuna RAVA, the Safety 1st Grow and Go and a backless booster.",
+  hint: "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.",
+  notes: "For example each child's age, weight and height, your dog's size or large luggage.",
+  mail: "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.",
+};
 const INCLUDED = "Tolls, airport fees and any taxes are included.";
 const CONFIRM = "We confirm your car and chauffeur in writing before your ride.";
-const CHANGE = "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference {ref}.";
+const CHANGE = POLICY.howTo.replace(/\.$/, " {ref}.");
 export const NOTES = {
   included: INCLUDED,
   airport: INCLUDED + " " + POLICY.later.airport,
@@ -120,7 +142,7 @@ export const LABELS = {
   airportZip: "Airport ZIP code",
 };
 export const CHECKOUT = {
-  terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [rates and cancellation terms](https://www.nycluxride.com/rates#cancellation). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.",
+  terms: "I agree to the [terms of service](https://www.nycluxride.com/terms-of-service#payments) and the [cancellation, no-show and waiting terms](https://www.nycluxride.com/rates#policies). I allow charges to this card after the ride for extra waiting, stops added during the ride, parking and any tolls not in the price.",
   submit: "You pay the total shown today. Extra waiting, stops added during the ride and parking are charged to this card after the ride, with a receipt.",
   submitHourly: "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.",
   submitDistance: "You pay the total shown today. Tolls and parking are charged to this card after the ride, with a receipt.",
@@ -211,7 +233,7 @@ export const MAIL = {
   noCustomer: "No confirmation went to the customer. The booking has no valid email address.",
   stripe: "Open the payment in Stripe",
   terms: "Terms of service",
-  rates: "Rates and cancellation terms",
+  rates: POLICY.link,
   labels: {
     ref: "Reference",
     trip: "Trip",

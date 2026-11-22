@@ -275,6 +275,7 @@ for (const file of FILES) {
     }
     assert.equal(document.querySelectorAll(".site-footer nav .footer-links--cols a").length, FOOTER_AREAS);
     assert.equal(document.querySelector('.site-footer a[href="/car-service-with-car-seat-nyc"]').textContent.trim(), "Child car seats");
+    assert.equal(document.querySelector('.site-footer a[href="/rates"]').textContent.trim(), "Rates and policies");
     assert.equal(document.querySelector('.site-footer a[href="/locations/newark-airport"]').textContent.trim(), "Newark Airport");
     assert.equal(document.querySelector('.site-footer a[href="/schedule"]').textContent.trim(), "Schedule a chauffeur");
     assert.equal(document.querySelector('.site-footer a[href="/fleet"]').textContent.trim(), "Fleet");

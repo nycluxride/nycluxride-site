@@ -329,7 +329,7 @@ check("services.html: the Rates list names the three bookable extras, with pets 
     ["#i-shield", "Child seats", "Infant, toddler and booster seats, $15 per seat, charged at booking."],
     ["#i-check", "Pets", "Small and large dogs, for an extra charge per booking. Service animals ride free"],
   ]);
-  assert.equal(squash(pages.get("schedule.html").document.getElementById("s-notes-hint").textContent), "Child seat sizes, pets, extra stops, a car waiting between meetings, or anything your chauffeur should know.");
+  assert.equal(squash(pages.get("schedule.html").document.getElementById("s-notes-hint").textContent), "The seat you'd like and each child's age, weight and height for child seats, pets, extra stops, a car waiting between meetings, or anything your chauffeur should know.");
   assert.equal(pages.get("faq.html").document.getElementById("q-pets").getAttribute("data-k"), "pet pets puppy animal service guide");
 });
 
@@ -366,8 +366,9 @@ check("terms-of-service.html: the #payments section is exact and dated, with tol
   const text = parts.join(" ");
   assert.ok(text.includes(TERMS_PAYMENTS), text);
   const page = p.graph.find((n) => n["@type"] === "WebPage");
-  assert.equal(page.dateModified, "2026-11-17");
-  assert.ok(p.text.includes("Last Updated: November 17, 2026"));
+  assert.equal(page.dateModified, "2026-11-21");
+  assert.ok(p.text.includes("Last Updated: November 21, 2026"));
+  assert.ok(!p.text.includes("November 17, 2026"));
   assert.ok(!p.text.includes("October 30, 2026"));
 });
 
@@ -431,9 +432,19 @@ check("rates.html: the add-ons facts and the footnote are exact", () => {
   assert.equal(note, RATES_FOOTNOTE);
 });
 
-check("rates.html: the cancellation paragraph is exact", () => {
-  const ps = [...rates.document.querySelectorAll("#cancellation p")].map((x) => squash(x.textContent));
+check("rates.html: the paragraph on charges after the ride is exact and closes the waiting part of the policies", () => {
+  const ps = [...rates.document.querySelectorAll("#waiting > p")].map((x) => squash(x.textContent));
+  assert.equal(ps.at(-1), RATES_CANCELLATION);
   assert.ok(ps.includes(RATES_CANCELLATION), ps.join(" | "));
+});
+
+check("rates.html: the Extra waiting and Cancellation facts link to their policies, with no written-terms wording left", () => {
+  const facts = Object.fromEntries([...rates.document.querySelectorAll("#add-ons dl.facts dt")].map((dt) => [squash(dt.textContent), dt.nextElementSibling]));
+  assert.equal(squash(facts["Extra waiting"].textContent), "$1.20 to $4.00 a minute after the free waiting, by vehicle class");
+  assert.equal(facts["Extra waiting"].querySelector("a").getAttribute("href"), "#waiting");
+  assert.equal(squash(facts.Cancellation.textContent), "Free cancellation up to 24 hours before pickup");
+  assert.equal(facts.Cancellation.querySelector("a").getAttribute("href"), "#cancellation");
+  assert.doesNotMatch(squash(rates.document.querySelector("main").textContent), /in writing with the reservation|written confirmation includes/);
 });
 
 check("rates.html: the rate questions are exact and equal in the page and in json-ld", () => {
@@ -563,6 +574,16 @@ for (const file of FILES.filter((f) => f.startsWith("blog/"))) {
   });
 }
 
+check("rates.html: the policies section has the waiting, cancellation, no-show and changes parts in order, each POLICY text word for word", () => {
+  const parts = [...rates.document.querySelectorAll("#policies section")].map((x) => [x.id, squash(x.querySelector("h3").textContent)]);
+  assert.deepEqual(parts, [["waiting", "Waiting"], ["cancellation", "Cancellation"], ["no-show", "No-shows"], ["changes", "Changes and special bookings"]]);
+  assert.equal(squash(rates.document.querySelector("#cancellation > p").textContent), COPY.POLICY.howTo);
+  assert.equal(squash(rates.document.querySelector("#no-show > p").textContent), COPY.POLICY.noShow);
+  assert.equal(squash(rates.document.querySelector("#changes > p").textContent), COPY.POLICY.changes);
+  assert.equal(squash(rates.document.querySelector("h1").textContent), "Car service rates and policies in New York City");
+  assert.deepEqual([...rates.document.querySelectorAll(".jumps a")].map((a) => [a.getAttribute("href"), squash(a.textContent)]).at(-1), ["#policies", "Policies"]);
+});
+
 const wordCount = (s) => squash(s).split(" ").filter(Boolean).length;
 const after = (doc, id, n) => {
   let el = doc.getElementById(id);
@@ -581,7 +602,7 @@ const CAPS = [
   ["rates.html: #airport-total footer", rates.document.querySelector("#airport-total tfoot td[colspan]").textContent, 40],
   ["rates.html: add-ons footnote", rates.document.querySelector("#add-ons dl.facts").nextElementSibling.textContent, 15],
   ...[...rates.document.querySelectorAll("#add-ons dl.facts dd")].map((dd) => [`rates.html: add-on ${squash(dd.previousElementSibling.textContent)}`, dd.textContent, 30]),
-  ...[...rates.document.querySelectorAll("#cancellation p")].map((p, i) => [`rates.html: #cancellation paragraph ${i + 1}`, p.textContent, 45]),
+  ...[...rates.document.querySelectorAll("#policies p")].map((p, i) => [`rates.html: #policies paragraph ${i + 1}`, p.textContent, 45]),
   ["about.html: What the price covers, seats and billing", startsWith("about.html", "Infant, toddler and booster seats are"), 60],
   ["blog/chauffeur-service-nyc-booking-guide-april-30.html: our answers paragraph", startsWith("blog/chauffeur-service-nyc-booking-guide-april-30.html", "Airport rides to or from New York City have one flat price by class"), 85],
   ["blog/corporate-black-car-nyc-april-3.html: published rates paragraph", startsWith("blog/corporate-black-car-nyc-april-3.html", "Check our written confirmation"), 70],
@@ -589,6 +610,12 @@ const CAPS = [
   ...["submit", "submitHourly", "submitDistance", "submitOutside", "submitReturnFlat", "submitOutFlat"].map((k) => [`CHECKOUT.${k}`, COPY.CHECKOUT[k], 35]),
   ["CHECKOUT.terms", COPY.CHECKOUT.terms, 40],
   ["POLICY.cancel", COPY.POLICY.cancel, 30],
+  ["POLICY.waiting", COPY.POLICY.waiting, 40],
+  ["POLICY.noShow", COPY.POLICY.noShow, 45],
+  ["POLICY.changes", COPY.POLICY.changes, 35],
+  ["POLICY.howTo", COPY.POLICY.howTo, 20],
+  ["SEATS.line", COPY.SEATS.line, 20],
+  ["SEATS.mail", COPY.SEATS.mail, 30],
   ...Object.entries(COPY.POLICY.later).map(([k, v]) => [`POLICY.later.${k}`, v, 20]),
 ];
 check("the longest rewritten customer blocks stay under their word caps, like the 90 word cap on the rates distance prose", () => {
