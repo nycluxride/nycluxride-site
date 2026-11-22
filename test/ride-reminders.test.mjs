@@ -694,6 +694,24 @@ await test("the metadata budget: the reminder adds exactly one key and clears a 
   assert.ok(both.length < 200);
 });
 
+await test("the reminder names the bags in a Bags row right after the Passengers row, on the ride out, the return and both rides in one letter, by the hour too, and an old booking without bags or with none chosen shows the plain passenger count", () => {
+  setEnv();
+  const bagged = (fix, passengers) => ({ ...fix, metadata: { ...fix.metadata, passengers } });
+  for (const [fix, legs] of [[JFK, [["a"]]], [ROUND_HOME, [["b"]]], [SAME_DAY, [["a", "b"]]], [HOURLY, [["a"]]]]) {
+    const n = fix.metadata.passengers;
+    for (const leg of legs) {
+      const trip = rowsOf(reminderLetter(paid(bagged(fix, `${n}, 4 large bags, 2 small bags`)), leg));
+      const at = trip.indexOf(`Passengers: ${n}`);
+      assert.ok(at > 0 && trip[at + 1] === "Bags: 4 large bags and 2 small bags", `${fix.metadata.from_text} ${leg}: ${trip.join(" | ")}`);
+      const html = checkLetter(reminderLetter(paid(bagged(fix, `${n}, 4 large bags, 2 small bags`)), leg));
+      assert.ok([...html.querySelectorAll("tr")].some((tr) => tr.children[0].textContent === "Bags" && tr.children[1].textContent === "4 large bags and 2 small bags"));
+      const plain = rowsOf(reminderLetter(paid(fix), leg));
+      assert.ok(plain.includes(`Passengers: ${n}`) && !plain.some((row) => row.startsWith("Bags")), plain.join(" | "));
+    }
+  }
+  assert.ok(rowsOf(reminderLetter(paid(bagged(EWR, "2, 1 large bag")), ["a"])).includes("Bags: 1 large bag"));
+});
+
 await test("letters for every pickup type: an address, JFK at the curb, JFK Terminal 5, LaGuardia with a stop, Newark without a flight, meet and greet with the sign name, Teterboro, by the hour from an address and from JFK, and someone else riding", () => {
   setEnv();
   const cases = [

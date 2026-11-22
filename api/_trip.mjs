@@ -25,6 +25,8 @@ import {
   LARGE_DOG_CENTS,
   DOG_SIZES,
   MAX_DOGS,
+  BAG_SIZES,
+  MAX_BAGS,
   STOP_FEE_CENTS,
   HOURS,
   PASSENGERS,
@@ -42,7 +44,7 @@ import { readPhone } from "./_phone.mjs";
 import { headerText } from "./_smtp.mjs";
 
 const ENDS = ["from", "stop1", "stop2", "to"];
-const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), "hours", "class", "vehicle", "sprinter", "event", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
+const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), ...BAG_SIZES.map((k) => `${k}_bags`), "hours", "class", "vehicle", "sprinter", "event", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 const ROUTED = ["no-airport", "outside-city"];
@@ -59,6 +61,7 @@ const MAX_TEXT = 200;
 const MAX_TICKET = 553;
 const DOG_CENTS = { small: SMALL_DOG_CENTS, large: LARGE_DOG_CENTS };
 const DOG_PART = /^([1-9]\d*) (small|large) (\d+)$/;
+const BAG_PART = /^([1-9]\d*) (large|small) bags?$/;
 const SEAT_PART = new RegExp(`^([1-9]\\d*) (${CHILD_SEATS.join("|")})$`);
 const ZONE_PART = /^(from|stop1|stop2|to) ([a-z0-9-]+)$/;
 const PLACE_PART = /^(from|to) (\S+)$/;
@@ -181,6 +184,7 @@ export function readInput(fields) {
     passengers: canonical(raw.passengers),
     seats: Object.fromEntries(CHILD_SEATS.map((k) => [k, canonical(raw[`${k}_seats`])])),
     dogs: Object.fromEntries(DOG_SIZES.map((k) => [k, canonical(raw[`${k}_dogs`])])),
+    bags: Object.fromEntries(BAG_SIZES.map((k) => [k, canonical(raw[`${k}_bags`])])),
     hours: hour ? canonical(raw.hours) : "",
     class: cls,
     vehicle: cls === "sprinter" ? sprinterVehicle : hour && cls ? (cls === "suv" ? suvVehicle : CLASS_DEFAULT_VEHICLE[cls]) : "",
@@ -491,6 +495,7 @@ export function checkTrip(trip, now, settings) {
   if (!INTEGER.test(trip.passengers) || passengers < PASSENGERS.min || passengers > PASSENGERS.max) return invalid("passengers");
   if (!seatsOk(trip)) return invalid("child_seats");
   if (!dogsOk(trip)) return invalid("dogs");
+  if (!bagsOk(trip)) return invalid("bags");
   if (hour && !INTEGER.test(trip.hours)) return invalid("hours");
   if (!has(CLASSES, trip.class)) return invalid("class");
   if (hour && !has(VEHICLES, trip.vehicle)) return invalid("vehicle");
@@ -519,6 +524,9 @@ export const dogText = (trip) => countText(dogCounts(trip), LABELS.dogTypes);
 export const dogMeta = (price) => DOG_SIZES.filter((k) => price.dogCents[k]).map((k) => `${price.dogCounts[k]} ${k} ${price.dogCents[k]}`).join(", ");
 const metaParts = (text, pattern) => (typeof text === "string" ? text.split(", ").map((part) => pattern.exec(part)).filter(Boolean) : []);
 export const dogParts = (text) => metaParts(text, DOG_PART).map(([, count, size, cents]) => ({ size, count: Number(count), cents: Number(cents) }));
+export const bagCounts = (trip) => counts(BAG_SIZES, trip.bags);
+export const bagText = (trip) => countText(bagCounts(trip), LABELS.bagTypes);
+export const paxMeta = (trip) => [trip.passengers, ...Object.entries(bagCounts(trip)).filter(([, n]) => n).map(([k, n]) => `${n} ${k} ${n === 1 ? "bag" : "bags"}`)].join(", ");
 export const seatMeta = (trip) => Object.entries(seatCounts(trip)).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(", ");
 const wholeParts = (parts, max) => parts.reduce((text, part) => {
   const next = text ? `${text}, ${part}` : part;
@@ -534,11 +542,14 @@ export function bookingData(metadata) {
   const seats = metaParts(data.seats, SEAT_PART);
   for (const [, count, kind] of seats) unpacked[`${kind}_seats`] = count;
   if (seats.length) unpacked.child_seats = String(seats.reduce((sum, [, count]) => sum + Number(count), 0));
-  return { ...unpacked, ...data };
+  const bags = metaParts(data.passengers, BAG_PART);
+  for (const [, count, size] of bags) unpacked[`${size}_bags`] = count;
+  return { ...unpacked, ...data, ...(bags.length && { passengers: data.passengers.split(", ")[0] }) };
 }
 
 const seatsOk = (trip) => CHILD_SEATS.every((k) => /^\d*$/.test((trip.seats || {})[k] || "")) && seatTotal(trip) <= Number(trip.passengers);
 const dogsOk = (trip) => DOG_SIZES.every((k) => /^\d*$/.test((trip.dogs || {})[k] || "") && Number((trip.dogs || {})[k] || 0) <= MAX_DOGS);
+const bagsOk = (trip) => BAG_SIZES.every((k) => /^\d*$/.test((trip.bags || {})[k] || "") && Number((trip.bags || {})[k] || 0) <= MAX_BAGS);
 const seatLabel = (count, cents) => (count > 0 && cents % count === 0 ? fill(LABELS.seats, { count, price: money(cents / count) }) : LABELS.seatsAll);
 const dogLabel = (size, count, cents) => (count > 0 && cents % count === 0 ? fill(LABELS.dogs[size], { count, price: money(cents / count) }) : LABELS.dogsAll[size]);
 const stopLabel = (count, cents) => (count === 1 ? LABELS.stop : count > 1 && cents % count === 0 ? fill(LABELS.stops, { count, price: money(cents / count) }) : LABELS.stopsAll);
@@ -845,6 +856,7 @@ export function composeMessage(trip, ref, totalCents) {
   if (one && trip.return && validDate(trip.return_date) && TIME.test(trip.return_time || "")) lines.push(`Return: ${formatDate(trip.return_date)}, ${formatTime(trip.return_time)}`);
   if (one && trip.return && trip.return_flight) lines.push(`Return flight: ${trip.return_flight}`);
   if (trip.passengers) lines.push(`Passengers: ${trip.passengers}`);
+  for (const [k, n] of Object.entries(bagCounts(trip))) if (n) lines.push(`${LABELS.bagTypes[k]}: ${n}`);
   if (one && has(CLASSES, trip.class)) lines.push(`Vehicle: ${vehicleName(trip.class, trip.vehicle)}`);
   if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle, eventRate(trip))}`);
   if (trip.meet) lines.push("Meet and greet: Yes");

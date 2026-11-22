@@ -375,6 +375,12 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk-kids>.field:has(>.bk-stepper){flex-basis:100%;justify-content:space-between}
 .bk-kids output{min-width:2em}
 .bk-kids[aria-invalid=true] output{color:var(--be)}
+#bk-bags[aria-invalid=true] output{color:inherit}
+.bk-bags{max-width:none}
+.bk-bags>p{order:1}
+@media (min-width:600px) and (max-width:1023px){.bk.is-js #bk-bags{max-width:19rem}}
+.bk-cards>#bk-bagfit{grid-column:1/-1;justify-self:stretch;margin:0}
+@media (min-width:1024px){#bk-bags-h{text-align:end}@container opts (min-width:46rem){.bk.is-js #bk-pax-h{grid-area:2/2;align-self:start;margin:0}.bk.is-js #bk-bags{grid-row:2;display:grid;grid-template-columns:auto auto 1fr;column-gap:24px}.bk.is-js #bk-bags>.field{grid-row:1/3}#bk-bags-h{grid-area:2/3;margin:0}#e-bags{grid-column:1/-1}#bk-bagfit{grid-column:1/-1;justify-self:end}}}
 #bk-incl-h{margin-top:16px}
 #bk-reach{align-self:start}
 .bk-who>label{font:400 16px/24px var(--font-sans)}
@@ -673,4 +679,4 @@ html:has(.bk-conf) :is(.site-header,.site-footer,.actionbar,.skip){display:none}
 @media screen and (forced-colors:none){.trust{border:1.5px solid #0000;background:linear-gradient(var(--white) 0 0) padding-box,conic-gradient(from 210deg,#7A5C17,#F2D27C,#B8921F,#FBE6A6,#9C7A22,#E9C96B,#7A5C17) border-box;box-shadow:0 10px 28px -14px rgb(184 146 31/.6)}}
 @media (forced-colors:active){.trust{background:Canvas}}
 }
-@layer utilities{.bk :is(.bk-pop,.bk-cal):popover-open[hidden]{display:grid}.bk-adds>[hidden]{display:inline-flex;visibility:hidden}.bk-row :is(input,select){box-shadow:none}@media (forced-colors:active){.bk-row :is(input,select){border-block-end:0!important}}}
+@layer utilities{.bk :is(.bk-pop,.bk-cal):popover-open[hidden]{display:grid}.bk-adds>[hidden]{display:inline-flex;visibility:hidden}#bk-bagfit.keep[hidden]{display:block;visibility:hidden}.bk-row :is(input,select){box-shadow:none}@media (forced-colors:active){.bk-row :is(input,select){border-block-end:0!important}}}

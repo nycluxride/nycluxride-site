@@ -307,6 +307,20 @@ await test("the text names the pets right after the child seats, as the owner em
   for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS]) assert.ok(!/Pets|dog/.test(bookingText(paid(fix))));
 });
 
+await test("the text names the bags right after the car, before the child seats and pets, as the owner email shows them with the passengers, has no bags line without bags or for an old booking, and stays at most 320 characters with long addresses, a long name and every count", () => {
+  setEnv();
+  const bags = paid(DOGS, { metadata: { passengers: `${DOGS.metadata.passengers}, 14 large bags, 14 small bags` } });
+  assert.equal(bookingText(bags), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Bags: 14 large bags and 14 small bags", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $388.25", "Reference 83558982"].join("\n"));
+  assert.ok(ownerLetter(bags).text.includes("\nPassengers: 3\nBags: 14 large bags and 14 small bags\n"));
+  assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 1 small bag" } })).split("\n")[5], "Bags: 1 small bag");
+  for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS, DOGS]) assert.ok(!/Bags|bag/.test(bookingText(paid(fix))));
+  const street = (n) => `${n} Avenue of the Americas Between Forty Second and Forty Third Streets, New York, NY 10036`;
+  const long = bookingText(paid(DOGS, { metadata: { passengers: "3, 14 large bags, 14 small bags", from_text: street(1), from_zone: "manhattan", from_place: "", to_text: street(2), to_zone: "manhattan", return_date: "2026-11-15", return_time: "18:00", name: "Alexandria Catherine Montgomery-Fitzgerald Wellington-Smythe of Kent and Sussex" } }));
+  assert.ok(long.length <= 320, `${long.length} characters`);
+  assert.ok(long.includes("\nBags: 14 large bags and 14 small bags\n") && long.endsWith("\nReference 83558982"), long);
+  assert.deepEqual(nonGsm(long), []);
+});
+
 await test("[TEST] starts the text only for a test mode Checkout Session", () => {
   const live = paid(ONE_WAY, { live: true });
   assert.ok(live.id.startsWith("cs_live_"));

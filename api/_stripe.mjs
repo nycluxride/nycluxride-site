@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
 import { CHECKOUT, LABELS } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, eventRate, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, eventRate, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -68,7 +68,7 @@ const sentence = (part) => {
 
 function fareDescription(trip, ref) {
   const back = trip.trip_type === "one" && trip.return ? ` Return ${formatDate(trip.return_date)}, ${formatTime(trip.return_time)}.` : "";
-  return `${serviceLabel(trip)}. Reference ${ref}. ${formatDate(trip.date)}, ${formatTime(trip.time)}.${back} ${passengerText(trip.passengers)}.`;
+  return `${serviceLabel(trip)}. Reference ${ref}. ${formatDate(trip.date)}, ${formatTime(trip.time)}.${back} ${passengerText(trip.passengers)}.${bagText(trip) ? ` ${bagText(trip)}.` : ""}`;
 }
 
 function intentDescription(trip, metadata, ref) {
@@ -82,6 +82,7 @@ function intentDescription(trip, metadata, ref) {
   if (f("flight")) parts.push(`Flight ${f("flight")}`);
   if (f("return_flight")) parts.push(`Return flight ${f("return_flight")}`);
   parts.push(passengerText(trip.passengers));
+  if (bagText(trip)) parts.push(bagText(trip));
   if (seatText(trip)) parts.push(seatText(trip));
   if (dogText(trip)) parts.push(dogText(trip));
   if (trip.meet) parts.push(LABELS.meet);
@@ -131,7 +132,7 @@ export function metadataFor(input, price, ref) {
     return_date: trip.return ? trip.return_date : "",
     return_time: trip.return ? trip.return_time : "",
     return_at: trip.return ? nycToUtc(trip.return_date, trip.return_time).toISOString() : "",
-    passengers: trip.passengers,
+    passengers: paxMeta(trip),
     flight: trip.flight,
     return_flight: trip.return ? trip.return_flight : "",
     meet: trip.meet ? "1" : "0",

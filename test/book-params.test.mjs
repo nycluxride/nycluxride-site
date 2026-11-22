@@ -3174,6 +3174,127 @@ await test("clean: invisible format characters are dropped, joiners inside emoji
   assert.equal(clean(`a${ch(0x200d)}b`, 50), `a${ch(0x200d)}b`);
 });
 
+const BAG_FIELDS = { large_bags: "4", small_bags: "2" };
+const MARKERS = ["emailed_at", "email_attempt", "reminded"];
+
+await test("builder: bags ride to Stripe in the passengers value of both metadata maps, after the passenger count in the fare line and the payment description, with no line item, no amount and no new key, and the receipt rebuilt from the metadata is the receipt without them", async () => {
+  setEnv();
+  const plain = await build(PICKUP, ON, "nonce-bag-builder-0000001");
+  for (const [bags, packed, said] of [
+    [BAG_FIELDS, "2, 4 large bags, 2 small bags", "4 large bags and 2 small bags"],
+    [{ large_bags: "1" }, "2, 1 large bag", "1 large bag"],
+    [{ small_bags: "1" }, "2, 1 small bag", "1 small bag"],
+    [{ large_bags: "14", small_bags: "14" }, "2, 14 large bags, 14 small bags", "14 large bags and 14 small bags"],
+  ]) {
+    const { params, price } = await build({ ...PICKUP, ...bags }, ON, "nonce-bag-builder-0000001");
+    assert.deepEqual([params.get("metadata[passengers]"), params.get("payment_intent_data[metadata][passengers]")], [packed, packed], JSON.stringify(bags));
+    assert.deepEqual([...params.keys()].filter((k) => k.startsWith("metadata[")), [...plain.params.keys()].filter((k) => k.startsWith("metadata[")), "no new metadata key");
+    assert.deepEqual([...params.keys()].filter((k) => !/description\]$|metadata\]\[passengers\]$|^metadata\[passengers\]$/.test(k)).map((k) => [k, params.get(k)]), [...plain.params.keys()].filter((k) => !/description\]$|metadata\]\[passengers\]$|^metadata\[passengers\]$/.test(k)).map((k) => [k, plain.params.get(k)]), "everything else is the booking without bags");
+    assert.deepEqual([price.total, stripeTotal(params.toString()), lineItems(params).length], [plain.price.total, plain.price.total, lineItems(plain.params).length]);
+    assert.ok(!lineItems(params).some(([name]) => /bag/i.test(name)));
+    const intent = params.get("payment_intent_data[description]");
+    assert.ok(intent.includes(`. 2 passengers. ${said}. Meet and greet. Pickup `), intent);
+    assert.ok(intent.startsWith(ownerSubject(metadataOf(params), plain.ref)), "the payment description keeps the owner subject format");
+    assert.equal(params.get("line_items[0][price_data][product_data][description]"), `${plain.params.get("line_items[0][price_data][product_data][description]")} ${said}.`);
+    const meta = metadataOf(params);
+    assert.deepEqual(shownLines(receipt(meta, ON).lines), stripeItems(params));
+    assert.deepEqual(receipt(meta, ON), receipt(metadataOf(plain.params), ON));
+    assert.equal(bookingData(meta).passengers, "2");
+  }
+  assert.equal(plain.params.get("metadata[passengers]"), "2");
+  assert.ok(!/bag/.test(plain.params.get("payment_intent_data[description]")) && !/bag/.test(plain.params.get("line_items[0][price_data][product_data][description]")));
+  const seats = await build({ ...PICKUP, passengers: "3", toddler_seats: "1", ...DOG_FIELDS, ...BAG_FIELDS }, ON, "nonce-bag-describe-000001");
+  assert.ok(seats.params.get("payment_intent_data[description]").includes(". 3 passengers. 4 large bags and 2 small bags. 1 toddler seat. 1 small dog and 2 large dogs. Meet and greet. Pickup "), seats.params.get("payment_intent_data[description]"));
+  const hourly = await build({ ...HOURLY, ...BAG_FIELDS }, ON, "nonce-bag-describe-000002");
+  assert.deepEqual([hourly.params.get("metadata[passengers]"), hourly.params.get("line_items[0][price_data][product_data][description]").endsWith(". 1 passenger. 4 large bags and 2 small bags.")], ["1, 4 large bags, 2 small bags", true]);
+});
+
+await test("builder: the true worst case with 14 large and 14 small bags, the Google toll estimate on both rides and every other optional field still writes 47 metadata keys, the keys of the worst case without bags, so with the email, calendar and ride reminder markers it stays within Stripe's 50, and every other shape with bags stays at most 48", async () => {
+  setEnv();
+  process.env.GOOGLE_MOCK = "true";
+  try {
+    const at = new Date("2026-10-01T16:00:00.000Z");
+    const worst = { ...worstFields(at, "2026-10-01", "13:20", "2026-10-18"), large_bags: "14", small_bags: "14" };
+    const row = localById("jfk-t4");
+    const from = row.gid ? { placeId: row.gid } : { address: row.addr };
+    const to = { placeId: "ChIJ7cv00DwsDogRAMDACa2m4K8" };
+    const stops = [{ placeId: "ChIJb8Jg9pZYwokR-qHGtvSkLzs" }, { placeId: "ChIJ-b2RmVlZwokRpb1pwEQjss0" }];
+    const route = signRoute([[routeKey(from, to, nycToUtc("2026-10-01", "13:20").toISOString(), stops), 168, 43, 1679], [routeKey(to, from, nycToUtc("2026-10-18", "18:00").toISOString()), 168, 43, 571]], at.getTime());
+    const keysOf = (params) => [...params.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
+    const bagged = await build({ ...worst, route }, ON, "nonce-worst-case-00000001", at);
+    const bare = await build({ ...worst, route, large_bags: "", small_bags: "" }, ON, "nonce-worst-case-00000001", at);
+    assert.deepEqual([keysOf(bagged.params).length, keysOf(bagged.params)], [47, keysOf(bare.params)]);
+    assert.ok(keysOf(bagged.params).length <= 48);
+    assert.deepEqual(MARKERS.filter((k) => keysOf(bagged.params).includes(k)), []);
+    assert.ok(keysOf(bagged.params).length + MARKERS.length <= 50, "the booking keys and every marker the site writes fit in Stripe's 50");
+    assert.equal([...bagged.params.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).length, 47);
+    assert.equal(bagged.params.get("metadata[passengers]"), "12, 14 large bags, 14 small bags");
+    assert.ok(bagged.params.get("metadata[passengers]").length <= 500);
+    assert.deepEqual(shownLines(receipt(metadataOf(bagged.params), ON).lines), stripeItems(bagged.params));
+    assert.equal(stripeTotal(bagged.params.toString()), bare.price.total);
+    const description = bagged.params.get("payment_intent_data[description]");
+    assert.ok(description.length <= 1000 && description.includes(". 12 passengers. 14 large bags and 14 small bags. 4 infant seats, 4 toddler seats and 4 booster seats. 3 small dogs and 3 large dogs. Meet and greet. "), description);
+    for (const [name, fields, count] of [
+      ["at the flat airport rate with stop fees", { ...worst, ...picked("stop2", "ChIJmanhattanWallStreet00000", "manhattan", "40 Wall St, New York, NY 10005, USA", at), ...picked("to", "ChIJ-b2RmVlZwokRpb1pwEQjss0", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211, USA", at) }, 44],
+      ["to New Jersey", { ...worst, ...picked("to", "ChIJhobokenGardenStreet00000", "outside", "300 Garden St, Hoboken, NJ 07030, USA", at, "NJ") }, 46],
+      ["by the hour", { ...worst, trip_type: "hour", hours: "4", class: "premium", passengers: "5", infant_seats: "1", toddler_seats: "2", booster_seats: "2" }, 36],
+    ]) {
+      const { params } = await build(fields, ON, "nonce-worst-case-00000001", at);
+      assert.equal(keysOf(params).length, count, name);
+      assert.ok(keysOf(params).length <= 48 && keysOf(params).length + MARKERS.length <= 50, name);
+      assert.ok(/ 14 large bags, 14 small bags$/.test(params.get("metadata[passengers]")), name);
+    }
+  } finally {
+    delete process.env.GOOGLE_MOCK;
+  }
+});
+
+await test("handler: options, quote and pay send the bags to the server, which keeps them on the trip, puts them in the WhatsApp and email messages right after the passengers and in the Stripe metadata, changes no price, and pays with JavaScript and without", async () => {
+  setEnv(LIVE);
+  const fields = { ...STRIPE_JFK, passengers: "3", ...BAG_FIELDS, nonce: "nonce-bag-handler-0000001" };
+  const options = await readJson(await post({ ...fields, action: "options" }), 200);
+  const bare = await readJson(await post({ ...STRIPE_JFK, passengers: "3", nonce: "nonce-bag-handler-0000001", action: "options" }), 200);
+  assert.deepEqual([options.classes, options.price], [bare.classes, bare.price]);
+  const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
+  assert.ok(message.includes("\nPassengers: 3\nLarge bags: 4\nSmall bags: 2\nVehicle: Business SUV\n"), message);
+  assert.ok(decodeURIComponent(options.mailto).includes("\nPassengers: 3\nLarge bags: 4\nSmall bags: 2\n"));
+  const paid = await readJson(await post(fields), 200);
+  assert.deepEqual([paid.kind, paid.url], ["pay", CHECKOUT_URL]);
+  const form = formOf(calls.at(-1));
+  assert.deepEqual([form.get("metadata[passengers]"), form.get("payment_intent_data[metadata][passengers]")], ["3, 4 large bags, 2 small bags", "3, 4 large bags, 2 small bags"]);
+  assert.equal(stripeTotal(form.toString()), bare.price.total_cents);
+  const nojs = await formPost({ ...fields, nonce: "nonce-bag-handler-0000002" });
+  assert.equal(nojs.status, 303);
+  assert.equal(formOf(calls.at(-1)).get("metadata[passengers]"), "3, 4 large bags, 2 small bags");
+});
+
+await test("handler: the bag limit answers the bags error on options, quote and pay, and without JavaScript lands on its message, before any Stripe call", async () => {
+  setEnv(LIVE);
+  const want = { kind: "invalid", code: "bags", field: "bags", text: ERRORS.bags.text };
+  for (const action of ["options", "quote", "pay"]) {
+    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_bags: "15", action }), 422), want, action);
+    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, small_bags: "15", action }), 422), want, action);
+  }
+  for (const bad of ["-1", "1.5", "two", "1e9"]) assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_bags: bad }), 422), want, bad);
+  assertRedirect(await formPost({ ...STRIPE_JFK, small_bags: "99" }), "/book#e-bags");
+  assert.equal(calls.length, 0);
+});
+
+await test("handler: BOOK_MOCK pays an airport pickup with bags, with JavaScript and without, and GET rebuilds the confirmation with the same lines, total and value as without them", async () => {
+  setEnv({ BOOK_MOCK: "true", PAYMENTS_ENABLED: "true" });
+  const fields = { ...trip(PICKUP), ...BAG_FIELDS, nonce: "nonce-bag-mock-000000001" };
+  const body = await readJson(await post(fields), 200);
+  const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
+  const plainBody = await readJson(await post({ ...trip(PICKUP), nonce: "nonce-bag-mock-000000003" }), 200);
+  const plain = await readJson(await get(`cs_mock_${plainBody.ref}`), 200);
+  assert.deepEqual([session.lines, session.total_cents, session.value_cents, session.summary], [plain.lines, plain.total_cents, plain.value_cents, plain.summary]);
+  const res = await formPost({ ...fields, nonce: "nonce-bag-mock-000000002" });
+  assert.equal(res.status, 303);
+  const id = new URL(res.headers.get("location"), LOCAL).searchParams.get("session_id");
+  assert.deepEqual((await readJson(await get(id), 200)).total_cents, plain.total_cents);
+  assert.equal(calls.length, 0);
+});
+
 server.child.kill();
 
 if (failures) {

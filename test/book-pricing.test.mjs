@@ -26,6 +26,10 @@ import {
   serviceLabel,
   classTotal,
   shownLines,
+  bagCounts,
+  bagText,
+  paxMeta,
+  bookingData,
 } from "../api/_trip.mjs";
 import { ERRORS, REASONS, NOTES, POLICY, LABELS } from "../api/_copy.mjs";
 import { MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, DISTANCE_RATES, DISTANCE_LIMITS, DISTANCE_SKIP_ZIPS, AIRPORT_TOTALS, AIRPORT_FARES, AIRPORT_PLACES, CLASSES, STOP_FEE_CENTS, percentCents } from "../api/_rates.mjs";
@@ -449,7 +453,7 @@ await test("the WhatsApp, email and phone links: encoded message, %20 in the ema
 await test("readInput keeps the new fields, drops the old ones, and hourly drops the drop-off, the stops and the return", async () => {
   const trip = readInput({ ...BASE, from: "jfk", to: "manhattan", from_zone: "jfk", stop1_text: "s1", stop2_text: "s2", return: "1", return_date: "2026-10-18", return_time: "18:00", return_flight: "DL 402" });
   assert.deepEqual([trip.from, trip.to, trip.from_zone], ["", "", undefined]);
-  const KEYS = "trip_type from_text from_id from_ticket stop1_text stop1_id stop1_ticket stop2_text stop2_id stop2_ticket to_text to_id to_ticket date time flight return return_date return_time return_flight passengers seats dogs hours class vehicle suvVehicle sprinterVehicle event meet tip tip_amount action nonce nlr_hp route from to ends legs meetOffered details";
+  const KEYS = "trip_type from_text from_id from_ticket stop1_text stop1_id stop1_ticket stop2_text stop2_id stop2_ticket to_text to_id to_ticket date time flight return return_date return_time return_flight passengers seats dogs bags hours class vehicle suvVehicle sprinterVehicle event meet tip tip_amount action nonce nlr_hp route from to ends legs meetOffered details";
   assert.deepEqual(Object.keys(trip).sort(), KEYS.split(" ").sort());
   assert.deepEqual([trip.stop1_text, trip.stop2_text, trip.return, trip.return_date, trip.return_time, trip.return_flight], ["s1", "s2", true, "2026-10-18", "18:00", "DL 402"]);
   const hourly = readInput({ ...HOURLY, to_text: "JFK", to_id: "jfk", stop1_text: "s1", return: "1", return_date: "2026-10-18", return_time: "18:00" });
@@ -2467,6 +2471,102 @@ await test("the receipt rebuilds the dog lines from the dogs metadata, with the 
   assert.deepEqual(pairs(receipt({ ...none, child_seats: "3" }, ON).lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $15.00)", 4500], ["Gratuity for your chauffeur (15%)", 2325]]);
   assert.equal(receipt({ ...none, child_seats: "3" }, ON).value, 22500);
   assert.deepEqual(pairs(receipt({ ...none, dogs: "lots of dogs" }, ON).lines).filter(([l]) => /dog/i.test(l)), []);
+});
+
+const BAGS = { large_bags: "4", small_bags: "2" };
+
+await test("bags: BAG_SIZES is large and small and MAX_BAGS is 14 in api/_rates.mjs, next to the pets, each size with its own form field read as a count, and CLASSES states the luggage the over-capacity note reads", () => {
+  assert.deepEqual([RATES.BAG_SIZES, RATES.MAX_BAGS], [["large", "small"], 14]);
+  assert.deepEqual(readInput({ ...BASE, large_bags: " 03 ", small_bags: "" }).bags, { large: "3", small: "" });
+  assert.deepEqual(readInput({ ...BASE, bags: "3", large: "1" }).bags, { large: "", small: "" });
+  assert.deepEqual(readInput({ ...HOURLY, small_bags: "1" }).bags, { large: "", small: "1" });
+  assert.deepEqual(readInput({ ...BASE, ...BAGS, action: "options" }).bags, { large: "4", small: "2" });
+  assert.deepEqual(Object.fromEntries(Object.entries(CLASSES).map(([k, c]) => [k, c.bags])), { suv: "3 large plus 3 small bags", premium: "3 large plus 3 small bags", first: "2 large plus 1 small bag", sedan: "", sprinter: "10 large plus 2 small bags" });
+});
+
+await test("the bag limit: 0 to 14 bags of each size, on one way, round trip and hourly bookings and on options and quotes, and anything else is the bags error with its own message, checked on the server whatever the page sent", async () => {
+  for (const name of ["large_bags", "small_bags"]) {
+    for (const bad of ["15", "99", "-1", "1.5", "x", "1e1", "0x1", "99999999999999999999999", "+1", "2 bags"]) await isError({ ...BASE, [name]: bad }, "bags");
+    for (const ok of ["", "0", "00", " 7 ", "014", "14"]) assert.deepEqual((await run({ ...BASE, [name]: ok })).result, { kind: "price", reason: "", hold: "" }, `${name} ${ok}`);
+    await isError({ ...BASE, ...ROUND_TRIP, [name]: "15" }, "bags");
+    await isError({ ...HOURLY, [name]: "15" }, "bags");
+    await isError({ ...BASE, action: "options", [name]: "15" }, "bags");
+    await isError({ ...BASE, action: "quote", [name]: "15" }, "bags");
+  }
+  await isError({ ...BASE, small_dogs: "4", large_bags: "15" }, "dogs");
+  assert.deepEqual(ERRORS.bags, { field: "bags", text: "Choose up to 14 large bags and up to 14 small bags. For more bags, tell us in the notes." });
+  assert.ok(ERRORS.bags.text.includes(`up to ${RATES.MAX_BAGS} large bags and up to ${RATES.MAX_BAGS} small bags`));
+});
+
+await test("bags are free and never block a booking: no price line, the same totals and class cards for every class, one way, round trip and hourly, even far over what the car states, and they are not passengers", async () => {
+  const most = { large_bags: "14", small_bags: "14" };
+  for (const cls of Object.keys(CLASSES)) {
+    const plain = await priced({ ...BASE, class: cls });
+    for (const bags of [BAGS, most, { small_bags: "1" }]) {
+      const with_ = await priced({ ...BASE, class: cls, ...bags });
+      assert.deepEqual([pairs(with_.lines), with_.total, with_.value], [pairs(plain.lines), plain.total, plain.value], `${cls} ${JSON.stringify(bags)}`);
+    }
+    const round = await priced({ ...BASE, ...ROUND_TRIP, class: cls, ...most });
+    assert.equal(round.total, (await priced({ ...BASE, ...ROUND_TRIP, class: cls })).total, cls);
+  }
+  const hourly = await priced({ ...HOURLY, ...most });
+  assert.equal(hourly.total, (await priced(HOURLY)).total);
+  assert.ok(!(await priced({ ...BASE, ...most })).lines.some((l) => /bag/i.test(l.label)));
+  const { trip } = await run({ ...BASE, ...most });
+  assert.deepEqual(Object.keys(CLASSES).map((cls) => classTotal(trip, cls)), Object.keys(CLASSES).map((cls) => AIRPORT_TOTALS[cls].jfk));
+  await isClass({ ...BASE, passengers: "4", class: "first", large_bags: "1" }, "seats");
+  assert.deepEqual((await run({ ...BASE, passengers: "1", class: "first", ...most })).result, { kind: "price", reason: "", hold: "" }, "bags are not passengers, so one rider can bring 28");
+});
+
+await test("bag counts and text: bagCounts reads each size as a whole number, bagText names the sizes chosen in the site's count style, and nothing when no bag is chosen", () => {
+  assert.deepEqual(bagCounts({ bags: { large: "2", small: "" } }), { large: 2, small: 0 });
+  assert.deepEqual(bagCounts({ bags: { large: "x", small: "3" } }), { large: 0, small: 3 });
+  assert.deepEqual(bagCounts({}), { large: 0, small: 0 });
+  assert.equal(bagText({ bags: { large: "4", small: "2" } }), "4 large bags and 2 small bags");
+  assert.equal(bagText({ bags: { large: "1", small: "1" } }), "1 large bag and 1 small bag");
+  assert.equal(bagText({ bags: { large: "0", small: "3" } }), "3 small bags");
+  assert.equal(bagText({ bags: { large: "1", small: "0" } }), "1 large bag");
+  assert.equal(bagText({ bags: { large: "", small: "" } }), "");
+  assert.deepEqual(LABELS.bagTypes, { large: "Large bags", small: "Small bags" });
+});
+
+await test("bags ride in the passengers metadata value: the count first, then each size chosen, so the worst case adds no key, and bookingData reads the counts back and old bookings without bags read as before", () => {
+  assert.equal(paxMeta({ passengers: "3", bags: { large: "2", small: "1" } }), "3, 2 large bags, 1 small bag");
+  assert.equal(paxMeta({ passengers: "12", bags: { large: "1", small: "14" } }), "12, 1 large bag, 14 small bags");
+  assert.equal(paxMeta({ passengers: "1", bags: { large: "", small: "3" } }), "1, 3 small bags");
+  assert.equal(paxMeta({ passengers: "2", bags: { large: "0", small: "0" } }), "2");
+  assert.equal(paxMeta({ passengers: "2" }), "2");
+  const base = { ref: "48213590", class: "suv", date: "2026-10-14", time: "07:30" };
+  assert.deepEqual(bookingData({ ...base, passengers: "3, 2 large bags, 1 small bag" }), { ...base, passengers: "3", large_bags: "2", small_bags: "1" });
+  assert.deepEqual(bookingData({ ...base, passengers: "1, 3 small bags" }), { ...base, passengers: "1", small_bags: "3" });
+  assert.deepEqual(bookingData({ ...base, passengers: "3" }), { ...base, passengers: "3" }, "an old booking without bags");
+  assert.deepEqual(bookingData({ ...base, passengers: "3, many bags" }), { ...base, passengers: "3, many bags" }, "a value the site never writes is left as it is");
+  assert.deepEqual(bookingData(base), base);
+  assert.deepEqual(bookingData({ ...base, passengers: 3 }), { ...base, passengers: 3 });
+});
+
+await test("the receipt of a booking with bags is the receipt without them: bags add no line and no value, from new and old metadata", () => {
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", passengers: "2", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325" };
+  const old = receipt(meta, ON);
+  const bagged = receipt({ ...meta, passengers: "2, 4 large bags, 2 small bags" }, ON);
+  assert.deepEqual([pairs(bagged.lines), bagged.value, bagged.summary, bagged.notes], [pairs(old.lines), old.value, old.summary, old.notes]);
+  assert.deepEqual(pairs(old.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
+});
+
+await test("the reserve by email and WhatsApp messages and the dispatch quote path list each bag size with its count right after the passengers, only for the sizes chosen, and nothing when no bag is chosen", async () => {
+  const { trip, price } = await run({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", small_dogs: "1", ...BAGS });
+  const text = composeMessage(trip, "48213590", price.total);
+  assert.ok(text.includes("\nPassengers: 3\nLarge bags: 4\nSmall bags: 2\nVehicle: Business SUV\nMeet and greet: Yes\nInfant seats: 1\nSmall dogs: 1\nGratuity: 15%\n"), text);
+  const links = contactLinks(trip, "48213590", price.total);
+  for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nPassengers: 3\nLarge bags: 4\nSmall bags: 2\n"), href);
+  assert.ok(!/bags: /.test(composeMessage((await run(FROM_JFK)).trip, "48213590", 18500)));
+  const small = composeMessage((await run({ ...BASE, small_bags: "1" })).trip, "48213590");
+  assert.ok(small.includes("\nPassengers: 2\nSmall bags: 1\n") && !small.includes("Large bags"), small);
+  for (const fields of [{ ...RIDE, to_text: "Niagara Falls, ON L2E 6T2", large_bags: "2" }, { ...HOURLY, hours: "13", large_bags: "2" }, { ...BASE, stop1_text: BROOKLYN, large_bags: "2" }]) {
+    const out = await run(fields);
+    assert.ok(["quote", "price"].includes(out.result.kind) && (out.result.reason || out.result.kind === "quote"), JSON.stringify(out.result));
+    assert.ok(composeMessage(out.trip, "48213590").includes("\nPassengers: 2\nLarge bags: 2\n"), JSON.stringify(fields));
+  }
 });
 
 await test("every ERRORS code and every REASONS key has a case", () => {

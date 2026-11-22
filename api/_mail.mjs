@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL, CALENDAR, LABELS } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, fill, validDate, nycToUtc, seatText, dogText, dogParts, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
@@ -124,6 +124,10 @@ function dogsOf(b) {
   return dogText({ dogs: Object.fromEntries(dogParts(b.field("dogs")).map((part) => [part.size, String(part.count)])) });
 }
 
+function bagsOf(b) {
+  return bagText({ bags: { large: b.field("large_bags"), small: b.field("small_bags") } });
+}
+
 function tripRows(b) {
   const L = MAIL.labels;
   const f = b.field;
@@ -140,6 +144,7 @@ function tripRows(b) {
     [L.back, b.back ? fill(L.clock, { time: `${formatDate(f("return_date"))}, ${formatTime(f("return_time"))}` }) : ""],
     [L.backFlight, b.back ? f("return_flight") : ""],
     [L.passengers, f("passengers")],
+    [L.bags, bagsOf(b)],
     [L.vehicle, vehicle],
     [L.occasion, eventOf(b) ? LABELS.event : ""],
     [L.flight, f("flight")],
@@ -314,6 +319,7 @@ function reminderRows(b, legs) {
     [L.sign, !back && f("meet") === "1" ? f("sign_name") : ""],
     [L.vehicle, vehicleOf(b)],
     [L.passengers, f("passengers")],
+    [L.bags, bagsOf(b)],
     [MAIL.passenger, b.other ? f("passenger_name") : ""],
   ];
   return rows.filter(([, value]) => value);
@@ -349,12 +355,14 @@ export function bookingText(session) {
   const L = MAIL.labels;
   const seats = seatsOf(b);
   const dogs = dogsOf(b);
+  const bags = bagsOf(b);
   return fitText((clipPlace, clipName) => [
     `${b.test ? MAIL.test : ""}${MAIL.textHeading}`,
     [clipName(b.name), b.phone].filter(Boolean).join(", "),
     pickupWhen(f("date"), f("time")),
     routeSummary(metadataOf(session), clipPlace(shortPlace(f("from_text"), f("from_zone"))), clipPlace(shortPlace(f("to_text"), f("to_zone")))),
     vehicleOf(b, eventOf(b)),
+    bags ? `${L.bags}: ${bags}` : "",
     seats ? `${L.seats}: ${seats}` : "",
     dogs ? `${L.dogs}: ${dogs}` : "",
     b.total === null ? "" : `${MAIL.paid} ${money(b.total)}`,
