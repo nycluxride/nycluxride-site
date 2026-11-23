@@ -11,6 +11,7 @@ const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS, SEATS } =
 const { PLACE_LIST, norm } = await load("_places.mjs");
 const { COUNTRIES, MAIN_BY_DIAL, TRUNK } = await load("_phone.mjs");
 
+const VANS = Object.keys(VEHICLES).filter((k) => VEHICLES[k].cls === "sprinter");
 const HOSTS = ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
 const SEARCH_HOSTS = ["services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", ...AREAS.map((a) => `locations/${a}.html`), "locations/westchester-airport.html", "locations/hoboken.html", "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
@@ -27,14 +28,14 @@ const PH = "Airport, hotel or address";
 const WA_DEFAULT = "https://wa.me/16467750556?text=Hi%20NYC%20LUX%20RIDE%2C%20I%27d%20like%20to%20book%20a%20ride.";
 const DETAILS = ["rider", "name", "email", "phone", "phone_cc", "reach", "pname", "pphone", "pphone_cc", "sign", "notes"];
 const FIELDS = ["trip_type", "from_text", "from_id", "from_ticket", "stop1_text", "stop1_id", "stop1_ticket", "stop2_text", "stop2_id", "stop2_ticket", "to_text", "to_id", "to_ticket", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", "child_seats", "infant_seats", "toddler_seats", "booster_seats", "dogs", "small_dogs", "large_dogs", "bags", "large_bags", "small_bags", "hours", "class", "vehicle", "sprinter", "event", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp", ...DETAILS];
-const SHOW = ["one", "hour", "stop1", "stop2", "return", "from-airport", "from-airline", "from-priced", "to-airport", "hour-suv", "sprinter", "hour-event", "options", "details", "side", "other", "meet"];
+const SHOW = ["one", "hour", "stop1", "stop2", "return", "from-airport", "from-airline", "from-priced", "to-airport", "hour-suv", "options", "details", "side", "other", "meet"];
 const ENDS = { from: "Pickup location", stop1: "Stop 1", stop2: "Stop 2", to: "Drop-off location" };
 const NOJS = ["(one way)", "(by the hour)", " for airport pickups", " (airport pickups)", "(return trip)", "(return trip, optional)", "(by the hour, Business SUV)", "(Luxury Sprinter)", "(Executive or Limo Sprinter by the hour)", "(airport pickups)", "(one way, optional)", "(if someone else is riding)", "(meet and greet)", "By email or WhatsApp. Put the pickup, drop-off, date, time and any child seats or pets in the message.", "If someone else is riding, your chauffeur contacts them on the day of the ride."];
 const STEP1_IDS = ["bk-search", "bk-mode", "bk-one", "bk-hour", "e-trip_type", "bk-adds", "bk-addstop", "bk-addret", "bk-hours-f", "bk-hours", "bk-date-f", "bk-date-l", "bk-date", "bk-date-btn", "bk-cal", "bk-flight-f", "bk-flight", "bk-flight-status", "bk-time-f", "bk-time-l", "bk-time", "bk-time-btn", "bk-tm", "bk-time-h", "bk-ret-c", "bk-ret", "bk-ret-f", "bk-ret-sum", "bk-rdate-f", "bk-rdate-l", "bk-rdate", "bk-rdate-btn", "bk-rtime-f", "bk-rtime", "bk-rflight-f", "bk-rflight", "bk-rflight-status", "bk-rmret", "bk-view", "bk-status", "bk-assure", "bk-stop1-h", "bk-stop2-h"];
 const END_IDS = Object.keys(ENDS).flatMap((e) => ["-f", "", "-id", "-ticket", "-area", "-x", "-pop", "-list"].map((s) => `bk-${e}${s}`)).concat(["bk-stop1-rm", "bk-stop2-rm"]);
-const STEP2_IDS = ["bk-opts", "bk-sum", "bk-edit", "bk-opt-h", "bk-wait", "bk-map", "bk-drive", "bk-pax-f", "bk-pax", "bk-pax-h", "bk-bags", "bk-bags-large", "bk-bags-small", "bk-bags-h", "e-bags", "bk-bagfit", "bk-cards", ...Object.keys(CLASSES).flatMap((c) => [`bk-c-${c}`, `bk-p-${c}`]), ...Object.keys(CLASSES).flatMap((c) => [`bk-n-${c}`, `bk-m-${c}`, `bk-s-${c}`]), "bk-qline", "bk-arrive", "bk-vehicle-f", "bk-vehicle", "bk-sprinter-f", "bk-sprinter", "bk-event-f", "bk-event", "bk-kids", "bk-kids-p", "bk-k-infant", "bk-k-toddler", "bk-k-booster", "bk-kids-h", "bk-kids-n", "e-child_seats", "bk-pets", "bk-pets-p", "bk-d-small", "bk-d-large", "bk-pets-h", "bk-pets-n", "e-dogs", "bk-meet-f", "bk-meet-no", "bk-meet", "bk-meet-p", "bk-meet-h", "bk-meet-t57", "bk-tip", "bk-tip-opts", "bk-tipamt-f", "bk-tipamt", "bk-tipamt-h", "e-tip_amount", "bk-tip-h", "bk-result", "price", "price-h", "price-lines", "price-total", "price-notes", "bk-act", "bk-tot", "bk-tot-l", "bk-tot-v", "quote", "bk-qnotes-f", "bk-qnotes", "bk-qnotes-h", "q-body", "q-wa", "q-mail", "q-fix", "q-retry", "q-sent", "bk-route", "bk-route-n", "bk-policy", "bk-go", "bk-nopay", "bk-under", "bk-submit", "e-form", "bk-hp", "bk-nonce", "bk-places", "bk-more", "bk-incl-h", "bk-incl", "bk-pills", ...Object.keys(CLASSES).map((c) => `bk-pp-${c}`), "bk-side", "bk-choice", "bk-consent", "bk-next", "bk-bar", "bk-bar-name", "bk-bar-total", "bk-bar-q", "bk-bar-go", "bk-bar-mail"];
+const STEP2_IDS = ["bk-opts", "bk-sum", "bk-edit", "bk-opt-h", "bk-wait", "bk-map", "bk-drive", "bk-pax-f", "bk-pax", "bk-pax-h", "bk-bags", "bk-bags-large", "bk-bags-small", "bk-bags-h", "e-bags", "bk-bagfit", "bk-cards", ...Object.keys(CLASSES).flatMap((c) => [`bk-c-${c}`, `bk-p-${c}`]), ...VANS.flatMap((v) => ["c", "p", "n", "m", "s", "b"].map((x) => `bk-${x}-${v}`)), ...Object.keys(CLASSES).flatMap((c) => [`bk-n-${c}`, `bk-m-${c}`, `bk-s-${c}`]), "bk-qline", "bk-arrive", "bk-vehicle-f", "bk-vehicle", "bk-sprinter-f", "bk-sprinter", "bk-kids", "bk-kids-p", "bk-k-infant", "bk-k-toddler", "bk-k-booster", "bk-kids-h", "bk-kids-n", "e-child_seats", "bk-pets", "bk-pets-p", "bk-d-small", "bk-d-large", "bk-pets-h", "bk-pets-n", "e-dogs", "bk-meet-f", "bk-meet-no", "bk-meet", "bk-meet-p", "bk-meet-h", "bk-meet-t57", "bk-tip", "bk-tip-opts", "bk-tipamt-f", "bk-tipamt", "bk-tipamt-h", "e-tip_amount", "bk-tip-h", "bk-result", "price", "price-h", "price-lines", "price-total", "price-notes", "bk-act", "bk-tot", "bk-tot-l", "bk-tot-v", "quote", "bk-qnotes-f", "bk-qnotes", "bk-qnotes-h", "q-body", "q-wa", "q-mail", "q-fix", "q-retry", "q-sent", "bk-route", "bk-route-n", "bk-policy", "bk-go", "bk-nopay", "bk-under", "bk-submit", "e-form", "bk-hp", "bk-nonce", "bk-places", "bk-more", "bk-incl-h", "bk-incl", "bk-pills", ...Object.keys(CLASSES).map((c) => `bk-pp-${c}`), "bk-side", "bk-choice", "bk-consent", "bk-next", "bk-bar", "bk-bar-name", "bk-bar-total", "bk-bar-q", "bk-bar-go", "bk-bar-mail"];
 const STEP3_IDS = ["bk-det", "bk-back", "bk-det-h", "bk-who", "bk-r-other", "e-rider", "bk-name-f", "bk-name", "e-name", "bk-email-f", "bk-email", "e-email", "bk-phone-f", "bk-phone-cc", "bk-phone-face", "bk-phone", "bk-phone-h", "e-phone", "bk-reach", "bk-reach-opts", "bk-reach-phone", "bk-reach-wa", "e-reach", "bk-pname-f", "bk-pname", "e-pname", "bk-pphone-f", "bk-pphone-cc", "bk-pphone-face", "bk-pphone", "e-pphone", "bk-dflight-f", "bk-dflight", "bk-sign-f", "bk-sign", "bk-sign-h", "bk-notes-f", "bk-notes", "bk-notes-h", "bk-check", "bk-check-h", "bk-check-edit", "bk-check-route", "bk-check-rows", "bk-errs", "bk-email-s", "bk-phone-s", "bk-pphone-s", "bk-signcard", "bk-signname", "bk-notes-add", "bk-next3"];
-const REMOVED_IDS = ["bk-help", "bk-wa", "bk-helpline", "bk-hl-wa", "bk-hl-h", "bk-noflight", "bk-addflight", "bk-from-address", "bk-to-address", "e-from_address", "e-to_address", "bk-class", "bk-estimate", "q-switch", "q-switch-fare", "q-class-airport", "q-first-lga", "q-call", "bk-bar-wa", "bk-bar-tel", "bk-msg", "bk-steps", "bk-r-me", "bk-email-h", "bk-notes-add-h"];
+const REMOVED_IDS = ["bk-event-f", "bk-event", "e-event", "e-sprinter", "bk-help", "bk-wa", "bk-helpline", "bk-hl-wa", "bk-hl-h", "bk-noflight", "bk-addflight", "bk-from-address", "bk-to-address", "e-from_address", "e-to_address", "bk-class", "bk-estimate", "q-switch", "q-switch-fare", "q-class-airport", "q-first-lga", "q-call", "bk-bar-wa", "bk-bar-tel", "bk-msg", "bk-steps", "bk-r-me", "bk-email-h", "bk-notes-add-h"];
 const ICON = (id) => `<svg class="icon" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
 const MEET = ['<fieldset class="bk-meet" id="bk-meet-f" data-show="from-priced">', '<legend>Where we meet<span class="bk-nojs"> (airport pickups)</span></legend>', '<label class="bk-mrow" for="bk-meet-no"><input type="radio" id="bk-meet-no" name="meet" value="" checked><span class="bk-mrow__t">At the curb or pickup area</span><span class="bk-mrow__p">Included</span><span class="bk-mrow__s">Your chauffeur confirms the exact spot by phone or WhatsApp once you have your bags.</span></label>', '<label class="bk-mrow" for="bk-meet"><input type="radio" id="bk-meet" name="meet" value="1"><span class="bk-mrow__t">Inside the terminal with a name sign</span><span class="bk-mrow__p" id="bk-meet-p"></span><span class="bk-mrow__s" id="bk-meet-h"><span id="bk-meet-bc">Your chauffeur waits inside near baggage claim. </span>Airport parking is charged after the ride.</span></label>', '<p class="bk-mrow__x" id="bk-meet-t57" hidden>For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.</p>', "</fieldset>"].join("\n");
 const INCL = `<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline">${ICON("i-plane-arrive")}<span>Free waiting</span> <small>after you land</small></li><li>${ICON("i-clock")}<span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline">${ICON("i-shield")}<span>Live flight tracking</span></li><li>${ICON("i-wifi")}<span>Free Wi-Fi</span> <small>in every class</small></li><li>${ICON("i-phone")}<span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>`;
@@ -49,7 +50,8 @@ const PRIVATE_PAGES = ["locations/teterboro-airport.html", "private-jet-car-serv
 const MONITOR = "Set the pickup time to your scheduled landing time. We track your flight.";
 const MONITOR_TEB = "For a private flight, add the details as a note in the Details step.";
 const P1_TERMS = POLICY.cancelShort;
-const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Shuttle, Jet, Executive or Limo" };
+const VAN_PHOTOS = { "sprinter-executive": ["sprinter-executive-card", "The black Executive Sprinter seen from the back"], "sprinter-luxury-jet": ["sprinter-luxury-jet-card", "The black Luxury Jet Sprinter with its side door open"], "sprinter-limo": ["sprinter-limo-black-card", "Inside the Limo Sprinter: black leather lounge seats with pink and blue lights"], "sprinter-white-limo": ["sprinter-white-limo-card", "The White Luxury Limo Sprinter in a parking lot"] };
+const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Five kinds of Sprinter" };
 
 const nt = (s) => s.replace(/\s+/g, " ").trim();
 const read = (f) => readFileSync(join(ROOT, f), "utf8");
@@ -162,7 +164,7 @@ check("document order of the form, step 1, step 2, step 3, the three ways to fin
   const ids = (el) => [...el.children].map((e) => e.id || e.className);
   assert.deepEqual(ids(form), ["bk-search", "bk-assure", "bk-sum", "bk-edit", "bk-opts", "bk-det", "bk-act", "bk-more", "bk-next3", "bk-side", "bk-drive", "bk-hp", "bk-nonce", "bk-places"]);
   assert.deepEqual(ids($("bk-search")), ["bk-mode", "e-trip_type", "bk-from-f", "bk-stop1-f", "bk-stop2-f", "bk-to-f", "bk-adds", "bk-hours-f", "bk-date-f", "bk-flight-f", "bk-time-f", "bk-ret-c", "bk-ret-f", "bk-view", "bk-status"]);
-  assert.deepEqual(ids($("bk-opts")), ["bk-opt-h", "bk-pax-f", "bk-pax-h", "bk-bags", "bk-cards", "bk-vehicle-f", "bk-sprinter-f", "bk-event-f", "bk-pills"]);
+  assert.deepEqual(ids($("bk-opts")), ["bk-opt-h", "bk-pax-f", "bk-pax-h", "bk-bags", "bk-cards", "bk-sprinter-f", "bk-pills"]);
   assert.deepEqual(ids($("bk-act")), ["bk-tip", "bk-meet-f", "bk-sign-f", "bk-kids", "bk-pets", "bk-check", "bk-tot", "quote", "bk-go", "q-body"]);
   assert.deepEqual(ids($("bk-more")), ["bk-arrive", "bk-incl-h", "bk-incl"]);
   assert.deepEqual(ids($("bk-det")), ["bk-back", "bk-det-h", "bk-errs", "bk-who", "e-rider", "bk-pname-f", "bk-pphone-f", "bk-other-h", "bk-name-f", "bk-email-f", "bk-phone-f", "bk-reach", "e-reach", "bk-dflight-f", "bk-notes-add", "bk-notes-f"]);
@@ -299,12 +301,13 @@ check("step 2: trip chips, Edit trip, heading, passengers, the request line, row
   assert.ok($("bk-cards").matches("fieldset.bk-cards") && nt($("bk-cards").querySelector("legend").textContent) === "Vehicle class");
   assert.ok($("bk-vehicle-f").matches('[data-show="hour-suv"]') && nt(form.querySelector('label[for="bk-vehicle"]').textContent) === "Vehicle (by the hour, Business SUV)");
   assert.deepEqual([...$("bk-vehicle").options].map((o) => [o.value, o.textContent, o.selected]), Object.entries(VEHICLES).filter(([, v]) => v.cls === "suv").map(([k, v], i) => [k, v.model, i === 0]));
-  assert.ok($("bk-sprinter-f").matches('[data-show="sprinter"]') && $("bk-vehicle-f").nextElementSibling === $("bk-sprinter-f") && nt(form.querySelector('label[for="bk-sprinter"]').textContent) === "Vehicle (Luxury Sprinter)");
-  assert.deepEqual([...$("bk-sprinter").options].map((o) => [o.value, o.textContent, o.selected, o.hasAttribute("data-ev"), o.dataset.seats || "", o.hasAttribute("data-hour")]), Object.entries(VEHICLES).filter(([, v]) => v.cls === "sprinter").map(([k, v], i) => [k, v.name, i === 0, Number.isInteger(v.event), v.seats < CLASSES.sprinter.seats ? String(v.seats) : "", Boolean(v.hourlyOnly)]));
-  assert.ok($("bk-event-f").matches('[data-show="hour-event"]') && $("bk-sprinter-f").nextElementSibling === $("bk-event-f") && nt(form.querySelector('label[for="bk-event"]').textContent) === "Is this for a wedding, prom or event? (Executive or Limo Sprinter by the hour)");
-  assert.deepEqual([...$("bk-event").options].map((o) => [o.value, o.textContent, o.selected, o.disabled]), [["", "Choose one", true, true], ["0", "No", false, false], ["1", "Yes", false, false]]);
-  assert.ok($("e-event").matches("p.bk-e.field__hint") && $("e-event").previousElementSibling === $("bk-event") && $("e-event").parentElement === $("bk-event-f") && nt($("e-event").textContent) === ERRORS.event.text && ERRORS.event.field === $("bk-event").name, "the event question names its own error under the select");
+  assert.ok($("bk-sprinter-f").matches("div.field.bk-nojs:not([data-show])") && $("bk-c-suv").parentNode.nextElementSibling === $("bk-vehicle-f") && $("bk-cards").nextElementSibling === $("bk-sprinter-f") && nt(form.querySelector('label[for="bk-sprinter"]').textContent) === "Vehicle (Luxury Sprinter)", "the Sprinter picker shows only without JavaScript, where the Sprinter cards are hidden");
+  assert.deepEqual([...$("bk-sprinter").options].map((o) => [o.value, o.textContent, o.selected, [...o.attributes].map((a) => a.name).sort().join(" ")]), Object.entries(VEHICLES).filter(([, v]) => v.cls === "sprinter").map(([k, v], i) => [k, v.name, i === 0, ["value", ...(i === 0 ? ["selected"] : [])].sort().join(" ")]));
+  assert.deepEqual([...$("bk-sprinter").options].map((o) => o.value), ["sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"]);
+  assert.ok($("bk-sprinter-f").nextElementSibling === $("bk-pills") && !$("bk-sprinter-f").querySelector(".bk-e"), "the Sprinter field has no message of its own and the wedding, prom or event question is gone");
+  assert.equal(form.querySelector('[name="event"], [data-show="hour-event"], [data-ev], [data-hour]'), null);
   assert.equal($("bk-c-sprinter").parentElement.dataset.min, String(Math.max(...Object.values(VEHICLES).filter((v) => v.cls === "sprinter").map((v) => v.minHours))));
+  for (const v of VANS) assert.equal($(`bk-c-${v}`).parentElement.dataset.min, String(VEHICLES[v].minHours), v);
   assert.ok($("bk-arrive").matches("div.bk-arrive[hidden]") && $("bk-arrive").parentElement === $("bk-more") && $("bk-arrive").nextElementSibling === $("bk-incl-h") && $("bk-arrive").textContent === "");
   assert.ok($("bk-act").matches('div.bk-act[data-show="side"]') && $("bk-det").nextElementSibling === $("bk-act") && $("bk-tip").nextElementSibling === $("bk-meet-f"), "the actions follow the step, Where we meet sits beside the gratuity");
   assert.ok($("bk-meet-f").nextElementSibling === $("bk-sign-f") && !$("bk-meet-f").contains($("bk-sign-f")) && $("bk-sign-f").nextElementSibling === $("bk-kids") && $("bk-kids").nextElementSibling === $("bk-pets") && $("bk-pets").nextElementSibling === $("bk-check") && $("bk-check").nextElementSibling === $("bk-tot"), "the sign name field comes right under the meet and greet row, outside its fieldset, then the child seats, then the pets, then Check your trip right above the total");
@@ -402,8 +405,8 @@ check("every class card states its luggage as data-large and data-small read fro
     assert.ok(c.bags === "" || m, `${k}: ${c.bags}`);
     assert.deepEqual([card.dataset.large, card.dataset.small], m ? [m[1], m[2]] : [undefined, undefined], k);
   }
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], [undefined, undefined], ["10", "2"]]);
-  for (const h of HOSTS) for (const [k, l, s] of [["suv", 3, 3], ["premium", 3, 3], ["first", 2, 1], ["sprinter", 10, 2]]) assert.ok(new RegExp(`for="bk-c-${k}" data-seats="\\d+"( data-min="\\d+")? data-large="${l}" data-small="${s}">`).test(parts[h]), `${h} ${k}`);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], [undefined, undefined], ["10", "2"], ...VANS.map(() => ["10", "2"])]);
+  for (const h of HOSTS) for (const [k, l, s] of [["suv", 3, 3], ["premium", 3, 3], ["first", 2, 1], ["sprinter", 10, 2], ...VANS.map((v) => [v, 10, 2])]) assert.ok(new RegExp(`for="bk-c-${k}" data-seats="\\d+"( data-min="\\d+")? data-large="${l}" data-small="${s}">`).test(parts[h]), `${h} ${k}`);
 });
 
 check("step 2: trips our dispatch team prices show the notes field before Email to reserve and WhatsApp to reserve, it mirrors the details notes and adds a Notes line to both messages", () => {
@@ -418,22 +421,26 @@ check("step 2: trips our dispatch team prices show the notes field before Email 
   assert.ok(pay.includes('a.concat(P2>0&&ab()<"e"?dw():(x=(d.activeElement==q?E.notes.value=q.value:q.value=E.notes.value).trim())?"Notes: "+x:[])'), "the step 2 messages carry no Notes line, or the two notes fields do not mirror each other");
 });
 
-check("five class rows and five pills, in the order Business SUV, Business Premium SUV, First Class, Sedan & Electric, Luxury Sprinter", () => {
+check("five class rows and five pills, in the order Business SUV, Business Premium SUV, First Class, Sedan & Electric, a row for each Sprinter in the order of VEHICLES, then the Luxury Sprinter row for a browser without JavaScript, each with its own photo, the Presidential with a plain panel", () => {
   const order = ["suv", "premium", "first", "sedan", "sprinter"];
   const names = ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"];
   assert.deepEqual(Object.keys(CLASSES), order);
-  assert.deepEqual([...$("bk-cards").querySelectorAll("input[name=class]")].map((r) => r.value), order);
-  assert.deepEqual([...$("bk-cards").querySelectorAll(".bk-card__name")].map((n) => nt(n.textContent)), names);
+  assert.deepEqual(VANS, ["sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("input[name=class]")].map((r) => [r.value, r.dataset.v || ""]), [...order.filter((c) => c !== "sprinter").map((c) => [c, ""]), ...VANS.map((v) => ["sprinter", v]), ["sprinter", ""]]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll(".bk-card__name")].map((n) => nt(n.textContent)), [...names.slice(0, 4), "Executive Sprinter", "Luxury Jet Sprinter", "Presidential Sprinter", "Limo Sprinter", "White Luxury Limo Sprinter", names[4]]);
   assert.deepEqual([...$("bk-pills").querySelectorAll(".bk-pill")].map((b) => [b.dataset.c, nt(b.firstElementChild.textContent)]), order.map((c, i) => [c, names[i]]));
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => c.dataset.seats), ["5", "5", "3", "3", "14"]);
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => c.dataset.seats), ["5", "5", "3", "3", "14", "8", "12", "14", "10", "14"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].slice(4, 9).map((c) => c.dataset.seats), VANS.map((v) => String(VEHICLES[v].seats)));
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-card-300.webp", "/fleet/sprinter-luxury-jet-card-300.webp", "/fleet/sprinter-limo-black-card-300.webp", "/fleet/sprinter-white-limo-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
+  const plain = form.querySelector('label[for="bk-c-sprinter-presidential"]');
+  assert.deepEqual([plain.querySelector("picture, img"), plain.children[1].outerHTML], [null, '<span class="bk-ph" aria-hidden="true"></span>']);
   const first = form.querySelector('label[for="bk-c-first"] picture > img');
   assert.deepEqual([first.getAttribute("width"), first.getAttribute("height")], ["960", "1192"]);
   assert.match(first.getAttribute("alt"), /^Black Mercedes-Benz S-Class /);
   const alts = ["Black Chevrolet Suburban in a white studio", "Black Cadillac Escalade ESV in a white studio", "Black Mercedes-Benz S-Class in a white studio", "Black Cadillac Lyriq in a white studio", "Black Mercedes-Benz Sprinter van in a white studio"];
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), alts.map((a) => ["960", "1192", a]));
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), [...alts.slice(0, 4).map((a) => ["960", "1192", a]), ...Object.values(VAN_PHOTOS).map(([, a]) => ["400", "300", a]), ["960", "1192", alts[4]]]);
   const sizes = "(min-width: 600px) 128px, 96px";
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture")].map((p) => [...p.querySelectorAll("source")].map((s) => s.getAttribute("sizes"))), order.map(() => [sizes, sizes]));
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture")].map((p) => [...p.querySelectorAll("source")].map((s) => s.getAttribute("sizes"))), [...order, ...Object.keys(VAN_PHOTOS)].map(() => [sizes, sizes]));
 });
 
 check("the First Class model line keeps S-Class in one nowrap span and joins BMW 7 Series with no-break spaces, so neither splits on a phone, on Check your trip or on the confirmation", () => {
@@ -443,7 +450,7 @@ check("the First Class model line keeps S-Class in one nowrap span and joins BMW
 
 check("class rows follow CLASSES with photo, name, model line, seats and bags with their spoken forms, each bag count in its own nowrap span, empty price and check", () => {
   const cards = [...$("bk-cards").querySelectorAll("label.bk-card")];
-  assert.deepEqual(cards.map((c) => c.getAttribute("for")), Object.keys(CLASSES).map((k) => `bk-c-${k}`));
+  assert.deepEqual(cards.map((c) => c.getAttribute("for")), [...Object.keys(CLASSES).filter((k) => k !== "sprinter"), ...VANS, "sprinter"].map((k) => `bk-c-${k}`));
   const BAGS = { suv: ["3 large, 3 small", "3 large and 3 small bags"], premium: ["3 large, 3 small", "3 large and 3 small bags"], first: ["2 large, 1 small", "2 large and 1 small bag"], sprinter: ["10 large, 2 small", "10 large and 2 small bags"] };
   for (const [k, c] of Object.entries(CLASSES)) {
     const card = form.querySelector(`label[for="bk-c-${k}"]`), radio = $(`bk-c-${k}`);
@@ -468,6 +475,35 @@ check("class rows follow CLASSES with photo, name, model line, seats and bags wi
     assert.deepEqual([...card.querySelectorAll("picture source")].map((s) => s.type), ["image/avif", "image/webp"], k);
     for (const s of card.querySelectorAll("picture source")) assert.match(s.getAttribute("srcset"), /-300\.\w+ 300w, \/fleet\/.+-400\.\w+ 400w$/, k);
   }
+});
+
+check("each Sprinter row follows VEHICLES like a class row: a Luxury Sprinter radio that names its Sprinter, the seats of that Sprinter, its 4-hour minimum, the class luggage with its spoken form, its own photo or a plain panel, an empty price and the check, shown only with JavaScript, while the Luxury Sprinter row and the picker under the rows book a Sprinter without JavaScript", () => {
+  for (const v of VANS) {
+    const card = form.querySelector(`label[for="bk-c-${v}"]`), radio = $(`bk-c-${v}`), seats = VEHICLES[v].seats;
+    assert.ok(card.matches("label.bk-card.bk-js-only") && card.firstElementChild === radio && radio.matches(`input[type=radio][name=class][value="sprinter"][data-v="${v}"]`) && !radio.checked, v);
+    assert.deepEqual([card.dataset.seats, card.dataset.min, card.dataset.large, card.dataset.small], [String(seats), String(VEHICLES[v].minHours), "10", "2"], v);
+    assert.deepEqual([radio.getAttribute("aria-labelledby"), radio.getAttribute("aria-describedby")], [`bk-n-${v} bk-p-${v}`, `bk-m-${v} bk-s-${v} bk-b-${v}`], v);
+    assert.deepEqual([nt($(`bk-n-${v}`).textContent), nt($(`bk-m-${v}`).textContent), $(`bk-m-${v}`).previousElementSibling === $(`bk-n-${v}`)], [VEHICLES[v].name, CLASSES.sprinter.name, true], v);
+    const cap = $(`bk-s-${v}`), bags = $(`bk-b-${v}`);
+    assert.deepEqual([nt(cap.querySelector('[aria-hidden="true"]:not(svg)').textContent), nt(cap.querySelector(".sr-only").textContent), !!cap.querySelector('use[href="#i-user"]')], [String(seats), `Up to ${seats} passengers`, true], v);
+    assert.deepEqual([nt(bags.querySelector('[aria-hidden="true"]:not(svg)').textContent), nt(bags.querySelector(".sr-only").textContent), [...bags.querySelectorAll('[aria-hidden="true"]:not(svg) > span.nowrap')].map((n) => n.textContent)], ["10 large, 2 small", "10 large and 2 small bags", ["10 large,", "2 small"]], v);
+    assert.deepEqual([$(`bk-p-${v}`).matches("span.bk-card__price"), $(`bk-p-${v}`).textContent, !!card.querySelector('svg.bk-card__check use[href="#i-check"]')], [true, "", true], v);
+    const img = card.querySelector("picture > img");
+    if (VAN_PHOTOS[v]) {
+      const [slug, alt] = VAN_PHOTOS[v];
+      assert.deepEqual([img.getAttribute("src"), img.getAttribute("width"), img.getAttribute("height"), img.getAttribute("alt"), img.getAttribute("loading"), img.getAttribute("decoding")], [`/fleet/${slug}-300.webp`, "400", "300", alt, "lazy", "async"], v);
+      assert.deepEqual([...card.querySelectorAll("picture source")].map((s) => [s.type, s.getAttribute("srcset")]), ["avif", "webp"].map((f) => [`image/${f}`, `/fleet/${slug}-300.${f} 300w, /fleet/${slug}-400.${f} 400w`]), v);
+      for (const w of [300, 400]) for (const f of ["avif", "webp"]) assert.ok(statSync(join(ROOT, "fleet", `${slug}-${w}.${f}`)).size > 0, `${slug}-${w}.${f}`);
+    } else assert.deepEqual([img, card.querySelectorAll(".bk-ph").length, card.querySelector(".bk-ph").getAttribute("aria-hidden"), card.querySelector(".bk-ph").textContent], [null, 1, "true", ""], v);
+  }
+  const nojs = form.querySelector('label[for="bk-c-sprinter"]');
+  assert.ok(!nojs.matches(".bk-js-only") && nojs.previousElementSibling === form.querySelector('label[for="bk-c-sprinter-white-limo"]') && nojs.nextElementSibling === $("e-class"), "the Luxury Sprinter row stays for a browser without JavaScript");
+  const pay = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^pay\.[A-Za-z0-9_-]+\.js$/.test(n))}`);
+  assert.ok(pay.includes('tg(F,"is-js",1);N("c-sprinter")?.parentNode.remove();'), "with JavaScript the Luxury Sprinter row leaves the form, so each Sprinter row stands alone in the radio group");
+  const css = read(`assets/${readdirSync(join(ROOT, "assets")).find((n) => /^book\.[A-Za-z0-9_-]+\.css$/.test(n))}`);
+  assert.ok(css.includes(".bk-card :is(picture,.bk-ph){position:relative;grid-area:1/1/4/2;") && /@media \(forced-colors:active\)\{\n[^@]*\n\.bk-ph\{border:1px solid CanvasText\}\n/.test(css) && css.includes("@media (scripting:none){\n.bk .bk-js-only,") && css.includes("@media (scripting:enabled){\n.bk.bk [data-show]:not(.is-shown),.bk.bk .bk-nojs,"), "the plain panel takes the place of a photo and keeps an outline in forced colors, the Sprinter rows hide without JavaScript and the picker hides with it");
+  for (const h of HOSTS) assert.equal(parts[h].split('data-v="').length - 1, VANS.length, h);
+  for (const h of HOSTS) assert.equal([...parts[h].slice(parts[h].indexOf('id="bk-cards"'), parts[h].indexOf("</fieldset>", parts[h].indexOf('id="bk-cards"'))).matchAll(/<input type="radio" id="([^"]+)" name="class"/g)].map((m) => m[1]).at(-1), "bk-c-sprinter", `${h}: the class row that pay.js removes is the last class radio, so restored radio states keep their order`);
 });
 
 check("the summary card: wait line, choice, route list, price section with the later-charges list and the policy line, then the request blocks in REASONS order, the three ways to finish, the T6 list and the form error", () => {
@@ -581,7 +617,7 @@ check("both mobile numbers have a country select that ships with only United Sta
 
 check("every ERRORS code has its message with the exact text in the place of its control, plus the browser-only messages", () => {
   const after = (id, prev) => () => $(id).previousElementSibling === $(prev);
-  const where = { tip_amount: "bk-tipamt-f", trip_type: after("e-trip_type", "bk-mode"), from: "bk-from-f", to: "bk-to-f", date: "bk-date-f", "date-past": "bk-date-f", "return-date": "bk-rdate-f", passengers: "bk-pax-f", hours: "bk-hours-f", class: "bk-cards", vehicle: "bk-vehicle-f", sprinter: "bk-sprinter-f", "sprinter-hours": "bk-hours-f", event: "bk-event-f", child_seats: "bk-kids", dogs: "bk-pets", bags: "bk-bags", flight: "bk-flight-f", return_flight: "bk-rflight-f", tip: "bk-tip", form: after("e-form", "q-sent"), rider: after("e-rider", "bk-who"), reach: after("e-reach", "bk-reach"), name: "bk-name-f", email: "bk-email-f", phone: "bk-phone-f", pname: "bk-pname-f", pphone: "bk-pphone-f" };
+  const where = { tip_amount: "bk-tipamt-f", trip_type: after("e-trip_type", "bk-mode"), from: "bk-from-f", to: "bk-to-f", date: "bk-date-f", "date-past": "bk-date-f", "return-date": "bk-rdate-f", passengers: "bk-pax-f", hours: "bk-hours-f", class: "bk-cards", vehicle: "bk-vehicle-f", "sprinter-hours": "bk-hours-f", child_seats: "bk-kids", dogs: "bk-pets", bags: "bk-bags", flight: "bk-flight-f", return_flight: "bk-rflight-f", tip: "bk-tip", form: after("e-form", "q-sent"), rider: after("e-rider", "bk-who"), reach: after("e-reach", "bk-reach"), name: "bk-name-f", email: "bk-email-f", phone: "bk-phone-f", pname: "bk-pname-f", pphone: "bk-pphone-f" };
   assert.deepEqual(Object.keys(where).sort(), Object.keys(ERRORS).sort());
   for (const [code, { text }] of Object.entries(ERRORS)) {
     const p = $(`e-${code}`);
@@ -594,7 +630,7 @@ check("every ERRORS code has its message with the exact text in the place of its
   assert.equal(nt($("e-stop1").textContent), "Add the address of stop 1, or remove the stop.");
   assert.equal(nt($("e-stop2").textContent), "Add the address of stop 2, or remove the stop.");
   assert.ok($("e-time").matches("p.bk-e.field__hint") && $("bk-time-f").contains($("e-time")) && nt($("e-time").textContent) === "Add a pickup time.");
-  assert.equal(Object.keys(ERRORS).length, 28);
+  assert.equal(Object.keys(ERRORS).length, 26);
   assert.ok($("e-dflight").matches("p.bk-e.field__hint") && $("e-dflight").previousElementSibling === $("bk-dflight") && nt($("e-dflight").textContent) === ERRORS.flight.text, "the step 3 flight number has its own message");
   assert.equal(form.querySelectorAll(".bk-e").length, Object.keys(ERRORS).length + 8);
 });

@@ -642,7 +642,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
   const { document } = read(file);
   check(`${file}: the fleet card Book links carry their class and the seat glyph is #i-user`, () => {
     const links = [...document.querySelectorAll("main .fleet-card a.lnk")].filter((a) => norm(a.textContent) === "Book a car");
-    assert.deepEqual(links.map((a) => a.getAttribute("href")), classes.map((c) => (file === "limousine-service-nyc.html" && c === "sprinter" ? "/book?trip-type=hour&hours=4&class=" : prefix) + c + (file === "limousine-service-nyc.html" && c === "sprinter" ? "&sprinter=sprinter-limo" : "")));
+    assert.deepEqual(links.map((a) => a.getAttribute("href")), classes.map((c) => (file === "limousine-service-nyc.html" && c === "sprinter" ? "/book?trip-type=hour&hours=4&class=" : prefix) + c + (file === "limousine-service-nyc.html" && c === "sprinter" ? "&sprinter=sprinter-white-limo" : "")));
     for (const a of links) assert.match(a.getAttribute("aria-label"), /^Book a car \(/);
     assert.equal(document.querySelectorAll('main use[href="#i-seat"]').length, 0);
     assert.ok(document.querySelectorAll('main .fleet-card use[href="#i-user"]').length >= 4);
@@ -661,8 +661,8 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
 {
   const s = read("locations/staten-island.html").document;
   const c = read("blog/nyc-limo-service-comparison-guide-april-29.html").document;
-  check("the comparison guide shows the Jet Sprinter cabin and locations/staten-island.html its waterfront photo, each with its alt and caption", () => {
-    for (const [doc, sel, slug, alt, cap] of [[c, "main>article>section.section--tight figure", "sprinter-jet", "Inside the Jet Sprinter: two leather captain's chairs facing a screen", "Jet Sprinter Luxury Sprinter"], [s, "figure.banner__photo", "page-staten-island", "Chauffeur opening the door of a black Mercedes-Benz S-Class for a passenger on a waterfront at sunset, with the city skyline across the water", "Mercedes-Benz S-Class First Class"]]) {
+  check("the comparison guide shows the Luxury Sprinter cabin and locations/staten-island.html its waterfront photo, each with its alt and caption", () => {
+    for (const [doc, sel, slug, alt, cap] of [[c, "main>article>section.section--tight figure", "sprinter-jet", "Inside a Luxury Sprinter: two leather captain's chairs facing a screen", "Mercedes-Benz Sprinter Luxury Sprinter"], [s, "figure.banner__photo", "page-staten-island", "Chauffeur opening the door of a black Mercedes-Benz S-Class for a passenger on a waterfront at sunset, with the city skyline across the water", "Mercedes-Benz S-Class First Class"]]) {
       const img = doc.querySelector(`${sel} picture img`);
       assert.equal(img.getAttribute("src"), `/fleet/${slug}-900.webp`);
       assert.equal(img.getAttribute("alt"), alt);
@@ -697,7 +697,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
   });
   check("locations/newark-airport.html: the price answer says any taxes, never plain taxes, in the page and in its JSON-LD", () => {
-    const answer = "Yes. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. Tolls, airport fees and any taxes are included. See all rates.";
+    const answer = "Yes, for our cars and SUVs. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. A Sprinter costs a little more to Newark. Tolls, airport fees and any taxes are included. See all rates.";
     assert.ok([...document.querySelectorAll("main p")].some((p) => norm(p.textContent) === answer), "the FAQ answer");
     const graph = [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((el) => JSON.parse(el.textContent)["@graph"] || []);
     const faq = graph.find((node) => node["@type"] === "FAQPage");
@@ -819,7 +819,7 @@ check("corporate-car-service-nyc.html: the busy times answer keeps the no surge 
 check("about.html: the vehicle count in At a glance equals the vehicles listed on fleet.html", () => {
   const fleet = read("fleet.html").document.querySelectorAll("h3.fleet-card__name").length;
   const dt = [...read("about.html").document.querySelectorAll("dt")].find((d) => d.textContent.trim() === "Vehicles");
-  assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [14, "14"]);
+  assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [15, "15"]);
 });
 
 if (failures) {

@@ -15,12 +15,14 @@ export const VEHICLES = {
   premium: { cls: "premium", model: "Cadillac Escalade ESV", hourly: 10500 },
   sedan: { cls: "sedan", model: "", hourly: 8500 },
   first: { cls: "first", model: "", hourly: 17500 },
-  "sprinter-shuttle": { cls: "sprinter", name: "Shuttle Sprinter", hourly: 13500, seats: 14, minHours: 4 },
-  "sprinter-jet": { cls: "sprinter", name: "Jet Sprinter", hourly: 17500, seats: 14, minHours: 4 },
-  "sprinter-executive": { cls: "sprinter", name: "Executive Sprinter", hourly: 22500, event: 23500, seats: 14, minHours: 4 },
-  "sprinter-limo": { cls: "sprinter", name: "Limo Sprinter", hourly: 25000, event: 26000, seats: 10, minHours: 4, hourlyOnly: true },
+  "sprinter-executive": { cls: "sprinter", name: "Executive Sprinter", hourly: 17500, seats: 14, minHours: 4 },
+  "sprinter-luxury-jet": { cls: "sprinter", name: "Luxury Jet Sprinter", hourly: 21500, seats: 8, minHours: 4 },
+  "sprinter-presidential": { cls: "sprinter", name: "Presidential Sprinter", hourly: 24500, seats: 12, minHours: 4 },
+  "sprinter-limo": { cls: "sprinter", name: "Limo Sprinter", hourly: 26500, seats: 14, minHours: 4 },
+  "sprinter-white-limo": { cls: "sprinter", name: "White Luxury Limo Sprinter", hourly: 27500, seats: 10, minHours: 4 },
 };
-export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", sprinter: "sprinter-shuttle" };
+export const RETIRED_VEHICLES = { "sprinter-shuttle": { cls: "sprinter", name: "Shuttle Sprinter" }, "sprinter-jet": { cls: "sprinter", name: "Jet Sprinter" } };
+export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", sprinter: "sprinter-executive" };
 export const PLACES = {
   manhattan: "Manhattan",
   brooklyn: "Brooklyn",
@@ -42,21 +44,29 @@ export const AIRPORT_FARES = {
   premium: { jfk: 18650, lga: 15950, ewr: 20269, teb: 20269 },
   first: { jfk: 26749, lga: 21350, ewr: 29071, teb: 29071 },
   sedan: { jfk: 14151, lga: 11901, ewr: 15379, teb: 15379 },
-  sprinter: { jfk: 43847, lga: 39348, ewr: 47653, teb: 47653 },
+  "sprinter-executive": { jfk: 39348, lga: 39348, ewr: 45208, teb: 45208 },
+  "sprinter-luxury-jet": { jfk: 50597, lga: 48346, ewr: 56944, teb: 56944 },
+  "sprinter-presidential": { jfk: 57346, lga: 55095, ewr: 64768, teb: 64768 },
+  "sprinter-limo": { jfk: 61844, lga: 59595, ewr: 69658, teb: 69658 },
+  "sprinter-white-limo": { jfk: 66344, ewr: 74548, teb: 74548 },
 };
 export const AIRPORT_TOTALS = {
   suv: { jfk: 18500, lga: 16500, ewr: 18500, teb: 18500 },
   premium: { jfk: 22000, lga: 19000, ewr: 22000, teb: 22000 },
   first: { jfk: 31000, lga: 25000, ewr: 31000, teb: 31000 },
   sedan: { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 },
-  sprinter: { jfk: 50000, lga: 45000, ewr: 50000, teb: 50000 },
+  "sprinter-executive": { jfk: 45000, lga: 45000, ewr: 47500, teb: 47500 },
+  "sprinter-luxury-jet": { jfk: 57500, lga: 55000, ewr: 59500, teb: 59500 },
+  "sprinter-presidential": { jfk: 65000, lga: 62500, ewr: 67500, teb: 67500 },
+  "sprinter-limo": { jfk: 70000, lga: 67500, ewr: 72500, teb: 72500 },
+  "sprinter-white-limo": { jfk: 75000, ewr: 77500, teb: 77500 },
 };
 export const DISTANCE_RATES = {
   suv: { base: 3500, mile: 400, minute: 65, minimum: 11000 },
   premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
   first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
-  sprinter: { base: 8000, mile: 900, minute: 145, minimum: 25000 },
+  "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 25000 },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];

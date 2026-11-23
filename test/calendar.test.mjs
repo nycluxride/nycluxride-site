@@ -427,8 +427,8 @@ await test("drive minutes: a trip priced by distance lasts its drive time, and a
   await hook(van);
   const [out, back] = inserted();
   assert.deepEqual([SPRINTER.metadata.minutes, SPRINTER.metadata.legs], ["86", "2"]);
-  assert.equal(out.summary, "[TEST] 83558982 Shuttle Sprinter: Secaucus to Hoboken");
-  assert.equal(back.summary, "[TEST] Return: 83558982 Shuttle Sprinter: Hoboken to Secaucus");
+  assert.equal(out.summary, "[TEST] 83558982 Executive Sprinter: Secaucus to Hoboken");
+  assert.equal(back.summary, "[TEST] Return: 83558982 Executive Sprinter: Hoboken to Secaucus");
   assert.deepEqual([out.start.dateTime, out.end.dateTime, back.start.dateTime, back.end.dateTime], ["2026-11-20T10:15:00.000Z", "2026-11-20T10:58:00.000Z", "2026-11-21T14:00:00.000Z", "2026-11-21T14:43:00.000Z"]);
   assert.ok(out.description.split("\n").includes("Child seats: 1 infant seat"), out.description);
 });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceRide, receipt, shownLines, serviceLabel, laterNotes, tollsIn, bookingData } from "../api/_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceRide, receipt, shownLines, serviceLabel, laterNotes, tollsIn, bookingData, rateKey } from "../api/_trip.mjs";
 import { tollCents, computeRoute, googleUp, TOLL_PASSES } from "../api/_google.mjs";
 import { decodePath, tollPlan, priceSplit, arcsOf, project, crossingCents, tollClassOf, TOLL_GROUP } from "../api/_tolls.mjs";
 import { mockRoute, mockSplit } from "../api/_mock.mjs";
@@ -48,7 +48,7 @@ const mock = () => (process.env.GOOGLE_MOCK = "true");
 const pairs = (lines) => lines.map(({ label, cents }) => [label, cents]);
 const money = (units, nanos, currencyCode = "USD") => ({ currencyCode, ...(units !== undefined && { units }), ...(nanos !== undefined && { nanos }) });
 const tolled = (...prices) => ({ travelAdvisory: { tollInfo: { estimatedPrice: prices } } });
-const fare = (cls, tenths, minutes, airport = "ewr") => priceRide(cls, { tenths, minutes }, [airport], "0").fare;
+const fare = (cls, tenths, minutes, airport = "ewr") => priceRide(rateKey(cls), { tenths, minutes }, [airport], "0").fare;
 
 async function run(fields, now = NOW) {
   const trip = await resolveTrip(readInput(fields), { now });

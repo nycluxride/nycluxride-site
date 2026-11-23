@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
 import { CHECKOUT, LABELS, POLICY } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, eventRate, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -119,7 +119,6 @@ export function metadataFor(input, price, ref) {
     airport: hourly ? "" : first.airport,
     class: trip.class,
     vehicle: hourly || trip.class === "sprinter" ? trip.vehicle : "",
-    event: eventRate(trip) ? "1" : "",
     hours: trip.hours,
     from_text: trip.from_text,
     to_text: trip.to_text,

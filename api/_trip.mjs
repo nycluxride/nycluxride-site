@@ -2,6 +2,7 @@ import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import {
   CLASSES,
   VEHICLES,
+  RETIRED_VEHICLES,
   CLASS_DEFAULT_VEHICLE,
   PLACES,
   AIRPORT_PLACES,
@@ -44,7 +45,7 @@ import { readPhone } from "./_phone.mjs";
 import { headerText } from "./_smtp.mjs";
 
 const ENDS = ["from", "stop1", "stop2", "to"];
-const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), ...BAG_SIZES.map((k) => `${k}_bags`), "hours", "class", "vehicle", "sprinter", "event", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
+const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), ...BAG_SIZES.map((k) => `${k}_bags`), "hours", "class", "vehicle", "sprinter", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
 const ROUTED = ["no-airport", "outside-city"];
@@ -189,8 +190,7 @@ export function readInput(fields) {
     class: cls,
     vehicle: cls === "sprinter" ? sprinterVehicle : hour && cls ? (cls === "suv" ? suvVehicle : CLASS_DEFAULT_VEHICLE[cls]) : "",
     suvVehicle: hour ? suvVehicle : "",
-    sprinterVehicle: hour ? sprinterVehicle : "",
-    event: hour ? (raw.event === "1" ? true : raw.event === "0" ? false : null) : false,
+    sprinterVehicle,
     meet: raw.meet === "1",
     tip: raw.tip === "" ? 0 : raw.tip === "custom" ? "custom" : tips.includes(raw.tip) ? Number(raw.tip) : null,
     tip_amount: raw.tip === "custom" ? canonical(raw.tip_amount) : "",
@@ -424,14 +424,17 @@ function vehicleFor(trip, cls) {
   return has(VEHICLES, picked) ? picked : CLASS_DEFAULT_VEHICLE[cls];
 }
 
-export const eventRate = (trip) => trip.trip_type === "hour" && trip.event === true && has(VEHICLES, trip.vehicle) && Number.isInteger(VEHICLES[trip.vehicle].event);
-export const hourlyRate = (key, event) => (event && Number.isInteger(VEHICLES[key].event) ? VEHICLES[key].event : VEHICLES[key].hourly);
+export const rateKey = (cls, vehicle) => (has(AIRPORT_TOTALS, cls) ? cls : has(VEHICLES, vehicle) && VEHICLES[vehicle].cls === cls ? vehicle : CLASS_DEFAULT_VEHICLE[cls]);
+const legRated = (key, item) => Boolean(item.reason) || ((item.ride && !item.flat ? has(DISTANCE_RATES, key) : has(AIRPORT_TOTALS[key], item.airport)) && (!item.plain || legRated(key, item.plain)));
+export const tripRated = (trip, key) => trip.trip_type !== "one" || (trip.legs || legsOf(trip)).every((item) => legRated(key, item));
 
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
-  const vehicle = VEHICLES[vehicleFor(trip, cls)];
+  const key = vehicleFor(trip, cls);
+  const vehicle = VEHICLES[key];
   if (trip.trip_type === "hour" && Number(trip.hours) < (vehicle.minHours || HOURS.min)) return "min-hours";
   if (Number(trip.passengers) > (vehicle.seats || CLASSES[cls].seats)) return "seats";
+  if (!tripRated(trip, rateKey(cls, key))) return "sprinter-price";
   return "";
 }
 
@@ -499,9 +502,7 @@ export function checkTrip(trip, now, settings) {
   if (hour && !INTEGER.test(trip.hours)) return invalid("hours");
   if (!has(CLASSES, trip.class)) return invalid("class");
   if (hour && !has(VEHICLES, trip.vehicle)) return invalid("vehicle");
-  if (!hour && has(VEHICLES, trip.vehicle) && VEHICLES[trip.vehicle].hourlyOnly) return invalid("sprinter");
   if (hour && VEHICLES[trip.vehicle].minHours > Number(trip.hours)) return invalid("sprinter-hours");
-  if (hour && trip.action === "pay" && trip.event === null && Number.isInteger(VEHICLES[trip.vehicle].event)) return invalid("event");
   if (trip.flight && !FLIGHT.test(trip.flight)) return invalid("flight");
   if (one && trip.return && trip.return_flight && !FLIGHT.test(trip.return_flight)) return invalid("return_flight");
   if (trip.tip === "custom" && !tipAmountOk(trip.tip_amount)) return invalid("tip_amount");
@@ -581,9 +582,9 @@ function fareWithin(cents, percent) {
   return fare;
 }
 
-export function priceLeg(cls, airport, percent = flatPercent(airport)) {
-  const listed = AIRPORT_FARES[cls][airport];
-  const total = AIRPORT_TOTALS[cls][airport];
+export function priceLeg(key, airport, percent = flatPercent(airport)) {
+  const listed = AIRPORT_FARES[key][airport];
+  const total = AIRPORT_TOTALS[key][airport];
   const base = flatPercent(airport);
   const fare = percent === base ? listed : fareWithin(charged(listed, base), percent);
   const tax = percentCents(fare, percent);
@@ -593,50 +594,54 @@ export function priceLeg(cls, airport, percent = flatPercent(airport)) {
 
 const feeLines = (tax, bcf) => [...(tax ? [line(LABELS.tax, tax)] : []), line(LABELS.bcf, bcf)];
 
-export function legLines(cls, airport, percent) {
-  const { fare, tax, bcf, tolls, total } = priceLeg(cls, airport, percent);
+export function legLines(key, airport, percent) {
+  const { fare, tax, bcf, tolls, total } = priceLeg(key, airport, percent);
   return { lines: [line(LABELS.fare, fare), ...feeLines(tax, bcf), line(LABELS.tolls, tolls)], total };
 }
 
-export function hourlyLines(vehicle, hours, event) {
-  const fare = hourlyRate(vehicle, event) * Number(hours);
+export function hourlyLines(vehicle, hours) {
+  const fare = VEHICLES[vehicle].hourly * Number(hours);
   const tax = percentCents(fare, NYC_TAX_PERCENT);
   const bcf = percentCents(fare, BCF_PERCENT);
   return { lines: [line(fill(LABELS.fareHours, { hours }), fare), ...feeLines(tax, bcf)], total: fare + tax + bcf };
 }
 
-for (const cls of Object.keys(CLASSES)) {
+export const RATE_KEYS = Object.keys(CLASSES).flatMap((cls) => (has(AIRPORT_TOTALS, cls) ? [cls] : Object.keys(VEHICLES).filter((key) => VEHICLES[key].cls === cls)));
+for (const key of RATE_KEYS) {
+  const full = has(CLASSES, key) || key === CLASS_DEFAULT_VEHICLE[VEHICLES[key].cls];
   for (const airport of AIRPORT_PLACES) {
-    const ok = Number.isInteger(AIRPORT_FARES[cls] && AIRPORT_FARES[cls][airport]) && Number.isInteger(AIRPORT_TOTALS[cls] && AIRPORT_TOTALS[cls][airport]);
-    if (!ok || !has(AIRPORT_STATES, airport) || priceLeg(cls, airport).tolls < 0) throw new Error(`airport-config ${cls} ${airport}`);
+    if (!full && !has(AIRPORT_TOTALS[key] || {}, airport) && !has(AIRPORT_FARES[key] || {}, airport)) continue;
+    const ok = Number.isInteger(AIRPORT_FARES[key] && AIRPORT_FARES[key][airport]) && Number.isInteger(AIRPORT_TOTALS[key] && AIRPORT_TOTALS[key][airport]);
+    if (!ok || !has(AIRPORT_STATES, airport) || priceLeg(key, airport).tolls < 0) throw new Error(`airport-config ${key} ${airport}`);
   }
 }
+if ([AIRPORT_FARES, AIRPORT_TOTALS].some((table) => Object.keys(table).some((key) => !RATE_KEYS.includes(key) || Object.keys(table[key]).some((airport) => !AIRPORT_PLACES.includes(airport))))) throw new Error("airport-config");
 
-export function distanceFare(cls, tenths, minutes) {
-  const rate = DISTANCE_RATES[cls];
+export function distanceFare(key, tenths, minutes) {
+  const rate = DISTANCE_RATES[key];
   return Math.max(rate.minimum, rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute);
 }
 
-export function priceDistance(cls, ride, ...airports) {
-  return priceRide(cls, ride, airports, NYC_TAX_PERCENT);
+export function priceDistance(key, ride, ...airports) {
+  return priceRide(key, ride, airports, NYC_TAX_PERCENT);
 }
 
-export function priceRide(cls, ride, airports, percent) {
+export function priceRide(key, ride, airports, percent) {
   const { tenths, minutes } = ride;
-  const fare = Math.max(distanceFare(cls, tenths, minutes), ...airports.filter((airport) => has(AIRPORT_FARES[cls], airport)).map((airport) => AIRPORT_FARES[cls][airport]));
+  const fare = Math.max(distanceFare(key, tenths, minutes), ...airports.filter((airport) => has(AIRPORT_FARES[key], airport)).map((airport) => AIRPORT_FARES[key][airport]));
   const tax = percentCents(fare, percent);
   const bcf = percentCents(fare, BCF_PERCENT);
   const tolls = Number.isInteger(ride.tolls) ? ride.tolls : 0;
   return { fare, tax, bcf, tolls, total: fare + tax + bcf + tolls };
 }
 
-for (const cls of Object.keys(CLASSES)) {
-  const rate = has(DISTANCE_RATES, cls) ? DISTANCE_RATES[cls] : null;
-  const ok = rate && ["base", "mile", "minute", "minimum"].every((key) => Number.isInteger(rate[key]) && rate[key] >= 0) && rate.minimum > 0;
-  if (!ok) throw new Error(`distance-config ${cls}`);
+for (const key of RATE_KEYS) {
+  const rate = has(DISTANCE_RATES, key) ? DISTANCE_RATES[key] : null;
+  const ok = rate && ["base", "mile", "minute", "minimum"].every((part) => Number.isInteger(rate[part]) && rate[part] >= 0) && rate.minimum > 0;
+  if (!ok && (has(CLASSES, key) || key === CLASS_DEFAULT_VEHICLE[VEHICLES[key].cls] || rate)) throw new Error(`distance-config ${key}`);
 }
 if (!Number.isInteger(STOP_FEE_CENTS) || STOP_FEE_CENTS <= 0) throw new Error("stop-config");
-if (Object.keys(DISTANCE_RATES).some((cls) => !has(CLASSES, cls)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
+if (Object.keys(DISTANCE_RATES).some((key) => !RATE_KEYS.includes(key)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
 
 export function classTotal(trip, cls) {
   if (classReason(trip, cls)) return null;
@@ -644,16 +649,18 @@ export function classTotal(trip, cls) {
 }
 
 const legPercent = (item) => (item.salesTax ? item.salesTax.percent : undefined);
-const legPrice = (cls, item) => (item.ride && !item.flat ? priceRide(cls, item.ride, [item.from, ...(item.via || []), item.to], legPercent(item) || NYC_TAX_PERCENT) : priceLeg(cls, item.airport, legPercent(item)));
+const legPrice = (key, item) => (item.ride && !item.flat ? priceRide(key, item.ride, [item.from, ...(item.via || []), item.to], legPercent(item) || NYC_TAX_PERCENT) : priceLeg(key, item.airport, legPercent(item)));
 
 export function chargedLegs(trip, cls = trip.class) {
   const legs = trip.legs || legsOf(trip);
   if (!has(CLASSES, cls)) return legs;
+  const key = rateKey(cls, vehicleFor(trip, cls));
+  if (!tripRated({ ...trip, trip_type: "one", legs }, key)) return legs;
   const feeRide = (item) => {
-    const { total, tolls } = legPrice(cls, item.plain);
+    const { total, tolls } = legPrice(key, item.plain);
     return total - tolls + (Number.isInteger(item.ride.tolls) ? item.ride.tolls : 0) + item.stops * STOP_FEE_CENTS;
   };
-  return legs.map((item) => (item.plain && item.ride && !item.reason && feeRide(item) > legPrice(cls, item).total ? { ...item.plain, feeStops: item.stops, driven: item.ride } : item));
+  return legs.map((item) => (item.plain && item.ride && !item.reason && feeRide(item) > legPrice(key, item).total ? { ...item.plain, feeStops: item.stops, driven: item.ride } : item));
 }
 
 export const chargedTrip = (trip) => (trip.trip_type === "one" ? { ...trip, legs: chargedLegs(trip) } : trip);
@@ -665,9 +672,10 @@ export function priceTrip(input, settings) {
   const tipPercent = Number(trip.tip) || 0;
   const service = serviceOf(trip);
   const plain = service === "airport";
-  const legs = hourly ? [] : trip.legs.map((item) => legPrice(trip.class, item));
+  const key = rateKey(trip.class, trip.vehicle);
+  const legs = hourly ? [] : trip.legs.map((item) => legPrice(key, item));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
-  const fare = hourly ? hourlyRate(trip.vehicle, eventRate(trip)) * Number(trip.hours) : sum("fare");
+  const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
   const tax = hourly ? percentCents(fare, NYC_TAX_PERCENT) : sum("tax");
   const bcf = hourly ? percentCents(fare, BCF_PERCENT) : sum("bcf");
   const tolls = hourly ? 0 : sum("tolls");
@@ -728,19 +736,21 @@ export function shownLines(lines) {
   return shown;
 }
 
+export const knownVehicle = (key) => has(VEHICLES, key) || has(RETIRED_VEHICLES, key);
+
 export function vehicleLabel(key, event) {
-  const { cls, model, name } = VEHICLES[key];
+  const { cls, model, name } = has(VEHICLES, key) ? VEHICLES[key] : RETIRED_VEHICLES[key];
   const label = name || (model ? `${model} (${CLASSES[cls].name})` : CLASSES[cls].name);
-  return event && Number.isInteger(VEHICLES[key].event) ? fill(LABELS.forEvent, { vehicle: label }) : label;
+  return event && cls === "sprinter" ? fill(LABELS.forEvent, { vehicle: label }) : label;
 }
 
 export function vehicleName(cls, vehicle, event) {
-  if (has(VEHICLES, vehicle) && VEHICLES[vehicle].cls === cls && VEHICLES[vehicle].name) return vehicleLabel(vehicle, event);
+  if (knownVehicle(vehicle) && (VEHICLES[vehicle] || RETIRED_VEHICLES[vehicle]).cls === cls && (VEHICLES[vehicle] || RETIRED_VEHICLES[vehicle]).name) return vehicleLabel(vehicle, event);
   return has(CLASSES, cls) ? CLASSES[cls].name : "";
 }
 
 export function describe({ hourly, cls, vehicle, event, hours, count, direction, airport, tenths, minutes, flat }) {
-  if (hourly) return has(VEHICLES, vehicle) ? fill(LABELS.hourlyLine, { vehicle: vehicleLabel(vehicle, event), hours }) : "";
+  if (hourly) return knownVehicle(vehicle) ? fill(LABELS.hourlyLine, { vehicle: vehicleLabel(vehicle, event), hours }) : "";
   if (!has(CLASSES, cls)) return "";
   const name = vehicleName(cls, vehicle);
   if (Number.isInteger(tenths) && Number.isInteger(minutes)) return fill(flat === "return" ? LABELS.returnFlat : flat === "out" ? LABELS.outFlat : count > 1 ? LABELS.distanceLegs : LABELS.distance, { class: name, legs: count, transfers: count - 1, miles: (tenths / 10).toFixed(1), minutes });
@@ -758,7 +768,7 @@ export function serviceLabel(input) {
   const trip = chargedTrip(input);
   const legs = trip.legs || legsOf(trip);
   const first = legs[0] || {};
-  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, event: eventRate(trip), hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, flat: flatPart(trip), ...rideTotals(trip) });
+  return describe({ hourly: trip.trip_type === "hour", cls: trip.class, vehicle: trip.vehicle, hours: trip.hours, count: legs.length, direction: first.direction, airport: first.airport, flat: flatPart(trip), ...rideTotals(trip) });
 }
 
 export const REF = /^[1-9]\d{7}$/;
@@ -858,7 +868,7 @@ export function composeMessage(trip, ref, totalCents) {
   if (trip.passengers) lines.push(`Passengers: ${trip.passengers}`);
   for (const [k, n] of Object.entries(bagCounts(trip))) if (n) lines.push(`${LABELS.bagTypes[k]}: ${n}`);
   if (one && has(CLASSES, trip.class)) lines.push(`Vehicle: ${vehicleName(trip.class, trip.vehicle)}`);
-  if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle, eventRate(trip))}`);
+  if (hour && has(VEHICLES, trip.vehicle)) lines.push(`Vehicle: ${vehicleLabel(trip.vehicle)}`);
   if (trip.meet) lines.push("Meet and greet: Yes");
   for (const [k, n] of Object.entries(seatCounts(trip))) if (n) lines.push(`${LABELS.seatTypes[k]}: ${n}`);
   for (const [k, n] of Object.entries(dogCounts(trip))) if (n) lines.push(`${LABELS.dogTypes[k]}: ${n}`);

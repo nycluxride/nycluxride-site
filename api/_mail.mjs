@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { VEHICLES, CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
+import { CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
 import { MAIL, CALENDAR, LABELS, POLICY, SEATS } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, knownVehicle, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
@@ -108,12 +108,12 @@ function bookingOf(session) {
 
 function eventOf(b) {
   const f = b.field;
-  return b.hourly && f("event") === "1" && has(VEHICLES, f("vehicle")) && Number.isInteger(VEHICLES[f("vehicle")].event);
+  return b.hourly && f("event") === "1" && knownVehicle(f("vehicle")) && f("class") === "sprinter";
 }
 
 function vehicleOf(b, event) {
   const f = b.field;
-  return b.hourly && has(VEHICLES, f("vehicle")) ? vehicleLabel(f("vehicle"), event) : vehicleName(f("class"), f("vehicle"));
+  return b.hourly && knownVehicle(f("vehicle")) ? vehicleLabel(f("vehicle"), event) : vehicleName(f("class"), f("vehicle"));
 }
 
 function seatsOf(b) {

@@ -113,7 +113,8 @@ async function bags(page, large, small) {
     assert.equal(+(await page.inputValue(`#bk-bags-${k}`)), n, `${k} bags stepper`);
   }
 }
-const pick = (page, cls) => page.click(`label[for="bk-c-${cls}"]`);
+const SPRINTER_CARDS = ["sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
+const pick = (page, card) => page.click(`label[for="bk-c-${card}"]`);
 const noteShown = (page) => page.evaluate(() => { const n = document.getElementById("bk-bagfit"); return !n.hidden && n.offsetHeight > 0; });
 const cls = (page) => page.evaluate(() => [window.__cls, window.__shifts]);
 const waText = async (page) => decodeURIComponent((await page.getAttribute(".site-footer a[data-wa]", "href")).split("?text=")[1] || "");
@@ -190,7 +191,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       assert.equal(r.align, "end");
     }
   });
-  await check(`BG3 ${width}: the over-capacity note per class, at the stated luggage no note, one large bag more or one bag more in all shows it, small bags may take large bag room, the Sedan & Electric, which states no luggage, is checked against the smallest stated luggage, the note says so when no car holds the bags, it follows a change of car, it is spoken once in the status line and its words leave the status line when it hides`, async () => {
+  await check(`BG3 ${width}: the over-capacity note per class, at the stated luggage no note, one large bag more or one bag more in all shows it, small bags may take large bag room, the Sedan & Electric, which states no luggage, is checked against the smallest stated luggage, each Sprinter card holds the Luxury Sprinter luggage, the note says so when no car holds the bags, it follows a change of car, it is spoken once in the status line and its words leave the status line when it hides`, async () => {
     let asked = 0;
     const cases = {
       suv: [[3, 3, false], [4, 0, true], [3, 4, true], [2, 4, false], [0, 6, false], [0, 7, true]],
@@ -199,8 +200,8 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       sedan: [[0, 1, false], [2, 1, false], [0, 3, false], [3, 0, true], [1, 3, true], [5, 5, true], [14, 14, true]],
       sprinter: [[10, 2, false], [11, 0, true], [10, 3, true], [0, 12, false], [8, 4, false], [0, 13, true]],
     };
-    for (const [k, list] of Object.entries(cases)) {
-      await pick(page, k);
+    for (const [k, list] of Object.entries(cases)) for (const card of k === "sprinter" ? SPRINTER_CARDS : [k]) {
+      await pick(page, card);
       await priced(page);
       for (const [large, small, want] of list) {
         const before = ctx.api.length;
@@ -215,7 +216,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await bags(page, 4, 0);
     await pick(page, "first");
     assert.equal(await noteShown(page), true);
-    await pick(page, "sprinter");
+    await pick(page, "sprinter-white-limo");
     assert.equal(await noteShown(page), false, "a larger car clears it");
     assert.notEqual(await status(page), NOTE, "the status line drops the note when it hides");
     await page.evaluate(() => (document.getElementById("bk-status").textContent = ""));
@@ -232,7 +233,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await bags(page, 4, 0);
     assert.equal(await noteShown(page), true);
     assert.equal((await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), cash(AIRPORT_TOTALS.suv.jfk));
-    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$500.00"]);
+    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
     assert.equal(await page.isDisabled("#bk-next"), false);
     await bags(page, MAX_BAGS, 0);
     assert.equal(await page.getAttribute('[aria-label="More large bags"]', "aria-disabled"), "true");
@@ -256,7 +257,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(await page.textContent("#bk-bagfit"), NOTE);
     await pickStill(page, "sedan");
     assert.equal((await noteState(page)).shown, true, "the Sedan & Electric holds no more than First Class");
-    await pickStill(page, "sprinter");
+    await pickStill(page, "sprinter-luxury-jet");
     const kept = await noteState(page);
     assert.ok(!kept.shown && kept.keep && kept.h > 0, JSON.stringify(kept));
     await pickStill(page, "premium");
@@ -270,7 +271,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(page.errors, []);
   });
   await check(`BG14 ${width}: when no car holds the bags, as on the Luxury Sprinter with ${ROOM.sprinter[0] + 1} large bags or any car with ${MAX_BAGS} of each, the note says so and the status line speaks it, and fewer bags take it back`, async () => {
-    await pick(page, "sprinter");
+    await pick(page, "sprinter-presidential");
     await priced(page);
     await bags(page, ROOM.sprinter[0] + 1, 0);
     assert.equal(await noteShown(page), true);
@@ -354,7 +355,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
   const ctx = await context({ width, height });
-  await check(`BG12 ${width} by ${height}: ${width < 1280 ? "on a narrow desktop the bag rows stack under the passengers hint, steppers at the right edge of the passengers, clear of the cars" : "the bag steppers sit beside the passengers hints and every class price stays inside the first screen"}, with CLS 0 and no horizontal scroll`, async () => {
+  await check(`BG12 ${width} by ${height}: ${width < 1280 ? "on a narrow desktop the bag rows stack under the passengers hint, steppers at the right edge of the passengers, clear of the cars" : "the bag steppers sit beside the passengers hints, every class price up to the Executive Sprinter stays inside the first screen and the other Sprinter prices follow below"}, with CLS 0 and no horizontal scroll`, async () => {
     const page = await options(ctx);
     await page.evaluate(() => scrollTo(0, 0));
     const r = await layout(page);
@@ -364,7 +365,7 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
     } else {
       sideBySide(r);
       const prices = await page.$$eval(".bk-card__price", (o) => o.map((x) => Math.round(x.getBoundingClientRect().bottom)));
-      assert.ok(prices.every((b) => b <= height), JSON.stringify(prices));
+      assert.ok(prices.length === 9 && prices.slice(0, 5).every((b) => b <= height) && prices.every((b, i) => !i || b > prices[i - 1]), JSON.stringify(prices));
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 0, true);
     const [value, shifts] = await cls(page);

@@ -118,8 +118,8 @@ const RATES_FACTS = {
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
 const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls not in your price. Each charge comes with an itemized receipt.";
 const RATES_FAQ = [
-  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter $500. A gratuity is optional."],
-  ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter $450."],
+  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter from $450. A gratuity is optional."],
+  ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter from $450."],
   ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For Sedan & Electric that's $255 plus taxes and fees, with tolls and parking after the ride."],
   ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];
@@ -128,12 +128,19 @@ const RATES_CLASSES = [
   ["airport-premium", "Business Premium SUV", "Cadillac Escalade ESV", "220", "190"],
   ["airport-first", "First Class", "Mercedes-Benz S-Class, BMW 7 Series", "310", "250"],
   ["airport-sedan", "Sedan & Electric", "Cadillac Lyriq or similar, Cadillac CT5 or CT6, Cadillac XT6, Lincoln Continental", "170", "145"],
-  ["airport-sprinter", "Luxury Sprinter", "Shuttle, Jet and Executive Sprinter", "500", "450"],
+  ["airport-sprinter", "Luxury Sprinter", "Five kinds of Sprinter, lowest prices shown", "450 to $475", "450"],
 ];
-const RATES_AIRPORT_OFFERS = RATES_CLASSES.flatMap(([id, name, , far, lga]) => [
+const RATES_AIRPORT_OFFERS = RATES_CLASSES.filter(([id]) => id !== "airport-sprinter").flatMap(([id, name, , far, lga]) => [
   [`Airport transfer, JFK, Newark or Teterboro, ${name}`, id, far, ["JFK", "EWR", "TEB"]],
   [`Airport transfer, LaGuardia, ${name}`, id, lga, ["LGA"]],
 ]);
+const RATES_SPRINTER_OFFERS = [
+  ["Executive Sprinter", "450", "475", ["JFK", "EWR", "TEB", "LGA"]],
+  ["Luxury Jet Sprinter", "550", "595", ["JFK", "EWR", "TEB", "LGA"]],
+  ["Presidential Sprinter", "625", "675", ["JFK", "EWR", "TEB", "LGA"]],
+  ["Limo Sprinter", "675", "725", ["JFK", "EWR", "TEB", "LGA"]],
+  ["White Luxury Limo Sprinter", "750", "775", ["JFK", "EWR", "TEB"]],
+];
 
 function htmlFiles(dir) {
   const out = [];
@@ -415,7 +422,7 @@ check("rates.html: #airport-total follows the airport table with the exact lines
   assert.deepEqual([...table.querySelectorAll("thead th")].map((th) => squash(th.textContent)), ["Item", "JFK", "Newark and Teterboro"]);
   const rows = [...table.querySelectorAll("tr")].filter((tr) => tr.querySelector("th[scope=row]")).map((tr) => [squash(tr.querySelector("th").textContent), ...[...tr.querySelectorAll("td")].map((td) => squash(td.textContent))]);
   assert.deepEqual(rows, [["Fare", "$155.00", "$168.46"], ["NYC sales tax", "$13.76", "$0.00"], ["Black Car Fund", "$3.49", "$3.79"], ["Tolls and airport fees", "$12.75", "$12.75"], ["Total", "$185.00", "$185.00"]]);
-  assert.equal(squash(table.querySelector("tfoot td[colspan]").textContent), "Every class includes $12.75 for tolls and airport fees, and the total is the same to JFK, Newark and Teterboro. Any meet and greet, child seats, pets and gratuity are added when you book.");
+  assert.equal(squash(table.querySelector("tfoot td[colspan]").textContent), "Every class includes $12.75 for tolls and airport fees. Cars and SUVs cost the same to JFK, Newark and Teterboro. Any meet and greet, child seats, pets and gratuity are added when you book.");
 });
 
 check("rates.html: the hourly caption adds the taxes and fees and after the ride sentences, rates unchanged", () => {
@@ -453,25 +460,31 @@ check("rates.html: the rate questions are exact and equal in the page and in jso
   assert.deepEqual(RATES_FAQ.map(([q]) => [q, visibleAnswer(rates, q)]), RATES_FAQ);
 });
 
-check("rates.html: the OfferCatalog has an airport offer per class for JFK, Newark or Teterboro and for LaGuardia, tax included, then the hourly offers in class order, meet and greet and the child seat at its price per seat", () => {
+check("rates.html: the OfferCatalog has an airport offer per car class for JFK, Newark or Teterboro and for LaGuardia and one per Sprinter with its lowest and highest total, tax included, then the hourly offers in class order, meet and greet and the child seat at its price per seat", () => {
   const catalog = rates.graph.find((n) => n["@type"] === "OfferCatalog");
   const airport = catalog.itemListElement.filter((o) => o.name.startsWith("Airport transfer"));
-  assert.deepEqual(airport.map((o) => [o.name, o.url]), RATES_AIRPORT_OFFERS.map(([name, id]) => [name, `https://www.nycluxride.com/rates#${id}`]));
-  airport.forEach((o, i) => {
+  assert.deepEqual(airport.map((o) => [o.name, o.url]), [...RATES_AIRPORT_OFFERS.map(([name, id]) => [name, `https://www.nycluxride.com/rates#${id}`]), ...RATES_SPRINTER_OFFERS.map(([name]) => [`Airport transfer, ${name}`, "https://www.nycluxride.com/rates#sprinter-airport"])]);
+  airport.slice(RATES_AIRPORT_OFFERS.length).forEach((o, i) => {
+    const [, min, max, iata] = RATES_SPRINTER_OFFERS[i];
+    assert.deepEqual([o.price, o.priceCurrency], [undefined, "USD"], o.name);
+    assert.deepEqual(o.priceSpecification, { "@type": "PriceSpecification", priceCurrency: "USD", minPrice: min, maxPrice: max, valueAddedTaxIncluded: true }, o.name);
+    assert.deepEqual([].concat(o.areaServed).map((a) => [a["@type"], a.iataCode]), iata.map((c) => ["Airport", c]), o.name);
+  });
+  airport.slice(0, RATES_AIRPORT_OFFERS.length).forEach((o, i) => {
     const [, , price, iata] = RATES_AIRPORT_OFFERS[i];
     assert.equal(o.price, price, o.name);
     assert.equal(o.priceCurrency, "USD", o.name);
     assert.deepEqual(o.priceSpecification, { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: true }, o.name);
     assert.deepEqual([].concat(o.areaServed).map((a) => [a["@type"], a.iataCode]), iata.map((c) => ["Airport", c]), o.name);
   });
-  assert.deepEqual(catalog.itemListElement.slice(0, 10), airport);
-  const hourly = catalog.itemListElement.slice(10);
+  assert.deepEqual(catalog.itemListElement.slice(0, 13), airport);
+  const hourly = catalog.itemListElement.slice(13);
   assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Sedan & Electric", "Hourly and as directed, Luxury Sprinter", "Meet and greet", "Child seat", "Small dog", "Large dog"]);
   assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Infant, toddler or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
   assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);
-  assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "135", "260"]]);
+  assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "175", "275"]]);
   assert.deepEqual(hourly[4].priceSpecification.eligibleQuantity, { "@type": "QuantitativeValue", minValue: 4, unitCode: "HUR" });
 });
 
@@ -582,6 +595,44 @@ check("rates.html: the policies section has the waiting, cancellation, no-show a
   assert.equal(squash(rates.document.querySelector("#changes > p").textContent), COPY.POLICY.changes);
   assert.equal(squash(rates.document.querySelector("h1").textContent), "Car service rates and policies in New York City");
   assert.deepEqual([...rates.document.querySelectorAll(".jumps a")].map((a) => [a.getAttribute("href"), squash(a.textContent)]).at(-1), ["#policies", "Policies"]);
+});
+
+const SAME_AS_JFK = /same as JFK|JFK, Newark and Teterboro cost the same|cost the same to JFK|is the same for both/i;
+const CAR_OR_SUV = /\bcars? (?:and|or) SUVs?\b/i;
+check("every page that says Newark or Teterboro costs the same as JFK limits it to cars and SUVs, since every Sprinter costs more to Newark and Teterboro", () => {
+  const wrong = [];
+  let seen = 0;
+  for (const [file, p] of pages) {
+    for (const block of p.blocks) {
+      for (const t of block.split(/(?<=[.!])\s+/)) {
+        if (t.endsWith("?") || !SAME_AS_JFK.test(t)) continue;
+        seen++;
+        if (!CAR_OR_SUV.test(block)) wrong.push(`${file}: ${t}`);
+      }
+    }
+  }
+  assert.deepEqual(wrong, []);
+  assert.ok(seen >= 12, String(seen));
+});
+
+check("the Newark, Teterboro, Staten Island, Midtown, private jet, services, locations and Brooklyn pages give the car and SUV price rule in plain sentences, in the page and in json-ld", () => {
+  const SAID = [
+    ["locations/newark-airport.html", "Yes, for our cars and SUVs. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. A Sprinter costs a little more to Newark. Tolls, airport fees and any taxes are included. See all rates.", true],
+    ["locations/teterboro-airport.html", "Yes. A trip between Teterboro and any address in the five boroughs is one flat price by class, with tolls, airport fees and taxes included. It's the same price as Newark. In a car or SUV, it's also the same as JFK. See all rates.", true],
+    ["locations/staten-island.html", "Yes, from almost the whole island. Newark Liberty is over the Goethals Bridge and down the Turnpike. JFK means crossing the Verrazzano-Narrows Bridge and most of Brooklyn. In a car or SUV, the flat rate is the same for both, and LaGuardia costs less. Choose the airport that suits your flight. LaGuardia uses the same Verrazzano crossing as JFK.", true],
+    ["locations/midtown-manhattan.html", "Yes. Teterboro has one total by class from any Midtown address, the same as Newark. In a car or SUV, it's also the same as JFK. It is about 12 miles away through the Lincoln Tunnel.", true],
+    ["locations/staten-island.html", "Airport prices stay the same in any traffic. In a car or SUV, JFK, Newark and Teterboro cost the same, and LaGuardia costs less. Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.", false],
+    ["private-jet-car-service-nyc.html", "Teterboro has a flat rate. A ride between any of its FBOs and an address in the five boroughs costs the same as Newark for the class you choose. In a car or SUV, it's also the same as JFK. See the Teterboro rates. For Westchester, Morristown, Republic, MacArthur and Stewart, we'll send you a price.", false],
+    ["services.html", "In a car or SUV, Teterboro has the same flat rate as JFK from any city address. For the other airfields, we'll send you a price. Our private jet car service page lists the FBOs at each one.", false],
+    ["locations.html", "JFK is in Jamaica, Queens. LaGuardia is in East Elmhurst, the closest commercial airport to Manhattan. Newark Liberty and Teterboro are in New Jersey. In a car or SUV, they have the same flat rate as JFK from any city address.", false],
+    ["black-car-service-brooklyn.html", "Newark and Teterboro mean crossing Manhattan or Staten Island first. In a car or SUV, they cost the same as JFK, even though they're farther.", false],
+    ["blog/teterboro-airport-fbos-manhattan-november-19.html", "The price doesn't change with traffic. One total by class from any New York City address, with tolls, airport fees and taxes included. The Teterboro rates are the same as Newark for each class, and the same as JFK in a car or SUV.", false],
+  ];
+  for (const [file, text, ld] of SAID) {
+    const p = pages.get(file);
+    assert.ok([...p.document.querySelectorAll("main p")].some((n) => squash(n.textContent) === text), `${file}: ${text}`);
+    if (ld) assert.ok(p.strings.includes(text), `${file} json-ld: ${text}`);
+  }
 });
 
 const wordCount = (s) => squash(s).split(" ").filter(Boolean).length;

@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, HOURLY_START } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, eventRate } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -65,7 +65,7 @@ function classList(trip, tripReason) {
 function vehicleList(trip) {
   const hourly = trip.trip_type === "hour";
   return Object.keys(VEHICLES)
-    .filter((key) => (VEHICLES[key].cls === "sprinter" && (hourly || !VEHICLES[key].hourlyOnly)) || (hourly && VEHICLES[key].cls === "suv"))
+    .filter((key) => VEHICLES[key].cls === "sprinter" || (hourly && VEHICLES[key].cls === "suv"))
     .map((key) => {
       const priced = { ...trip, class: VEHICLES[key].cls, vehicle: key };
       return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: classReason(priced, priced.class) ? null : priceTrip(priced).total };
@@ -98,6 +98,8 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
   };
 }
 
+const tollsDiffer = (trip, price) => trip.trip_type !== "hour" && trip.class !== "suv" && price.tolls !== priceTrip({ ...trip, class: "suv", vehicle: "" }).tolls;
+
 function optionsBody(trip, ref, check, now, size, draw) {
   const hourly = trip.trip_type === "hour";
   const price = check.reason ? null : priceTrip(trip);
@@ -116,8 +118,8 @@ function optionsBody(trip, ref, check, now, size, draw) {
     small_dog_cents: SMALL_DOG_CENTS,
     large_dog_cents: LARGE_DOG_CENTS,
     stop_cents: STOP_FEE_CENTS,
-    selected: { class: trip.class, vehicle: hourly || trip.class === "sprinter" ? trip.vehicle : "", event: eventRate(trip), tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
-    price: price ? { lines: shownLines(price.lines), total_cents: price.total, currency: "usd", notes: price.notes } : null,
+    selected: { class: trip.class, vehicle: hourly || trip.class === "sprinter" ? trip.vehicle : "", tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
+    price: price ? { lines: shownLines(price.lines), total_cents: price.total, currency: "usd", notes: price.notes, ...(tollsDiffer(trip, price) && { tolls_differ: true }) } : null,
     reason: check.reason,
     pay: Boolean(price) && !check.hold,
     hold: check.hold,

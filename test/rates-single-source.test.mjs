@@ -3,7 +3,7 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { DISTANCE_RATES, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS, CLASSES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS } from "../api/_rates.mjs";
+import { DISTANCE_RATES, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, AIRPORT_TOTALS, CLASSES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, VEHICLES } from "../api/_rates.mjs";
 import { POLICY } from "../api/_copy.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
@@ -151,7 +151,7 @@ for (const [file, p] of pages) {
 const rates = pages.get(RATES);
 if (rates) {
   check(`${RATES}: carries the published airport and hourly rates`, () => {
-    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$500", "$450", "$155.00", "$13.76", "$3.49", "$12.75", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
+    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$450", "$475", "$155.00", "$13.76", "$3.49", "$12.75", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
     assert.match(rates.title, /\$145(?!\d)/);
   });
   check(`${RATES}: the stop fee is STOP_FEE_CENTS / 100 from api/_rates.mjs, in the distance section and the Extra stops fact, and no other price per stop appears`, () => {
@@ -211,18 +211,24 @@ if (rates) {
     for (const block of rates.ld) walk(block, (k, v) => k === "@type" && types.push(...[].concat(v)));
     assert.ok(types.includes("OfferCatalog"), "no OfferCatalog");
   });
-  check(`${RATES}: the Luxury Sprinter airport totals are AIRPORT_TOTALS.sprinter from api/_rates.mjs, $500 to JFK, Newark or Teterboro and $450 to LaGuardia, in the table, the offers and both rate questions, and the retired $400 and $350 appear nowhere`, () => {
-    const far = AIRPORT_TOTALS.sprinter.jfk / 100;
-    const lga = AIRPORT_TOTALS.sprinter.lga / 100;
-    assert.deepEqual([far, lga, AIRPORT_TOTALS.sprinter.ewr / 100, AIRPORT_TOTALS.sprinter.teb / 100], [500, 450, 500, 500]);
-    assert.deepEqual([...rates.document.querySelectorAll("#airport-sprinter td")].map((td) => td.firstChild.textContent), [`$${far}`, `$${lga}`]);
-    const offers = rates.ld.flatMap((b) => b["@graph"] || [b]).find((n) => n["@type"] === "OfferCatalog").itemListElement.filter((o) => o.name.startsWith("Airport transfer") && o.name.endsWith("Luxury Sprinter"));
-    assert.deepEqual(offers.map((o) => [o.price, o.priceSpecification.price]), [[String(far), String(far)], [String(lga), String(lga)]]);
+  check(`${RATES}: the Luxury Sprinter airport totals come from api/_rates.mjs, from $450 in the class row and both rate questions, each Sprinter's own totals in the Sprinter table and its offer, and the retired $500 Sprinter total, $400 and $350 appear nowhere`, () => {
+    const keys = Object.keys(VEHICLES).filter((k) => VEHICLES[k].cls === "sprinter");
+    const far = Math.min(...keys.map((k) => AIRPORT_TOTALS[k].jfk)) / 100;
+    const ewr = Math.min(...keys.flatMap((k) => ["ewr", "teb"].map((a) => AIRPORT_TOTALS[k][a]))) / 100;
+    const lga = Math.min(...keys.filter((k) => AIRPORT_TOTALS[k].lga).map((k) => AIRPORT_TOTALS[k].lga)) / 100;
+    assert.deepEqual([far, ewr, lga], [450, 475, 450]);
+    assert.deepEqual([...rates.document.querySelectorAll("#airport-sprinter td")].map((td) => td.firstChild.textContent), [far === ewr ? `$${far}` : `$${far} to $${ewr}`, `$${lga}`]);
+    for (const key of keys) {
+      const cell = rates.document.querySelector(`#${key.replace("sprinter-", "sprinter-airport-")} td`).textContent.replace(/Book.*/, "");
+      assert.deepEqual([...cell.matchAll(/(JFK|Newark|Teterboro|LaGuardia)(?: \$(\d+)|, ask for a price)/g)].map((m) => m[2] || ""), ["jfk", "ewr", "teb", "lga"].map((a) => (AIRPORT_TOTALS[key][a] ? String(AIRPORT_TOTALS[key][a] / 100) : "")), key);
+    }
+    const offers = rates.ld.flatMap((b) => b["@graph"] || [b]).find((n) => n["@type"] === "OfferCatalog").itemListElement.filter((o) => o.name.startsWith("Airport transfer") && o.name.endsWith("Sprinter"));
+    assert.deepEqual(offers.map((o) => [o.name, o.priceSpecification.minPrice, o.priceSpecification.maxPrice]), keys.map((k) => [`Airport transfer, ${VEHICLES[k].name}`, String(Math.min(...Object.values(AIRPORT_TOTALS[k])) / 100), String(Math.max(...Object.values(AIRPORT_TOTALS[k])) / 100)]));
     const answers = [...rates.document.querySelectorAll("#q-jfk .acc__body, #q-laguardia .acc__body")].map((n) => n.textContent.replace(/\s+/g, " "));
-    assert.ok(answers[0].includes(`Luxury Sprinter $${far}.`), answers[0]);
-    assert.ok(answers[1].includes(`Luxury Sprinter $${lga}.`), answers[1]);
+    assert.ok(answers[0].includes(`Luxury Sprinter from $${far}.`), answers[0]);
+    assert.ok(answers[1].includes(`Luxury Sprinter from $${lga}.`), answers[1]);
     const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
-    assert.doesNotMatch(all, /\$\s*(?:400|350)(?![\d.])|"price":"(?:400|350)"/);
+    assert.doesNotMatch(all, /\$\s*(?:500|400|350)(?![\d.])|"price":"(?:500|400|350)"/);
   });
   check(`${RATES}: the retired $85 to $175 range appears nowhere`, () => {
     const all = [rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
