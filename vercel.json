@@ -11,16 +11,12 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/ride-reminders",
+      "path": "/api/ride-reminders-2",
       "schedule": "0 22 * * *"
     },
     {
-      "path": "/api/ride-reminders",
+      "path": "/api/ride-reminders-3",
       "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/owner-update",
-      "schedule": "0 1 * * *"
     }
   ],
   "redirects": [
