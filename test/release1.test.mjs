@@ -154,7 +154,7 @@ check("parents tell us the seat they'd like, as the owner's sheet asks: the car 
   const d = new JSDOM(readFileSync(join(ROOT, "car-service-with-car-seat-nyc.html"), "utf8")).window.document;
   const items = [...d.querySelectorAll("#seats ~ ul li")].map((li) => li.textContent.replace(/\s+/g, " ").trim());
   assert.equal(items[0], "Nuna RAVA. A convertible seat. Rear-facing from 5 to 50 lb, and forward-facing from 30 to 65 lb from age 2. Up to 49 inches tall.");
-  assert.equal(d.querySelector("#seats ~ ul").nextElementSibling.textContent, "Infant and toddler seats are the Nuna RAVA or the Safety 1st Grow and Go. The booster seat is the backless booster. Tell us which seat you'd like. We check it suits each child's age, weight and height.");
+  assert.equal(d.querySelector("#seats ~ ul").nextElementSibling.textContent, "When you book, choose an infant seat for a baby, a child seat for a young child or a booster seat for an older child. The infant seat faces the rear and the child seat faces forward or rear. Both are the Nuna RAVA or the Safety 1st Grow and Go. The booster seat is the backless booster. Tell us which seat you'd like. We check it suits each child's age, weight and height.");
   assert.ok(!main("car-service-with-car-seat-nyc.html").includes("We choose the right seat"));
   assert.equal(SEATS.mail, "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.");
   assert.equal(SEATS.hint, "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.");
@@ -162,7 +162,7 @@ check("parents tell us the seat they'd like, as the owner's sheet asks: the car 
   assert.deepEqual(files.filter((f) => /\bNova\b/.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /bring (your|their) own (car )?seat/i.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /ride in their own seats/i.test(main(f))), []);
-  assert.match(main("blog/nyc-to-philadelphia-kids-car-or-amtrak-november-19.html"), /We bring a car seat for each child\. Choose infant, toddler or booster seats when you book\./);
+  assert.match(main("blog/nyc-to-philadelphia-kids-car-or-amtrak-november-19.html"), /We bring a car seat for each child\. Choose child, infant or booster seats when you book\./);
 });
 
 check("the toll close line says parking is charged after the ride on every trip, and the trust section promises only what the owner confirmed", () => {

@@ -112,7 +112,7 @@ const RATES_FACTS = {
   "Tolls and airport fees": "Included on airport rides to or from New York City. On distance trips, tolls are added at booking. On hourly trips, they are charged to your card after the ride",
   Taxes: "Added at booking on hourly and distance trips. Airport prices already include them",
   "Extra stops": "$20 per stop, charged at booking, or more if the stop takes the car out of the way. A stop added during an airport ride is charged after the ride",
-  "Child seats": "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip",
+  "Child seats": "Child, infant and booster seats, $15 per seat, charged once at booking, even on a round trip",
   Pets: "$20 per small dog and $45 per large dog, charged once at booking, even on a round trip. Service animals ride free",
 };
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
@@ -333,7 +333,7 @@ check("services.html: the Rates list names the three bookable extras, with pets 
   const items = [...pages.get("services.html").document.querySelectorAll("#rates ul.assure li")].map((li) => [li.querySelector("use").getAttribute("href"), squash(li.querySelector("b").textContent), squash(li.querySelector("span").textContent)]);
   assert.deepEqual(items, [
     ["#i-plane-arrive", "Meet and greet", "Your chauffeur waits inside the terminal with a name sign, for an extra charge, plus any airport parking"],
-    ["#i-shield", "Child seats", "Infant, toddler and booster seats, $15 per seat, charged at booking."],
+    ["#i-shield", "Child seats", "Child, infant and booster seats, $15 per seat, charged at booking."],
     ["#i-check", "Pets", "Small and large dogs, for an extra charge per booking. Service animals ride free"],
   ]);
   assert.equal(squash(pages.get("schedule.html").document.getElementById("s-notes-hint").textContent), "The seat you'd like and each child's age, weight and height for child seats, pets, extra stops, a car waiting between meetings, or anything your chauffeur should know.");
@@ -480,7 +480,7 @@ check("rates.html: the OfferCatalog has an airport offer per car class for JFK, 
   assert.deepEqual(catalog.itemListElement.slice(0, 13), airport);
   const hourly = catalog.itemListElement.slice(13);
   assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Sedan & Electric", "Hourly and as directed, Luxury Sprinter", "Meet and greet", "Child seat", "Small dog", "Large dog"]);
-  assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Infant, toddler or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
+  assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Child, infant or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
   assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);
@@ -654,7 +654,7 @@ const CAPS = [
   ["rates.html: add-ons footnote", rates.document.querySelector("#add-ons dl.facts").nextElementSibling.textContent, 15],
   ...[...rates.document.querySelectorAll("#add-ons dl.facts dd")].map((dd) => [`rates.html: add-on ${squash(dd.previousElementSibling.textContent)}`, dd.textContent, 30]),
   ...[...rates.document.querySelectorAll("#policies p")].map((p, i) => [`rates.html: #policies paragraph ${i + 1}`, p.textContent, 45]),
-  ["about.html: What the price covers, seats and billing", startsWith("about.html", "Infant, toddler and booster seats are"), 60],
+  ["about.html: What the price covers, seats and billing", startsWith("about.html", "Child, infant and booster seats are"), 60],
   ["blog/chauffeur-service-nyc-booking-guide-april-30.html: our answers paragraph", startsWith("blog/chauffeur-service-nyc-booking-guide-april-30.html", "Airport rides to or from New York City have one flat price by class"), 85],
   ["blog/corporate-black-car-nyc-april-3.html: published rates paragraph", startsWith("blog/corporate-black-car-nyc-april-3.html", "Check our written confirmation"), 70],
   ...Object.entries(COPY.REASONS).map(([k, r]) => [`REASONS.${k}`, r.text, 30]),
@@ -669,6 +669,29 @@ const CAPS = [
   ["SEATS.mail", COPY.SEATS.mail, 30],
   ...Object.entries(COPY.POLICY.later).map(([k, v]) => [`POLICY.later.${k}`, v, 20]),
 ];
+check("the owner's seat names: no page, meta, json-ld or site copy offers a toddler seat, the seats read child, infant and booster in that order, and the car seat page says which seat is which", () => {
+  const toddler = /\btoddler\b/i;
+  const hits = [...pages].flatMap(([file, p]) => [p.text, p.title, ...p.copy.map(([, v]) => v), ...p.strings].filter((v) => toddler.test(v)).map((v) => `${file}: ${v.slice(Math.max(0, v.search(toddler) - 40), v.search(toddler) + 40)}`));
+  assert.deepEqual(hits, []);
+  const values = (v) => (v && typeof v === "object" ? Object.values(v).flatMap(values) : [String(v)]);
+  assert.deepEqual(values([COPY.LABELS, COPY.MAIL, COPY.SEATS, COPY.ERRORS, COPY.CHECKOUT, COPY.MESSAGE]).filter((v) => toddler.test(v)), [], "api/_copy.mjs names a toddler seat");
+  assert.deepEqual(Object.values(COPY.LABELS.seatTypes), ["Child seats", "Infant seats", "Booster seats"]);
+  const order = [...pages].flatMap(([file, p]) => p.blocks.filter((b) => /\b(infant|child), (infant|child)(,| and| or) booster seats?\b/i.test(b) && !/\bchild, infant (and|or) booster seats?\b/i.test(b)).map((b) => `${file}: ${b.slice(0, 120)}`));
+  assert.deepEqual(order, []);
+  const seatPage = pages.get("car-service-with-car-seat-nyc.html").blocks;
+  assert.ok(seatPage.includes("When you book, choose an infant seat for a baby, a child seat for a young child or a booster seat for an older child. The infant seat faces the rear and the child seat faces forward or rear. Both are the Nuna RAVA or the Safety 1st Grow and Go. The booster seat is the backless booster. Tell us which seat you'd like. We check it suits each child's age, weight and height."));
+});
+
+check("the owner's bag sizes: the booking forms ask Large suitcase, Medium suitcase and Small suitcase or hand carry in that order, and the bags error and the privacy policy name the medium size", () => {
+  for (const [file, p] of pages) {
+    const labels = [...p.document.querySelectorAll("#bk-bags label")].map((l) => squash(l.textContent));
+    if (labels.length) assert.deepEqual(labels, ["Large suitcase", "Medium suitcase", "Small suitcase or hand carry"], file);
+  }
+  assert.equal([...pages.values()].filter((p) => p.document.getElementById("bk-bags")).length, 6);
+  assert.equal(ERRORS.bags.text, "Choose up to 14 suitcases of each size. For more bags, tell us in the notes.");
+  assert.ok(pages.get("privacy-policy.html").text.includes("the number of passengers and large, medium and small suitcases"));
+});
+
 check("the longest rewritten customer blocks stay under their word caps, like the 90 word cap on the rates distance prose", () => {
   for (const [name, text] of CAPS) assert.ok(wordCount(text) > 0, `${name} is empty`);
   assert.deepEqual(CAPS.filter(([, text, cap]) => wordCount(text) > cap).map(([name, text, cap]) => `${name}: ${wordCount(text)} words, cap ${cap}`), []);

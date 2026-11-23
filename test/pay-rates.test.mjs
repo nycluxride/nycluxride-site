@@ -293,10 +293,10 @@ test("meet and greet equals MEET_AND_GREET", () => {
 test("child seats equal CHILD_SEAT_CENTS per seat, charged once per booking and also once on a round trip, and the add-on links the car seat page", () => {
   assert.equal(CHILD_SEAT_CENTS, 1500);
   assert.deepEqual(cents(facts["Child seats"] || ""), [CHILD_SEAT_CENTS]);
-  assert.equal(facts["Child seats"], `Infant, toddler and booster seats, $${CHILD_SEAT_CENTS / 100} per seat, charged once at booking, even on a round trip`);
+  assert.equal(facts["Child seats"], `Child, infant and booster seats, $${CHILD_SEAT_CENTS / 100} per seat, charged once at booking, even on a round trip`);
   assert.doesNotMatch(facts["Child seats"], /\bfree\b|included/i);
   const dd = [...page.querySelectorAll("#add-ons dl.facts dt")].find((dt) => squash(dt) === "Child seats").nextElementSibling;
-  assert.deepEqual([...dd.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["/car-service-with-car-seat-nyc", "Infant, toddler and booster seats"]]);
+  assert.deepEqual([...dd.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["/car-service-with-car-seat-nyc", "Child, infant and booster seats"]]);
 });
 
 test("the gratuity line says it is optional and lists TIP_PERCENTS after none", () => {

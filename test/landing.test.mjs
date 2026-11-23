@@ -28,8 +28,8 @@ const WAITS = [
   ["15 min", "Other pickups", "From the pickup time"],
 ];
 const SEATS = [
+  ["i-seat-toddler", "Child seat"],
   ["i-seat-infant", "Infant seat"],
-  ["i-seat-toddler", "Toddler seat"],
   ["i-seat-booster", "Booster seat"],
 ];
 const DOGS = [
@@ -118,7 +118,7 @@ check("index.html: the band's minutes are the ones rates.html and the FAQ state"
   assert.deepEqual(WAITS.map(([n]) => nums(n)[0]), [45, 60, 15]);
 });
 
-check("index.html: the child seats card sits in the hero right after the trust section under the booking card, Child seats available with available in gold italic, the client's line, the infant, toddler and booster seat with their icons, and one price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
+check("index.html: the child seats card sits in the hero right after the trust section under the booking card, Child seats available with available in gold italic, the client's line, the child, infant and booster seat in the owner's order with their icons, and one price per seat of api/_rates.mjs, with the rates add-on at that price and the FAQ line on choosing them when you book", () => {
   const seats = hero.querySelector(':scope > section.seats[aria-labelledby="seats-h"]');
   assert.ok(seats, "no child seats card in the hero");
   assert.equal(seats.previousElementSibling, hero.querySelector(":scope > section.trust"), "the card does not follow the trust section");
@@ -132,7 +132,7 @@ check("index.html: the child seats card sits in the hero right after the trust s
   assert.deepEqual(items.map((li) => [use(li), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
   assert.deepEqual([...seats.querySelectorAll(".seats__s")].map((p) => [p.parentElement === seats, p.innerHTML]), [[true, `<b>$${CHILD_SEAT_CENTS / 100}</b> per seat`]]);
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
-  assert.equal(fact("Child seats"), "Infant, toddler and booster seats, $15 per seat, charged once at booking, even on a round trip");
+  assert.equal(fact("Child seats"), "Child, infant and booster seats, $15 per seat, charged once at booking, even on a round trip");
   assert.doesNotMatch(seats.textContent, /free/i);
   assert.ok(answer("Do your cars have car seats?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });
@@ -238,7 +238,7 @@ check("index.html: the old What is included lines are not said again outside the
   const text = norm(main.textContent);
   const count = (s) => text.split(s).length - 1;
   assert.deepEqual(
-    ["What is included", "Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Infant, toddler and booster seats", "Free Wi-Fi in every class"].map(count),
+    ["What is included", "Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Child, infant and booster seats", "Free Wi-Fi in every class"].map(count),
     [0, 0, 0, 0, 0, 0],
   );
   assert.equal(count("Meet and greet inside the terminal with a name sign"), 1);

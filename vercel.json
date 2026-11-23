@@ -31,6 +31,16 @@
       "statusCode": 301
     },
     {
+      "source": "/fleet/sprinter-limo:size(|-\\d{3,4}).webp",
+      "destination": "/fleet/sprinter-limo-black-lot-450.webp",
+      "statusCode": 301
+    },
+    {
+      "source": "/fleet/sprinter-limo:size(|-\\d{3,4}).avif",
+      "destination": "/fleet/sprinter-limo-black-lot-450.avif",
+      "statusCode": 301
+    },
+    {
       "source": "/fleet/:name.jpg",
       "destination": "/fleet/:name.webp",
       "statusCode": 301

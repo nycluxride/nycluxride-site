@@ -1418,7 +1418,7 @@ for (const path of ["/", "/book", "/locations/laguardia-airport", "/locations/ma
     assert.ok(s2 !== "none" && w2 >= 2, `${s2} ${w2}`);
     await p.keyboard.press("Enter");
     assert.equal(await p.evaluate(() => document.activeElement.id), "bk-det-h");
-    const kids = ["infant", "toddler", "booster"].flatMap((t) => [`Fewer ${t} seats`, `More ${t} seats`]);
+    const kids = ["child", "infant", "booster"].flatMap((t) => [`Fewer ${t} seats`, `More ${t} seats`]);
     const want = ["bk-r-other", "bk-name", "bk-email", "bk-phone-cc", "bk-phone", "bk-reach-phone", "bk-notes-add", "bk-t-0", "bk-meet-no", ...kids, "bk-check-edit", "bk-submit", "q-mail", "q-wa"];
     const order = [];
     for (let i = 0; i < 46 && !order.includes("q-wa"); i++) {
@@ -9004,8 +9004,9 @@ for (const width of [1440, 390]) {
   const rowsNow = (p) => p.evaluate(() => [...document.querySelectorAll("#price-lines tr:not(.bk-hint)")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]));
   const plus = (list, cents) => list.map((c) => cash(Math.round(Number(c.replace(/[$,]/g, "")) * 100) + cents));
   const FEWER = '#bk-pax-f [aria-label="Fewer passengers"]';
-  const MORE = (type) => `#bk-kids [aria-label="More ${type} seats"]`;
-  const FEWER_SEAT = (type) => `#bk-kids [aria-label="Fewer ${type} seats"]`;
+  const NAMED = { toddler: "child", infant: "infant", booster: "booster" };
+  const MORE = (type) => `#bk-kids [aria-label="More ${NAMED[type]} seats"]`;
+  const FEWER_SEAT = (type) => `#bk-kids [aria-label="Fewer ${NAMED[type]} seats"]`;
   const seats = async (p, type, n) => {
     for (let i = 0; i < 13; i++) {
       const v = +(await p.inputValue(`#bk-k-${type}`));
@@ -9030,8 +9031,9 @@ for (const width of [1440, 390]) {
       await details(p);
       await priced(p);
       assert.deepEqual([await p.textContent("#bk-kids legend"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-kids-n"), await p.isVisible("#e-child_seats"), await p.isVisible("#bk-kids-h")], [`Child seats ${cash(CHILD_SEAT_CENTS)} each`, true, false, false, true]);
-      assert.deepEqual(await p.$$eval("#bk-kids select", (s) => s.map((x) => [x.name, x.value, getComputedStyle(x).display])), [["infant_seats", "0", "none"], ["toddler_seats", "0", "none"], ["booster_seats", "0", "none"]]);
-      assert.deepEqual(await steppers(p), [["bk-k-infant-l", "Infant", "0", "Fewer infant seats", "true", "More infant seats", "false"], ["bk-k-toddler-l", "Toddler", "0", "Fewer toddler seats", "true", "More toddler seats", "false"], ["bk-k-booster-l", "Booster", "0", "Fewer booster seats", "true", "More booster seats", "false"]]);
+      assert.deepEqual(await p.$$eval("#bk-kids select", (s) => s.map((x) => [x.name, x.value, getComputedStyle(x).display])), [["toddler_seats", "0", "none"], ["infant_seats", "0", "none"], ["booster_seats", "0", "none"]]);
+      assert.deepEqual(await steppers(p), [["bk-k-toddler-l", "Child seat, Forward or rear-facing", "0", "Fewer child seats", "true", "More child seats", "false"], ["bk-k-infant-l", "Infant seat, Rear-facing", "0", "Fewer infant seats", "true", "More infant seats", "false"], ["bk-k-booster-l", "Booster seat", "0", "Fewer booster seats", "true", "More booster seats", "false"]]);
+      assert.deepEqual([await p.getByRole("group", { name: /^Child seat\s*,\s+Forward or rear-facing$/ }).count(), await p.getByRole("group", { name: /^Infant seat\s*,\s+Rear-facing$/ }).count(), await p.getByRole("group", { name: "Booster seat", exact: true }).count()], [1, 1, 1], "a screen reader hears a pause between each seat name and which way it faces");
       assert.deepEqual([await p.getAttribute("#bk-pax-f .bk-stepper", "aria-labelledby"), await p.getAttribute("#bk-pax-f .bk-stepper", "aria-describedby"), await p.$$eval("#bk-kids .bk-stepper", (l) => l.map((x) => [x.getAttribute("role"), x.getAttribute("aria-describedby")]))], ["bk-pax-l bk-pax-h", null, [["group", "bk-kids-h"], ["group", "bk-kids-h"], ["group", "bk-kids-h"]]], "each seat count group is named by its label and described by the seat hint, as its select was");
       const tops = await p.evaluate(() => ["bk-tip", "bk-meet-f", "bk-kids", "bk-check", "bk-tot", "bk-submit"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
       assert.ok(tops.every((y, i) => !i || y > tops[i - 1]), `step 3 order ${tops}`);
@@ -9043,7 +9045,7 @@ for (const width of [1440, 390]) {
       await p.click(MORE("infant"));
       assert.deepEqual((await rowsNow(p)).at(-1), [SEAT(1), "..."], "the pending seat line takes its row at once");
       await priced(p);
-      assert.deepEqual(await p.evaluate(() => [...new Set(window.__said)]), [0], "only the count that changed is written, so the other live regions stay quiet");
+      assert.deepEqual(await p.evaluate(() => [...new Set(window.__said)]), [1], "only the count that changed is written, so the other live regions stay quiet");
       assert.deepEqual(await panel(p), { lines: [...AIRPORT_LINES, [SEAT(1), cash(CHILD_SEAT_CENTS)]], total: cash(TOTAL + CHILD_SEAT_CENTS), notes: NOTES.included + POLICY.later.airport });
       await p.unroute("**/api/book");
       await seats(p, "booster", 2);
@@ -9053,10 +9055,10 @@ for (const width of [1440, 390]) {
       assert.equal(await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent), cash(TOTAL + 3 * CHILD_SEAT_CENTS));
       const wa = await waText(p, "#q-wa"), mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1] || "");
       for (const t of [wa, mail]) assert.ok(t.includes(`\nPassengers: 3\nVehicle: Business SUV\nInfant seats: 1\nBooster seats: 2\nTotal shown: ${cash(TOTAL + 3 * CHILD_SEAT_CENTS)}\nName: ${ME.name}\n`), t);
-      assert.deepEqual((await steppers(p)).map((x) => [x[2], x[4], x[6]]), [["1", "false", "true"], ["0", "true", "true"], ["2", "false", "true"]], "every More is off at one seat per passenger");
+      assert.deepEqual((await steppers(p)).map((x) => [x[2], x[4], x[6]]), [["0", "true", "true"], ["1", "false", "true"], ["2", "false", "true"]], "every More is off at one seat per passenger");
       await p.click(MORE("toddler"), { force: true });
       await p.waitForSelector("#e-child_seats", { state: "visible" });
-      assert.deepEqual([await p.textContent("#e-child_seats"), await p.getAttribute("#bk-kids", "aria-invalid"), await p.getAttribute("#bk-kids", "aria-describedby"), await p.evaluate(() => document.activeElement.getAttribute("aria-label")), await p.inputValue("#bk-k-toddler"), await p.textContent("#bk-status")], [ERRORS.child_seats.text, "true", "e-child_seats", "More toddler seats", "0", ERRORS.child_seats.text]);
+      assert.deepEqual([await p.textContent("#e-child_seats"), await p.getAttribute("#bk-kids", "aria-invalid"), await p.getAttribute("#bk-kids", "aria-describedby"), await p.evaluate(() => document.activeElement.getAttribute("aria-label")), await p.inputValue("#bk-k-toddler"), await p.textContent("#bk-status")], [ERRORS.child_seats.text, "true", "e-child_seats", "More child seats", "0", ERRORS.child_seats.text]);
       await settle(p, 700);
       await p.click(FEWER_SEAT("booster"));
       assert.deepEqual([await p.isVisible("#e-child_seats"), await p.getAttribute("#bk-kids", "aria-invalid"), await p.inputValue("#bk-k-booster")], [false, null, "1"], "the next press clears the seat message in the same task");
@@ -9087,7 +9089,7 @@ for (const width of [1440, 390]) {
       assert.deepEqual([await p.getAttribute(FEWER, "aria-disabled"), await p.inputValue("#bk-pax"), await p.textContent("#bk-pax-f output")], ["true", "3", "3 passengers"], "children count as passengers, so the count cannot drop below the seats");
       await next(p);
       await priced(p);
-      assert.deepEqual([await p.inputValue("#bk-k-infant"), await p.inputValue("#bk-k-booster"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => x[2])], ["1", "2", [SEAT(3), cash(3 * CHILD_SEAT_CENTS)], ["1", "0", "2"]]);
+      assert.deepEqual([await p.inputValue("#bk-k-infant"), await p.inputValue("#bk-k-booster"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => x[2])], ["1", "2", [SEAT(3), cash(3 * CHILD_SEAT_CENTS)], ["0", "1", "2"]]);
       await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
       await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
       await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
@@ -9128,7 +9130,7 @@ for (const width of [1440, 390]) {
       await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
       await priced(p);
       await settle(p, 400);
-      assert.deepEqual([await p.inputValue("#bk-k-toddler"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => [x[2], x[6]])], ["2", [SEAT(2), cash(2 * CHILD_SEAT_CENTS)], [["0", "true"], ["2", "true"], ["0", "true"]]], "a restored step 3 shows the counts on the steppers, with More off at one seat per passenger");
+      assert.deepEqual([await p.inputValue("#bk-k-toddler"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => [x[2], x[6]])], ["2", [SEAT(2), cash(2 * CHILD_SEAT_CENTS)], [["2", "true"], ["0", "true"], ["0", "true"]]], "a restored step 3 shows the counts on the steppers, with More off at one seat per passenger");
       const q = await open(ctx, P, "/book");
       await hourlyTrip(q);
       await pax(q, 5);
@@ -9141,7 +9143,7 @@ for (const width of [1440, 390]) {
       await settle(q, 400);
       const fare = VEHICLES["suv-suburban"].hourly * 3;
       assert.deepEqual(await panel(q), { lines: [["Fare, 3 hours", cash(fare)], [L_FEES, cash(percentCents(fare, NYC_TAX_PERCENT) + percentCents(fare, BCF_PERCENT))], [SEAT(5), cash(5 * CHILD_SEAT_CENTS)]], total: cash(hourly("suv-suburban") + 5 * CHILD_SEAT_CENTS), notes: POLICY.later.hourly });
-      assert.ok((await waText(q, "#q-wa")).includes("\nInfant seats: 2\nToddler seats: 2\nBooster seats: 1\n"));
+      assert.ok((await waText(q, "#q-wa")).includes("\nChild seats: 2\nInfant seats: 2\nBooster seats: 1\n"));
       assert.deepEqual([p.errors, q.errors], [[], []]);
       await p.close();
       await q.close();
@@ -9150,7 +9152,7 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(P, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
-    await check("B195 without javascript the booking form asks the infant, toddler and booster seat counts with the hint and a link to the price, more seats than passengers lands on the seat message, and a booking with seats pays the seat line once with the total", async () => {
+    await check("B195 without javascript the booking form asks the child, infant and booster seat counts with the hint and a link to the price, more seats than passengers lands on the seat message, and a booking with seats pays the seat line once with the total", async () => {
       const p = await open(ctx, P, "/book");
       const fill = async (pax, seats) => {
         await p.fill("#bk-from", "John F. Kennedy (JFK)");
@@ -9192,7 +9194,7 @@ for (const width of [1440, 390]) {
       },
     };
     for (const [what, pick] of [["an hourly booking from outside New York City", "outside-hourly"], ["a trip outside the United States", "outside-us"]]) {
-      await check(`B196 at ${width} ${what} that our dispatch team prices asks the infant, toddler and booster seat counts with its request on step 2, between the request text and the notes, and both the WhatsApp and the email text list each chosen type, with CLS 0`, async () => {
+      await check(`B196 at ${width} ${what} that our dispatch team prices asks the child, infant and booster seat counts with its request on step 2, between the request text and the notes, and both the WhatsApp and the email text list each chosen type, with CLS 0`, async () => {
         const p = await open(ctx, G, "/book");
         await ends[pick](p);
         await pickDate(p, "#bk-date-btn", DATE);
@@ -9216,7 +9218,7 @@ for (const width of [1440, 390]) {
         const lines = "\nInfant seats: 1\nBooster seats: 2\n";
         const wa = await waText(p, "#q-wa"), mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1] || "");
         for (const t of [wa, mail]) assert.ok(t.includes(lines) || t.endsWith(lines.slice(0, -1)), t);
-        assert.ok(!wa.includes("Toddler seats"), wa);
+        assert.ok(!wa.includes("Child seats:"), wa);
         const [value, shifts] = await cls(p);
         assert.equal(value, 0, shifts.join(" | "));
         assert.deepEqual([p.errors, p.failed], [[], []]);
@@ -9242,7 +9244,7 @@ for (const width of [1440, 390]) {
       const total = cash(TOTAL + 2 * CHILD_SEAT_CENTS);
       assert.equal(await p.$eval("#price-total", (x) => (x.firstChild || {}).textContent || ""), total);
       const wa = await waText(p, "#q-wa"), mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1] || "");
-      for (const t of [wa, mail]) assert.ok(t.endsWith(`\nPassengers: 3\nVehicle: Business SUV\nToddler seats: 1\nBooster seats: 1\nTotal shown: ${total}`), t);
+      for (const t of [wa, mail]) assert.ok(t.endsWith(`\nPassengers: 3\nVehicle: Business SUV\nChild seats: 1\nBooster seats: 1\nTotal shown: ${total}`), t);
       assert.deepEqual(p.errors, []);
       await p.close();
     });
@@ -9430,14 +9432,14 @@ for (const width of [1440, 390]) {
       await next(q);
       await details(q);
       await priced(q);
-      await q.click('#bk-kids [aria-label="More toddler seats"]');
+      await q.click('#bk-kids [aria-label="More child seats"]');
       await priced(q);
       await dogs(q, "large", 2);
       await priced(q);
       await settle(q, 400);
       const fare = VEHICLES["suv-suburban"].hourly * 3;
       assert.deepEqual(await panel(q), { lines: [["Fare, 3 hours", cash(fare)], [L_FEES, cash(percentCents(fare, NYC_TAX_PERCENT) + percentCents(fare, BCF_PERCENT))], [`Child seats (1 x ${cash(CHILD_SEAT_CENTS)})`, cash(CHILD_SEAT_CENTS)], [DOG("large", 2), cash(2 * LARGE_DOG_CENTS)]], total: cash(hourly("suv-suburban") + CHILD_SEAT_CENTS + 2 * LARGE_DOG_CENTS), notes: POLICY.later.hourly });
-      assert.ok((await waText(q, "#q-wa")).includes("\nToddler seats: 1\nLarge dogs: 2\n"));
+      assert.ok((await waText(q, "#q-wa")).includes("\nChild seats: 1\nLarge dogs: 2\n"));
       assert.deepEqual([p.errors, q.errors], [[], []]);
       await p.close();
       await q.close();

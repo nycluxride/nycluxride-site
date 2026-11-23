@@ -307,18 +307,35 @@ await test("the text names the pets right after the child seats, as the owner em
   for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS]) assert.ok(!/Pets|dog/.test(bookingText(paid(fix))));
 });
 
-await test("the text names the bags right after the car, before the child seats and pets, as the owner email shows them with the passengers, has no bags line without bags or for an old booking, and stays at most 320 characters with long addresses, a long name and every count", () => {
+await test("the text names the large, medium and small suitcases right after the car, before the child seats and pets, as the owner email shows them with the passengers, has no bags line without bags or for an old booking, and stays at most 320 characters with long addresses, a long name and every count", () => {
   setEnv();
-  const bags = paid(DOGS, { metadata: { passengers: `${DOGS.metadata.passengers}, 14 large bags, 14 small bags` } });
-  assert.equal(bookingText(bags), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Bags: 14 large bags and 14 small bags", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $388.25", "Reference 83558982"].join("\n"));
-  assert.ok(ownerLetter(bags).text.includes("\nPassengers: 3\nBags: 14 large bags and 14 small bags\n"));
-  assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 1 small bag" } })).split("\n")[5], "Bags: 1 small bag");
-  for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS, DOGS]) assert.ok(!/Bags|bag/.test(bookingText(paid(fix))));
+  const bags = paid(DOGS, { metadata: { passengers: `${DOGS.metadata.passengers}, 14 large bags, 14 medium bags, 14 small bags` } });
+  assert.equal(bookingText(bags), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Bags: 14 large, 14 medium, 14 small", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $388.25", "Reference 83558982"].join("\n"));
+  assert.ok(ownerLetter(bags).text.includes("\nPassengers: 3\nBags: 14 large suitcases, 14 medium suitcases and 14 small suitcases or hand carry\n"));
+  assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 1 small bag" } })).split("\n")[5], "Bags: 1 small");
+  assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 3 large bags, 1 small bag" } })).split("\n")[5], "Bags: 3 large, 1 small");
+  for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS, DOGS]) assert.ok(!/Bags|bag|suitcase/.test(bookingText(paid(fix))));
   const street = (n) => `${n} Avenue of the Americas Between Forty Second and Forty Third Streets, New York, NY 10036`;
-  const long = bookingText(paid(DOGS, { metadata: { passengers: "3, 14 large bags, 14 small bags", from_text: street(1), from_zone: "manhattan", from_place: "", to_text: street(2), to_zone: "manhattan", return_date: "2026-11-15", return_time: "18:00", name: "Alexandria Catherine Montgomery-Fitzgerald Wellington-Smythe of Kent and Sussex" } }));
+  const long = bookingText(paid(DOGS, { metadata: { passengers: "3, 14 large bags, 14 medium bags, 14 small bags", from_text: street(1), from_zone: "manhattan", from_place: "", to_text: street(2), to_zone: "manhattan", return_date: "2026-11-15", return_time: "18:00", name: "Alexandria Catherine Montgomery-Fitzgerald Wellington-Smythe of Kent and Sussex" } }));
   assert.ok(long.length <= 320, `${long.length} characters`);
-  assert.ok(long.includes("\nBags: 14 large bags and 14 small bags\n") && long.endsWith("\nReference 83558982"), long);
+  assert.ok(long.includes("\nBags: 14 large, 14 medium, 14 small\n") && long.endsWith("\nReference 83558982"), long);
   assert.deepEqual(nonGsm(long), []);
+});
+
+await test("a family airport booking with three bag sizes and two car seats stays within two text segments and keeps the full route and the paid line", async () => {
+  setEnv({ GOOGLE_MOCK: "true" });
+  const westin = "The Westin New York Grand Central, 212 E 42nd St, New York, NY 10017, USA";
+  const family = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: westin, date: "2026-12-12", time: "07:30", passengers: "4", large_bags: "2", medium_bags: "1", small_bags: "2", class: "suv", tip: "15", toddler_seats: "1", infant_seats: "1", rider: "me", ...ME, name: "Alexandra Montgomery-Wellington", reach: "phone" });
+  setEnv();
+  const text = bookingText(paid(family, { live: true }));
+  const lines = text.split("\n");
+  assert.ok(text.length <= 306, `${text.length} characters: ${text}`);
+  assert.equal(lines[3], "JFK to The Westin New York Grand Central");
+  assert.equal(lines[5], "Bags: 2 large, 1 medium, 2 small");
+  assert.equal(lines[6], "Child seats: 1 child seat and 1 infant seat");
+  assert.equal(lines[7], `Paid ${money(family.total)}`);
+  assert.ok(ownerLetter(paid(family)).text.includes("\nBags: 2 large suitcases, 1 medium suitcase and 2 small suitcases or hand carry\n"));
+  assert.deepEqual(nonGsm(text), []);
 });
 
 await test("[TEST] starts the text only for a test mode Checkout Session", () => {

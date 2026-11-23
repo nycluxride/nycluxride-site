@@ -275,6 +275,63 @@ test("every cron fits the Hobby plan: at most 100 jobs, each with a fixed minute
   for (const { schedule } of config.crons) assert.match(schedule, /^\d{1,2} \d{1,2} \* \* [\d*]$/, schedule);
 });
 
+const shippedText = (() => {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith(".") || ["node_modules", "test", "scripts", "fleet"].includes(e.name)) continue;
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (/\.(html|css|js|mjs|json|xml|webmanifest|txt)$/.test(e.name)) out.push(readFileSync(full, "utf8"));
+    }
+  };
+  walk(ROOT);
+  return out.join("\n");
+})();
+const named = new Set([...shippedText.matchAll(/\/fleet\/([a-z0-9-]+\.(?:avif|webp))/g)].map((m) => m[1]));
+const kept = readFileSync(join(ROOT, ".vercelignore"), "utf8").split("\n").map((l) => l.trim()).filter((l) => l.startsWith("fleet/") && l !== "fleet/MANIFEST.json");
+const redirectTargets = (config.redirects || []).filter((r) => r.destination.startsWith("/fleet/")).flatMap((r) => {
+  const params = Object.fromEntries([...r.source.matchAll(/:(\w+)\(((?:[^()]|\((?:[^()])*\))*)\)/g)].map((m) => [m[1], m[2]]));
+  const names = [...r.destination.matchAll(/:(\w+)/g)].map((m) => m[1]);
+  if (names.some((n) => !params[n])) return [];
+  return [new RegExp(`^${r.destination.slice(7).replace(/\./g, "\\.").replace(/:(\w+)/g, (_, n) => `(?:${params[n]})`)}$`)];
+});
+
+test("every fleet file that .vercelignore keeps out of the deployment is on disk and named by no page, stylesheet, script, structured data, sitemap, manifest or fleet redirect", () => {
+  assert.ok(kept.length >= 40, `${kept.length} fleet files kept out`);
+  for (const line of kept) {
+    const name = line.slice(6);
+    assert.ok(existsSync(join(ROOT, line)), `${line} is not on disk`);
+    assert.ok(!named.has(name), `${line} is used by a shipped file`);
+    assert.ok(!redirectTargets.some((re) => re.test(name)), `${line} is a redirect destination`);
+  }
+  assert.ok(kept.includes("fleet/twins.json"), "the twins are read only by the image script and the tests");
+});
+
+test("every fleet image that ships is named by a page, stylesheet, script, structured data, sitemap or manifest, or is the destination of a fleet redirect, so a deployment carries no unused photo", () => {
+  const shipped = readdirSync(join(ROOT, "fleet")).filter((f) => /\.(avif|webp)$/.test(f) && !kept.includes(`fleet/${f}`));
+  assert.ok(shipped.length >= 600, `${shipped.length} fleet images ship`);
+  assert.deepEqual(shipped.filter((f) => !named.has(f) && !redirectTargets.some((re) => re.test(f))), []);
+  const moved = new Set((config.redirects || []).map((r) => r.source.replace(/^\/fleet\//, "")));
+  assert.deepEqual([...named].filter((f) => !existsSync(join(ROOT, "fleet", f)) && !moved.has(f)), [], "a shipped file names a fleet image that is not on disk");
+  assert.equal(existsSync(join(ROOT, "fleet", "crop")), false, "the unused hero crops are gone");
+});
+
+test("the old Limo Sprinter photo and its sizes, which the live homepage named, redirect with 301 to the shipped black Limo Sprinter photo, and no shipped fleet image is redirected", () => {
+  const fleet = (config.redirects || []).filter((r) => r.source.startsWith("/fleet/"));
+  const first = (path) => fleet.find((r) => pathToRegexp(r.source).test(path));
+  for (const ext of ["webp", "avif"]) {
+    for (const size of ["", "-300", "-400", "-600", "-900", "-1100", "-1236"]) {
+      const rule = first(`/fleet/sprinter-limo${size}.${ext}`);
+      assert.ok(rule && rule.statusCode === 301, `/fleet/sprinter-limo${size}.${ext} is not redirected`);
+      assert.equal(rule.destination, `/fleet/sprinter-limo-black-lot-450.${ext}`);
+      assert.ok(existsSync(join(ROOT, rule.destination.slice(1))) && !kept.includes(rule.destination.slice(1)), `${rule.destination} does not ship`);
+    }
+  }
+  const shipped = readdirSync(join(ROOT, "fleet")).filter((f) => /\.(avif|webp)$/.test(f) && !kept.includes(`fleet/${f}`));
+  assert.deepEqual(shipped.filter((f) => first(`/fleet/${f}`)), []);
+});
+
 if (failures) {
   console.error(`\n${failures} test(s) failed`);
   process.exit(1);

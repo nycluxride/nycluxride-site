@@ -43,7 +43,7 @@ const TRACK_FORMS = ["We track your flight and move the pickup if it lands early
 const FORMS_64 = new Set([
   "We answer calls and messages 24 hours a day, every day.",
   "You can book any class by the hour, with a 3-hour minimum.",
-  `Infant, toddler and booster seats are ${SEAT}, charged at booking.`,
+  `Child, infant and booster seats are ${SEAT}, charged at booking.`,
   "For a pickup within the next 90 minutes, email info@nycluxride.com or message us on WhatsApp.",
   "Online at least 90 minutes before pickup.",
   "Sooner by email or WhatsApp when a car is free.",
@@ -54,7 +54,7 @@ const FORMS_64 = new Set([
   "For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.",
   "Book online at least 90 minutes before pickup.",
   "For a pickup within the next 90 minutes, email or WhatsApp us.",
-  `Infant, toddler and booster seats, ${SEAT}, charged at booking.`,
+  `Child, infant and booster seats, ${SEAT}, charged at booking.`,
   "We move the pickup if your flight lands early or late.",
   "A Sprinter by the hour has a 4-hour minimum.",
   "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.",

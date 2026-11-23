@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { CONTACT, SITE_ORIGIN, CHILD_SEATS } from "./_rates.mjs";
+import { CONTACT, SITE_ORIGIN, CHILD_SEATS, BAG_SIZES } from "./_rates.mjs";
 import { MAIL, CALENDAR, LABELS, POLICY, SEATS } from "./_copy.mjs";
 import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, knownVehicle, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
@@ -126,7 +126,7 @@ function dogsOf(b) {
 }
 
 function bagsOf(b) {
-  return bagText({ bags: { large: b.field("large_bags"), small: b.field("small_bags") } });
+  return bagText({ bags: Object.fromEntries(BAG_SIZES.map((k) => [k, b.field(`${k}_bags`)])) });
 }
 
 function tripRows(b) {
@@ -359,7 +359,7 @@ export function bookingText(session) {
   const L = MAIL.labels;
   const seats = seatsOf(b);
   const dogs = dogsOf(b);
-  const bags = bagsOf(b);
+  const bags = BAG_SIZES.filter((k) => Number(f(`${k}_bags`)) > 0).map((k) => `${f(`${k}_bags`)} ${k}`).join(", ");
   return fitText((clipPlace, clipName) => [
     `${b.test ? MAIL.test : ""}${MAIL.textHeading}`,
     [clipName(b.name), b.phone].filter(Boolean).join(", "),

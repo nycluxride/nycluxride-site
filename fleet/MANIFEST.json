@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-22T08:57:37.139Z",
+  "generatedAt": "2026-11-22T22:25:40.123Z",
   "generator": "scripts/images.mjs",
   "targetWidths": [
     300,
@@ -56,9 +56,6 @@
     ]
   },
   "extraWidths": {
-    "cadillac-escalade-hero": [
-      1620
-    ],
     "page-about": [
       1450
     ],
@@ -93,12 +90,32 @@
       96,
       128,
       192
+    ],
+    "home-hero": [
+      1400
+    ],
+    "cadillac-escalade-card": [
+      300,
+      400
+    ],
+    "cadillac-lyriq-card": [
+      300,
+      400
+    ],
+    "chevrolet-suburban-card": [
+      300,
+      400
+    ],
+    "mercedes-s-class-card": [
+      300,
+      400
+    ],
+    "sprinter-limo-card": [
+      300,
+      400
     ]
   },
   "avifSettings": {
-    "home-hero-phone": {
-      "-q": "50"
-    },
     "home-hero-phone-v3": {
       "-q": "52",
       "-s": "2",
@@ -213,95 +230,14 @@
     "webp": "cwebp -q 80 -m 6 -sharp_yuv -af -pass 10 -quiet {tmp.png} -o {out.webp}"
   },
   "totals": {
-    "masters": 67,
-    "masterBytes": 23087026,
-    "variantCount": 776,
-    "variantBytes": 53604548,
-    "cropCount": 8,
-    "cropBytes": 271325
+    "masters": 63,
+    "masterBytes": 22214798,
+    "variantCount": 691,
+    "variantBytes": 50900945,
+    "cropCount": 0,
+    "cropBytes": 0
   },
   "images": [
-    {
-      "slug": "bmw-7-series-card",
-      "master": {
-        "path": "fleet/bmw-7-series-card.webp",
-        "url": "/fleet/bmw-7-series-card.webp",
-        "width": 783,
-        "height": 979,
-        "bytes": 99168,
-        "aspectRatio": 0.7998
-      },
-      "variants": [
-        {
-          "path": "fleet/bmw-7-series-card-300.avif",
-          "url": "/fleet/bmw-7-series-card-300.avif",
-          "format": "avif",
-          "width": 300,
-          "height": 375,
-          "bytes": 9865
-        },
-        {
-          "path": "fleet/bmw-7-series-card-300.webp",
-          "url": "/fleet/bmw-7-series-card-300.webp",
-          "format": "webp",
-          "width": 300,
-          "height": 375,
-          "bytes": 14528
-        },
-        {
-          "path": "fleet/bmw-7-series-card-400.avif",
-          "url": "/fleet/bmw-7-series-card-400.avif",
-          "format": "avif",
-          "width": 400,
-          "height": 500,
-          "bytes": 15206
-        },
-        {
-          "path": "fleet/bmw-7-series-card-400.webp",
-          "url": "/fleet/bmw-7-series-card-400.webp",
-          "format": "webp",
-          "width": 400,
-          "height": 500,
-          "bytes": 22170
-        },
-        {
-          "path": "fleet/bmw-7-series-card-600.avif",
-          "url": "/fleet/bmw-7-series-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 750,
-          "bytes": 26356
-        },
-        {
-          "path": "fleet/bmw-7-series-card-600.webp",
-          "url": "/fleet/bmw-7-series-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 750,
-          "bytes": 38912
-        },
-        {
-          "path": "fleet/bmw-7-series-card-783.avif",
-          "url": "/fleet/bmw-7-series-card-783.avif",
-          "format": "avif",
-          "width": 783,
-          "height": 979,
-          "bytes": 37957
-        },
-        {
-          "path": "fleet/bmw-7-series-card-783.webp",
-          "url": "/fleet/bmw-7-series-card-783.webp",
-          "format": "webp",
-          "width": 783,
-          "height": 979,
-          "bytes": 54986
-        }
-      ],
-      "srcset": {
-        "avif": "/fleet/bmw-7-series-card-300.avif 300w, /fleet/bmw-7-series-card-400.avif 400w, /fleet/bmw-7-series-card-600.avif 600w, /fleet/bmw-7-series-card-783.avif 783w",
-        "webp": "/fleet/bmw-7-series-card-300.webp 300w, /fleet/bmw-7-series-card-400.webp 400w, /fleet/bmw-7-series-card-600.webp 600w, /fleet/bmw-7-series-card-783.webp 783w"
-      }
-    },
     {
       "slug": "bmw-7-series",
       "master": {
@@ -570,59 +506,11 @@
           "width": 400,
           "height": 497,
           "bytes": 10934
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-600.avif",
-          "url": "/fleet/cadillac-escalade-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 745,
-          "bytes": 12374
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-600.webp",
-          "url": "/fleet/cadillac-escalade-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 745,
-          "bytes": 20042
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-900.avif",
-          "url": "/fleet/cadillac-escalade-card-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1118,
-          "bytes": 22144
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-900.webp",
-          "url": "/fleet/cadillac-escalade-card-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1118,
-          "bytes": 35954
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-960.avif",
-          "url": "/fleet/cadillac-escalade-card-960.avif",
-          "format": "avif",
-          "width": 960,
-          "height": 1192,
-          "bytes": 25161
-        },
-        {
-          "path": "fleet/cadillac-escalade-card-960.webp",
-          "url": "/fleet/cadillac-escalade-card-960.webp",
-          "format": "webp",
-          "width": 960,
-          "height": 1192,
-          "bytes": 40578
         }
       ],
       "srcset": {
-        "avif": "/fleet/cadillac-escalade-card-300.avif 300w, /fleet/cadillac-escalade-card-400.avif 400w, /fleet/cadillac-escalade-card-600.avif 600w, /fleet/cadillac-escalade-card-900.avif 900w, /fleet/cadillac-escalade-card-960.avif 960w",
-        "webp": "/fleet/cadillac-escalade-card-300.webp 300w, /fleet/cadillac-escalade-card-400.webp 400w, /fleet/cadillac-escalade-card-600.webp 600w, /fleet/cadillac-escalade-card-900.webp 900w, /fleet/cadillac-escalade-card-960.webp 960w"
+        "avif": "/fleet/cadillac-escalade-card-300.avif 300w, /fleet/cadillac-escalade-card-400.avif 400w",
+        "webp": "/fleet/cadillac-escalade-card-300.webp 300w, /fleet/cadillac-escalade-card-400.webp 400w"
       }
     },
     {
@@ -737,214 +625,6 @@
         "avif": "/fleet/cadillac-escalade-esv-300.avif 300w, /fleet/cadillac-escalade-esv-400.avif 400w, /fleet/cadillac-escalade-esv-600.avif 600w, /fleet/cadillac-escalade-esv-900.avif 900w, /fleet/cadillac-escalade-esv-1100.avif 1100w, /fleet/cadillac-escalade-esv-1400.avif 1400w",
         "webp": "/fleet/cadillac-escalade-esv-300.webp 300w, /fleet/cadillac-escalade-esv-400.webp 400w, /fleet/cadillac-escalade-esv-600.webp 600w, /fleet/cadillac-escalade-esv-900.webp 900w, /fleet/cadillac-escalade-esv-1100.webp 1100w, /fleet/cadillac-escalade-esv-1400.webp 1400w"
       }
-    },
-    {
-      "slug": "cadillac-escalade-hero",
-      "master": {
-        "path": "fleet/cadillac-escalade-hero.webp",
-        "url": "/fleet/cadillac-escalade-hero.webp",
-        "width": 1620,
-        "height": 971,
-        "bytes": 136524,
-        "aspectRatio": 1.6684
-      },
-      "variants": [
-        {
-          "path": "fleet/cadillac-escalade-hero-300.avif",
-          "url": "/fleet/cadillac-escalade-hero-300.avif",
-          "format": "avif",
-          "width": 300,
-          "height": 180,
-          "bytes": 4929
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-300.webp",
-          "url": "/fleet/cadillac-escalade-hero-300.webp",
-          "format": "webp",
-          "width": 300,
-          "height": 180,
-          "bytes": 6682
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-400.avif",
-          "url": "/fleet/cadillac-escalade-hero-400.avif",
-          "format": "avif",
-          "width": 400,
-          "height": 240,
-          "bytes": 7361
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-400.webp",
-          "url": "/fleet/cadillac-escalade-hero-400.webp",
-          "format": "webp",
-          "width": 400,
-          "height": 240,
-          "bytes": 10174
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-600.avif",
-          "url": "/fleet/cadillac-escalade-hero-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 360,
-          "bytes": 13380
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-600.webp",
-          "url": "/fleet/cadillac-escalade-hero-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 360,
-          "bytes": 18400
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-900.avif",
-          "url": "/fleet/cadillac-escalade-hero-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 539,
-          "bytes": 24009
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-900.webp",
-          "url": "/fleet/cadillac-escalade-hero-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 539,
-          "bytes": 32808
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-1100.avif",
-          "url": "/fleet/cadillac-escalade-hero-1100.avif",
-          "format": "avif",
-          "width": 1100,
-          "height": 659,
-          "bytes": 31805
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-1100.webp",
-          "url": "/fleet/cadillac-escalade-hero-1100.webp",
-          "format": "webp",
-          "width": 1100,
-          "height": 659,
-          "bytes": 42542
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-1400.avif",
-          "url": "/fleet/cadillac-escalade-hero-1400.avif",
-          "format": "avif",
-          "width": 1400,
-          "height": 839,
-          "bytes": 42676
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-1400.webp",
-          "url": "/fleet/cadillac-escalade-hero-1400.webp",
-          "format": "webp",
-          "width": 1400,
-          "height": 839,
-          "bytes": 58162
-        },
-        {
-          "path": "fleet/cadillac-escalade-hero-1620.avif",
-          "url": "/fleet/cadillac-escalade-hero-1620.avif",
-          "format": "avif",
-          "width": 1620,
-          "height": 971,
-          "bytes": 51775
-        }
-      ],
-      "srcset": {
-        "avif": "/fleet/cadillac-escalade-hero-300.avif 300w, /fleet/cadillac-escalade-hero-400.avif 400w, /fleet/cadillac-escalade-hero-600.avif 600w, /fleet/cadillac-escalade-hero-900.avif 900w, /fleet/cadillac-escalade-hero-1100.avif 1100w, /fleet/cadillac-escalade-hero-1400.avif 1400w, /fleet/cadillac-escalade-hero-1620.avif 1620w",
-        "webp": "/fleet/cadillac-escalade-hero-300.webp 300w, /fleet/cadillac-escalade-hero-400.webp 400w, /fleet/cadillac-escalade-hero-600.webp 600w, /fleet/cadillac-escalade-hero-900.webp 900w, /fleet/cadillac-escalade-hero-1100.webp 1100w, /fleet/cadillac-escalade-hero-1400.webp 1400w"
-      },
-      "crops": [
-        {
-          "name": "125",
-          "geometry": "1500x851+90+120",
-          "width": 1500,
-          "height": 1200,
-          "fadeFrom": 700,
-          "fadeRows": 160,
-          "background": "#08090C",
-          "widths": [
-            600,
-            900,
-            1200,
-            1500
-          ],
-          "variants": [
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-600.avif",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-600.avif",
-              "format": "avif",
-              "width": 600,
-              "height": 480,
-              "bytes": 12820
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-600.webp",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-600.webp",
-              "format": "webp",
-              "width": 600,
-              "height": 480,
-              "bytes": 18254
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-900.avif",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-900.avif",
-              "format": "avif",
-              "width": 900,
-              "height": 720,
-              "bytes": 22909
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-900.webp",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-900.webp",
-              "format": "webp",
-              "width": 900,
-              "height": 720,
-              "bytes": 31596
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-1200.avif",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-1200.avif",
-              "format": "avif",
-              "width": 1200,
-              "height": 960,
-              "bytes": 33272
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-1200.webp",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-1200.webp",
-              "format": "webp",
-              "width": 1200,
-              "height": 960,
-              "bytes": 46218
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-1500.avif",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-1500.avif",
-              "format": "avif",
-              "width": 1500,
-              "height": 1200,
-              "bytes": 44646
-            },
-            {
-              "path": "fleet/crop/cadillac-escalade-hero-125-1500.webp",
-              "url": "/fleet/crop/cadillac-escalade-hero-125-1500.webp",
-              "format": "webp",
-              "width": 1500,
-              "height": 1200,
-              "bytes": 61610
-            }
-          ],
-          "srcset": {
-            "avif": "/fleet/crop/cadillac-escalade-hero-125-600.avif 600w, /fleet/crop/cadillac-escalade-hero-125-900.avif 900w, /fleet/crop/cadillac-escalade-hero-125-1200.avif 1200w, /fleet/crop/cadillac-escalade-hero-125-1500.avif 1500w",
-            "webp": "/fleet/crop/cadillac-escalade-hero-125-600.webp 600w, /fleet/crop/cadillac-escalade-hero-125-900.webp 900w, /fleet/crop/cadillac-escalade-hero-125-1200.webp 1200w, /fleet/crop/cadillac-escalade-hero-125-1500.webp 1500w"
-          }
-        }
-      ]
     },
     {
       "slug": "cadillac-escalade",
@@ -1101,59 +781,11 @@
           "width": 400,
           "height": 497,
           "bytes": 10838
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-600.avif",
-          "url": "/fleet/cadillac-lyriq-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 745,
-          "bytes": 12686
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-600.webp",
-          "url": "/fleet/cadillac-lyriq-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 745,
-          "bytes": 20286
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-900.avif",
-          "url": "/fleet/cadillac-lyriq-card-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1118,
-          "bytes": 22541
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-900.webp",
-          "url": "/fleet/cadillac-lyriq-card-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1118,
-          "bytes": 36902
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-960.avif",
-          "url": "/fleet/cadillac-lyriq-card-960.avif",
-          "format": "avif",
-          "width": 960,
-          "height": 1192,
-          "bytes": 25742
-        },
-        {
-          "path": "fleet/cadillac-lyriq-card-960.webp",
-          "url": "/fleet/cadillac-lyriq-card-960.webp",
-          "format": "webp",
-          "width": 960,
-          "height": 1192,
-          "bytes": 41686
         }
       ],
       "srcset": {
-        "avif": "/fleet/cadillac-lyriq-card-300.avif 300w, /fleet/cadillac-lyriq-card-400.avif 400w, /fleet/cadillac-lyriq-card-600.avif 600w, /fleet/cadillac-lyriq-card-900.avif 900w, /fleet/cadillac-lyriq-card-960.avif 960w",
-        "webp": "/fleet/cadillac-lyriq-card-300.webp 300w, /fleet/cadillac-lyriq-card-400.webp 400w, /fleet/cadillac-lyriq-card-600.webp 600w, /fleet/cadillac-lyriq-card-900.webp 900w, /fleet/cadillac-lyriq-card-960.webp 960w"
+        "avif": "/fleet/cadillac-lyriq-card-300.avif 300w, /fleet/cadillac-lyriq-card-400.avif 400w",
+        "webp": "/fleet/cadillac-lyriq-card-300.webp 300w, /fleet/cadillac-lyriq-card-400.webp 400w"
       }
     },
     {
@@ -1537,59 +1169,11 @@
           "width": 400,
           "height": 497,
           "bytes": 11166
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-600.avif",
-          "url": "/fleet/chevrolet-suburban-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 745,
-          "bytes": 12579
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-600.webp",
-          "url": "/fleet/chevrolet-suburban-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 745,
-          "bytes": 19930
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-900.avif",
-          "url": "/fleet/chevrolet-suburban-card-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1118,
-          "bytes": 21806
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-900.webp",
-          "url": "/fleet/chevrolet-suburban-card-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1118,
-          "bytes": 35188
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-960.avif",
-          "url": "/fleet/chevrolet-suburban-card-960.avif",
-          "format": "avif",
-          "width": 960,
-          "height": 1192,
-          "bytes": 24699
-        },
-        {
-          "path": "fleet/chevrolet-suburban-card-960.webp",
-          "url": "/fleet/chevrolet-suburban-card-960.webp",
-          "format": "webp",
-          "width": 960,
-          "height": 1192,
-          "bytes": 39736
         }
       ],
       "srcset": {
-        "avif": "/fleet/chevrolet-suburban-card-300.avif 300w, /fleet/chevrolet-suburban-card-400.avif 400w, /fleet/chevrolet-suburban-card-600.avif 600w, /fleet/chevrolet-suburban-card-900.avif 900w, /fleet/chevrolet-suburban-card-960.avif 960w",
-        "webp": "/fleet/chevrolet-suburban-card-300.webp 300w, /fleet/chevrolet-suburban-card-400.webp 400w, /fleet/chevrolet-suburban-card-600.webp 600w, /fleet/chevrolet-suburban-card-900.webp 900w, /fleet/chevrolet-suburban-card-960.webp 960w"
+        "avif": "/fleet/chevrolet-suburban-card-300.avif 300w, /fleet/chevrolet-suburban-card-400.avif 400w",
+        "webp": "/fleet/chevrolet-suburban-card-300.webp 300w, /fleet/chevrolet-suburban-card-400.webp 400w"
       }
     },
     {
@@ -1948,119 +1532,6 @@
       }
     },
     {
-      "slug": "home-hero-phone",
-      "master": {
-        "path": "fleet/home-hero-phone.webp",
-        "url": "/fleet/home-hero-phone.webp",
-        "width": 1684,
-        "height": 2526,
-        "bytes": 518346,
-        "aspectRatio": 0.6667
-      },
-      "variants": [
-        {
-          "path": "fleet/home-hero-phone-300.avif",
-          "url": "/fleet/home-hero-phone-300.avif",
-          "format": "avif",
-          "width": 300,
-          "height": 450,
-          "bytes": 8371
-        },
-        {
-          "path": "fleet/home-hero-phone-300.webp",
-          "url": "/fleet/home-hero-phone-300.webp",
-          "format": "webp",
-          "width": 300,
-          "height": 450,
-          "bytes": 14748
-        },
-        {
-          "path": "fleet/home-hero-phone-400.avif",
-          "url": "/fleet/home-hero-phone-400.avif",
-          "format": "avif",
-          "width": 400,
-          "height": 600,
-          "bytes": 12610
-        },
-        {
-          "path": "fleet/home-hero-phone-400.webp",
-          "url": "/fleet/home-hero-phone-400.webp",
-          "format": "webp",
-          "width": 400,
-          "height": 600,
-          "bytes": 22930
-        },
-        {
-          "path": "fleet/home-hero-phone-600.avif",
-          "url": "/fleet/home-hero-phone-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 900,
-          "bytes": 23274
-        },
-        {
-          "path": "fleet/home-hero-phone-600.webp",
-          "url": "/fleet/home-hero-phone-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 900,
-          "bytes": 41606
-        },
-        {
-          "path": "fleet/home-hero-phone-900.avif",
-          "url": "/fleet/home-hero-phone-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1350,
-          "bytes": 42243
-        },
-        {
-          "path": "fleet/home-hero-phone-900.webp",
-          "url": "/fleet/home-hero-phone-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1350,
-          "bytes": 75098
-        },
-        {
-          "path": "fleet/home-hero-phone-1100.avif",
-          "url": "/fleet/home-hero-phone-1100.avif",
-          "format": "avif",
-          "width": 1100,
-          "height": 1650,
-          "bytes": 56472
-        },
-        {
-          "path": "fleet/home-hero-phone-1100.webp",
-          "url": "/fleet/home-hero-phone-1100.webp",
-          "format": "webp",
-          "width": 1100,
-          "height": 1650,
-          "bytes": 100204
-        },
-        {
-          "path": "fleet/home-hero-phone-1400.avif",
-          "url": "/fleet/home-hero-phone-1400.avif",
-          "format": "avif",
-          "width": 1400,
-          "height": 2100,
-          "bytes": 79939
-        },
-        {
-          "path": "fleet/home-hero-phone-1400.webp",
-          "url": "/fleet/home-hero-phone-1400.webp",
-          "format": "webp",
-          "width": 1400,
-          "height": 2100,
-          "bytes": 146390
-        }
-      ],
-      "srcset": {
-        "avif": "/fleet/home-hero-phone-300.avif 300w, /fleet/home-hero-phone-400.avif 400w, /fleet/home-hero-phone-600.avif 600w, /fleet/home-hero-phone-900.avif 900w, /fleet/home-hero-phone-1100.avif 1100w, /fleet/home-hero-phone-1400.avif 1400w",
-        "webp": "/fleet/home-hero-phone-300.webp 300w, /fleet/home-hero-phone-400.webp 400w, /fleet/home-hero-phone-600.webp 600w, /fleet/home-hero-phone-900.webp 900w, /fleet/home-hero-phone-1100.webp 1100w, /fleet/home-hero-phone-1400.webp 1400w"
-      }
-    },
-    {
       "slug": "home-hero-v3",
       "master": {
         "path": "fleet/home-hero-v3.webp",
@@ -2233,86 +1704,6 @@
       },
       "variants": [
         {
-          "path": "fleet/home-hero-300.avif",
-          "url": "/fleet/home-hero-300.avif",
-          "format": "avif",
-          "width": 300,
-          "height": 200,
-          "bytes": 6325
-        },
-        {
-          "path": "fleet/home-hero-300.webp",
-          "url": "/fleet/home-hero-300.webp",
-          "format": "webp",
-          "width": 300,
-          "height": 200,
-          "bytes": 8882
-        },
-        {
-          "path": "fleet/home-hero-400.avif",
-          "url": "/fleet/home-hero-400.avif",
-          "format": "avif",
-          "width": 400,
-          "height": 267,
-          "bytes": 10097
-        },
-        {
-          "path": "fleet/home-hero-400.webp",
-          "url": "/fleet/home-hero-400.webp",
-          "format": "webp",
-          "width": 400,
-          "height": 267,
-          "bytes": 14238
-        },
-        {
-          "path": "fleet/home-hero-600.avif",
-          "url": "/fleet/home-hero-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 400,
-          "bytes": 19300
-        },
-        {
-          "path": "fleet/home-hero-600.webp",
-          "url": "/fleet/home-hero-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 400,
-          "bytes": 27202
-        },
-        {
-          "path": "fleet/home-hero-900.avif",
-          "url": "/fleet/home-hero-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 600,
-          "bytes": 37432
-        },
-        {
-          "path": "fleet/home-hero-900.webp",
-          "url": "/fleet/home-hero-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 600,
-          "bytes": 54240
-        },
-        {
-          "path": "fleet/home-hero-1100.avif",
-          "url": "/fleet/home-hero-1100.avif",
-          "format": "avif",
-          "width": 1100,
-          "height": 733,
-          "bytes": 52275
-        },
-        {
-          "path": "fleet/home-hero-1100.webp",
-          "url": "/fleet/home-hero-1100.webp",
-          "format": "webp",
-          "width": 1100,
-          "height": 733,
-          "bytes": 75982
-        },
-        {
           "path": "fleet/home-hero-1400.avif",
           "url": "/fleet/home-hero-1400.avif",
           "format": "avif",
@@ -2330,8 +1721,8 @@
         }
       ],
       "srcset": {
-        "avif": "/fleet/home-hero-300.avif 300w, /fleet/home-hero-400.avif 400w, /fleet/home-hero-600.avif 600w, /fleet/home-hero-900.avif 900w, /fleet/home-hero-1100.avif 1100w, /fleet/home-hero-1400.avif 1400w",
-        "webp": "/fleet/home-hero-300.webp 300w, /fleet/home-hero-400.webp 400w, /fleet/home-hero-600.webp 600w, /fleet/home-hero-900.webp 900w, /fleet/home-hero-1100.webp 1100w, /fleet/home-hero-1400.webp 1400w"
+        "avif": "/fleet/home-hero-1400.avif 1400w",
+        "webp": "/fleet/home-hero-1400.webp 1400w"
       }
     },
     {
@@ -2683,59 +2074,11 @@
           "width": 400,
           "height": 497,
           "bytes": 10344
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-600.avif",
-          "url": "/fleet/mercedes-s-class-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 745,
-          "bytes": 11812
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-600.webp",
-          "url": "/fleet/mercedes-s-class-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 745,
-          "bytes": 18702
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-900.avif",
-          "url": "/fleet/mercedes-s-class-card-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1118,
-          "bytes": 20445
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-900.webp",
-          "url": "/fleet/mercedes-s-class-card-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1118,
-          "bytes": 33388
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-960.avif",
-          "url": "/fleet/mercedes-s-class-card-960.avif",
-          "format": "avif",
-          "width": 960,
-          "height": 1192,
-          "bytes": 23102
-        },
-        {
-          "path": "fleet/mercedes-s-class-card-960.webp",
-          "url": "/fleet/mercedes-s-class-card-960.webp",
-          "format": "webp",
-          "width": 960,
-          "height": 1192,
-          "bytes": 37462
         }
       ],
       "srcset": {
-        "avif": "/fleet/mercedes-s-class-card-300.avif 300w, /fleet/mercedes-s-class-card-400.avif 400w, /fleet/mercedes-s-class-card-600.avif 600w, /fleet/mercedes-s-class-card-900.avif 900w, /fleet/mercedes-s-class-card-960.avif 960w",
-        "webp": "/fleet/mercedes-s-class-card-300.webp 300w, /fleet/mercedes-s-class-card-400.webp 400w, /fleet/mercedes-s-class-card-600.webp 600w, /fleet/mercedes-s-class-card-900.webp 900w, /fleet/mercedes-s-class-card-960.webp 960w"
+        "avif": "/fleet/mercedes-s-class-card-300.avif 300w, /fleet/mercedes-s-class-card-400.avif 400w",
+        "webp": "/fleet/mercedes-s-class-card-300.webp 300w, /fleet/mercedes-s-class-card-400.webp 400w"
       }
     },
     {
@@ -6804,59 +6147,11 @@
           "width": 400,
           "height": 497,
           "bytes": 11404
-        },
-        {
-          "path": "fleet/sprinter-limo-card-600.avif",
-          "url": "/fleet/sprinter-limo-card-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 745,
-          "bytes": 13359
-        },
-        {
-          "path": "fleet/sprinter-limo-card-600.webp",
-          "url": "/fleet/sprinter-limo-card-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 745,
-          "bytes": 20604
-        },
-        {
-          "path": "fleet/sprinter-limo-card-900.avif",
-          "url": "/fleet/sprinter-limo-card-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 1118,
-          "bytes": 23663
-        },
-        {
-          "path": "fleet/sprinter-limo-card-900.webp",
-          "url": "/fleet/sprinter-limo-card-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 1118,
-          "bytes": 35774
-        },
-        {
-          "path": "fleet/sprinter-limo-card-960.avif",
-          "url": "/fleet/sprinter-limo-card-960.avif",
-          "format": "avif",
-          "width": 960,
-          "height": 1192,
-          "bytes": 26663
-        },
-        {
-          "path": "fleet/sprinter-limo-card-960.webp",
-          "url": "/fleet/sprinter-limo-card-960.webp",
-          "format": "webp",
-          "width": 960,
-          "height": 1192,
-          "bytes": 40582
         }
       ],
       "srcset": {
-        "avif": "/fleet/sprinter-limo-card-300.avif 300w, /fleet/sprinter-limo-card-400.avif 400w, /fleet/sprinter-limo-card-600.avif 600w, /fleet/sprinter-limo-card-900.avif 900w, /fleet/sprinter-limo-card-960.avif 960w",
-        "webp": "/fleet/sprinter-limo-card-300.webp 300w, /fleet/sprinter-limo-card-400.webp 400w, /fleet/sprinter-limo-card-600.webp 600w, /fleet/sprinter-limo-card-900.webp 900w, /fleet/sprinter-limo-card-960.webp 960w"
+        "avif": "/fleet/sprinter-limo-card-300.avif 300w, /fleet/sprinter-limo-card-400.avif 400w",
+        "webp": "/fleet/sprinter-limo-card-300.webp 300w, /fleet/sprinter-limo-card-400.webp 400w"
       }
     },
     {
@@ -7052,119 +6347,6 @@
       "srcset": {
         "avif": "/fleet/sprinter-limo-white-300.avif 300w, /fleet/sprinter-limo-white-400.avif 400w, /fleet/sprinter-limo-white-600.avif 600w",
         "webp": "/fleet/sprinter-limo-white-300.webp 300w, /fleet/sprinter-limo-white-400.webp 400w, /fleet/sprinter-limo-white-600.webp 600w"
-      }
-    },
-    {
-      "slug": "sprinter-limo",
-      "master": {
-        "path": "fleet/sprinter-limo.webp",
-        "url": "/fleet/sprinter-limo.webp",
-        "width": 1236,
-        "height": 650,
-        "bytes": 118190,
-        "aspectRatio": 1.9015
-      },
-      "variants": [
-        {
-          "path": "fleet/sprinter-limo-300.avif",
-          "url": "/fleet/sprinter-limo-300.avif",
-          "format": "avif",
-          "width": 300,
-          "height": 158,
-          "bytes": 6612
-        },
-        {
-          "path": "fleet/sprinter-limo-300.webp",
-          "url": "/fleet/sprinter-limo-300.webp",
-          "format": "webp",
-          "width": 300,
-          "height": 158,
-          "bytes": 11162
-        },
-        {
-          "path": "fleet/sprinter-limo-400.avif",
-          "url": "/fleet/sprinter-limo-400.avif",
-          "format": "avif",
-          "width": 400,
-          "height": 210,
-          "bytes": 10045
-        },
-        {
-          "path": "fleet/sprinter-limo-400.webp",
-          "url": "/fleet/sprinter-limo-400.webp",
-          "format": "webp",
-          "width": 400,
-          "height": 210,
-          "bytes": 17046
-        },
-        {
-          "path": "fleet/sprinter-limo-600.avif",
-          "url": "/fleet/sprinter-limo-600.avif",
-          "format": "avif",
-          "width": 600,
-          "height": 316,
-          "bytes": 18666
-        },
-        {
-          "path": "fleet/sprinter-limo-600.webp",
-          "url": "/fleet/sprinter-limo-600.webp",
-          "format": "webp",
-          "width": 600,
-          "height": 316,
-          "bytes": 30674
-        },
-        {
-          "path": "fleet/sprinter-limo-900.avif",
-          "url": "/fleet/sprinter-limo-900.avif",
-          "format": "avif",
-          "width": 900,
-          "height": 473,
-          "bytes": 34713
-        },
-        {
-          "path": "fleet/sprinter-limo-900.webp",
-          "url": "/fleet/sprinter-limo-900.webp",
-          "format": "webp",
-          "width": 900,
-          "height": 473,
-          "bytes": 53536
-        },
-        {
-          "path": "fleet/sprinter-limo-1100.avif",
-          "url": "/fleet/sprinter-limo-1100.avif",
-          "format": "avif",
-          "width": 1100,
-          "height": 578,
-          "bytes": 45512
-        },
-        {
-          "path": "fleet/sprinter-limo-1100.webp",
-          "url": "/fleet/sprinter-limo-1100.webp",
-          "format": "webp",
-          "width": 1100,
-          "height": 578,
-          "bytes": 68980
-        },
-        {
-          "path": "fleet/sprinter-limo-1236.avif",
-          "url": "/fleet/sprinter-limo-1236.avif",
-          "format": "avif",
-          "width": 1236,
-          "height": 650,
-          "bytes": 54764
-        },
-        {
-          "path": "fleet/sprinter-limo-1236.webp",
-          "url": "/fleet/sprinter-limo-1236.webp",
-          "format": "webp",
-          "width": 1236,
-          "height": 650,
-          "bytes": 81762
-        }
-      ],
-      "srcset": {
-        "avif": "/fleet/sprinter-limo-300.avif 300w, /fleet/sprinter-limo-400.avif 400w, /fleet/sprinter-limo-600.avif 600w, /fleet/sprinter-limo-900.avif 900w, /fleet/sprinter-limo-1100.avif 1100w, /fleet/sprinter-limo-1236.avif 1236w",
-        "webp": "/fleet/sprinter-limo-300.webp 300w, /fleet/sprinter-limo-400.webp 400w, /fleet/sprinter-limo-600.webp 600w, /fleet/sprinter-limo-900.webp 900w, /fleet/sprinter-limo-1100.webp 1100w, /fleet/sprinter-limo-1236.webp 1236w"
       }
     },
     {

@@ -62,7 +62,7 @@ const MAX_TEXT = 200;
 const MAX_TICKET = 553;
 const DOG_CENTS = { small: SMALL_DOG_CENTS, large: LARGE_DOG_CENTS };
 const DOG_PART = /^([1-9]\d*) (small|large) (\d+)$/;
-const BAG_PART = /^([1-9]\d*) (large|small) bags?$/;
+const BAG_PART = new RegExp(`^([1-9]\\d*) (${BAG_SIZES.join("|")}) bags?$`);
 const SEAT_PART = new RegExp(`^([1-9]\\d*) (${CHILD_SEATS.join("|")})$`);
 const ZONE_PART = /^(from|stop1|stop2|to) ([a-z0-9-]+)$/;
 const PLACE_PART = /^(from|to) (\S+)$/;
@@ -514,7 +514,7 @@ export function checkTrip(trip, now, settings) {
 
 const counts = (kinds, chosen) => Object.fromEntries(kinds.map((k) => [k, INTEGER.test((chosen || {})[k] || "") ? Number(chosen[k]) : 0]));
 const countText = (found, types) => {
-  const parts = Object.entries(found).filter(([, n]) => n).map(([k, n]) => `${n} ${types[k].toLowerCase().replace(/s$/, n === 1 ? "" : "s")}`);
+  const parts = Object.entries(found).filter(([, n]) => n).map(([k, n]) => `${n} ${Array.isArray(types[k]) ? types[k][n === 1 ? 0 : 1] : types[k].toLowerCase().replace(/s$/, n === 1 ? "" : "s")}`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts.join("");
 };
 export const seatCounts = (trip) => counts(CHILD_SEATS, trip.seats);
@@ -526,7 +526,7 @@ export const dogMeta = (price) => DOG_SIZES.filter((k) => price.dogCents[k]).map
 const metaParts = (text, pattern) => (typeof text === "string" ? text.split(", ").map((part) => pattern.exec(part)).filter(Boolean) : []);
 export const dogParts = (text) => metaParts(text, DOG_PART).map(([, count, size, cents]) => ({ size, count: Number(count), cents: Number(cents) }));
 export const bagCounts = (trip) => counts(BAG_SIZES, trip.bags);
-export const bagText = (trip) => countText(bagCounts(trip), LABELS.bagTypes);
+export const bagText = (trip) => countText(bagCounts(trip), LABELS.bagCounts);
 export const paxMeta = (trip) => [trip.passengers, ...Object.entries(bagCounts(trip)).filter(([, n]) => n).map(([k, n]) => `${n} ${k} ${n === 1 ? "bag" : "bags"}`)].join(", ");
 export const seatMeta = (trip) => Object.entries(seatCounts(trip)).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(", ");
 const wholeParts = (parts, max) => parts.reduce((text, part) => {

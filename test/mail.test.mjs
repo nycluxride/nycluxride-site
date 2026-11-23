@@ -303,7 +303,7 @@ const picked = (name, id, zone, text, region = "") => ({ [`${name}_text`]: text,
 const WORST_FIELDS = { trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", ...picked("stop1", "ChIJb8Jg9pZYwokR-qHGtvSkLzs", "manhattan", "350 5th Ave, New York, NY 10118, USA"), ...picked("stop2", "ChIJ-b2RmVlZwokRpb1pwEQjss0", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211, USA"), ...picked("to", "ChIJ7cv00DwsDogRAMDACa2m4K8", "outside", "1 Old Country Rd, Mineola, NY 11501, USA", "2811"), date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", flight: "DL 401", passengers: "12", class: "sprinter", sprinter: "sprinter-executive", meet: "1", sign: "Ortiz family", tip: "custom", tip_amount: "40", rider: "other", ...ME, reach: "whatsapp", pname: "Ben Ortiz", pphone: "+44 20 7946 0958", notes: "Kids aged 1, 3 and 6", infant_seats: "4", toddler_seats: "4", booster_seats: "4" };
 const WORST = await booked(WORST_FIELDS);
 const WORST_DOGS = await booked({ ...WORST_FIELDS, small_dogs: "3", large_dogs: "3" });
-const BAGGED = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", large_bags: "4", small_bags: "2", rider: "me", ...ME, reach: "phone" });
+const BAGGED = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", large_bags: "4", medium_bags: "1", small_bags: "2", rider: "me", ...ME, reach: "phone" });
 const CONNECTICUT = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: "10 Elm St, Greenwich, CT 06830", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 setEnv();
 
@@ -957,7 +957,9 @@ await test("a paid booking with child seats from the booking form names the seat
   }
   assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
   const one = bookingLetters(paid(ONE_WAY, { metadata: { seats_cents: "1500", child_seats: "1", toddler_seats: "1" } }), SETTINGS)[0];
-  assert.ok(one.text.includes("\nChild seats: 1 toddler seat\n") && one.text.includes("\nChild seats (1 x $15.00): $15.00\n"), one.text);
+  assert.ok(one.text.includes("\nChild seats: 1 child seat\n") && one.text.includes("\nChild seats (1 x $15.00): $15.00\n") && !/toddler/i.test(one.text), one.text);
+  const legacy = bookingLetters(paid(ONE_WAY, { metadata: { seats_cents: "4500", seats: "1 infant, 1 toddler, 1 booster", passengers: "3" } }), SETTINGS)[0];
+  assert.ok(legacy.text.includes("\nChild seats: 1 child seat, 1 infant seat and 1 booster seat\n") && legacy.text.includes("\nChild seats (3 x $15.00): $45.00\n"), legacy.text);
 });
 
 await test("a paid booking with pets names them in a Pets row right after the Child seats row of both emails, lists a Small dog and a Large dog line in the receipt at $20.00 and $45.00 a dog with the total paid, and shows no Pets row without dogs", async () => {
@@ -984,16 +986,16 @@ await test("a paid booking with pets names them in a Pets row right after the Ch
 
 await test("a paid booking with bags names them in a Bags row right after the Passengers row of both emails, of the calendar event notes and of the text message, adds nothing to the payment, and a booking without bags or an old one shows no Bags row and the plain passenger count", async () => {
   setEnv();
-  assert.equal(BAGGED.metadata.passengers, "3, 4 large bags, 2 small bags");
+  assert.equal(BAGGED.metadata.passengers, "3, 4 large bags, 1 medium bag, 2 small bags");
   const session = paid(BAGGED);
   const [customer, owner] = bookingLetters(session, SETTINGS);
   const plain = bookingLetters(paid({ ...BAGGED, metadata: { ...BAGGED.metadata, passengers: "3" } }), SETTINGS);
   for (const [i, letter] of [customer, owner].entries()) {
-    assert.ok(letter.text.includes("\nPassengers: 3\nBags: 4 large bags and 2 small bags\nVehicle: Business SUV\n"), letter.kind);
+    assert.ok(letter.text.includes("\nPassengers: 3\nBags: 4 large suitcases, 1 medium suitcase and 2 small suitcases or hand carry\nVehicle: Business SUV\n"), letter.kind);
     const doc = checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : {});
     const rows = Object.fromEntries(tripTable(doc))[letter.kind === "customer" ? "Your trip" : "Trip"];
     const at = rows.findIndex(([label]) => label === "Passengers");
-    assert.deepEqual(rows.slice(at, at + 3), [["Passengers", "3"], ["Bags", "4 large bags and 2 small bags"], ["Vehicle", "Business SUV"]], letter.kind);
+    assert.deepEqual(rows.slice(at, at + 3), [["Passengers", "3"], ["Bags", "4 large suitcases, 1 medium suitcase and 2 small suitcases or hand carry"], ["Vehicle", "Business SUV"]], letter.kind);
     const payment = letter.kind === "customer" ? "Your payment" : "Payment";
     assert.deepEqual(sectionOf(letter.text, payment), sectionOf(plain[i].text, payment), letter.kind);
     assert.ok(!/bag/i.test(sectionOf(letter.text, payment).join("\n")), letter.kind);
@@ -1002,12 +1004,16 @@ await test("a paid booking with bags names them in a Bags row right after the Pa
   }
   assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
   const sms = bookingText(session);
-  assert.ok(sms.includes("\nBusiness SUV\nBags: 4 large bags and 2 small bags\nChild seats: 1 infant seat\n") && sms.length <= 320, sms);
+  assert.ok(sms.includes("\nBusiness SUV\nBags: 4 large, 1 medium, 2 small\nChild seats: 1 infant seat\n") && sms.length <= 320, sms);
   assert.ok(!bookingText(paid({ ...BAGGED, metadata: { ...BAGGED.metadata, passengers: "3" } })).includes("Bags"));
   const [event] = bookingEvents(session);
-  assert.ok(event.description.includes("\nPassengers: 3\nBags: 4 large bags and 2 small bags\nVehicle: Business SUV\n"), event.description);
+  assert.ok(event.description.includes("\nPassengers: 3\nBags: 4 large suitcases, 1 medium suitcase and 2 small suitcases or hand carry\nVehicle: Business SUV\n"), event.description);
   const small = bookingLetters(paid(ONE_WAY, { metadata: { passengers: "2, 1 small bag" } }), SETTINGS)[0];
-  assert.ok(small.text.includes("\nPassengers: 2\nBags: 1 small bag\n"), small.text);
+  assert.ok(small.text.includes("\nPassengers: 2\nBags: 1 small suitcase or hand carry\n"), small.text);
+  const older = bookingLetters(paid(ONE_WAY, { metadata: { passengers: "2, 3 large bags, 1 small bag" } }), SETTINGS)[0];
+  assert.ok(older.text.includes("\nPassengers: 2\nBags: 3 large suitcases and 1 small suitcase or hand carry\n"), older.text);
+  const medium = bookingLetters(paid(ONE_WAY, { metadata: { passengers: "2, 2 medium bags" } }), SETTINGS)[0];
+  assert.ok(medium.text.includes("\nPassengers: 2\nBags: 2 medium suitcases\n"), medium.text);
   for (const letter of bookingLetters(paid(ONE_WAY), SETTINGS)) assert.ok(!/Bags:/.test(letter.text) && letter.text.includes("\nPassengers: 2\n"), letter.kind);
 });
 
@@ -1036,7 +1042,7 @@ const rebuilt = (session) => ({
 await test("a booking paid before the metadata was packed, with from_zone, from_place, to_zone, to_place, stop1_zone, stop2_zone, child_seats and the seat counts per type, rebuilds exactly the emails, the owner text, the calendar events, the refund note, the receipt and the confirmation page of the same booking written with zones, places and seats", async () => {
   setEnv({ STRIPE_SECRET_KEY: KEY });
   assert.deepEqual([Object.keys(LEGACY_WORST).length, Object.keys(WORST.metadata).length, LEGACY_KEYS.filter((k) => k in WORST.metadata), WORST.total], [51, 44, [], 115852]);
-  assert.deepEqual([WORST.metadata.zones, WORST.metadata.places, WORST.metadata.seats], ["from jfk, stop1 manhattan, stop2 brooklyn, to outside", "from jfk-t4, to ChIJ7cv00DwsDogRAMDACa2m4K8", "4 infant, 4 toddler, 4 booster"]);
+  assert.deepEqual([WORST.metadata.zones, WORST.metadata.places, WORST.metadata.seats], ["from jfk, stop1 manhattan, stop2 brooklyn, to outside", "from jfk-t4, to ChIJ7cv00DwsDogRAMDACa2m4K8", "4 toddler, 4 infant, 4 booster"]);
   assert.deepEqual(legacyOf(WORST.metadata), LEGACY_WORST);
   assert.deepEqual(bookingData(WORST.metadata), { ...LEGACY_WORST, zones: WORST.metadata.zones, places: WORST.metadata.places, seats: WORST.metadata.seats });
   const packed = paid(WORST);
@@ -1046,7 +1052,7 @@ await test("a booking paid before the metadata was packed, with from_zone, from_
   const [customer, owner] = now.letters;
   for (const letter of [customer, owner]) {
     assert.ok(letter.text.includes("\nStop 1: 350 5th Ave, New York, NY 10118\nStop 2: 277 Bedford Ave, Brooklyn, NY 11211\nDrop-off: 1 Old Country Rd, Mineola, NY 11501\n"), letter.kind);
-    assert.ok(letter.text.includes("\nChild seats: 4 infant seats, 4 toddler seats and 4 booster seats\n"), letter.kind);
+    assert.ok(letter.text.includes("\nChild seats: 4 child seats, 4 infant seats and 4 booster seats\n"), letter.kind);
     assert.ok(letter.text.includes("\nChild seats (12 x $15.00): $180.00\n"), letter.kind);
   }
   for (const key of ["zones", "seats"]) assert.notDeepEqual(rebuilt({ ...packed, metadata: { ...WORST.metadata, [key]: "" } }), now, key);
@@ -1929,7 +1935,7 @@ await test("across every test above, webhook retries, confirmation checks, faile
 await test("no log line holds the SMTP password, the AUTH string, an address, a name, a phone number or any part of an email", () => {
   assert.ok(history.length > 40, `${history.length} log lines`);
   const all = history.join("\n");
-  const secrets = [PASS, Buffer.from(`\u0000${USER}\u0000${PASS}`).toString("base64"), "ana.lopez@example.com", "Ana Lopez", "Ben Ortiz", "Zo\u00eb", "212 555", "2125550100", "917 555", "7946", "Main Street", "72nd", "Secaucus", "Infant", "toddler", "Subject", "Payment received", "@"];
+  const secrets = [PASS, Buffer.from(`\u0000${USER}\u0000${PASS}`).toString("base64"), "ana.lopez@example.com", "Ana Lopez", "Ben Ortiz", "Zo\u00eb", "212 555", "2125550100", "917 555", "7946", "Main Street", "72nd", "Secaucus", "Infant", "toddler", "suitcase", "Subject", "Payment received", "@"];
   for (const secret of secrets) assert.ok(!all.includes(secret), secret);
 });
 

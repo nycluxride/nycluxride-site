@@ -377,14 +377,14 @@ await test("round trip: two events, the return at its own date and time from the
 await test("bags: both events of a round trip name the bags in a Bags line right after the Passengers line of the notes, so the chauffeur sees them, and a booking without bags or an old one has no Bags line", () => {
   setEnv(fullEnv());
   const n = ROUND.metadata.passengers;
-  const bagged = paid({ ...ROUND, metadata: { ...ROUND.metadata, passengers: `${n}, 4 large bags, 2 small bags` } });
+  const bagged = paid({ ...ROUND, metadata: { ...ROUND.metadata, passengers: `${n}, 4 large bags, 1 medium bag, 2 small bags` } });
   const events = bookingEvents(bagged);
   assert.equal(events.length, 2);
-  for (const event of events) assert.ok(event.description.includes(`\nPassengers: ${n}\nBags: 4 large bags and 2 small bags\n`), event.description);
+  for (const event of events) assert.ok(event.description.includes(`\nPassengers: ${n}\nBags: 4 large suitcases, 1 medium suitcase and 2 small suitcases or hand carry\n`), event.description);
   assert.deepEqual(events.map((e) => e.summary.replace(/^\[TEST\] /, "")), bookingEvents(paid(ROUND)).map((e) => e.summary.replace(/^\[TEST\] /, "")), "the titles stay the same");
   for (const event of [...bookingEvents(paid(ROUND)), ...bookingEvents(paid(HOURLY))]) assert.ok(!/Bags/.test(event.description) && event.description.includes("\nPassengers: "), event.description);
   const hourly = bookingEvents(paid({ ...HOURLY, metadata: { ...HOURLY.metadata, passengers: `${HOURLY.metadata.passengers}, 1 small bag` } }));
-  assert.ok(hourly[0].description.includes(`\nPassengers: ${HOURLY.metadata.passengers}\nBags: 1 small bag\n`), hourly[0].description);
+  assert.ok(hourly[0].description.includes(`\nPassengers: ${HOURLY.metadata.passengers}\nBags: 1 small suitcase or hand carry\n`), hourly[0].description);
 });
 
 await test("hourly booking: one event that lasts the booked hours, titled with the hours and the pickup", async () => {

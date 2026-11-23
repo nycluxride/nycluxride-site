@@ -1,10 +1,4 @@
 {
-  "bmw-7-series-card.webp": {
-    "sha256": "ca58b17f3a69e8afe37cd2ad8cdc9ba09d9bf0789e29a5e9a9f875db64bb2eb4",
-    "width": 64,
-    "height": 80,
-    "src": "data:image/webp;base64,UklGRhABAABXRUJQVlA4IAQBAADQCwCdASpAAFAAPrlOnkunKCKqN/iMyUAXCWcAxrtT2e7P/l4IBUC+lld26iKhT5GQviKfre45FKf3pYeNAKSv8LMjFRtNOwV4QJ84vkt1pqoVo3b5UhPWXvXwAZo9MhkyOSIJt/GgAP7xVmu0WNq726Fr6xwQ7a6GrVT1h2Dz32eEB3SLd76gEbhpxxBxCLN+Fr0+c1HqU2nNNnK2dYu2lt9OsSROG9p0SJmfvqj10mmZVxQ+E8LEq2KdNz6BralZ/vGqXC7cZpwzbWaJmyyaajt3cUkROWpKwAEHSq6PxNT1hRVqV62M8fBJk7fvtTDTWEIxo/AjXoVx0Y/yMpPbZoAAAA=="
-  },
   "bmw-7-series.webp": {
     "sha256": "712550bc9d04b70ae017407f4ae315d38819ac91d506b7be9a6e73dc8fb08ac3",
     "width": 64,
@@ -17,35 +11,17 @@
     "height": 48,
     "src": "data:image/webp;base64,UklGRtQAAABXRUJQVlA4IMgAAACwCQCdASpAADAAPs1WoEunpKMhsrJOYPAZiWUAwVdT2iD0r20bC/PWPjPiK0ENJH+fbLLRpjAgnNIKwXvY3JK/e1AVMaE7vLc+IBdb6MsLbthtxlrfAAD+3GoF6DYdqfuxOxiIM3lannsBFoPiDRLZeHub69EjGyHW+984adugGbhya2879fbfuDhmUc1nyGAQxEzcDkV6/531gCT+D5Q7MGgWzJEYpNMLOZmnlUQE7SKCy0GW0M/TzF8+nDIzfTBD024C9k2wAA=="
   },
-  "cadillac-escalade-card.webp": {
-    "sha256": "7a0924d0955be32bf0dcdc298410984044ed4ec96059117daca7b9e54117782e",
-    "width": 64,
-    "height": 79,
-    "src": "data:image/webp;base64,UklGRvAAAABXRUJQVlA4IOQAAADQCgCdASpAAE8APslWnUunpSKhszqrAPAZCWkA1fdT274BDmYIRf2DilCJa40Q4iAeFHx/iQHw8YjmkHcM1NOP9YaTjvVv2ttADBUxe0u/bY85BUgQHd4KM+M0DsrkoAD+9H4elBqbHATMREVCD2+u8saPA45GP1S4VfSJvBp8CTEYd5rck31MDIOljtW6bLBpq9IvEjV1+QlUtzbY6h04nDgUVSRTEhY/uaQ4AoNNoZvOl7Y7liher9h16LY1oQITKAM+Y4a8lhTRDBDctsDYn10f5FZVBs8EIdPw9AusZJxgAAA="
-  },
   "cadillac-escalade-esv.webp": {
     "sha256": "9356b8a7fc9f66194ae216bacb6034d2097bd9571b4a1727f85e2c31116eba31",
     "width": 64,
     "height": 43,
     "src": "data:image/webp;base64,UklGRrwAAABXRUJQVlA4ILAAAABwBwCdASpAACsAPrVImkuuJCIhurzIAcAWiWcAxrtT20rS5lGUeVKestl4DzX3QyB07Y/wJPwKQOQnz4Y9d+Yv4kRPcAD+7n4T33mSrfc3ZcvhGi5ZGzxsaM9pJMM8Yg208nq1AjlnrUp97/kBQLmFLhxZNKjMtLpqZbfUVAYOyhTUxPW4QjuYQEn6HwkTBcBx45JAGXz3v0A3QtMoYU7v2hfFOcwzyHZXHQy4MHgAAA=="
   },
-  "cadillac-escalade-hero.webp": {
-    "sha256": "9279e747340fb1c42727e277fadbcbe19a385e8e2de0515ec36a2f9675cef4df",
-    "width": 64,
-    "height": 38,
-    "src": "data:image/webp;base64,UklGRqIAAABXRUJQVlA4IJYAAADwBgCdASpAACYAPsFInUunpCKht/qoAPAYCWcAxCQpt3GH91fCeZPypQ3UiBO2pmOP/jTgiGIq4Z3YKpbB/aMAAP7uHEhGKtSSs5bAh/SByjKH8MFChFS5p2S/Mom6W2oEQHIRe8PN/PhWRc+8BzDh/eGtVn361yHACondHNWc/HWYVJ+e87oBX10MV/7uk8GWrVqAAAA="
-  },
   "cadillac-escalade.webp": {
     "sha256": "396ecce086546667e7833222ee39bb6faf72da1412089c1f71d168112963a7d6",
     "width": 64,
     "height": 37,
     "src": "data:image/webp;base64,UklGRqoAAABXRUJQVlA4IJ4AAABQBgCdASpAACUAPsFMnEunpCKhtVv8APAYCWcAx6gpgG3mUq4MNAdX2I8UVoMRKXG1sMA1SOvck9kLAAD+7hxIO49t1KBy78wpPy7G6h3dfJxjT1qdeOGpH3diliatOCVx3AhaOgzDjZmbXS6tgyeQwkj2wevloGuk9oap6wMFitBSETHtYYmLTIb5RB9E2im2Ms2Axo3pprPBaQAAAA=="
-  },
-  "cadillac-lyriq-card.webp": {
-    "sha256": "76ed8c3856532d3c920b64bcf9e809018082b5ac8f82a0030cc341a273191f84",
-    "width": 64,
-    "height": 79,
-    "src": "data:image/webp;base64,UklGRuwAAABXRUJQVlA4IOAAAAAQCwCdASpAAE8APs1Wn0unpKahsBzLMPAZiWkA1QdT2y23H7YgwT45wJ9LC2wWF8B/AXOemfBuk9XdPxb2REp9itp+vwNWNYX1LoUaHTV291CPT/kPhpPOFPa2rMKvf+QAAP74se39mftaALA2QDdD+e0XMfzS4OiHXPD2rFYgYK9neexD5U4PJM5qNl4bqHr0hlHfumUIdMqDzDFTkm0yDO6Ngi+8z/EwbjOEbumf66BGx+Xc2Cp+YlNOoC0c3J08jW9RwRQf8iPtQX0+FaOpF6IoUhJOyz0BHjJ5dbvAAA=="
   },
   "cadillac-lyriq.webp": {
     "sha256": "7e47fa69a80be482369102d9c69684dce267f7af3772ad643c30c5d732276bb7",
@@ -65,12 +41,6 @@
     "height": 48,
     "src": "data:image/webp;base64,UklGRrgAAABXRUJQVlA4IKwAAACQBwCdASpAADAAPrFMm0unJKKhur5oAOAWCWUAxgdT26B/uaBr5l7nRrd4Ada2+HWIw0ybfPmtuUSRhlWVPiVHuufyigAA/vOuVq+wDoO9HwMcBsfoaAvUzfn8YvUZtv4+sDlZ+9k7SyQZKZSSZm2ovYebNVehTfkpwul/Tk25sf8G+4LQb7gPJJr8LsDLUYnXW+Q53ZDNegNSNLcEKgy/N6DK2uXh5yV4AAAA"
   },
-  "chevrolet-suburban-card.webp": {
-    "sha256": "78db754420979c512fea026c679f8fb8799e795fcd1690b59d6341cf4c58f3fc",
-    "width": 64,
-    "height": 79,
-    "src": "data:image/webp;base64,UklGRuoAAABXRUJQVlA4IN4AAACwCgCdASpAAE8APslankuntyKhsZuZyuAZCWkACG+n/aL/xqbFuMN9Zw/1iDMQj4bSYKJHtCX4TFIcm7mh/1HbP6lJQWL5sM/PjfnMFtcouRdgvaHdEFCLWV4AxbYIAP7zmd4a9y0M8K6IHVMkS3dKiuhExMl4z2sHvnrc6JGmzPUM4LHzhZeGsw1YEoNkHiSG/suwQ4/iedPOrFWar/lq+dhYtS244JLBxcO1hbzMWVAP9iZ2P4EWkXlSCKQaHkil5nce5Wz1wpPyo4EpGwoLRL+qfIxma7eVUfMAAAA="
-  },
   "chevrolet-suburban.webp": {
     "sha256": "07c2c6e59d8c277458d927b6f9aa7d92c1e8b6cdf40614c5dfcf88a9ada6f5d3",
     "width": 64,
@@ -89,23 +59,11 @@
     "height": 95,
     "src": "data:image/webp;base64,UklGRoYBAABXRUJQVlA4IHoBAAAwDgCdASpAAF8APrlOmEunLCqhuVa8yYAXCWNrT1Wgp7C+LgL/4CVt2WbmAIQe7Yl7kOuHXRSikJbrcMQJ6T8xnBF+NpUtMkTir1KEGwvyY+yc+TCZJ83UqL5rlh3UyP0+0Hxqp38tiJSEDQ7OOfcyDaE6ObN9H7ujAAD+8DQn4W+z85DfZgI2AimktRutZPxXQpWnuo+AVHpSTiRW61LAo11VoCj2SQggfJtr4CIwXWNdGH4LKVN5D/Q7D/bNsNT1j7i2UMmGbxAeCV6pKUEQjCx1tUJ9uMUCDrXdxwiKqUxZj1DMP0gcmYS7PeQfqfq5nSXtwKKrZhr0jEoKndMz/zSmpwSRaB9DUEkwG/HBxOVy/8dU+b2t373yspQqPt68MtP+J0fH9ZhtpkPqLO+S2xFeX9M9vrM8q60XwpRhqdlmeA3OwTWvjwLTj+CLE/tZCpI11o2kXG6YS8FuYgU6AvLWCWTSiL63E/wGPwEQbnFpEd6amypgAAA="
   },
-  "home-hero-phone.webp": {
-    "sha256": "81d67515ca587477e5212f66c94e20052bfd1422585f0de349635179cecfe85a",
-    "width": 64,
-    "height": 96,
-    "src": "data:image/webp;base64,UklGRjwBAABXRUJQVlA4IDABAADQDACdASpAAGAAPsFUm0unrSIntreKSaAYCWcAwyyPkXyi9QdHUMwVJs8U3bjI4j1UL0PPIsTOMs36wdqni0/fGt54aAYNVES31I4A8O6jX/w1f4bn5mcUr5dt3eF19+T3jzHH0nJAN6qlPFakp3AA/u72WyzRPCKDfmg+QzmV2VJQFACN9Zhf+yHqA63Gf/hF5r255bZTur3iHAegj2hwaMJX3YHwfSONyh0/R0TiT+wjmtSBLXuVPdYsYEH9hDZnz+H8DnE7aAM2xw+geaknyrJqRKMLkc2d3ip/Q709eTJNY8Wp4wcg6SggcFPXcUiwCR4/wqOGoB4t1D0GqQ5VVD0F2It009j//fwpSv3ppBLpJVJnKm3oigwUydd2jg/4+daJ+SK+anmJa5ThwAAA"
-  },
   "home-hero-v3.webp": {
     "sha256": "cb00c7b1c7d2b57c05a61bbdeebedd353e25832b75282de0bfabb814c4b1e1a7",
     "width": 64,
     "height": 43,
     "src": "data:image/webp;base64,UklGRvIAAABXRUJQVlA4IOYAAAAwCQCdASpAACsAPrlMnkunNCKht/qqqoAXCUATpnsoYeH3LRyOdtx4O7DV7dWXjg5cI3foCBiLYRtSs13+WlV0NdSTTME4iGV71KoC5nUkhRPQAP7wwTNbT6osnWKKHWckF0U6P+F7FpQlB2OeJu+t7NyfMzSeGjae595AWclk2092/kIZLwkEFvfwz83G03461LMTaasYEfheuDfzr81yjj341bIdhvmxagUA1k1DNtIq/zt0+v77K2jK8BLb8CDWir0YErOdV34IAcF6zz3vFJkgrWptE1xU8N0lMr55RExUZ/twAA=="
-  },
-  "home-hero.webp": {
-    "sha256": "629cde4b22b9bbd3d47e354b863017398348a2f2563626e68371356bb3ce5cc3",
-    "width": 64,
-    "height": 43,
-    "src": "data:image/webp;base64,UklGRroAAABXRUJQVlA4IK4AAABQBwCdASpAACsAPsFUnEuqJSKhtVgMAUAYCWUAvkge4FAGvGJUXC/+cZ1/RLX9CiPRNUSjljrn+DCziuIxPnzWhd4AAP7wNAjhDa5aLrT8/+j4Z09reiyrW3eb93fYunvaaHqikTNCUJSOEAP984PnCuFdLnHDEgLloL7YwCUKf8eBo14IS+Z40XyohqLVyda6tf/wT95iRSujEYgvFEFoIwzLkFWxJjs7gnwAAAA="
   },
   "lincoln-continental.webp": {
     "sha256": "c0aac6658d7d2f963c3d17c3a6974ee50e749717ea23430053f58565dbb6d108",
@@ -118,12 +76,6 @@
     "width": 64,
     "height": 43,
     "src": "data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAACwCACdASpAACsAPsVWnkunpSKhtVgKAPAYiWUAxNtT2SKZGWwhW+pc4zZanYUJwD8XUFUSGzqJX478KLUwoZsMXggWU80E9t/ZorUX+gAA/vQpHaZ0m/yu5297N+8JosVytIirBjdfPD6Bzs8dWViQJ3jGgWDvGPW85uDyqIU/BOsOY41B2wARzZ0Ha2XymabglctRxP0k7wj93cPQTqto972De3qJ9fkRHSwmdNkCCV0nFcTCHmVppUbsuWg20gRl1vwyAAA="
-  },
-  "mercedes-s-class-card.webp": {
-    "sha256": "c1c0d853a7c118d1168ca79a9ddc93f5b34496ab8f529432a9f1cbeeb27cd59e",
-    "width": 64,
-    "height": 79,
-    "src": "data:image/webp;base64,UklGRuIAAABXRUJQVlA4INYAAABwCgCdASpAAE8APtFio0yoNKMiLnxoupAaCWkA1btT2u0FxJNXarA+qzRLbyMjxlJy0H6SfQ5Lvj+ZTp7pAyRBWjaow5wjWbl3Orue8BeInJPYBxv1Gd9pNFAcwAD+8YgcAuL0eKFYxoeDYkXgh3svqriVWG9zFC8LEYk2lXi5IgW3bw+Bt2XEOU258X8BcIppiX+m2YMkkLRelJGkxujg/x2H7na49h6pFIBStzyKqYuHCDyCrBWEhmJVt5Hs05Da0JszHf4nM4ZycD1AKykRqMCBAAAA"
   },
   "mercedes-s-class.webp": {
     "sha256": "9b42feadd15bf075813f78199a0a5eb8c940a4d45679e839b6286f2e62e3ae39",
@@ -317,12 +269,6 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRswAAABXRUJQVlA4IMAAAAAwCACdASpAACsAPr1MnUunJCKhurZoAOAXiWMAxq/ax+QA41Noe5gaHblusSwOqmDpA+L11DSZzv1+vSvAc3SLtRWeq6jOhy6zQAD++mEQX7aoj4gjDjq7xT//llFFl8WcgFDw1P7GRkPrDzK3ZdEppiShUi/fyDc3L618utkx4bUzvvu40+mmry8IFNYuYyvvrpf65xcoo1quIMvzudxLkcpTz7Jgtt6/JX3gRzxX1SaGFXt69V3jhU5YsyAAAAA="
   },
-  "sprinter-limo-card.webp": {
-    "sha256": "923ede0ae7f229639f1e75e8f5ebfaa018ad258ef46d8750f7d840767d2ea372",
-    "width": 64,
-    "height": 79,
-    "src": "data:image/webp;base64,UklGRvoAAABXRUJQVlA4IO4AAADQDACdASpAAE8APr1SnUunJSKntntqqPAXiWcA059T3DdlPKny9UZD9mKCgxzWX1sqV3G4MSDFpQBoNAbXPmVdCTiB0ewtACWlsXJyrjsPTEnZwmSMnARs88RowqkU8xoGS0Cec3u//A168UpjmtAA/vltU1rHQOEO1ObWk5W5Gpzydeyt8w9aZ2Sf3DxSxAGEx2q1JqtOHSx1S99huFJT0+nrcec/Bc/7ULL6d0a/W4+dOvYTvsEMkEdtSna/3Ewwks4VHacSnh4ahZXhP3F+qD4gSbkC9FDs5i8isSD1w/pO2GI7gWFxylR9vQAA"
-  },
   "sprinter-limo-castle.webp": {
     "sha256": "e0cc2beafb866be42db2dbe970766b7e59d63f75414e571e1ea87a8ecb1e2add",
     "width": 64,
@@ -340,12 +286,6 @@
     "width": 64,
     "height": 43,
     "src": "data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAABwCgCdASpAACsAPtFip08oJaOiKBqpyQAaCUAWJAEZNmHEEjA8PQk+NuGGHkIHpapHOP3FKP8wdqVJprutVUYkOmxVoufIsgHOTrFo4TC2KiAKKpG2mAxJDBZNAAD9TGE5NqNODxUEZTj4vSZd1qMC2UN6eSB2ZDCFCtM1KKY7eDw9FXk+WYMzfjxq0dKZmFPiNUYw+dZP9g6Fzq5fEnCzX+CnLRcYnIT3N8Nd/hTFqmidz8enibbYoM08AQSTB6lAfOd3W0xgcvYva2BkFT492uLhC9X3KVo2XnqvG3pvXHMMaFBnnkf+aJQMuHICW1pbBYnWXnuD3B0tDfNnP4X5vagZRT4V4O2hAAAA"
-  },
-  "sprinter-limo.webp": {
-    "sha256": "715df6105c7e4b3d62b32e06fc3dcb27a9e26452b607825a6bdec41cc9cd5dc8",
-    "width": 64,
-    "height": 34,
-    "src": "data:image/webp;base64,UklGRtAAAABXRUJQVlA4IMQAAABwCACdASpAACIAPqVEmEumJCKhvV6IAMAUiWcACG+mcrmMnY0RdLwEJiNyoKNlgNBbc/xIKlooNcNSphSVhF00P8p60qW3M/C42sgAAP7kWSYvgrVw0ekdasvU0v9WjwYfeFUO31nG9PloatbClA83I9XgDT21IVE8608P0r+9l1yO1zAiwk6gzzaoS7vhR73+/tdOb+1NXTjKQoJtBR5YpcL14AQGEm4qxKMDzzss9o+0hErdq7ACv6ZWn0jlcUhAGYAA"
   },
   "sprinter-luxury-jet-card.webp": {
     "sha256": "88608c0e2eba3b161a5eaca4dfa72249b5e659009926bca30134d0f9ce3fe8c3",

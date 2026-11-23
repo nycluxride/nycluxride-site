@@ -671,7 +671,7 @@ const seatArt = await wide.evaluate(() => [...document.querySelectorAll(".hero .
 }));
 check("/: each child seat tile shows its line icon, or a seat photo that is lazy, low priority, 1200 by 1200 and has an alt", () => {
   assert.equal(seatArt.length, 3);
-  assert.deepEqual(seatArt.filter((a, i) => a !== `#${["i-seat-infant", "i-seat-toddler", "i-seat-booster"][i]}` && a !== "lazy low 1200 1200 true"), []);
+  assert.deepEqual(seatArt.filter((a, i) => a !== `#${["i-seat-toddler", "i-seat-infant", "i-seat-booster"][i]}` && a !== "lazy low 1200 1200 true"), []);
 });
 await wide.close();
 

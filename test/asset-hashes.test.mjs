@@ -9,9 +9,9 @@ const HASHED = /^(.+)\.([A-Za-z0-9_-]{6,})\.(js|css|webp|webmanifest|woff2)$/;
 const REFERRERS = /\.(css|js|webmanifest)$/;
 const BUDGETS = [
   [/^lux\..*\.css$/, 127500, true],
-  [/^book\..*\.css$/, 64600, true],
+  [/^book\..*\.css$/, 65100, true],
   [/^lux\..*\.js$/, 12288, true],
-  [/^pay\..*\.js$/, 69300, true],
+  [/^pay\..*\.js$/, 69400, true],
   [/^pay2\..*\.js$/, 12000, true],
   [/^done\..*\.js$/, 9100, false],
   [/^wide\..*\.css$/, 1700, true],
@@ -20,8 +20,8 @@ const BUDGETS = [
 ];
 const AREAS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city"];
 const BOOKING_PAGES = ["index.html", "book.html", "booking-confirmed.html", "services.html", "chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html", "car-service-with-car-seat-nyc.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", ...AREAS.map((a) => `locations/${a}.html`), "locations/teterboro-airport.html", "locations/westchester-airport.html", "locations/hoboken.html", "long-distance-car-service.html", "long-distance-car-service/nyc-to-philadelphia.html", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `${s}.html`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `locations/${a}.html`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `long-distance-car-service/${r}.html`)];
-const BOOKING_CSS = 192000;
-const BOOK_SCRIPTS = 81200;
+const BOOKING_CSS = 192500;
+const BOOK_SCRIPTS = 81300;
 const SPECULATION_BYTES = 600;
 const FONT_FILES = 3;
 const FONT_BYTES = 60000;

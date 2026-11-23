@@ -12,18 +12,16 @@ const CROP_DIR = join(FLEET, 'crop');
 const MANIFEST = join(FLEET, 'MANIFEST.json');
 const TWIN_FILE = join(FLEET, 'twins.json');
 const WIDTHS = [300, 400, 600, 900, 1100, 1400];
-const EXTRA_WIDTHS = { 'cadillac-escalade-hero': [1620], 'page-about': [1450], 'page-black-car-service-brooklyn': [1650, 1900], 'page-contact': [1650], 'page-manhattan': [1500], 'page-queens': [1600], 'page-rates': [1750] };
+const EXTRA_WIDTHS = { 'page-about': [1450], 'page-black-car-service-brooklyn': [1650, 1900], 'page-contact': [1650], 'page-manhattan': [1500], 'page-queens': [1600], 'page-rates': [1750] };
 const HERO_WIDTHS = { 'home-hero-phone-v3': [1200], 'home-hero-v3': [2528] };
-const SIZED = { logo: [64, 96, 128, 192] };
+const SIZED = { logo: [64, 96, 128, 192], 'home-hero': [1400], 'cadillac-escalade-card': [300, 400], 'cadillac-lyriq-card': [300, 400], 'chevrolet-suburban-card': [300, 400], 'mercedes-s-class-card': [300, 400], 'sprinter-limo-card': [300, 400] };
 const LEAD_WIDTHS = [1800, 2400];
-const CROPS = {
-  'cadillac-escalade-hero': { name: '125', geometry: '1500x851+90+120', width: 1500, height: 1200, fadeFrom: 700, fadeRows: 160, background: '#08090C', widths: [600, 900, 1200, 1500] }
-};
+const CROPS = {};
 const FORCE = process.argv.includes('--force');
 const PRUNE = process.argv.includes('--prune');
 
 const AVIF_ARGS = ['-j', 'all', '-q', '58', '-s', '4', '-y', '444', '-d', '10'];
-const AVIF_SET = { 'home-hero-phone': { '-q': '50' }, 'home-hero-phone-v3': { '-q': '52', '-s': '2', '-y': '420' }, 'page-404': { '-q': '40' }, 'page-about': { '-q': '40' }, 'page-about-1450': { '-q': '34', '-s': '2', '-y': '420' }, 'page-black-car-service-brooklyn': { '-q': '40' }, 'page-black-car-service-brooklyn-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-bronx': { '-q': '40' }, 'page-brooklyn': { '-q': '40' }, 'page-chauffeur-service-nyc': { '-q': '40' }, 'page-contact': { '-q': '40' }, 'page-contact-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-faq': { '-q': '40' }, 'page-financial-district': { '-q': '40' }, 'page-fleet': { '-q': '40' }, 'page-jfk-airport': { '-q': '40' }, 'page-laguardia-airport': { '-q': '40' }, 'page-limousine-service-nyc': { '-q': '40' }, 'page-locations': { '-q': '40' }, 'page-long-island-city': { '-q': '40' }, 'page-manhattan': { '-q': '40' }, 'page-manhattan-1500': { '-q': '34', '-s': '2', '-y': '420' }, 'page-queens': { '-q': '40' }, 'page-queens-1600': { '-q': '34', '-s': '2', '-y': '420' }, 'page-rates': { '-q': '40' }, 'page-rates-1750': { '-q': '34', '-s': '2', '-y': '420' }, 'page-schedule': { '-q': '40' }, 'page-services': { '-q': '40' }, 'page-soho': { '-q': '40' }, 'page-staten-island': { '-q': '40' }, 'page-upper-east-side': { '-q': '40' }, 'page-upper-west-side': { '-q': '40' } };
+const AVIF_SET = { 'home-hero-phone-v3': { '-q': '52', '-s': '2', '-y': '420' }, 'page-404': { '-q': '40' }, 'page-about': { '-q': '40' }, 'page-about-1450': { '-q': '34', '-s': '2', '-y': '420' }, 'page-black-car-service-brooklyn': { '-q': '40' }, 'page-black-car-service-brooklyn-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-bronx': { '-q': '40' }, 'page-brooklyn': { '-q': '40' }, 'page-chauffeur-service-nyc': { '-q': '40' }, 'page-contact': { '-q': '40' }, 'page-contact-1650': { '-q': '34', '-s': '2', '-y': '420' }, 'page-faq': { '-q': '40' }, 'page-financial-district': { '-q': '40' }, 'page-fleet': { '-q': '40' }, 'page-jfk-airport': { '-q': '40' }, 'page-laguardia-airport': { '-q': '40' }, 'page-limousine-service-nyc': { '-q': '40' }, 'page-locations': { '-q': '40' }, 'page-long-island-city': { '-q': '40' }, 'page-manhattan': { '-q': '40' }, 'page-manhattan-1500': { '-q': '34', '-s': '2', '-y': '420' }, 'page-queens': { '-q': '40' }, 'page-queens-1600': { '-q': '34', '-s': '2', '-y': '420' }, 'page-rates': { '-q': '40' }, 'page-rates-1750': { '-q': '34', '-s': '2', '-y': '420' }, 'page-schedule': { '-q': '40' }, 'page-services': { '-q': '40' }, 'page-soho': { '-q': '40' }, 'page-staten-island': { '-q': '40' }, 'page-upper-east-side': { '-q': '40' }, 'page-upper-west-side': { '-q': '40' } };
 const WEBP_ARGS = ['-q', '80', '-m', '6', '-sharp_yuv', '-af', '-pass', '10', '-quiet'];
 const RESIZE_FILTER = 'Lanczos';
 
