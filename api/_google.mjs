@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { googleMock, mapMock, instanceBudget } from "./_http.mjs";
 import { mockSuggest, mockDetails, mockRoute, mockSplit, mockReverse, mockLocate } from "./_mock.mjs";
-import { tollCents, decodePath, tollPlan, priceSplit } from "./_tolls.mjs";
+import { tollCents, decodePath, tollPlan, priceSplit, returnCents } from "./_tolls.mjs";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL = "https://places.googleapis.com/v1/places/";
@@ -157,10 +157,18 @@ async function splitTolls(waypoints, departure, first) {
 
 const fallback = async (waypoints, departure, tolls, first) => (tolls === null ? splitTolls(waypoints, departure, first) : tolls);
 
+function withReturn(cents, polyline, arrival) {
+  if (!Number.isInteger(cents)) return cents;
+  const extra = returnCents(decodePath(polyline), arrival);
+  if (extra === null) console.error("route-tolls", "return stale");
+  return cents + (extra || 0);
+}
+
 export async function computeRoute(waypoints, departure, size, tolls = true) {
   if (googleMock()) {
     const { travelAdvisory, ...route } = mockRoute(size, waypoints, departure);
-    return { ok: true, mock: true, ...route, ...(tolls && { tolls: await fallback(waypoints, departure, tollCents({ travelAdvisory }), { polyline: route.polyline, points: route.points || [], meters: route.miles * 1609.344 }) }) };
+    const arrival = new Date(departure.getTime() + route.minutes * 60000);
+    return { ok: true, mock: true, ...route, ...(tolls && { tolls: withReturn(await fallback(waypoints, departure, tollCents({ travelAdvisory }), { polyline: route.polyline, points: route.points || [], meters: route.miles * 1609.344 }), route.polyline, arrival) }) };
   }
   const key = serverKey();
   if (!key || waypoints.length < 2) return { ok: false, status: 0 };
@@ -182,7 +190,7 @@ export async function computeRoute(waypoints, departure, size, tolls = true) {
     ok: true,
     minutes: Math.ceil(seconds / 60),
     miles: Math.round((meters / 1609.344) * 10) / 10,
-    ...(tolls && { tolls: await fallback(waypoints, departure, legs.some((item) => tollCents(item) === null) ? null : tollCents(route), { polyline, points, meters }) }),
+    ...(tolls && { tolls: withReturn(await fallback(waypoints, departure, legs.some((item) => tollCents(item) === null) ? null : tollCents(route), { polyline, points, meters }), polyline, new Date(departure.getTime() + seconds * 1000)) }),
     polyline,
     start: legs.length ? point(legs[0].startLocation) : null,
     end: legs.length ? point(legs[legs.length - 1].endLocation) : null,

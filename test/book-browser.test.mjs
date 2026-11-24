@@ -2469,6 +2469,25 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     assert.deepEqual(p.errors, []);
     await p.close();
   });
+  await check("B226 the owner's booking, JFK Terminal 4 to 500 Communipaw Ave, Jersey City, NJ 07304 at 5:00 PM, shows Tolls $27.20 in the price box, Google's $10.41 plus the return crossing at the peak $16.79 for the 6:26 PM drop-off, the same in every class and on the confirmation", async () => {
+    const p = await open(ctx, G, "/book");
+    await trip(p, { to: ["500 communipaw", "500 Communipaw Avenue"], time: "17:00" });
+    await view(p);
+    await priced(p);
+    await p.waitForFunction(() => [...document.querySelectorAll("#price-lines th")].some((th) => th.textContent === "Tolls"));
+    const fare = 3500 + 256 * 40 + 86 * 65;
+    assert.equal(fare, 19330);
+    assert.deepEqual(await panel(p), { lines: [["Fare", "$193.30"], ["Taxes and fees", "$4.35"], ["Tolls", "$27.20"]], total: "$224.85", notes: POLICY.later.waiting });
+    assert.equal(await p.textContent("#price-lines tr.bk-hint"), "The same in every class.");
+    await next(p);
+    await priced(p);
+    await details(p);
+    await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    await p.waitForFunction(() => /^[1-9]\d{7}$/.test(document.getElementById("cf-ref").textContent));
+    assert.deepEqual(await p.evaluate(() => [[...document.querySelectorAll("#cf-lines tr")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]), document.getElementById("cf-total").textContent]), [[["Fare", "$193.30"], ["Taxes and fees", "$4.35"], ["Tolls", "$27.20"]], "$224.85"]);
+    assert.deepEqual([p.errors, p.failed], [[], []]);
+    await p.close();
+  });
   await check("B219 while a trip priced by distance and time loads, the price box note never says tolls come after the ride and keeps its height when the answer adds tolls to the price: 350 5th Ave to Staten Island with a Google toll price", async () => {
     const p = await open(ctx, G, "/book");
     await typedTrip(p, { to: "10 Richmond Terrace, Staten Island, NY 10301" });

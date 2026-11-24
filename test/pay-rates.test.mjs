@@ -410,11 +410,11 @@ test("the distance worked example is base plus miles plus minutes from api/_trip
   assert.deepEqual([e.base, e.miles, e.time, e.fare, e.tax, e.bcf, e.fare + e.tax + e.bcf, e.fare + e.bcf], [3500, 6000, 2925, 12425, 1103, 280, 13808, 12705]);
 });
 
-test("the distance section says in a few plain sentences how the price is built, that each stop adds $20, and that tolls and parking are charged after the ride", () => {
+test("the distance section says in a few plain sentences how the price is built, that each stop adds $20, that tolls and parking are charged after the ride, and that trips into New Jersey include the chauffeur's return crossing", () => {
   const ps = [...page.querySelectorAll("#distance .prose p")].map(squash);
   assert.deepEqual(ps, [
     "Other one-way trips are priced by distance and time. You pay a base rate plus a rate per mile and per minute, with a minimum for each class.",
-    `Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Tolls are added to your price when you book. Parking is charged after the ride. For very long trips, we'll send you a price.`,
+    `Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Tolls are added to your price when you book, and trips into New Jersey include the chauffeur's return crossing. Parking is charged after the ride. For very long trips, we'll send you a price.`,
   ]);
   assert.ok(ps.join(" ").split(/\s+/).length <= 90, "the distance section stays short");
   assert.equal(squash(page.querySelector("#hourly-caption .rate-table__note")), "Taxes and fees are added at booking. Tolls and parking are charged after the ride.");

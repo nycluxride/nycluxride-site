@@ -58,6 +58,14 @@ const FIXTURES = [
     components: [state("NJ", "New Jersey"), county("Hudson County"), part(["locality", "political"], "Jersey City"), zip("07302"), US],
   },
   {
+    trigger: "500 communipaw",
+    item: { id: "mock-communipaw", main: "500 Communipaw Avenue", secondary: "Jersey City, NJ, USA", types: ["street_address"] },
+    address: "500 Communipaw Ave, Jersey City, NJ 07304, USA",
+    at: [40.715799, -74.068787],
+    kinds: ["street_address"],
+    components: [state("NJ", "New Jersey"), county("Hudson County"), part(["locality", "political"], "Jersey City"), zip("07304"), US],
+  },
+  {
     trigger: "1 gateway center",
     item: { id: "mock-newark", main: "1 Gateway Center", secondary: "Newark, NJ, USA", types: ["street_address"] },
     address: "1 Gateway Center, Newark, NJ 07102, USA",
@@ -318,10 +326,28 @@ const STOP_ROUTES = [
   [[EWR, STEAMBOAT, RIVERSIDE], 72, 55.1, 2250],
   [[EWR, STEAMBOAT, MANHATTAN], 98, 63.4, 2250],
 ];
+const LINCOLN_WEST = { from: [40.75916, -74.00019], to: [40.76693, -74.01866] };
+const T4 = "John F. Kennedy International Airport Terminal 4, Queens, NY 11430";
+const COMMUNIPAW = "mock-communipaw";
+const LINES = [
+  { names: [T4, COMMUNIPAW], at: "14:00", minutes: 80, miles: 37.7, cents: 887, points: [[40.643925,-73.783068],[40.715799,-74.068787]], polyline: "ogawFdwiaMsEiNU_@[Um@K]D_@NoBpA[^_@x@WpAKjA?pAHx@bDpJtCxJ`@jCHvA?zBC|JLpKj@dUAxCOvC_@vCc@dCq@fCcAjCaAlBkAdBqD`E{ExEkDxCqFbE}DjCaGdD{ClA}Bn@yCf@kCPaCBkCIuC]eCk@mC{@oCqA}A_AqBkB_AiAq@wAy@oCq@wBi@gAs@aA}@w@_Ak@}Aa@kHi@uEUiC_@KSaB]Wq@Ec@Fc@Pa@\\SZAVLLPL`@Bp@@b@FLUdQPp@NvAHlE@rALlA]d\\BnEHvBVvCl@lDnA~F`BjHp@zDV|BLfCB~DEtGg@`Xq@zUg@nJ]zDa@lCuCxNa@xCSxBIlC@tBFvAVbCn@tDz@zDfCrIxE~NrCdIdFpM~C~GrCfFdCzD~BdD|KbO`FnHxGvK|CxFxFfLfI|QvJzTjBpDhChE~B`DbDtDvBtBtCdCxDjCrDrBfGvCdLvEbJrDvGdCbD`BnFfDnDrCbExDpDjEbBbC|GrLpIzNlBfDlE|H`LzR~ArBzB`CzAtArA`A~BrArBz@rBh@nC`@fCLpCC~Kk@fJU|ICzEDfEZ|Dl@xOxDdDh@hMpA~Bf@pBp@bCjAvBvA`BvA~AdBzAvBpA|BdA|BxE`Mz@dBjAbBnAxA`BvAlBlAzBbAnBj@hAVvBTlBHdDEvBYdC[jBEvBBlBRfB^pBr@lCtAhAx@~AzApA`Br@lAlIvRx@fCh@zBt@lE^fDb@lFT~ELxF?zFEhEMxD]dG_@bEi@zD{ApJ_BxHoAbGe@bDShCKpFFnEXrEd@`F~A~O|@`L`@dHj@xMZhMD~DG`EUxEq@pHSvDIbE@tFFtCPfEdAxMz@fKf@tJPtGNbHTzGLvBp@`IpB~QXxCXrEJhDAzEKhEo@hJoAxM}@xHq@fFk@vDq@`DgAvDcApCeAvBeA`BsA`ByAxAw@n@iCzAsCnAsGhCuCvAoCfBwD`DoClCaDtDaCbDyBfDg@|@sAtC}@lC}@pDk@lD_AnGa@hB}@tCu@jBwCtFqLpTmBfEgApCsAlEy@dDy@dEoDxSmBjJgDrO_@fCUxCIfC@zDVdHHhEClCMhCWnBe@`Ci@dBi@pAkBtD]TmA~AyCzCqAfAc@Vw@Ry@Dm@GwA]uAu@yUqPg@c@Ue@Kk@?m@Fm@Re@X[d@Sh@?ZJb@ZbAnAbGbJn@bBd@bB?RvAnFvGrYbDrNrP|u@bH`[lDjPzCfNX~BHvBCvBa@dHY|Ck@fEgAzFkCjLcDpL}D`N_AbEw@~Ec@vDa@|FOfFUzVS|E_@rEe@rDu@~D}@lDoOpf@o@jCg@|C_@nDOvCCjCFdJ~@vy@@lEC|BQhDYhCmBfM[hDKpC?hDLlDVlCf@~ClEjT`B`KnAtJv@vI`@nFf@lKRpG\\lQ|Avw@?xAKbEWhDc@xDk@|C_ApDgA~CiAfCiArBSDcApAo@d@}CvAgQpHgAP}@?}BYIBiEy@cBi@aBw@}AkAwSiSqDyCkAw@cDeByCmAiCw@yJ}BmCSqAA_Kj@mEBcEKkCSeM_BcCi@ea@{Lue@_OuDcBqC_BmFmDwQaMsAqAcA{Ak@sAc@cBYiBKyAAwBR_LZgN?cEK{CYyD_@aD_AgFsAqFqAkEmAcDqAoC{EgIyBsDiB}DoA_DqAmEk@gCeAcGq@gFk@uD_@cBg@uAWk@y@sAaAeAeAw@_Ac@oA]cAMyAAsAN_Ch@{DlAkCp@qANw@@iAIqBe@{TsHuG_C_CgAkCcBue@w_@u@aAcAuB]iB_@}DD]KkBDoALo@Rg@Z]`@Ql@C`@Hb@XVb@Pj@HtAQjASt@m@tAq@bAgAjAuA~@}@^_@Du@?cAO}@a@aEaDc@_@y@e@cDmC}CiCUc@Mo@CiA?gEKaDa@cEw@{Dy@oCMSeBkF}AuDuBeEuBeD{ByCcNkNiTuTcC{CqB}CkBqDaB}DsA_E_AqDcEcSy@yCoAsDyAgDaB}CQYE[}@_CQcA[{EScA[k@]W]Ga@Dk@\\c@l@i@nAYjAOnACr@D~@Hl@Tt@JVN~@bBvD`@nAFJ?f@_C`QGnA@lAPfBj@zEBtAAXKf@M`@{C{B_C{AqFyDyAuAsBqBi@[qAi@{I_DmHmFiAqB{@_Bs@eAaEaDoQcKmCbGg@pA" },
+  { names: [T4, COMMUNIPAW], at: "", minutes: 86, miles: 25.6, cents: 1041, points: [[40.643925,-73.783068],[40.715799,-74.068787]], polyline: "ogawFdwiaMsEiNU_@[Um@K]D_@NoBpA[^_@x@WpAKjA?pAHx@bDpJtCxJ`@jCHvA?zBC|JLpKj@dUAxCOvC_@vCc@dCq@fCcAjCaAlBkAdBqD`E{ExEkDxCqFbE}DjCaGdD{ClA}Bn@yCf@kCPaCBkCIuC]eCk@mC{@oCqA}A_AqBkB_AiAq@wAy@oCq@wBi@gAs@aA}@w@_Ak@}Aa@kHi@uEU}F{@uCa@kCM{FOcGBkGPsCZuCn@oC~@uHtCsJ`DqPpGiKzDcG`C}DxA{FdCoU|K}FpCoFnCcPnH}C|AmDpB_HdDiEdBiLbE{CbAgC~@gC|@uB~@UP_J~DoQ|Iu@b@_BlAqBfBiBxByDfFyA|AkBzAaO|IcDpAyBb@gBPcC@eHMaBJeBX_Bh@mJdFsBzAwAtAsA|AwC|EaDnF_AjAoAfA{A~@gi@bU_Cn@aC`@aFRmHV}CXgJdByE~@SKw@Bq@Gs@Yu@m@s@o@o@Oi@D_@P[ZWn@Kr@Bx@Jh@~JhWP^PFvRfh@d@zAzBbJz@fEx@zF|@vIp@`Fj@vCbPjx@|DvPvDtQ~Gl\\r@xCrDfMf@dC\\pCNbCr@vSRbCj@nDp@nCp@nBpBlErCzFhAdDf@lB`@fCXrCJfCBnCEvBw@pRcBda@C^Ub@i@`Di@xBeA`Dw@jBeC|EoBlEcCrFqAtDm@zBe@lCeB|KmExUk@zBk@|Ag@`Aw@z@_CfBkCfB}@fAa@bAUfAMrA@fANzAR~@l@`Bz@tAjApAhAx@~CbBVD|H|EjB~@hCnBxAxAlJ~KlB~B`AzAt@zAl@~Aj@lBlB~J|CnQj@|Bj@dB|DxIxA`CpCnE~CnG|DbI~I`QpIhO`BfC~DpFvHfJT?dCfBxEpCz@x@p@z@l@rA`@xARxAt@dPApAIx@cAlEkExSUl@{CzNs@vC_AxEsFvWkAvFmChN}@bE?VqLhl@iAxEgCpLcAnEQ|@C\\wEpUDTsFlUfBtAoChIiH|Q?TQhAy@nIQhDKl@Q`AYn@[`@g@Ty@AKB_AEs@Re@X]`@Wj@Qn@Ix@s@dOm@nI_A|SOdCkB`SoAzLgC|XUzDmAnZIvBUjBmDzOa@pAm@rAm@fAoAjBo@|AQj@S`A{B`j@ArALhDBh@Gz@BxBSjKFlBPpAZfAf@|@z@~@zAbAvBdAbDlA~r@jQfLnCdCZ|BJdB@jC[`Ba@tAg@~IaElAc@rAS~AGfBJ~AVhBf@pAl@dAp@x@v@x@dA`A`B|ApDzHrRbBpEnEfKr@vAxCfEzBhCH\\n@bAb@bAXnAj@pEZrAb@jAn@hAxA`D`@nAFJ?f@_C`QGnA@lAPfBj@zEBtAAXKf@M`@{C{B_C{AqFyDyAuAsBqBi@[qAi@{I_DmHmFiAqB{@_Bs@eAaEaDoQcKmCbGg@pA" },
+  { names: [COMMUNIPAW, T4], at: "", minutes: 69, miles: 36.2, cents: 2225, points: [[40.715799,-74.068787],[40.643925,-73.783068]], polyline: "whowF|pacMvAkD|AiDnQbKhEjD~@vAhBlDfBtAlE~C|JpD~@^~@x@xArAbB~AjGhEnCjBzAhA\\f@`CzBf@~@fB|DnAlClIlNvO`U~@mA|BkDxE}G|CmElXbYZ`@Dy@D_CCMJmEZ]NDPVT`@Jd@zArFhBjH|AnFvAbEbBdE~DpIvCfG~B|EX`@BTvBhBJN~DxCp@p@p@`An@xAZpAz@dHd@~A\\x@v@nAd@f@vc@`^~C`CxE|BxL|DdEvA|J`DZHnADpAErAUzK}CvAQrA?r@Fr@NjA`@bAl@b@\\~@fAp@fAn@~Ab@`BpBtNv@hEfAnE~@zCfArCzA~CbDrFxDnGfBzD|AfEtAtEz@jDr@`El@|ETrDHtDCfEs@p]B~ANvA\\zAd@rAd@z@t@~@dA|@zGdEnQtLzCdBbDxAbQnFp_@lLlVnHpB`@`OfB`CVrBP~AB`FKrGc@vACn@@zBXfLjCbDjAlCrAvBrAnCrBjTzSdBvArBhA|Al@tGvAjAd@zDpCdGvE|@\\`AL|@A`ASt@_@v@s@f@s@d@kATaALqARoHLkARaAVq@`@w@AYjAoBxAcDjAeD|@kDf@aCf@sDXeDT_F@cEaAoh@w@{][_Ke@mJi@oHw@aIu@eGqAmIcAmFgDePa@kCOsBQeE?sCJiDVqCNwAjBkLTaCJ}B@{BKgKk@cc@[{YDsCPiD\\gDh@eDz@kDjNyc@jAyEv@aEh@}D\\eERmG\\sYPeE^}Ef@{Dt@iE`A_EnEaOlCcKpCuLbAkFd@wDVwDNuEBiDEwBIeAU}AsFaWyCqNaXslAcMwj@aAmEy@}COIs@oB_AcB{@kAyAwA}AgAe@WI@]Gm@Di@\\UZSh@EZA`AJn@Th@h@h@nGrEnKdIr@t@~A`Cn@j@l@Vv@Jl@Al@Kp@Yj@g@zBoChCwDn@eAD_@xAwCdAqCp@aCd@aCXoCJiC@_DKgDWeHAwCH}CPgC\\{B`BkIvC_N|AoInCwOx@uDlAcElAmDnAyCtDeHvL{ThAoCt@cCp@aDxA_Kn@uCp@{Bz@wBbAmBzBqDfDqEfCwCxB{B|DgDlCkBdCuAvB_A|FwBzBgAlBmAx@m@jBmBrAgBrA_C~@wBnAyDj@wBz@qEzAuLdAuJ~@iKf@mHJsE@uEKwD_@qFq@yGqAeLc@eFa@sHUgHWeK_@wIm@}I}AeRQeEI_DAcGJeENiCv@sJRkEDyEOaJ_@qLk@oLw@wKaAwKy@wHw@oJK}CAoDDgCRuCVyBjA_G|BiKxAiH|@iFXoB^eEX_GH_FBeEEcGS}Fc@kGe@_Eg@uCc@kBcA}C{KcWeAkBmAaB{A{AgA{@mAu@aBs@kA_@cCc@qBOwBAgBJ}G|@kCR}BCwAQsBc@cBo@iB_AgBqAeAcAsAeBkAoBs@yAoE{LkAcCwAaCcB{BgBiBwAiAeBiAmB_A{By@kCm@qEe@oGk@sCc@uNmDeEq@eCWiDOyJAgJNqEJqCA{DSgCYkDm@yCw@wCeA{CuAkDsBwBcBgBgBcBwB}@uA}S}^oOeXgCiDgDuDaD{CcDiCmCiBoC}AsDeBc]_NeGqCeCqA}DeCqCsBmD_DwB}BeDiEuB_DaCkE_CeFiOo]kDsHqEwI_HsLaEsGmEkGkLuOgCwDcDyFcC}EqCwGeGoP{DmLqDqLq@oCeAmFWyBOgD?cCNmC`@eDj@aDxBwKf@kDP}BRYl@{Fb@uHJsAXmArCgHXoALiB?wAGkDDsC@]GU~@cMx@}M|AcY@mBC{AMsBWuBg@wBiEqMe@kBa@wB_@uCc@{Eg@kJLYFs@XcA\\m@d@a@l@Sl@Ep@JdAf@t@f@JAdHpGvApAdBdBlA|@pC|ApChArBn@zBb@jCXhCJlAA`FY`Ca@hCs@jBq@vEeCfFcDtEgDvE{DjFeFtDeEbAsAfAoBfAiCx@mCj@mC\\oCTaDDiDEiDk@_THQFaCb@qM?gBQqCC_ALq@vAkEXoARo@`AoANc@D{@Ck@eA{CM_@" },
+  { names: [T4, MANHATTAN, COMMUNIPAW], at: "", minutes: 92, miles: 26.5, cents: 1637, points: [[40.643925,-73.783068],[40.749028,-73.985937],[40.715799,-74.068787]], polyline: "ogawFdwiaMsEiNU_@[Um@K]D_@NoBpA[^_@x@WpAKjA?pAHx@bDpJtCxJ`@jCHvA?zBC|JLpKj@dUAxCOvC_@vCc@dCq@fCcAjCaAlBkAdBqD`E{ExEkDxCqFbE}DjCaGdD{ClA}Bn@yCf@kCPaCBkCIuC]eCk@mC{@oCqA}A_AqBkB_AiAq@wAy@oCq@wBi@gAs@aA}@w@_Ak@}Aa@kHi@uEU}F{@uCa@kCM{FOcGBkGPsCZuCn@oC~@uHtCsJ`DqPpGiKzDcG`C}DxA{FdCoU|K}FpCoFnCcPnH}C|AmDpB_HdDiEdBiLbE{CbAgC~@gC|@uB~@UP_J~DoQ|Iu@b@_BlAqBfBiBxByDfFyA|AkBzAaO|IcDpAyBb@gBPcC@eHMaBJeBX_Bh@mJdFsBzAwAtAsA|AwC|EaDnF_AjAoAfA{A~@gi@bU_Cn@aC`@aFRmHV}CXgJdByE~@SKw@Bq@Gs@Yu@m@s@o@o@Oi@D_@P[ZWn@Kr@Bx@Jh@~JhWP^PFvRfh@d@zAzBbJz@fEx@zF|@vIp@`Fj@vCbPjx@|DvPvDtQ~Gl\\r@xCrDfMf@dC\\pCNbCr@vSRbCj@nDp@nCp@nBpBlErCzFhAdDf@lB`@fCXrCJfCBnCEvBw@pRcBda@QrBi@fDs@vCs@tBeAbCiJpQaA~Bs@tBw@pDiBbMqE`Vu@jCu@lBcAnBsDlFwFhIwArC{@vBs@`Cm@fCe@jCgEh_@sA~OgAlJ]bG[lDc@nCs@fDm@tBgJdZc@nBi@~DiCzTGfBBhBl@nHClBKvDAlBBDAfEM~B_AzIiAvJSdAq@nCu@tBiAzB_Zne@i@tA]|AMtACnAFbAPdA^jAh@x@x@v@xCpBn@t@^v@VbAHbAAdAIn@e@dBWv@AVoBnGAd@Hd@R`@f@d@tBtAnAdA\\VmI|WsHrUsAdErBsGhKbHvS`NdGxDrAdAdC~AjAr@t@h@lBlAzP|KqBnGkKl\\|OfKjXnMpOnHjAd@fQ|ANLtKbAXd@Hb@?n@Md@UXq@AKB_AEs@Re@X]`@Wj@Qn@Ix@s@dOm@nI_A|SOdCkB`SoAzLgC|XUzDmAnZIvBUjBmDzOa@pAm@rAm@fAoAjBo@|AQj@S`A{B`j@ArALhDBh@Gz@BxBSjKFlBPpAZfAf@|@z@~@zAbAvBdAbDlA~r@jQfLnCdCZ|BJdB@jC[`Ba@tAg@~IaElAc@rAS~AGfBJ~AVhBf@pAl@dAp@x@v@x@dA`A`B|ApDzHrRbBpEnEfKr@vAxCfEzBhCH\\n@bAb@bAXnAj@pEZrAb@jAn@hAxA`D`@nAFJ?f@_C`QGnA@lAPfBj@zEBtAAXKf@M`@{C{B_C{AqFyDyAuAsBqBi@[qAi@{I_DmHmFiAqB{@_Bs@eAaEaDoQcKmCbGg@pA" },
+  { names: [MANHATTAN, "mock-clinton"], at: "", minutes: 19, miles: 3.8, cents: undefined, tolls: [LINCOLN_WEST], points: [[40.749028,-73.985937],[40.75394,-74.030663]], polyline: "mxuwFbkqbMuK~\\aBrFmG~RwAfEuBxGoCoB{AwBeCkEi@o@_@Wk@Ia@Bm@Xi@f@o@dA}DhIwAjEa@fBk@rD_@rAqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAlAf@JXt@p@jBtCl@j@bAh@dCbAP?lBhApC|BVPL?n@h@vAv@r@XjE`Axg@nKc@`E{EaA" },
+  { names: ["500 8th Ave, New York, NY 10018", "mock-weehawken"], at: "", minutes: 12, miles: 2.8, cents: undefined, tolls: [LINCOLN_WEST], points: [[40.753043,-73.992811],[40.758767,-74.029716]], polyline: "oqvwF`vrbMoEsCyFhQdAv@HR?\\c@vAMN_@@wAeCi@o@_@Wk@Ia@Bm@Xi@f@o@dA}DhIwAjEa@fBk@rD_@rAqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAlAf@JXt@p@jBtCl@j@bAh@dCbAP?lBhApC|BVPL?n@h@vAv@r@X`@JSrBpGtG" },
+  { names: ["mock-clinton", MANHATTAN], at: "", minutes: 24, miles: 3.9, cents: 2079, points: [[40.75394,-74.030663],[40.749028,-73.985937]], polyline: "cwvwFrbzbMzE`AcArJmNuC_FeAbBuPuViFs@WmAi@iAy@qBoBe@_@CYgCqBeAw@]]a@k@e@kA_@i@mCyCy@e@uDcBiAm@UEmAkAe@w@c@qAWuAI_BD}ALgA`@_Bhk@seBfE}Mn@yBdEsMZyAFg@He@L{@x@uCh@QX?b@TRZhDjClBcGfFhDVRbAaDzAsEnGkSfFkPpEmN" },
+  { names: ["mock-newark", MANHATTAN], at: "", minutes: 38, miles: 13.3, cents: 2296, points: [[40.734931,-74.16524],[40.749028,-73.985937]], polyline: "i`swFvktcMLGV[_C{DMWKpAuAlG_Dq@gHw@uDWqBFuEj@oA\\_Ab@kI|FIRo@XeATmA@{C]YsCi@}IqBcWzLoPfAoBfAmCp@yBC]h@eCVmBT_DD}CIoLUmK_@iKY}E_@aEg@}DwMo|@m@}C}@_D{@cCwA{CeAgBsAaBwAoAcC_BoKuEkLaFgAo@m@m@}@yAc@iAYsAKkAEiBGcD[gEo@qDQ{@D]Gq@?y@Ju@Zw@l@cA`SkS^u@Tw@F{@Ew@Qy@a@y@oCeDq@iAeEsJUM}DwKgD}JeDoKiAmEgA{Fk@wD_@cDe@aGSqEKcFW_s@O{EYsEe@sEq@cEu@wD}@iDgAcDeMy\\kWiu@aC{FoB_EaDqFkCwDcBuBuC}CyCoCmEkDqD}B}OuIKi@uDeCcEaDqE}CkCuA{F_Cs@i@u@gAm@sA]mAYkBI_B?gBNiCPkAhDqMfEgMp@{AvB_ETo@VkARqB^yFZwBdC_KpFaTvEuQxAwEbH{QfD{I~AeFrCsJpJ{X`@q@f@i@x@g@t@SfACnBTzCh@~DdAzDtA|@f@`@d@\\z@Jv@Ar@Mx@[p@YZa@Tc@Fa@E_@U{A{AcAs@iDcBkDiDe@w@c@qAWuAI_BD}ALgA`@_Bhk@seBfE}Mn@yBdEsMZyAFg@He@L{@x@uCh@QX?b@TRZhDjClBcGfFhDVRbAaDzAsEnGkSfFkPpEmN" },
+  { names: ["mock-jersey-city", "mock-clinton"], at: "", minutes: 20, miles: 3.3, cents: 0, points: [[40.715573,-74.033472],[40.75394,-74.030663]], polyline: "igowFdtzbMw@zMwD[eKgAgGs@i@@w@Vm@`@_EzCi@TwJ{@oA]kA]yDu@{Ak@uEgCo@S_AGaADiCd@i@Hq@CoTkCc@By@Xa@\\_@h@Up@OfAk@~NOjA}ApEoKy@q@K}@W?jBJ|AId@GDi@K\\{CDc@SeCMoAEMy@aKkb@wIi~@kRuCk@" },
+];
 const key = (text) => (text.startsWith("mock-") ? text : norm(text));
 const point = (waypoint) => (waypoint && typeof waypoint.placeId === "string" ? waypoint.placeId : norm(waypoint && waypoint.address));
 const same = (names, ends) => names.length === ends.length && names.every((name, i) => key(name) === ends[i]);
 const tollInfo = (cents) => (cents === 0 ? {} : { travelAdvisory: { tollInfo: Number.isInteger(cents) ? { estimatedPrice: [{ currencyCode: "USD", units: String(Math.floor(cents / 100)), nanos: (cents % 100) * 10000000 }] } : {} } });
+
+const NEW_YORK_CLOCK = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const clockOf = (when) => (when instanceof Date && Number.isFinite(when.getTime()) ? NEW_YORK_CLOCK.format(when) : "");
+const lineRoute = (waypoints, when) => (Array.isArray(waypoints) && LINES.find(({ names, at }) => same(names, waypoints.map(point)) && (!at || at === clockOf(when)))) || null;
 
 function mockDrive(waypoints) {
   const ends = Array.isArray(waypoints) ? waypoints.map(point) : [];
@@ -362,9 +388,15 @@ function nearest(path, arcs, at, from) {
   return best;
 }
 
+function lineSplit(waypoints, when) {
+  const line = lineRoute(waypoints, when);
+  return line && line.tolls && line.names.length === 2 ? { path: decodePath(line.polyline), stops: [], minutes: line.minutes, miles: line.miles, tolls: line.tolls } : null;
+}
+
 export function mockSplit(body) {
   const stops = (body.intermediates || []).filter((item) => !item.location);
-  const fixture = splitRoute([body.origin, ...stops, body.destination], new Date(body.departureTime));
+  const ends = [body.origin, ...stops, body.destination];
+  const fixture = splitRoute(ends, new Date(body.departureTime)) || lineSplit(ends, new Date(body.departureTime));
   if (!fixture) return { routes: [] };
   const { path, minutes, miles } = fixture;
   const arcs = arcsOf(path);
@@ -394,7 +426,9 @@ export function mockSplit(body) {
 export function mockRoute(size, waypoints, when) {
   const split = splitRoute(waypoints, when);
   const fixed = split && { minutes: split.minutes, miles: split.miles, travelAdvisory: { tollInfo: {} }, polyline: encode(split.path), points: [0, ...split.stops, split.path.length - 1].map((i) => split.path[i]), start: { lat: split.path[0][0], lng: split.path[0][1] }, end: { lat: split.path.at(-1)[0], lng: split.path.at(-1)[1] } };
-  const drive = fixed || { ...mockDrive(waypoints), ...(Array.isArray(waypoints) && waypoints.length > 1 && mockPath(waypoints)) };
+  const line = !split && lineRoute(waypoints, when);
+  const drawn = line && { minutes: line.minutes, miles: line.miles, ...tollInfo(line.cents), polyline: line.polyline, points: line.points, start: { lat: line.points[0][0], lng: line.points[0][1] }, end: { lat: line.points.at(-1)[0], lng: line.points.at(-1)[1] } };
+  const drive = fixed || drawn || { ...mockDrive(waypoints), ...(Array.isArray(waypoints) && waypoints.length > 1 && mockPath(waypoints)) };
   if (!size) return drive;
   const src = `data:image/svg+xml,${encodeURIComponent(mapSvg(size.width, size.height))}`;
   return { ...drive, map: { src, src2x: src, ...size } };

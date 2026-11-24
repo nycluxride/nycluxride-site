@@ -15,6 +15,10 @@ const CROSSINGS = [
   { id: "bayonne", a: [40.6471, -74.1401], b: [40.6329, -74.1456], radius: 150, lead: 300, trail: 300, span: 3000 },
   { id: "outerbridge", a: [40.5243, -74.2552], b: [40.52545, -74.2338], radius: 150, lead: 300, trail: 300, span: 3000 },
 ];
+const TUNNELS = [
+  { id: "holland", a: [40.72799, -74.024], b: [40.72666, -74.016], radius: 100, lead: 1000, trail: 1500, span: 3000 },
+  { id: "lincoln", a: [40.7642, -74.0125], b: [40.7617, -74.0065], radius: 120, lead: 800, trail: 800, span: 3000 },
+];
 const GATES = [
   { id: "13", at: [40.64095, -74.20992], radius: 100, margin: 2000 },
   { id: "13A", at: [40.66891, -74.18406], radius: 100, margin: 2000 },
@@ -137,11 +141,12 @@ function stopArcs(path, arcs, stops) {
 
 function crossingsOn(path, arcs) {
   const hits = [];
-  for (const item of CROSSINGS) {
-    const ends = visits(path, arcs, item.b, item.radius);
-    for (const start of visits(path, arcs, item.a, item.radius)) {
+  for (const [kind, item] of [...CROSSINGS.map((item) => ["pa", item]), ...TUNNELS.map((item) => ["free", item])]) {
+    const [from, to] = kind === "pa" ? [item.a, item.b] : [item.b, item.a];
+    const ends = visits(path, arcs, to, item.radius);
+    for (const start of visits(path, arcs, from, item.radius)) {
       const end = ends.find((at) => at > start && at - start <= item.span);
-      if (end !== undefined) hits.push({ kind: "pa", id: item.id, after: item.after || [], from: start, to: end, start: start - item.lead, end: end + item.trail });
+      if (end !== undefined) hits.push({ kind, id: item.id, after: item.after || [], from: start, to: end, start: start - item.lead, end: end + item.trail });
     }
   }
   return hits;
@@ -203,6 +208,19 @@ export function tollPlan(path, stops = []) {
   return { marks: marks.map(({ stop, cut }) => (cut ? { cut } : { stop })), legs };
 }
 
+function passes(path, arcs, from, to, item) {
+  const ends = visits(path, arcs, to, item.radius);
+  return visits(path, arcs, from, item.radius).map((start) => ends.find((at) => at > start && at - start <= item.span)).filter((end) => end !== undefined);
+}
+
+export function intoJersey(path) {
+  if (!Array.isArray(path) || path.length < 2) return false;
+  const arcs = arcsOf(path);
+  const crossed = [...CROSSINGS, ...TUNNELS].flatMap((item) => [...passes(path, arcs, item.b, item.a, item).map((at) => ({ at, west: true })), ...passes(path, arcs, item.a, item.b, item).map((at) => ({ at, west: false }))]);
+  crossed.sort((x, y) => x.at - y.at);
+  return crossed.length > 0 && crossed[crossed.length - 1].west;
+}
+
 const NEW_YORK = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23" });
 
 export function crossingCents(when, group = TOLL_GROUP) {
@@ -228,12 +246,14 @@ export function priceSplit(plan, route, departure, meters) {
     const seconds = parseFloat(String(leg.duration || ""));
     if (!Number.isFinite(seconds) || seconds < 0) return { reason: "legs" };
     if (mark) {
-      if (!(leg.travelAdvisory && leg.travelAdvisory.tollInfo)) return { reason: "facility" };
+      const free = mark.tolls.every((item) => item.kind === "free");
+      if (!free && !(leg.travelAdvisory && leg.travelAdvisory.tollInfo)) return { reason: "facility" };
       for (const item of mark.tolls) {
         const reach = at + seconds * 1000 * item.share;
         if (!(reach < TABLE_UNTIL)) return { reason: "stale" };
-        cents += item.kind === "pa" ? crossingCents(new Date(reach)) : item.cents;
+        cents += item.kind === "pa" ? crossingCents(new Date(reach)) : item.kind === "free" ? 0 : item.cents;
       }
+      if (free) cents += tollCents(leg) || 0;
     } else {
       const part = tollCents(leg);
       if (part === null) return { reason: "unpriced", detail: `leg ${i + 1}/${legs.length} ${Math.round(Number(leg.distanceMeters) || 0)}m plan ${planText(plan)}` };
@@ -242,4 +262,9 @@ export function priceSplit(plan, route, departure, meters) {
     at += seconds * 1000;
   }
   return { cents };
+}
+
+export function returnCents(path, arrival) {
+  if (!intoJersey(path)) return 0;
+  return arrival.getTime() < TABLE_UNTIL ? crossingCents(arrival) : null;
 }

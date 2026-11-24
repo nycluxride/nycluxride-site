@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceRide, receipt, shownLines, serviceLabel, laterNotes, tollsIn, bookingData, rateKey } from "../api/_trip.mjs";
 import { tollCents, computeRoute, googleUp, TOLL_PASSES } from "../api/_google.mjs";
-import { decodePath, tollPlan, priceSplit, arcsOf, project, crossingCents, tollClassOf, TOLL_GROUP } from "../api/_tolls.mjs";
+import { decodePath, tollPlan, priceSplit, arcsOf, project, crossingCents, tollClassOf, TOLL_GROUP, intoJersey, returnCents } from "../api/_tolls.mjs";
 import { mockRoute, mockSplit } from "../api/_mock.mjs";
-import { readRoute, signRoute, routeKey, ROUTE } from "../api/_ticket.mjs";
+import { readRoute, signRoute, routeKey, ROUTE, signTicket } from "../api/_ticket.mjs";
 import { sessionParams, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters, bookingEvents } from "../api/_mail.mjs";
 import { POST as routePost } from "../api/route.mjs";
@@ -502,15 +502,15 @@ await test("peak or off-peak at the time the car reaches the bridge: a Monday pi
   assert.deepEqual(tolls, [2424, 2424, 2424, 2224, 2224, 2224, 2424, 2224]);
 });
 
-await test("each direction of a round trip on its own: the ride out pays the bridge and the Turnpike, the way back into New Jersey pays only the Turnpike from 18W to 14, one Tolls line of $27.95, and the metadata and receipt keep it", async () => {
+await test("each direction of a round trip on its own: the ride out pays the bridge and the Turnpike, the way back into New Jersey pays the Turnpike from 18W to 14 plus the return crossing over the bridge at the peak $16.79 for the Friday 7:21 PM drop-off, one Tolls line of $44.74, and the metadata and receipt keep it", async () => {
   mock();
   const back = await priced({ ...WEEKDAY, from_text: RIVERSIDE, from_id: "", to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-13", time: "18:00" }, LATER);
-  assert.deepEqual(back.trip.legs.map((item) => item.ride), [{ tenths: 509, minutes: 81, tolls: 571 }]);
+  assert.deepEqual(back.trip.legs.map((item) => item.ride), [{ tenths: 509, minutes: 81, tolls: 2250 }]);
   const { trip, price } = await priced({ ...WEEKDAY, ...HOME }, LATER);
-  assert.deepEqual(trip.legs.map((item) => [item.back, item.ride.tolls]), [[false, 2224], [true, 571]]);
-  assert.deepEqual([price.tolls, price.estimate, shownLines(price.lines).find((item) => item.label === "Tolls").cents, price.notes], [2795, 2795, 2795, [POLICY.later.waiting]]);
+  assert.deepEqual(trip.legs.map((item) => [item.back, item.ride.tolls]), [[false, 2224], [true, 2250]]);
+  assert.deepEqual([price.tolls, price.estimate, shownLines(price.lines).find((item) => item.label === "Tolls").cents, price.notes], [4474, 4474, 4474, [POLICY.later.waiting]]);
   const { metadata, items } = built(trip, price);
-  assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents, metadata.legs], ["2795", "2795", "2"]);
+  assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents, metadata.legs], ["4474", "4474", "2"]);
   assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);
 });
 
@@ -752,6 +752,325 @@ await test("other Turnpike trips on live lines: Newark Liberty to 200 Marin Blvd
   const line = decodePath(FORT_LEE_LINE);
   assert.ok(along(line, FORT_LEE).gap < 50);
   assert.deepEqual(tollPlan(line, []), { marks: [{ cut: { latitude: 40.828984, longitude: -74.024671, heading: 32 } }], legs: [{ tolls: [{ kind: "njtp", id: "14-18E", share: 0.195, cents: 571 }] }, null] });
+});
+
+const T4_ADDRESS = "John F. Kennedy International Airport Terminal 4, Queens, NY 11430";
+const T4_END = { from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4" };
+const T4_DROP = { to_text: "John F. Kennedy (JFK), Terminal 4", to_id: "jfk-t4" };
+const CPW_LABEL = "500 Communipaw Avenue, Jersey City, NJ";
+const R_NOW = new Date("2026-11-24T15:00:00.000Z");
+const MAN_EWR = "mxuwFbkqbMuK~\\aBrFmG~RwAfEuBxGoCoB{AwBeCkEi@o@_@Wk@Ia@Bm@Xi@f@o@dA}DhIwAjEa@fBk@rD_@rAqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAtClAzB~Ab@Jt@Kr@[`@_@\\k@Rs@H{@AaAOw@[u@_@c@k@_@uDwAsDaAaDo@aDc@aA@}@Pw@`@m@h@q@hAsJ`Y}FpR{A~DcHrQsBbGmB`H{ClLqC`L}GjWyDpN{Jt_@kClKW|AItA?lAJdBTxA^lAr@tAj@l@fBdAtCdArB~@pBfArDvAxHnCrAl@XAdH|DdIrEvEtCbDdCbD|C~ClDzBvClBrCfBzC~BxEnBtEzCrI|Tzo@|KnYfAjDhAlE|@xEj@lE`@xERzEFdFVxp@NzFX|E`@pEp@hFv@pEdAxElAfEhE~MtErMpElLjF~LlBvDhBvCpCtDvBbC|CxCfDjClCfBhCvAzCpAzDnAbMxChIhBdC\\fDTtS\\rCTjDl@zBp@dDtAvBtA`BrAvBzBjB|BbMnQvC`EjApApDhDpDfCpCvAjB|@hVdK`G|Bf@b@xFxDxCdC@PvBxBjBbC|AlCvAvClA~CzA`FtGfUxA~D`BrD`BtChBrCfBxB`CpCj@bA`@dAX|@Ff@f@nDRlCBbAE|ASvAsDjPy@zCa@fByA|EeAvCiDnIg@dBq@rDKbBC`AHPRxA`@xAf@dAv@~@`Ar@HBDLxChCx@bAp@nAp@pBZzA?LJnA@pBIb[@zFHPGpHFnBFpAFN`@fC^|AZbAv@fB`A|AfArAx@r@bGlEhDbCxDlCvD~B|C|AfOtGLHXIXDd@Ah@Q~A{@p@Mr@@n@Rd@\\tC~Dv@fAz@p@JTlA`@~@LfAC|@Sz@c@h@a@j@{@z@cB";
+const OUTERBRIDGE = "uwfvFhfhdMtAqHSMsCcAmDqAeC}@}DuAw[eM}B_Ae@So@IaA@_@LqGbEi@L}@@_@EqFuBaE}A_@Gc@QoDuBwHwCo@My@Bq@Ni@Ta@XmJrJYZ~BvEn@~Ad@rBz@pEn@vBXx@Jp@EXDl@@j@ItA[nBo@tCGj@iBrHBZ}BfJ_@VeAzCkB~G@j@FLl@PNE^YLg@Ac@`C_LBWEUfGuVj@_DXgCRuC|D}u@H{EAsEmEotB_@qRIgKi@gVMeDFa@EyBF{An@oI@}AGgAWqA]eAg@{@w@y@q@a@_AWaAG}@Fq@Rq@ZgO|JaAb@iBb@_@FIJs]xAi@@WKeBMaGu@]CMQ_Jq@GFKtEBRLJbF`@tERnEDpBCh@fDTrBBrAoBjSkAlKo@zGk@fGs@`HWpEeLr@mCWkCc@_@Qu@eA]u@kAyD";
+const PEAK = PA_TOLLS[1].peak;
+const OFF_PEAK = PA_TOLLS[1].offPeak;
+const HOLLAND_GOOGLE = 1041;
+const signed = (id, label, now = R_NOW) => signTicket(id, "outside", label, now, 0, "NJ");
+const toCpw = (now) => ({ to_text: CPW_LABEL, to_ticket: signed("mock-communipaw", CPW_LABEL, now) });
+const fromCpw = (now) => ({ from_text: CPW_LABEL, from_ticket: signed("mock-communipaw", CPW_LABEL, now) });
+const OWNER_JC = (now) => ({ trip_type: "one", ...T4_END, ...toCpw(now), date: "2026-12-01", time: "17:00", passengers: "2", toddler_seats: "1", class: "suv", action: "pay", ...ME });
+const lineOf = (ends, date, time) => decodePath(mockLine(ends, nycToUtc(date, time)).polyline);
+const reversed = (path) => [...path].reverse();
+const googleRoute = (route) => {
+  const sent = [];
+  globalThis.fetch = async (url, init) => (sent.push(JSON.parse(init.body)), new Response(JSON.stringify({ routes: [route] }), { status: 200 }));
+  return sent;
+};
+const ownerAnswer = (extra = {}) => ({ duration: "5160s", distanceMeters: 41199, legs: [{ startLocation: { latLng: { latitude: 40.643925, longitude: -73.783068 } }, endLocation: { latLng: { latitude: 40.715799, longitude: -74.068787 } } }], ...tolled(money("10", 410000000)), ...extra });
+
+await test("the return crossing is found on Google's route line the way the fallback finds a crossing, in the New Jersey direction: the live lines that cross the Holland or Lincoln tunnel, the Bayonne, Goethals or George Washington bridge or the Outerbridge into New Jersey are found, the live lines into New York or with no crossing are not, and a line that crosses back into New York before its end is not", () => {
+  const T4 = { address: T4_ADDRESS };
+  const CPW = { placeId: "mock-communipaw" };
+  const MAN = { address: MANHATTAN };
+  const HOB = { placeId: "mock-clinton" };
+  const owner = lineOf([T4, CPW], "2026-12-01", "17:00");
+  const into = {
+    "JFK T4 to 500 Communipaw Ave at 5:00 PM, Holland Tunnel": owner,
+    "JFK T4 to 500 Communipaw Ave at 2:00 PM, Bayonne Bridge": lineOf([T4, CPW], "2026-12-01", "14:00"),
+    "JFK T4 by 350 5th Ave to 500 Communipaw Ave, Holland Tunnel": lineOf([T4, MAN, CPW], "2026-12-01", "17:00"),
+    "350 5th Ave to 1332 Clinton St, Hoboken, Lincoln Tunnel": lineOf([MAN, HOB], "2026-12-01", "14:00"),
+    "Empire State Building to Newark Liberty, Lincoln Tunnel": decodePath(MAN_EWR),
+    "19 Coventry Ln to Newark Liberty, George Washington Bridge": lineOf([{ address: RIVERSIDE }, { address: EWR_ADDRESS }], "2026-11-13", "18:00"),
+    "2700 Richmond Ave to Newark Liberty, Goethals Bridge": reversed(lineOf([{ address: EWR_ADDRESS }, { address: RICHMOND }], "2026-11-09", "14:00")),
+    "4000 Arthur Kill Rd to Perth Amboy, Outerbridge Crossing": reversed(decodePath(OUTERBRIDGE)),
+  };
+  const not = {
+    "500 Communipaw Ave to JFK T4, Bayonne Bridge into Staten Island": lineOf([CPW, T4], "2026-12-03", "10:00"),
+    "1332 Clinton St to 350 5th Ave, Lincoln Tunnel": lineOf([HOB, MAN], "2026-12-01", "14:00"),
+    "1 Gateway Center, Newark to 350 5th Ave, Lincoln Tunnel": lineOf([{ placeId: "mock-newark" }, MAN], "2026-12-01", "14:00"),
+    "30 Hudson St, Jersey City to 1332 Clinton St, no crossing": lineOf([{ placeId: "mock-jersey-city" }, HOB], "2026-12-01", "14:00"),
+    "Newark Liberty to 19 Coventry Ln, George Washington Bridge": lineOf([{ address: EWR_ADDRESS }, { address: RIVERSIDE }], "2026-11-09", "14:00"),
+    "Newark Liberty to 2700 Richmond Ave, Goethals Bridge": lineOf([{ address: EWR_ADDRESS }, { address: RICHMOND }], "2026-11-09", "14:00"),
+    "Perth Amboy to 4000 Arthur Kill Rd, Outerbridge Crossing": decodePath(OUTERBRIDGE),
+    "into New Jersey and back into New York": [...owner, ...reversed(owner)],
+    "into New Jersey by the Holland Tunnel and back by the Lincoln Tunnel": [...owner, ...lineOf([HOB, MAN], "2026-12-01", "14:00")],
+    "into New Jersey by the Bayonne Bridge and back by the George Washington Bridge": [...lineOf([T4, CPW], "2026-12-01", "14:00"), ...lineOf([{ address: EWR_ADDRESS }, { address: RIVERSIDE }], "2026-11-09", "14:00")],
+  };
+  for (const [name, path] of Object.entries(into)) assert.equal(intoJersey(path), true, name);
+  for (const [name, path] of Object.entries(not)) assert.equal(intoJersey(path), false, name);
+  assert.equal(intoJersey([...reversed(owner), ...owner]), true, "into New York and back into New Jersey");
+  for (const path of [[], [[40.7, -74]], undefined, null, "x", decodePath(""), decodePath("?")]) assert.equal(intoJersey(path), false, JSON.stringify(path));
+  for (const path of Object.values(not)) assert.equal(returnCents(path, nycToUtc("2026-12-01", "18:00")), 0);
+});
+
+await test("the owner's booking 39333380, JFK Terminal 4 to 500 Communipaw Ave, Jersey City, NJ 07304 in a Business SUV with a child seat, 25.6 miles and 86 min over the Queens Midtown and Holland tunnels: Google's $10.41 stays, the return crossing adds the Port Authority peak $16.79 for a Tuesday 6:26 PM drop-off, Tolls $27.20 and $239.85, through Stripe, the metadata keys and the receipt, and without a route line the same booking on Wednesday is the $223.06 the owner charged", async () => {
+  mock();
+  const { trip, price } = await priced(OWNER_JC(R_NOW), R_NOW);
+  assert.deepEqual(trip.legs.map((item) => item.ride), [{ tenths: 256, minutes: 86, tolls: HOLLAND_GOOGLE + PEAK }]);
+  assert.deepEqual([PEAK, HOLLAND_GOOGLE + PEAK], [1679, 2720]);
+  assert.deepEqual(pairs(shownLines(price.lines)), [["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 2720], ["Child seats (1 x $15.00)", 1500]]);
+  assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.estimate, price.seats, price.total, price.service], [19330, 0, 435, 2720, 2720, 1500, 23985, "distance"]);
+  assert.deepEqual(price.notes, [POLICY.later.waiting]);
+  const { metadata, items, submit } = built(trip, price);
+  assert.deepEqual(items, [["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 2720], ["Child seats (1 x $15.00)", 1500]]);
+  assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents, metadata.total_cents, submit], ["2720", "2720", "23985", CHECKOUT.submitOutsideTolled]);
+  assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);
+  delete process.env.GOOGLE_MOCK;
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  googleRoute(ownerAnswer());
+  const before = await priced({ ...OWNER_JC(R_NOW), date: "2026-12-02" }, R_NOW);
+  assert.deepEqual(before.trip.legs.map((item) => item.ride), [{ tenths: 256, minutes: 86, tolls: 1041 }]);
+  assert.deepEqual([pairs(shownLines(before.price.lines)), before.price.total], [[["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 1041], ["Child seats (1 x $15.00)", 1500]], 22306]);
+  assert.deepEqual(Object.keys(built(before.trip, before.price).metadata).sort(), Object.keys(metadata).sort(), "no metadata key is added");
+});
+
+await test("the owner's booking off-peak and at the peak edges: the Port Authority rate is taken at the estimated drop-off time in New York, $16.79 for a drop-off weekdays 6 to 10 AM or 4 to 8 PM and weekends 11 AM to 9 PM, else $14.79, so a pickup at 2:45 PM that arrives at 4:11 PM pays the peak, and the 2:00 PM line over the Bayonne Bridge adds the off-peak rate to Google's $8.87", async () => {
+  mock();
+  const cases = [
+    ["2026-12-01", "17:00", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-01", "20:00", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-01", "14:45", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-01", "14:30", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-01", "04:40", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-01", "04:30", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-01", "08:30", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-01", "08:40", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-05", "17:00", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-05", "09:40", HOLLAND_GOOGLE + PEAK],
+    ["2026-12-05", "09:30", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-05", "20:00", HOLLAND_GOOGLE + OFF_PEAK],
+    ["2026-12-01", "14:00", 887 + OFF_PEAK],
+  ];
+  const found = [];
+  for (const [date, time] of cases) found.push((await priced({ ...OWNER_JC(R_NOW), date, time }, R_NOW)).trip.legs[0].ride.tolls);
+  assert.deepEqual(found, cases.map((item) => item[2]));
+  assert.deepEqual([OFF_PEAK, HOLLAND_GOOGLE + OFF_PEAK], [1479, 2520]);
+  const off = (await priced({ ...OWNER_JC(R_NOW), time: "20:00" }, R_NOW)).price;
+  assert.deepEqual([pairs(shownLines(off.lines)), off.total], [[["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 2520], ["Child seats (1 x $15.00)", 1500]], 23785]);
+  const afternoon = (await priced({ ...OWNER_JC(R_NOW), time: "14:00" }, R_NOW)).trip.legs[0].ride;
+  assert.deepEqual(afternoon, { tenths: 377, minutes: 80, tolls: 2366 });
+  const totals = [];
+  for (const cls of CLASSES) totals.push((await priced({ ...OWNER_JC(R_NOW), class: cls, passengers: "2" }, R_NOW)).price.tolls);
+  assert.deepEqual(totals, CLASSES.map(() => 2720), "every class, the Luxury Sprinter too, pays the Class 1 return crossing");
+});
+
+await test("round trips in each direction: JFK T4 to 500 Communipaw Ave and back adds the return crossing only to the ride into New Jersey, $27.20 out and Google's $22.25 back into New York, and 500 Communipaw Ave to JFK T4 and back adds it to the return ride by its own drop-off time, $22.25 out and $27.20 or $25.20 back", async () => {
+  mock();
+  const out = await priced({ ...OWNER_JC(R_NOW), return: "1", return_date: "2026-12-03", return_time: "10:00" }, R_NOW);
+  assert.deepEqual(out.trip.legs.map((item) => [item.back, item.ride]), [[false, { tenths: 256, minutes: 86, tolls: 2720 }], [true, { tenths: 362, minutes: 69, tolls: 2225 }]]);
+  assert.deepEqual([out.price.tolls, out.price.estimate, shownLines(out.price.lines).find((item) => item.label === "Tolls").cents], [4945, 4945, 4945]);
+  const { metadata, items } = built(out.trip, out.price);
+  assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents, metadata.legs], ["4945", "4945", "2"]);
+  assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);
+  const home = { trip_type: "one", ...fromCpw(R_NOW), ...T4_DROP, date: "2026-12-01", time: "10:00", passengers: "2", class: "suv", action: "pay", ...ME, return: "1", return_date: "2026-12-03" };
+  const peak = await priced({ ...home, return_time: "17:00" }, R_NOW);
+  assert.deepEqual(peak.trip.legs.map((item) => [item.back, item.ride.tolls]), [[false, 2225], [true, 2720]]);
+  assert.equal(peak.price.tolls, 4945);
+  const late = await priced({ ...home, return_time: "20:00" }, R_NOW);
+  assert.deepEqual([late.trip.legs.map((item) => item.ride.tolls), late.price.tolls], [[2225, 2520], 4745]);
+});
+
+await test("stops: JFK T4 by a stop at 350 5th Ave to 500 Communipaw Ave adds one return crossing to the whole route at the 6:32 PM drop-off, Google's $16.37 plus $16.79, and the stop fee stays its own line", async () => {
+  mock();
+  const { trip, price } = await priced({ ...OWNER_JC(R_NOW), stop1_text: MANHATTAN }, R_NOW);
+  assert.deepEqual([trip.legs[0].ride, trip.legs[0].stops], [{ tenths: 265, minutes: 92, tolls: 1637 + PEAK }, 1]);
+  assert.deepEqual([price.tolls, price.estimate], [3316, 3316]);
+  assert.ok(shownLines(price.lines).some((item) => item.cents === STOP_FEE_CENTS && item.label !== "Tolls"));
+});
+
+await test("into New York and with no crossing nothing changes: 1 Gateway Center, Newark and 1332 Clinton St, Hoboken to 350 5th Ave and 500 Communipaw Ave to JFK T4 keep Google's estimate, and 30 Hudson St, Jersey City to 1332 Clinton St keeps no Tolls line", async () => {
+  mock();
+  const base = { trip_type: "one", date: "2026-12-01", time: "14:00", passengers: "2", class: "suv", action: "pay", ...ME };
+  const newark = await priced({ ...base, from_text: "1 Gateway Center, Newark, NJ", from_ticket: signed("mock-newark", "1 Gateway Center, Newark, NJ"), to_text: MANHATTAN }, R_NOW);
+  const hoboken = await priced({ ...base, from_text: "1332 Clinton Street, Hoboken, NJ", from_ticket: signed("mock-clinton", "1332 Clinton Street, Hoboken, NJ"), to_text: MANHATTAN }, R_NOW);
+  const airport = await priced({ ...base, ...fromCpw(R_NOW), ...T4_DROP, time: "10:00" }, R_NOW);
+  assert.deepEqual([newark, hoboken, airport].map(({ trip, price }) => [trip.legs[0].ride.tolls, price.tolls]), [[2296, 2296], [2079, 2079], [2225, 2225]]);
+  const local = await priced({ ...base, from_text: "30 Hudson Street, Jersey City, NJ", from_ticket: signed("mock-jersey-city", "30 Hudson Street, Jersey City, NJ"), to_text: "1332 Clinton Street, Hoboken, NJ", to_ticket: signed("mock-clinton", "1332 Clinton Street, Hoboken, NJ") }, R_NOW);
+  assert.deepEqual([local.trip.legs[0].ride, local.price.tolls, local.price.estimate, shownLines(local.price.lines).map(({ label }) => label)], [{ tenths: 33, minutes: 20, tolls: 0 }, 0, 0, ["Fare", "Taxes and fees"]]);
+});
+
+await test("no route line keeps today's behavior: a Google answer without a line or with a line that does not decode adds nothing", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  const T4 = { address: T4_ADDRESS };
+  const CPW = { placeId: "mock-communipaw" };
+  const departure = nycToUtc("2026-12-01", "17:00");
+  for (const extra of [{}, { polyline: {} }, { polyline: { encodedPolyline: "" } }, { polyline: { encodedPolyline: "?" } }, { polyline: { encodedPolyline: 42 } }]) {
+    googleRoute(ownerAnswer(extra));
+    assert.equal((await computeRoute([T4, CPW], departure, null)).tolls, 1041, JSON.stringify(extra));
+  }
+  googleRoute(ownerAnswer({ polyline: { encodedPolyline: mockLine([T4, CPW], departure).polyline } }));
+  assert.equal((await computeRoute([T4, CPW], departure, null)).tolls, 2720);
+  delete process.env.GOOGLE_MAPS_SERVER_KEY;
+});
+
+await test("flat airport transfers are unchanged although the line crosses into New Jersey: /api/route asks Google for Manhattan to Newark Liberty without tolls, the route token has no toll amount, and the booking keeps the flat total with its fixed tolls and airport fees", async () => {
+  assert.equal(intoJersey(decodePath(MAN_EWR)), true);
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  const sent = googleRoute({ duration: "1860s", distanceMeters: 25589, polyline: { encodedPolyline: MAN_EWR }, legs: [{ startLocation: { latLng: { latitude: 40.749028, longitude: -73.985937 } }, endLocation: { latLng: { latitude: 40.693507, longitude: -74.187174 } } }], ...tolled(money("0", 0)) });
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + 5 * 86400000));
+  const res = await routePost(new Request(`${SITE}/api/route`, { method: "POST", headers: { "content-type": "application/json", origin: SITE }, body: JSON.stringify({ from: { text: MANHATTAN }, to: { id: "ewr" }, date, time: "17:00", draw: 1 }) }));
+  const body = await res.json();
+  assert.deepEqual([body.kind, body.minutes, body.miles, sent.length, sent[0].extraComputations], ["ok", 31, 15.9, 1, undefined]);
+  assert.deepEqual([...readRoute(body.route, Date.now()).values()].map(({ tenths, minutes, tolls }) => [tenths, minutes, tolls]), [[159, 31, undefined]]);
+  delete process.env.GOOGLE_MAPS_SERVER_KEY;
+  mock();
+  const { price } = await run({ trip_type: "one", from_text: MANHATTAN, to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-12-01", time: "17:00", passengers: "2", class: "suv", action: "pay", ...ME }, R_NOW);
+  assert.equal(price.total, AIRPORT_TOTALS.suv.ewr);
+  assert.deepEqual(shownLines(price.lines).find((item) => item.label === "Tolls").cents, AIRPORT_TOTALS.suv.ewr - price.fare - price.tax - price.bcf);
+});
+
+await test("hourly is unchanged: 4 hours from JFK T4 or from 500 Communipaw Ave shows no Tolls line, keeps tolls after the ride and never asks Google", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  const sent = googleRoute(ownerAnswer());
+  for (const from of [T4_END, fromCpw(R_NOW)]) {
+    const { price } = await priced({ trip_type: "hour", ...from, date: "2026-12-01", time: "17:00", passengers: "2", hours: "4", class: "premium", vehicle: "premium", action: "pay", ...ME }, R_NOW);
+    assert.deepEqual([price.tolls, price.estimate, shownLines(price.lines).some((item) => item.label === "Tolls"), price.notes], [0, null, false, [POLICY.later.hourly]]);
+  }
+  assert.equal(sent.length, 0);
+});
+
+await test("Google's own drive time sets the drop-off: the owner's line with a Google duration of 85 min pays the peak for a 2:40 PM pickup that arrives at 4:05 PM and the off-peak rate for 2:30 PM, and a drop-off on or after January 1, 2027 adds nothing and logs route-tolls return stale", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  const T4 = { address: T4_ADDRESS };
+  const CPW = { placeId: "mock-communipaw" };
+  const polyline = { encodedPolyline: mockLine([T4, CPW], nycToUtc("2026-12-01", "17:00")).polyline };
+  googleRoute(ownerAnswer({ duration: "5100s", polyline }));
+  assert.equal((await computeRoute([T4, CPW], nycToUtc("2026-12-01", "14:40"), null)).tolls, 1041 + PEAK);
+  assert.equal((await computeRoute([T4, CPW], nycToUtc("2026-12-01", "14:30"), null)).tolls, 1041 + OFF_PEAK);
+  googleRoute(ownerAnswer({ polyline }));
+  for (const [date, time, tolls, lines] of [["2026-12-31", "22:30", 1041 + OFF_PEAK, []], ["2026-12-31", "22:40", 1041, ["route-tolls return stale"]], ["2027-01-04", "17:00", 1041, ["route-tolls return stale"]]]) {
+    const out = await logged(() => computeRoute([T4, CPW], nycToUtc(date, time), null));
+    assert.deepEqual([out.value.tolls, out.lines], [tolls, lines], `${date} ${time}`);
+  }
+});
+
+await test("tamper: the return crossing rides in the signed route token from /api/route, for each direction of a round trip, a changed token is ignored and the booking asks Google again, a token the server signed is its own estimate, and toll amounts posted by the browser are never read", async () => {
+  mock();
+  const now = Date.now();
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now + 5 * 86400000));
+  const back = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now + 7 * 86400000));
+  const ticket = signed("mock-communipaw", CPW_LABEL, now);
+  const res = await routePost(new Request(`${SITE}/api/route`, { method: "POST", headers: { "content-type": "application/json", origin: SITE }, body: JSON.stringify({ from: { id: "jfk-t4" }, to: { ticket }, date, time: "17:00", back: { date: back, time: "10:00" }, draw: 1 }) }));
+  const body = await res.json();
+  assert.deepEqual([body.kind, body.minutes, body.miles, body.back.minutes, body.back.miles], ["ok", 86, 25.6, 69, 36.2]);
+  const rides = [...readRoute(body.route, now).values()].map(({ tenths, minutes, tolls }) => [tenths, minutes, tolls]);
+  assert.deepEqual(rides, [[256, 86, 2720], [362, 69, 2225]]);
+  const [, payload, mac] = body.route.split(".");
+  const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  const changed = `r1.${Buffer.from(JSON.stringify({ ...data, l: [[data.l[0][0], 256, 86, 1041]] })).toString("base64url")}.${mac}`;
+  assert.equal(readRoute(changed, now).size, 0);
+  const fields = { ...OWNER_JC(now), ...toCpw(now), date, tolls: "1041", tolls_cents: "1041", tolls_est_cents: "1041", return_cents: "0" };
+  assert.equal((await priced({ ...fields, route: changed }, new Date(now))).price.tolls, 2720);
+  assert.equal((await priced({ ...fields, route: signRoute([[data.l[0][0], 256, 86, 1999]], now) }, new Date(now))).price.tolls, 1999, "a token the server signed is the server's own estimate");
+  const options = await bookPost(new Request(`${SITE}/api/book`, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", origin: SITE, "sec-fetch-site": "same-origin" }, body: JSON.stringify({ ...fields, route: changed, action: "options", nonce: "nonce-return-tamper-0001" }) }));
+  const answer = await options.json();
+  assert.deepEqual([answer.price.lines.map(({ label, cents }) => [label, cents]), answer.price.total_cents], [[["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 2720], ["Child seats (1 x $15.00)", 1500]], 23985]);
+});
+
+const LINCOLN_CUTS = [{ cut: { latitude: 40.758471, longitude: -73.998027, heading: 300 } }, { cut: { latitude: 40.767469, longitude: -74.020878, heading: 272 } }];
+const LINCOLN_LEGS = [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.368 }] }, null];
+const HOB_LABEL = "1332 Clinton Street, Hoboken, NJ";
+const WEE_LABEL = "1 Hackensack Avenue, Weehawken, NJ";
+const EIGHTH = "500 8th Ave, New York, NY 10018";
+const lincolnAnswers = ({ legs, total, first = {} } = {}) => {
+  const line = mockLine([{ address: MANHATTAN }, { placeId: "mock-clinton" }], nycToUtc("2026-12-01", "14:00"));
+  const sent = [];
+  const latLng = ([latitude, longitude]) => ({ latLng: { latitude, longitude } });
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    const split = body.intermediates.some((item) => item.location);
+    sent.push({ body, mask: init.headers["X-Goog-FieldMask"], split });
+    const routes = split ? [{ distanceMeters: total === undefined ? legs.reduce((sum, item) => sum + item.distanceMeters, 0) : total, legs }] : [{ duration: "1140s", distanceMeters: 6116, polyline: { encodedPolyline: line.polyline }, legs: [{ startLocation: latLng(line.points[0]), endLocation: latLng(line.points[1]) }], travelAdvisory: { tollInfo: {} }, ...first }];
+    return new Response(JSON.stringify({ routes }), { status: 200 });
+  };
+  return sent;
+};
+const LINCOLN_SPLIT = [leg(420, 2251), leg(300, 1600, { travelAdvisory: { tollInfo: {} } }), leg(420, 2265)];
+
+await test("the Lincoln and Holland tunnels into New Jersey are free parts of the toll fallback: on the live lines into New Jersey the plan cuts the route before and after the tunnel, outside the tube, and lines into New York, over a bridge into New Jersey or with no crossing keep their plans", () => {
+  const MAN = { address: MANHATTAN };
+  const HOB = { placeId: "mock-clinton" };
+  const T4 = { address: T4_ADDRESS };
+  const CPW = { placeId: "mock-communipaw" };
+  assert.deepEqual(tollPlan(lineOf([MAN, HOB], "2026-12-01", "14:00"), []), { marks: LINCOLN_CUTS, legs: LINCOLN_LEGS });
+  assert.deepEqual(tollPlan(lineOf([{ address: EIGHTH }, { placeId: "mock-weehawken" }], "2026-12-01", "14:00"), []), { marks: LINCOLN_CUTS, legs: LINCOLN_LEGS });
+  assert.deepEqual(tollPlan(lineOf([T4, CPW], "2026-12-01", "17:00"), []), { marks: [{ cut: { latitude: 40.723791, longitude: -74.006028, heading: 289 } }, { cut: { latitude: 40.731667, longitude: -74.040775, heading: 277 } }], legs: [null, { tolls: [{ kind: "free", id: "holland", share: 0.314 }] }, null] });
+  const none = {
+    "1332 Clinton St to 350 5th Ave, Lincoln Tunnel into New York": lineOf([HOB, MAN], "2026-12-01", "14:00"),
+    "1 Gateway Center to 350 5th Ave, Lincoln Tunnel into New York": lineOf([{ placeId: "mock-newark" }, MAN], "2026-12-01", "14:00"),
+    "JFK T4 to 500 Communipaw Ave at 2:00 PM, Bayonne Bridge into New Jersey": lineOf([T4, CPW], "2026-12-01", "14:00"),
+    "4000 Arthur Kill Rd to Perth Amboy, Outerbridge Crossing into New Jersey": reversed(decodePath(OUTERBRIDGE)),
+    "30 Hudson St to 1332 Clinton St, no crossing": lineOf([{ placeId: "mock-jersey-city" }, HOB], "2026-12-01", "14:00"),
+  };
+  for (const [name, path] of Object.entries(none)) assert.deepEqual(tollPlan(path, []), { reason: "none" }, name);
+  const line = lineOf([MAN, HOB], "2026-12-01", "14:00");
+  const arcs = arcsOf(line);
+  const tube = [[40.75916, -74.00019], [40.76693, -74.01866]].map((end) => arcs[line.findIndex((point) => point[0] === end[0] && point[1] === end[1])]);
+  const cuts = LINCOLN_CUTS.map(({ cut }) => arcs[1 + line.slice(1).findIndex((point, i) => project(line, arcs, [cut.latitude, cut.longitude], i + 1).gap < 1)]);
+  assert.ok(cuts[0] < tube[0] && cuts[1] > tube[1], JSON.stringify({ tube, cuts }));
+});
+
+await test("the Lincoln Tunnel into New Jersey, where Google gives tolls with no price: the fallback asks Google again with a waypoint before and after the tunnel, the tunnel part is $0, Google prices the rest, and the return crossing is added, $14.79 for a 2:19 PM drop-off and $16.79 at 6:19 PM, with or without a toll on Google's tunnel part, Google's price on that part when it gives one, and today's behavior when another part has no price, the split route is longer, or the drop-off is in 2027", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
+  const ends = [{ address: MANHATTAN }, { placeId: "mock-clinton" }];
+  const at2 = nycToUtc("2026-12-01", "14:00");
+  let sent = lincolnAnswers({ legs: LINCOLN_SPLIT });
+  const out = await logged(() => computeRoute(ends, at2, null));
+  assert.deepEqual([out.value.ok, out.value.minutes, out.value.miles, out.value.tolls, out.lines], [true, 19, 3.8, OFF_PEAK, []]);
+  assert.deepEqual(sent.map((item) => [item.split, item.mask]), [[false, sent[0].mask], [true, SPLIT_MASK]]);
+  assert.deepEqual(sent[1].body.intermediates, LINCOLN_CUTS.map(({ cut }) => ({ location: { latLng: { latitude: cut.latitude, longitude: cut.longitude }, heading: cut.heading } })));
+  for (const key of ["origin", "destination", "departureTime", "extraComputations", "routeModifiers"]) assert.deepEqual(sent[1].body[key], sent[0].body[key], key);
+  lincolnAnswers({ legs: LINCOLN_SPLIT });
+  assert.equal((await computeRoute(ends, nycToUtc("2026-12-01", "18:00"), null)).tolls, PEAK);
+  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(300, 1600), LINCOLN_SPLIT[2]] });
+  assert.equal((await computeRoute(ends, at2, null)).tolls, OFF_PEAK, "no toll seen on the tunnel part");
+  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(300, 1600, tolled(money("1", 0))), LINCOLN_SPLIT[2]] });
+  assert.equal((await computeRoute(ends, at2, null)).tolls, 100 + OFF_PEAK, "Google's price on the tunnel part");
+  for (const [legs, total, line] of [
+    [[LINCOLN_SPLIT[0], LINCOLN_SPLIT[1], leg(420, 2265, { travelAdvisory: { tollInfo: {} } })], undefined, "route-tolls unpriced leg 3/3 2265m plan g,free,g"],
+    [LINCOLN_SPLIT, 6400, "route-tolls detour"],
+    [[LINCOLN_SPLIT[0], LINCOLN_SPLIT[1]], undefined, "route-tolls legs"],
+  ]) {
+    lincolnAnswers({ legs, total });
+    const failed = await logged(() => computeRoute(ends, at2, null));
+    assert.deepEqual([failed.value.tolls, failed.lines], [null, [line]], line);
+  }
+  lincolnAnswers({ legs: LINCOLN_SPLIT });
+  const late = await logged(() => computeRoute(ends, nycToUtc("2027-01-05", "14:00"), null));
+  assert.deepEqual([late.value.tolls, late.lines], [null, ["route-tolls stale"]]);
+  sent = lincolnAnswers({ legs: LINCOLN_SPLIT, first: { travelAdvisory: { tollInfo: { estimatedPrice: [money("0", 0)] } } } });
+  assert.deepEqual([(await computeRoute(ends, at2, null)).tolls, sent.length], [OFF_PEAK, 1]);
+  delete process.env.GOOGLE_MAPS_SERVER_KEY;
+});
+
+await test("bookings into New Jersey over the Lincoln Tunnel get the Tolls line: 350 5th Ave to 1332 Clinton St, Hoboken is $0 plus the return crossing, $14.79 at 2:00 PM and $16.79 at 6:00 PM, 500 8th Ave to 1 Hackensack Ave, Weehawken $14.79, round trips pay Google's $20.79 into New York and the return crossing on the ride into New Jersey, and through Stripe, the metadata and the receipt; a drop-off in 2027 keeps no Tolls line and tolls after the ride", async () => {
+  mock();
+  const base = { trip_type: "one", from_text: MANHATTAN, to_text: HOB_LABEL, to_ticket: signed("mock-clinton", HOB_LABEL), date: "2026-12-01", time: "14:00", passengers: "2", class: "suv", action: "pay", ...ME };
+  const { trip, price } = await priced(base, R_NOW);
+  assert.deepEqual([trip.legs[0].ride, price.tolls, price.estimate, price.notes], [{ tenths: 38, minutes: 19, tolls: OFF_PEAK }, OFF_PEAK, OFF_PEAK, [POLICY.later.distance]]);
+  assert.deepEqual(shownLines(price.lines).find((item) => item.label === "Tolls").cents, OFF_PEAK);
+  const { metadata, items } = built(trip, price);
+  assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents], [String(OFF_PEAK), String(OFF_PEAK)]);
+  assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);
+  assert.equal((await priced({ ...base, time: "18:00" }, R_NOW)).trip.legs[0].ride.tolls, PEAK);
+  const weehawken = await priced({ ...base, from_text: EIGHTH, to_text: WEE_LABEL, to_ticket: signed("mock-weehawken", WEE_LABEL) }, R_NOW);
+  assert.deepEqual([weehawken.trip.legs[0].ride, weehawken.price.tolls], [{ tenths: 28, minutes: 12, tolls: OFF_PEAK }, OFF_PEAK]);
+  const round = await priced({ ...base, return: "1", return_date: "2026-12-01", return_time: "18:00" }, R_NOW);
+  assert.deepEqual([round.trip.legs.map((item) => item.ride), round.price.tolls, round.price.estimate], [[{ tenths: 38, minutes: 19, tolls: OFF_PEAK }, { tenths: 39, minutes: 24, tolls: 2079 }], OFF_PEAK + 2079, OFF_PEAK + 2079]);
+  const home = await priced({ ...base, from_text: HOB_LABEL, from_ticket: signed("mock-clinton", HOB_LABEL), to_text: MANHATTAN, to_ticket: undefined, return: "1", return_date: "2026-12-01", return_time: "18:00" }, R_NOW);
+  assert.deepEqual([home.trip.legs.map((item) => item.ride.tolls), home.price.tolls], [[2079, PEAK], 2079 + PEAK]);
+  const late = await logged(() => priced({ ...base, date: "2027-01-05" }, R_NOW));
+  assert.deepEqual([late.value.trip.legs[0].ride, late.value.price.tolls, late.value.price.estimate, tollsIn(late.value.trip), shownLines(late.value.price.lines).map(({ label }) => label)], [{ tenths: 38, minutes: 19 }, 0, null, false, ["Fare", "Taxes and fees"]]);
+  assert.ok(late.lines.includes("route-tolls stale"), JSON.stringify(late.lines));
 });
 
 await test("the second Routes call has its own budget per instance: once 60 split calls are spent in the window, the route keeps today's behavior, logs route-tolls budget and Google is asked only once", async () => {
