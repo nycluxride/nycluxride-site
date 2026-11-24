@@ -532,7 +532,7 @@ await test("builder: the payment description reads like the owner's booking emai
       [{ trip_type: "hour", from_text: "1 Main Street, Brooklyn, NY 11201", passengers: "1", hours: "4", class: "premium", vehicle: "premium", ...DAY, notes: "Two stops in SoHo, then back." },
         (ref) => `New booking ${ref}: Mon Nov 16, 3:00 PM, Business Premium SUV, 4 hours from 1 Main Street. Customer Ana Lopez. Phone +1 212 555 0100. Email ana.lopez@example.com. 1 passenger. Pickup "1 Main Street, Brooklyn, NY 11201". Note: Two stops in SoHo, then back.`, "HOUR NOV16"],
       [{ trip_type: "one", from_text: "John F. Kennedy (JFK)", from_id: "jfk", to_text: "Secaucus, NJ 07094", passengers: "2", class: "sedan", ...DAY, name: "", email: "", phone: "" },
-        (ref) => `New booking ${ref}: Mon Nov 16, 3:00 PM, Sedan & Electric, JFK to Secaucus. 2 passengers. Pickup "John F. Kennedy (JFK)". Drop-off "Secaucus, NJ 07094".`, "RIDE NOV16"],
+        (ref) => `New booking ${ref}: Mon Nov 16, 3:00 PM, Executive Sedan, JFK to Secaucus. 2 passengers. Pickup "John F. Kennedy (JFK)". Drop-off "Secaucus, NJ 07094".`, "RIDE NOV16"],
     ];
     for (const [fields, want, suffix] of CASES) {
       const { params, ref, price } = await build(fields, ON, `nonce-description-${fields.class}-${fields.return ? "02" : "01"}`);
@@ -886,7 +886,7 @@ await test("handler: every redirect of 13.1.8 for a form post", async () => {
   assertRedirect(await formPost(STRIPE_JFK), "/book#q-paused");
 });
 
-await test("handler: options answers the 13.1.2 shape with all five classes priced in CLASSES order and never calls fetch", async () => {
+await test("handler: options answers the 13.1.2 shape with all six classes priced in CLASSES order and never calls fetch", async () => {
   setEnv(LIVE);
   const fields = { ...trip(PICKUP), from_text: "John F. Kennedy (JFK)", from_id: "jfk", meet: "", tip: "", flight: "", action: "options", nonce: "nonce-options-shape-0001" };
   const ref = reqRef(fields);
@@ -900,7 +900,8 @@ await test("handler: options answers the 13.1.2 shape with all five classes pric
       { class: "suv", name: "Business SUV", seats: 5, total_cents: 18500, reason: "" },
       { class: "premium", name: "Business Premium SUV", seats: 5, total_cents: 22000, reason: "" },
       { class: "first", name: "First Class", seats: 3, total_cents: 31000, reason: "" },
-      { class: "sedan", name: "Sedan & Electric", seats: 3, total_cents: 17000, reason: "" },
+      { class: "sedan", name: "Executive Sedan", seats: 3, total_cents: 17000, reason: "" },
+      { class: "electric", name: "Electric Class", seats: 3, total_cents: 18000, reason: "" },
       { class: "sprinter", name: "Luxury Sprinter", seats: 14, total_cents: 45000, reason: "" },
     ],
     vehicles: [
@@ -949,9 +950,9 @@ await test("handler: options and quote price the selected class, tip and meet an
   assert.deepEqual(body.selected, { class: "suv", vehicle: "", tip: 15, tip_amount: 0, meet: true });
   assert.deepEqual(body.price.lines.slice(3), [{ label: "Meet and greet", cents: 2500 }, { label: "Gratuity for your chauffeur (15%)", cents: 2325 }]);
   assert.equal(body.price.total_cents, 23325);
-  assert.deepEqual(body.classes.map((item) => item.total_cents), [23325, 27298, 37512, 21623, 53402]);
+  assert.deepEqual(body.classes.map((item) => item.total_cents), [23325, 27298, 37512, 21623, 22758, 53402]);
   assert.equal(body.classes[0].total_cents, body.price.total_cents, "the selected row shows the total of the panel and the bar");
-  assert.deepEqual((await readJson(await post({ ...fields, meet: "", tip: "" }), 200)).classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 45000]);
+  assert.deepEqual((await readJson(await post({ ...fields, meet: "", tip: "" }), 200)).classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 18000, 45000]);
   assert.deepEqual(await readJson(await post({ ...fields, class: "limo" }), 422), { kind: "invalid", code: "class", field: "class", text: ERRORS.class.text });
   const options = await readJson(await post({ ...fields, class: "limo", action: "options" }), 200);
   assert.equal(options.selected.class, "suv");
@@ -972,13 +973,13 @@ await test("handler: a gratuity the rider types adds the same fixed amount to ev
   assert.deepEqual(body.selected, { class: "suv", vehicle: "", tip: "custom", tip_amount: 40, meet: true });
   assert.deepEqual(body.price.lines.slice(3), [{ label: "Meet and greet", cents: 2500 }, { label: "Gratuity for your chauffeur", cents: 4000 }]);
   assert.equal(body.price.total_cents, 25000);
-  assert.deepEqual(body.classes.map((item) => item.total_cents), [25000, 28500, 37500, 23500, 51500]);
+  assert.deepEqual(body.classes.map((item) => item.total_cents), [25000, 28500, 37500, 23500, 24500, 51500]);
   assert.ok(decodeURIComponent(body.whatsapp).endsWith("Meet and greet: Yes\nGratuity: $40.00\nTotal shown: $250.00"), decodeURIComponent(body.whatsapp));
   assert.deepEqual((await readJson(await post({ ...fields, tip_amount: "040", action: "options" }), 200)).selected, body.selected);
   const hourly = await readJson(await post({ ...trip(HOURLY), class: "suv", vehicle: "suv-denali", hours: "3", tip: "custom", tip_amount: "40", action: "options" }), 200);
   assert.deepEqual(hourly.selected, { class: "suv", vehicle: "suv-denali", tip: "custom", tip_amount: 40, meet: false });
   assert.deepEqual(hourly.vehicles.map((item) => item.total_cents), [35670, 37338, 37338, null, null, null, null, null]);
-  assert.deepEqual(hourly.classes.map((item) => item.total_cents), [37338, 39005, 62340, 32337, null]);
+  assert.deepEqual(hourly.classes.map((item) => item.total_cents), [37338, 39005, 62340, 32337, 34004, null]);
   const seats = await slotted(async () => readJson(await post({ ...fields, passengers: "6", action: "options" }), 200));
   assert.deepEqual([seats.price, seats.reason, seats.selected.tip, seats.selected.tip_amount, seats.classes.at(-1).total_cents], [null, "seats", "custom", 40, 51500]);
   const quote = await slotted(async () => readJson(await post({ ...fields, from_text: "350 5th Ave", action: "options" }), 200));
@@ -1010,14 +1011,14 @@ await test("handler: a class reason answers kind options with price null and tha
   setEnv(LIVE);
   const four = await readJson(await post({ ...STRIPE_JFK, class: "first", passengers: "4", action: "options" }), 200);
   assert.deepEqual([four.kind, four.price, four.reason, four.pay], ["options", null, "seats", false]);
-  assert.deepEqual(four.classes.map((item) => [item.class, item.total_cents, item.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", null, "seats"], ["sedan", null, "seats"], ["sprinter", 45000, ""]]);
+  assert.deepEqual(four.classes.map((item) => [item.class, item.total_cents, item.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", 45000, ""]]);
   assert.ok(!decodeURIComponent(four.whatsapp).includes("Total shown"));
   const six = await readJson(await post({ ...STRIPE_JFK, passengers: "6", action: "options" }), 200);
-  assert.deepEqual(six.classes.map((item) => item.total_cents), [null, null, null, null, 45000]);
+  assert.deepEqual(six.classes.map((item) => item.total_cents), [null, null, null, null, null, 45000]);
   assert.equal(six.reason, "seats");
   const hourly = await readJson(await post({ ...trip(HOURLY), class: "sprinter", sprinter: "sprinter-white-limo", passengers: "11", action: "options" }), 200);
   assert.deepEqual([hourly.kind, hourly.price, hourly.reason, hourly.service, hourly.legs], ["options", null, "seats", "hourly", 0]);
-  assert.deepEqual(hourly.classes.map((item) => [item.total_cents, item.reason]), [[null, "seats"], [null, "seats"], [null, "seats"], [null, "seats"], [null, "seats"]]);
+  assert.deepEqual(hourly.classes.map((item) => [item.total_cents, item.reason]), [[null, "seats"], [null, "seats"], [null, "seats"], [null, "seats"], [null, "seats"], [null, "seats"]]);
   assert.deepEqual(hourly.vehicles, [
     { vehicle: "suv-suburban", label: "Chevrolet Suburban or similar", seats: 5, total_cents: null },
     { vehicle: "suv-denali", label: "GMC Denali", seats: 5, total_cents: null },
@@ -1029,12 +1030,12 @@ await test("handler: a class reason answers kind options with price null and tha
     { vehicle: "sprinter-white-limo", label: "White Luxury Limo Sprinter", seats: 10, total_cents: null },
   ]);
   const three = await readJson(await post({ ...trip(HOURLY), hours: "3", action: "options" }), 200);
-  assert.deepEqual(three.classes.map((item) => [item.total_cents, item.reason]), [[31670, ""], [35005, ""], [58340, ""], [28337, ""], [null, "min-hours"]]);
+  assert.deepEqual(three.classes.map((item) => [item.total_cents, item.reason]), [[31670, ""], [35005, ""], [58340, ""], [28337, ""], [30004, ""], [null, "min-hours"]]);
   assert.deepEqual([three.reason, three.price.total_cents, three.pay], ["", 35005, true]);
   assert.deepEqual(three.vehicles.map((item) => item.total_cents), [31670, 33338, 33338, null, null, null, null, null]);
   const crowd = await readJson(await post({ ...trip(HOURLY), passengers: "6", action: "options" }), 200);
   assert.deepEqual(crowd.vehicles.map((item) => item.total_cents), [null, null, null, 77788, 95568, 108903, 117793, 122238]);
-  assert.deepEqual(crowd.classes.map((item) => [item.class, item.reason, item.total_cents]), [["suv", "seats", null], ["premium", "seats", null], ["first", "seats", null], ["sedan", "seats", null], ["sprinter", "", 77788]]);
+  assert.deepEqual(crowd.classes.map((item) => [item.class, item.reason, item.total_cents]), [["suv", "seats", null], ["premium", "seats", null], ["first", "seats", null], ["sedan", "seats", null], ["electric", "seats", null], ["sprinter", "", 77788]]);
   assert.equal(calls.length, 0);
 });
 
@@ -1133,7 +1134,7 @@ await test("handler: a trip reason answers the quote shape: classes all null wit
     text: REASONS.unplaced.text,
     hourly: false,
     field: "from_text",
-    classes: ["suv", "premium", "first", "sedan", "sprinter"].map((cls, i) => ({ class: cls, name: ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"][i], seats: [5, 5, 3, 3, 14][i], total_cents: null, reason: "unplaced" })),
+    classes: ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls, i) => ({ class: cls, name: ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", "Luxury Sprinter"][i], seats: [5, 5, 3, 3, 3, 14][i], total_cents: null, reason: "unplaced" })),
     tips: TIP_PERCENTS,
     tip_custom: { min_cents: 100, max_cents: 50000 },
     seat_cents: 1500,
@@ -1303,11 +1304,11 @@ await test("handler: pay with a class reason or a hold answers the quote shape, 
   setEnv(LIVE);
   const seats = await readJson(await post({ ...STRIPE_JFK, class: "sedan", passengers: "4" }), 200);
   assert.deepEqual([seats.kind, seats.reason, seats.group, seats.heading], ["quote", "seats", "phone", HEADINGS.phone]);
-  assert.deepEqual(seats.classes.map((item) => item.total_cents), [18500, 22000, null, null, 45000]);
+  assert.deepEqual(seats.classes.map((item) => item.total_cents), [18500, 22000, null, null, null, 45000]);
   setEnv();
   const paused = await readJson(await post(STRIPE_JFK), 200);
   assert.deepEqual([paused.kind, paused.reason, paused.text], ["quote", "paused", REASONS.paused.text]);
-  assert.deepEqual(paused.classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 45000]);
+  assert.deepEqual(paused.classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 18000, 45000]);
   assert.ok(decodeURIComponent(paused.whatsapp).endsWith("Total shown: $185.00"));
   assert.equal(calls.length, 0);
 });
@@ -1649,6 +1650,59 @@ await test("handler: PAYMENTS_ENABLED unset, every complete trip pays nowhere: p
   }
   assert.equal((await readJson(await post({ ...STRIPE_JFK, from_text: "" }), 422)).code, "from");
   assert.equal(calls.length, 0);
+});
+
+await test("handler: an Electric Class booking pays $180.00 to JFK through Stripe with the same keys as an Executive Sedan booking, names Electric Class everywhere, and a price or class posted by the browser is never read", async () => {
+  setEnv(LIVE);
+  const sedan = await readJson(await post({ ...STRIPE_JFK, class: "sedan", nonce: "nonce-sedan-pay-000000001" }), 200);
+  assert.equal(sedan.kind, "pay");
+  const sedanForm = formOf(calls.at(-1));
+  const loud = { total_cents: "17000", fare_cents: "14151", price: "170", fare: "141.51", rate: "8500", seats: "9" };
+  const body = await readJson(await post({ ...STRIPE_JFK, class: "electric", ...loud, nonce: "nonce-electric-pay-000001" }), 200);
+  assert.equal(body.kind, "pay");
+  const form = formOf(calls.at(-1));
+  const items = [0, 1, 2].map((i) => [form.get(`line_items[${i}][price_data][product_data][name]`), Number(form.get(`line_items[${i}][price_data][unit_amount]`))]);
+  assert.deepEqual(items, [["Fare", 15050], [FEES, 1336 + 339], [TOLLS_SHOWN, 1275]]);
+  assert.equal(form.get("line_items[3][price_data][product_data][name]"), null);
+  assert.deepEqual([form.get("metadata[class]"), form.get("metadata[total_cents]"), form.get("metadata[fare_cents]"), form.get("payment_intent_data[metadata][class]")], ["electric", "18000", "15050", "electric"]);
+  assert.deepEqual([...form.keys()].filter((k) => k.startsWith("metadata[")).sort(), [...sedanForm.keys()].filter((k) => k.startsWith("metadata[")).sort());
+  assert.deepEqual([...form.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).sort(), [...sedanForm.keys()].filter((k) => k.startsWith("payment_intent_data[metadata][")).sort());
+  const description = form.get("line_items[0][price_data][product_data][description]");
+  assert.ok(description.startsWith("To JFK, Electric Class. "), description);
+  assert.ok(description.endsWith(" Extra waiting is $1.20 a minute."), description);
+  assert.ok(form.get("payment_intent_data[description]").includes(", Electric Class, 350 5th Ave to JFK."), form.get("payment_intent_data[description]"));
+  assert.ok(sedanForm.get("line_items[0][price_data][product_data][description]").startsWith("To JFK, Executive Sedan. "));
+  assert.equal(sedanForm.get("metadata[total_cents]"), "17000");
+  for (const cls of ["Electric", "ELECTRIC", "sedan-electric", "lyriq", "electric-class"]) assert.equal((await readJson(await post({ ...STRIPE_JFK, class: cls, action: "quote" }), 422)).code, "class", cls);
+  const crowd = await readJson(await post({ ...STRIPE_JFK, class: "electric", passengers: "4", action: "options" }), 200);
+  assert.deepEqual([crowd.reason, crowd.price, crowd.classes.find((c) => c.class === "electric")], ["seats", null, { class: "electric", name: "Electric Class", seats: 3, total_cents: null, reason: "seats" }]);
+});
+
+await test("handler: GET rebuilds a session paid before the split, class sedan in its metadata, as an Executive Sedan, and an Electric Class session as Electric Class", async () => {
+  setEnv({ STRIPE_SECRET_KEY: KEY });
+  const old = { ...PAID_SESSION, amount_total: 21623, metadata: { ...PAID_SESSION.metadata, class: "sedan", fare_cents: "14151", tax_cents: "1256", bcf_cents: "318", tip_cents: "2123", total_cents: "21623" } };
+  stripe = () => new Response(JSON.stringify(old), { status: 200 });
+  const body = await readJson(await get(PAID_SESSION.id), 200);
+  assert.deepEqual([body.summary, body.total_cents, body.lines.map((l) => l.cents)], ["Wed, Oct 14, 2026, 7:30 AM. From JFK, Executive Sedan.", 21623, [14151, 1574, 1275, 2500, 2123]]);
+  const electric = { ...PAID_SESSION, amount_total: 22758, metadata: { ...PAID_SESSION.metadata, class: "electric", fare_cents: "15050", tax_cents: "1336", bcf_cents: "339", tip_cents: "2258", total_cents: "22758" } };
+  stripe = () => new Response(JSON.stringify(electric), { status: 200 });
+  const next = await readJson(await get(PAID_SESSION.id), 200);
+  assert.deepEqual([next.summary, next.total_cents, next.value_cents, next.lines.map((l) => l.cents)], ["Wed, Oct 14, 2026, 7:30 AM. From JFK, Electric Class.", 22758, 17550, [15050, 1675, 1275, 2500, 2258]]);
+  assert.deepEqual(logged, []);
+});
+
+await test("handler: GET rebuilds an hourly session paid before the split, class and vehicle sedan, with the Executive Sedan model, and an hourly Electric Class session with the Lyriq", async () => {
+  setEnv({ STRIPE_SECRET_KEY: KEY });
+  const meta = { ref: "77340023", service: "hourly", hours: "3", from_text: "1 Main Street", from_zone: "brooklyn", date: "2026-12-01", time: "14:00", meet: "0", tip_percent: "0", legs: "0", tolls_cents: "0", meet_cents: "0", tip_cents: "0" };
+  const old = { ...PAID_SESSION, amount_total: 28337, metadata: { ...meta, class: "sedan", vehicle: "sedan", fare_cents: "25500", tax_cents: "2263", bcf_cents: "574", total_cents: "28337" } };
+  stripe = () => new Response(JSON.stringify(old), { status: 200 });
+  const body = await readJson(await get(PAID_SESSION.id), 200);
+  assert.deepEqual([body.summary, body.total_cents, body.lines], ["Tue, Dec 1, 2026, 2:00 PM. By the hour, Mercedes-Benz E-Class or similar (Executive Sedan), 3 hours.", 28337, [{ label: "Fare, 3 hours", cents: 25500 }, { label: FEES, cents: 2837 }]]);
+  const electric = { ...PAID_SESSION, amount_total: 30004, metadata: { ...meta, class: "electric", vehicle: "electric", fare_cents: "27000", tax_cents: "2396", bcf_cents: "608", total_cents: "30004" } };
+  stripe = () => new Response(JSON.stringify(electric), { status: 200 });
+  const next = await readJson(await get(PAID_SESSION.id), 200);
+  assert.deepEqual([next.summary, next.total_cents, next.lines], ["Tue, Dec 1, 2026, 2:00 PM. By the hour, Cadillac Lyriq or similar (Electric Class), 3 hours.", 30004, [{ label: "Fare, 3 hours", cents: 27000 }, { label: FEES, cents: 3004 }]]);
+  assert.deepEqual(logged, []);
 });
 
 await test("handler: the old tax settings change nothing", async () => {
@@ -2035,7 +2089,7 @@ await test("handler: the place resolution of the server decides the price, a tic
   assert.equal((await readJson(await post({ ...fields, from_text: full, from_ticket: "" }), 200)).price.total_cents, 18500);
   const outside = signTicket("mock-hoboken", "outside", "Hoboken", Date.now(), 0, "NJ");
   const hoboken = await readJson(await post({ ...fields, from_text: "Hoboken", from_ticket: outside }), 200);
-  assert.deepEqual([hoboken.kind, hoboken.service, hoboken.reason, hoboken.price.total_cents, hoboken.classes.map((c) => [c.total_cents, c.reason])], ["options", "distance", "", 15849, [[15849, ""], [19070, ""], [27351, ""], [14469, ""], [40233, ""]]]);
+  assert.deepEqual([hoboken.kind, hoboken.service, hoboken.reason, hoboken.price.total_cents, hoboken.classes.map((c) => [c.total_cents, c.reason])], ["options", "distance", "", 15849, [[15849, ""], [19070, ""], [27351, ""], [14469, ""], [15389, ""], [40233, ""]]]);
   const unknown = await readJson(await post({ ...fields, from_text: "Hoboken", from_ticket: signTicket("mock-hoboken", "outside", "Hoboken", Date.now()) }), 200);
   assert.deepEqual([unknown.kind, unknown.reason, unknown.field], ["quote", "unplaced", "from_text"], "a pickup outside New York City whose state the server can not tell goes to dispatch");
   assert.equal((await readJson(await post({ ...fields, from_text: "The Plaza Hotel" }), 200)).reason, "unplaced");
@@ -2205,7 +2259,7 @@ await test("builder: a return trip priced by distance and time equals the comple
   process.env.GOOGLE_MOCK = "true";
   try {
     const built = await build(DISTANCE, ON, "nonce-distance-trip-00001");
-    const service = "Sedan & Electric, 2 rides, 63.0 miles and 110 min";
+    const service = "Executive Sedan, 2 rides, 63.0 miles and 110 min";
     const expected = {
       ...common(DISTANCE_REF, { email: ME.email }),
       "custom_text[submit][message]": SUBMIT_DISTANCE,
@@ -2214,7 +2268,7 @@ await test("builder: a return trip priced by distance and time equals the comple
         [FEES, 662],
         ["Gratuity for your chauffeur (15%)", 4410, TIP_TEXT],
       ]),
-      "payment_intent_data[description]": `New booking ${DISTANCE_REF}: Wed Oct 14, 7:30 AM, Sedan & Electric, 350 5th Ave to Greenwich, return Sun Oct 18, 6:00 PM. Customer Ana Lopez. Phone +1 212 555 0100. Email ana.lopez@example.com. 2 passengers. Pickup "${MANHATTAN}". Drop-off "Greenwich, CT 06830".`,
+      "payment_intent_data[description]": `New booking ${DISTANCE_REF}: Wed Oct 14, 7:30 AM, Executive Sedan, 350 5th Ave to Greenwich, return Sun Oct 18, 6:00 PM. Customer Ana Lopez. Phone +1 212 555 0100. Email ana.lopez@example.com. 2 passengers. Pickup "${MANHATTAN}". Drop-off "Greenwich, CT 06830".`,
       "payment_intent_data[statement_descriptor_suffix]": "RIDE OCT14",
       ...bothMetadata({
         ref: DISTANCE_REF,
@@ -2267,7 +2321,7 @@ await test("handler: a one-way trip with no airport end gets distance prices on 
   const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-distance-options-1" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason], ["options", "distance", 1, true, "", ""]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 12224, ""], ["premium", 13890, ""], ["first", 18892, ""], ["sedan", 9668, ""], ["sprinter", 27782, ""]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 12224, ""], ["premium", 13890, ""], ["first", 18892, ""], ["sedan", 9668, ""], ["electric", 10237, ""], ["sprinter", 27782, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 11000 }, { label: FEES, cents: 1224 }], total_cents: 12224, currency: "usd", notes: [HOURLY_NOTE] });
   assert.match(options.route, ROUTE);
   assert.ok(decodeURIComponent(options.whatsapp.split("?text=")[1]).endsWith("\nTotal shown: $122.24"));
@@ -2374,7 +2428,7 @@ await test("handler: BOOK_MOCK pays a distance trip and GET rebuilds its receipt
   const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
   assert.deepEqual(session.lines, [{ label: "Fare", cents: 8700 }, { label: FEES, cents: 968 }, { label: "Gratuity for your chauffeur (20%)", cents: 1740 }]);
   assert.deepEqual([session.total_cents, session.value_cents, session.notes], [11408, 8700, [HOURLY_NOTE]]);
-  assert.equal(session.summary, `${formatDate(SOON)}, 10:00 AM. Sedan & Electric, 4.6 miles and 27 min.`);
+  assert.equal(session.summary, `${formatDate(SOON)}, 10:00 AM. Executive Sedan, 4.6 miles and 27 min.`);
   assert.equal(calls.length, 0);
   assert.deepEqual(logged, []);
 });
@@ -2449,7 +2503,7 @@ await test("handler: a New Jersey address to JFK gets the airport fare or the di
   const fields = trip({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "John F. Kennedy (JFK)", to_id: "jfk", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-nj-options-000001" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet], ["options", "distance", 1, true, "", "", false]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 16795, ""], ["premium", 20424, ""], ["first", 27351, ""], ["sedan", 14469, ""], ["sprinter", 40233, ""]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 16795, ""], ["premium", 20424, ""], ["first", 27351, ""], ["sedan", 14469, ""], ["electric", 15389, ""], ["sprinter", 40233, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 16425 }, { label: FEES, cents: 370 }], total_cents: 16795, currency: "usd", notes: [OUTSIDE_NOTE] });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 45, miles: 25, attribution: "Google Maps" });
   assert.match(options.route, ROUTE);
@@ -2515,7 +2569,7 @@ await test("handler: the owner's trip from 806 6th Street, Secaucus, NJ to Niaga
   const fields = trip({ trip_type: "one", from_text: "806 6th Street, Secaucus, NJ", to_text: "Niagara Falls, NY 14303", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-niagara-options-01" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet], ["options", "distance", 1, true, "", "", false]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 195093, ""], ["premium", 233232, ""], ["first", 258999, ""], ["sedan", 146729, ""], ["sprinter", 438550, ""]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 195093, ""], ["premium", 233232, ""], ["first", 258999, ""], ["sedan", 146729, ""], ["electric", 155529, ""], ["sprinter", 438550, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 190800 }, { label: FEES, cents: 4293 }], total_cents: 195093, currency: "usd", notes: [HOURLY_NOTE] });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 420, miles: 400, attribution: "Google Maps" });
   assert.match(options.route, ROUTE);
@@ -2560,7 +2614,7 @@ await test("handler: BOOK_MOCK pays the owner's trip to Niagara Falls and GET re
   const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
   assert.deepEqual(session.lines, [{ label: "Fare", cents: 143500 }, { label: FEES, cents: 3229 }, { label: "Gratuity for your chauffeur (15%)", cents: 21525 }]);
   assert.deepEqual([session.total_cents, session.value_cents, session.notes], [168254, 143500, [HOURLY_NOTE]]);
-  assert.equal(session.summary, `${formatDate(SOON)}, 10:00 AM. Sedan & Electric, 400.0 miles and 420 min.`);
+  assert.equal(session.summary, `${formatDate(SOON)}, 10:00 AM. Executive Sedan, 400.0 miles and 420 min.`);
   assert.equal(calls.length, 0);
   assert.deepEqual(logged, []);
 });
@@ -2680,7 +2734,7 @@ await test("handler: options sends the price per seat and the class cards includ
   const fields = { ...STRIPE_JFK, passengers: "3", infant_seats: "1", booster_seats: "1", nonce: "nonce-seat-handler-000001" };
   const options = await readJson(await post({ ...fields, action: "options" }), 200);
   assert.equal(options.seat_cents, 1500);
-  assert.deepEqual(options.classes.map((c) => c.total_cents), [21500, 25000, 34000, 20000, 48000]);
+  assert.deepEqual(options.classes.map((c) => c.total_cents), [21500, 25000, 34000, 20000, 21000, 48000]);
   assert.deepEqual(options.price.lines.at(-1), { label: "Child seats (2 x $15.00)", cents: 3000 });
   assert.equal(options.price.total_cents, 21500);
   const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
@@ -2929,7 +2983,7 @@ await test("handler: options and quote send the price per dog of each size from 
   const fields = { ...STRIPE_JFK, ...DOG_FIELDS, nonce: "nonce-dog-handler-0000001" };
   const options = await readJson(await post({ ...fields, action: "options" }), 200);
   assert.deepEqual([options.small_dog_cents, options.large_dog_cents, options.seat_cents], [2000, 4500, 1500]);
-  assert.deepEqual(options.classes.map((c) => c.total_cents), [29500, 33000, 42000, 28000, 56000]);
+  assert.deepEqual(options.classes.map((c) => c.total_cents), [29500, 33000, 42000, 28000, 29000, 56000]);
   assert.deepEqual(options.price.lines.slice(-2), [{ label: "Small dog (1 x $20.00)", cents: 2000 }, { label: "Large dog (2 x $45.00)", cents: 9000 }]);
   assert.equal(options.price.total_cents, 29500);
   const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
@@ -3005,13 +3059,13 @@ await test("handler: when Google expects tolls but gives no price, the owner's t
   const stripeCalls = () => calls.filter((c) => c.url.startsWith("https://api.stripe.com"));
   const fields = trip({ trip_type: "one", from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: ANN, stop2_text: WALL, to_text: CHURCH, passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-stops-options-0001" }), 200);
-  const totals = ["suv", "premium", "first", "sedan", "sprinter"].map((cls) => priceDistance(rateKey(cls), { tenths: 200, minutes: 70 }, "lga").total);
-  assert.deepEqual(totals, [17835, 21781, 24781, 13335, 43725]);
-  const flat = ["suv", "premium", "first", "sedan", "sprinter"].map((cls) => AIRPORT_TOTALS[rateKey(cls)].lga + 2 * STOP_FEE_CENTS);
-  assert.deepEqual(flat, [20500, 23000, 29000, 18500, 49000]);
+  const totals = ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => priceDistance(rateKey(cls), { tenths: 200, minutes: 70 }, "lga").total);
+  assert.deepEqual(totals, [17835, 21781, 24781, 13335, 14225, 43725]);
+  const flat = ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => AIRPORT_TOTALS[rateKey(cls)].lga + 2 * STOP_FEE_CENTS);
+  assert.deepEqual(flat, [20500, 23000, 29000, 18500, 19500, 49000]);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet, options.stop_cents], ["options", "airport", 1, true, "", "", true, STOP_FEE_CENTS]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 20500, ""], ["premium", 21781, ""], ["first", 29000, ""], ["sedan", 18500, ""], ["sprinter", 49000, ""]]);
-  assert.deepEqual(options.classes.map((c, i) => c.total_cents), totals.map((total, i) => (flat[i] - priceLeg(rateKey(["suv", "premium", "first", "sedan", "sprinter"][i]), "lga").tolls > total ? flat[i] : total)));
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 20500, ""], ["premium", 21781, ""], ["first", 29000, ""], ["sedan", 18500, ""], ["electric", 19500, ""], ["sprinter", 49000, ""]]);
+  assert.deepEqual(options.classes.map((c, i) => c.total_cents), totals.map((total, i) => (flat[i] - priceLeg(rateKey(["suv", "premium", "first", "sedan", "electric", "sprinter"][i]), "lga").tolls > total ? flat[i] : total)));
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 13701 }, { label: FEES, cents: 1524 }, { label: TOLLS_SHOWN, cents: 1275 }, { label: "Extra stops (2 x $20.00)", cents: 4000 }], total_cents: 20500, currency: "usd", notes: AIRPORT_NOTES });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 70, miles: 20, attribution: "Google Maps" });
   assert.deepEqual(sent.map((body) => [body.origin, body.intermediates, body.destination]), [[{ address: LGA_ADDRESS }, [{ address: ANN }, { address: WALL }], { address: CHURCH }]]);

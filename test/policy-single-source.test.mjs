@@ -46,7 +46,7 @@ function check(name, fn) {
 check("the policy figures live in api/_rates.mjs: free waiting 15, 45 and 60 minutes, extra waiting per minute by class, and the four cancellation tiers of the owner", () => {
   assert.deepEqual(FREE_WAIT_MINUTES, { local: 15, domestic: 45, international: 60 });
   assert.deepEqual(Object.keys(WAIT_CENTS_PER_MINUTE).sort(), Object.keys(CLASSES).sort());
-  assert.deepEqual(WAIT_CENTS_PER_MINUTE, { sedan: 120, suv: 150, premium: 180, first: 280, sprinter: 400 });
+  assert.deepEqual(WAIT_CENTS_PER_MINUTE, { sedan: 120, electric: 120, suv: 150, premium: 180, first: 280, sprinter: 400 });
   assert.deepEqual(CANCEL_TIERS, [{ hours: 24, percent: 0 }, { hours: 12, percent: 25 }, { hours: 2, percent: 50 }, { hours: 0, percent: 100 }]);
 });
 
@@ -56,7 +56,7 @@ check("every POLICY sentence is the owner's policy, filled from api/_rates.mjs, 
   assert.equal(POLICY.extraWait, "After the free waiting, we charge by the minute at the rate for your vehicle.");
   assert.equal(POLICY.waiting, `${POLICY.freeWait} ${POLICY.extraWait}`);
   assert.deepEqual(POLICY.waitPrices, Object.fromEntries(Object.entries(WAIT_CENTS_PER_MINUTE).map(([k, c]) => [k, `$${(c / 100).toFixed(2)}`])));
-  assert.deepEqual(POLICY.waitPrices, { sedan: "$1.20", suv: "$1.50", premium: "$1.80", first: "$2.80", sprinter: "$4.00" });
+  assert.deepEqual(POLICY.waitPrices, { sedan: "$1.20", electric: "$1.20", suv: "$1.50", premium: "$1.80", first: "$2.80", sprinter: "$4.00" });
   assert.equal(POLICY.waitRate, "Extra waiting is {price} a minute.");
   assert.equal(POLICY.cancelShort, `Free cancellation up to ${free.hours} hours before pickup.`);
   assert.equal(POLICY.cancel, "Free cancellation up to 24 hours before pickup. Under 24 hours, the charge is 25% of the price. Under 12 hours, it's 50%. Under 2 hours, it's the full price.");

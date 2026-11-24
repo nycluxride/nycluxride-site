@@ -638,7 +638,7 @@ for (const file of Object.keys(AREAS).concat("locations/laguardia-airport.html")
   });
 }
 
-for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?trip-type=hour&hours=3&class=", ["suv", "premium", "first", "sedan"]], ["limousine-service-nyc.html", "/book?class=", ["suv", "premium", "first", "sprinter"]], ["black-car-service-brooklyn.html", "/book?class=", ["premium", "first", "sedan", "sedan"]]]) {
+for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?trip-type=hour&hours=3&class=", ["suv", "premium", "first", "sedan"]], ["limousine-service-nyc.html", "/book?class=", ["suv", "premium", "first", "sprinter"]], ["black-car-service-brooklyn.html", "/book?class=", ["premium", "first", "sedan", "electric"]]]) {
   const { document } = read(file);
   check(`${file}: the fleet card Book links carry their class and the seat glyph is #i-user`, () => {
     const links = [...document.querySelectorAll("main .fleet-card a.lnk")].filter((a) => norm(a.textContent) === "Book a car");
@@ -819,7 +819,7 @@ check("corporate-car-service-nyc.html: the busy times answer keeps the no surge 
 check("about.html: the vehicle count in At a glance equals the vehicles listed on fleet.html", () => {
   const fleet = read("fleet.html").document.querySelectorAll("h3.fleet-card__name").length;
   const dt = [...read("about.html").document.querySelectorAll("dt")].find((d) => d.textContent.trim() === "Vehicles");
-  assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [15, "15"]);
+  assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [13, "13"]);
 });
 
 if (failures) {

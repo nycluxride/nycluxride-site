@@ -421,7 +421,7 @@ await test("drive minutes: a trip priced by distance lasts its drive time, and a
   const [ride] = inserted();
   assert.equal(NEW_JERSEY.metadata.minutes, "18");
   assert.deepEqual([ride.start.dateTime, ride.end.dateTime], ["2026-11-20T10:15:00.000Z", "2026-11-20T10:33:00.000Z"]);
-  assert.equal(ride.summary, "[TEST] 83558982 Sedan & Electric: Secaucus to Newark Liberty (EWR)");
+  assert.equal(ride.summary, "[TEST] 83558982 Executive Sedan: Secaucus to Newark Liberty (EWR)");
   setEnv(fullEnv());
   const van = paid(SPRINTER);
   await hook(van);

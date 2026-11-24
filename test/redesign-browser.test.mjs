@@ -839,7 +839,7 @@ for (const width of [320, 390, 600, 650, 900, 1280, 1440]) {
     return [Math.round(icon.left - word.right), Math.abs(icon.top + icon.height / 2 - (word.top + word.height / 2)) <= 2];
   }));
   check(`/: at ${width}px every fleet slide link ends with its arrow 8px after the last word, on the same line`, () => {
-    assert.equal(gaps.length, 5);
+    assert.equal(gaps.length, 6);
     assert.deepEqual(gaps, gaps.map(() => [8, true]));
   });
   await p.close();
@@ -850,7 +850,7 @@ for (const width of [320, 390, 768, 900, 1024]) {
   await p.goto(`${base}/fleet`, { waitUntil: "load" });
   await p.evaluate(() => document.fonts.ready);
   const [scrollW, clientW] = await p.evaluate(() => { const n = document.querySelector(".jumps--tabs"); return [n.scrollWidth, n.clientWidth]; });
-  check(`/fleet: at ${width}px the six class tabs fit without sideways scrolling`, () => assert.ok(scrollW <= clientW, `${scrollW}px of tabs in ${clientW}px`));
+  check(`/fleet: at ${width}px the seven class tabs fit without sideways scrolling`, () => assert.ok(scrollW <= clientW, `${scrollW}px of tabs in ${clientW}px`));
   await p.close();
 }
 

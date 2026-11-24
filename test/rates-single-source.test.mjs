@@ -33,7 +33,7 @@ const PET_PAGE = "pet-friendly-car-service-nyc.html";
 const PET_PAGE_PRICES = [`$${SMALL_DOG_CENTS / 100} per small dog`, `$${LARGE_DOG_CENTS / 100} per large dog`];
 const CANCEL_PAGES = ["faq.html", "terms-of-service.html", "card-authorization.html", "schedule.html", "book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"];
 const SEAT_FORM = /\$\s*(\d+(?:[.,]\d+)*)\s*(?:per|a)\s+seat/gi;
-const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "sedan-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "policies", "waiting", "cancellation", "no-show", "changes"];
+const RATE_ANCHORS = ["airport", "jfk", "ewr", "teb", "lga", "airport-total", "hourly", "executive-sedan", "electric-class", "airport-sedan", "airport-electric", "business-suv", "business-premium-suv", "first-class", "luxury-sprinter", "add-ons", "policies", "waiting", "cancellation", "no-show", "changes"];
 
 function htmlFiles(dir) {
   const out = [];
@@ -270,7 +270,7 @@ if (rates) {
   check(`${RATES}: #waiting lists every class of api/_rates.mjs with its WAIT_CENTS_PER_MINUTE price per minute, in class order, the Sprinter row for every Sprinter, after POLICY.waiting`, () => {
     const rows = [...rates.document.querySelectorAll("#waiting-rates tbody tr")].map((tr) => [tr.id, tr.querySelector("th").firstChild.textContent, tr.querySelector("td").textContent]);
     assert.deepEqual(rows, Object.keys(CLASSES).map((k) => [`waiting-${k}`, CLASSES[k].name, `$${(WAIT_CENTS_PER_MINUTE[k] / 100).toFixed(2)}`]));
-    assert.deepEqual(Object.entries(WAIT_CENTS_PER_MINUTE).sort(), Object.entries({ sedan: 120, suv: 150, premium: 180, first: 280, sprinter: 400 }).sort());
+    assert.deepEqual(Object.entries(WAIT_CENTS_PER_MINUTE).sort(), Object.entries({ sedan: 120, electric: 120, suv: 150, premium: 180, first: 280, sprinter: 400 }).sort());
     assert.equal(rates.document.querySelector("#waiting-sprinter small").textContent, "Every Sprinter");
     assert.equal(rates.document.querySelector("#waiting p").textContent.replace(/\s+/g, " "), POLICY.waiting);
   });

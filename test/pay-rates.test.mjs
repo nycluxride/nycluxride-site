@@ -85,7 +85,7 @@ const example = (() => {
 test("AIRPORT_FARES and AIRPORT_TOTALS cover every car class at every priced airport, JFK, Newark and Teterboro share one total per class and LaGuardia costs less, and each Sprinter has its own totals, the same at Newark and Teterboro and more than at JFK", () => {
   assert.deepEqual(Object.keys(AIRPORT_FARES), [...CAR_KEYS, ...SPRINTER_KEYS]);
   assert.deepEqual(Object.keys(AIRPORT_TOTALS), [...CAR_KEYS, ...SPRINTER_KEYS]);
-  assert.deepEqual(CAR_KEYS, ["suv", "premium", "first", "sedan"]);
+  assert.deepEqual(CAR_KEYS, ["suv", "premium", "first", "sedan", "electric"]);
   for (const key of SPRINTER_KEYS) {
     const places = key === "sprinter-white-limo" ? ["jfk", "ewr", "teb"] : AIRPORT_PLACES;
     assert.deepEqual(Object.keys(AIRPORT_FARES[key]), places, key);
@@ -198,12 +198,13 @@ test("#airport-total rows add up to the total with the rates and rounding of api
 const hourlyRows = [
   ["business-premium-suv", "premium", "premium"],
   ["first-class", "first", "first"],
-  ["sedan-electric", "sedan", "sedan"],
+  ["executive-sedan", "sedan", "sedan"],
+  ["electric-class", "electric", "electric"],
 ];
 
 test("the hourly rows follow CLASSES order and the hourly rates are the owner's: First Class $175, every other rate unchanged", () => {
-  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "sedan-electric", "hourly-executive", "hourly-luxury-jet", "hourly-presidential", "hourly-limo", "hourly-white-limo"]);
-  assert.deepEqual(Object.fromEntries(Object.entries(VEHICLES).map(([k, v]) => [k, v.hourly])), { "suv-suburban": 9500, "suv-denali": 10000, "suv-navigator": 10000, premium: 10500, sedan: 8500, first: 17500, "sprinter-executive": 17500, "sprinter-luxury-jet": 21500, "sprinter-presidential": 24500, "sprinter-limo": 26500, "sprinter-white-limo": 27500 });
+  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "executive-sedan", "electric-class", "hourly-executive", "hourly-luxury-jet", "hourly-presidential", "hourly-limo", "hourly-white-limo"]);
+  assert.deepEqual(Object.fromEntries(Object.entries(VEHICLES).map(([k, v]) => [k, v.hourly])), { "suv-suburban": 9500, "suv-denali": 10000, "suv-navigator": 10000, premium: 10500, sedan: 8500, electric: 9000, first: 17500, "sprinter-executive": 17500, "sprinter-luxury-jet": 21500, "sprinter-presidential": 24500, "sprinter-limo": 26500, "sprinter-white-limo": 27500 });
   assert.deepEqual(cents(squash(row("first-class"))), [17500, 52500]);
   assert.equal(squash(row("business-premium-suv").querySelector("th small")), VEHICLES.premium.model);
 });
@@ -224,6 +225,23 @@ for (const [id, cls, vehicle] of hourlyRows) {
     assert.deepEqual(cents(three), [VEHICLES[vehicle].hourly * HOURS.min]);
   });
 }
+
+test("the rates page lists the Executive Sedan and then the Electric Class in every table: $170 and $145, $85 an hour, and $180 and $155, $90 an hour, each row booking its own class", () => {
+  assert.deepEqual([squash(row("airport-sedan").querySelector("th small")), squash(row("airport-electric").querySelector("th small"))], ["Mercedes-Benz E-Class or similar", "Cadillac Lyriq or similar"]);
+  assert.deepEqual([...row("airport-sedan").querySelectorAll("td")].map((td) => cents(squash(td))), [[17000], [14500]]);
+  assert.deepEqual([...row("airport-electric").querySelectorAll("td")].map((td) => cents(squash(td))), [[18000], [15500]]);
+  assert.equal(row("airport-sedan").nextElementSibling, row("airport-electric"));
+  assert.equal(row("executive-sedan").nextElementSibling, row("electric-class"));
+  assert.deepEqual([...row("electric-class").querySelectorAll("td")].map(squash).map((t, i) => (i ? cents(t) : t)), ["3", [9000], [27000]]);
+  assert.deepEqual([row("airport-electric").querySelector("a").getAttribute("href"), row("electric-class").querySelector("a").getAttribute("href")], ["/book?class=electric", "/book?trip-type=hour&hours=3&class=electric"]);
+  assert.deepEqual([row("airport-sedan").querySelector("a").getAttribute("href"), row("executive-sedan").querySelector("a").getAttribute("href")], ["/book?class=sedan", "/book?trip-type=hour&hours=3&class=sedan"]);
+  assert.deepEqual([row("airport-sedan"), row("airport-electric")].map((r) => squash(r.querySelector("a"))), ["Book an Executive Sedan", "Book an Electric Class car"]);
+  assert.equal(squash(row("distance-electric").querySelector("td")), "$26.47 base, $3.18 per mile, $0.53 per minute, $92.12 minimum");
+  assert.equal(squash(row("distance-sedan").querySelector("td")), "$25 base, $3.00 per mile, $0.50 per minute, $87 minimum");
+  assert.equal(row("distance-sedan").nextElementSibling, row("distance-electric"));
+  assert.deepEqual([row("airport-electric"), row("electric-class"), row("distance-electric")].map((r) => r.dataset.seats), ["3", "3", "3"]);
+  assert.doesNotMatch(squash(page.body), /Sedan & Electric|CT5|CT6|XT6|Continental/);
+});
 
 test("the five Sprinters are priced by the hour with a 4-hour minimum and the owner's rates, with no event rate and no From on the rates page", () => {
   assert.deepEqual(sprinters.map(([k, v]) => [k, v.name, v.seats, v.hourly, v.event ?? null, v.minHours, Boolean(v.hourlyOnly)]), [
@@ -338,7 +356,7 @@ test("the flat fare is for the five boroughs, which ADDRESS_PLACES lists with Ou
   assert.ok(ADDRESS_PLACES.includes("outside"));
 });
 
-test("the worked hourly example is three hours of Sedan & Electric, its fare and its total with the tax and Black Car Fund of api/_rates.mjs", () => {
+test("the worked hourly example is three hours of Executive Sedan, its fare and its total with the tax and Black Car Fund of api/_rates.mjs", () => {
   const cell = [...row("hourly").querySelectorAll("tfoot td")].map(squash);
   assert.equal(cell.length, 1);
   const word = Object.keys(WORDS).find((w) => WORDS[w] === HOURS.min);
@@ -362,7 +380,7 @@ const distanceExample = (() => {
 })();
 
 test("the distance and time table has one row per class, the Luxury Sprinter too, in CLASSES order, with the base, per mile, per minute and minimum of DISTANCE_RATES", () => {
-  assert.deepEqual(DISTANCE_KEYS, ["suv", "premium", "first", "sedan", "sprinter"]);
+  assert.deepEqual(DISTANCE_KEYS, ["suv", "premium", "first", "sedan", "electric", "sprinter"]);
   assert.deepEqual(DISTANCE_KEYS, CLASS_KEYS);
   const rows = [...page.querySelectorAll("#distance-rates tbody tr")];
   assert.deepEqual(rows.map((tr) => tr.id), DISTANCE_KEYS.map((k) => `distance-${k}`));

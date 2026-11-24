@@ -47,7 +47,7 @@ const BANNER_SIZES = (img) => {
   const z = ZOOM(/^\/fleet\/([a-z0-9-]+?)-900\.webp$/.exec(img.getAttribute("src"))[1]);
   return `(max-width: 1023px) ${z > 1 ? `calc((100vw - 48px) * ${z})` : "calc(100vw - 48px)"}, (max-width: 1234px) calc(54vw - 35px), 632px`;
 };
-const SLIDE_SIZES = (i) => `(min-width: 1280px) 202px, (min-width: 600px) ${i < 2 ? "calc(50vw - 48px)" : "calc((100vw - 128px) / 3)"}, 120px`;
+const SLIDE_SIZES = () => "(min-width: 1280px) 361px, (min-width: 600px) calc((100vw - 128px) / 3), 120px";
 const CARD_SIZES = (w, h) => {
   const f = Math.max(1, w / h / 1.5);
   return f === 1 ? "(min-width: 1280px) 262px, (min-width: 600px) calc(50vw - 52px), 112px" : `(min-width: 1280px) ${Math.ceil(262 * f)}px, (min-width: 600px) calc(${(50 * f).toFixed(1)}vw - ${Math.round(52 * f)}px), ${Math.round(112 * f)}px`;
@@ -146,13 +146,14 @@ const BY_HOUR = KEYS.filter((k) => k !== "sprinter");
     assert.equal(doc.querySelectorAll("[data-slider], .slider__tab, [class*=slider]").length, 0);
     assert.equal(doc.getElementById("fleet-track").parentElement.getAttribute("aria-labelledby"), "fleet-h");
   });
-  check("index.html: the fleet slides are the five classes in class order, sized to the shelf grid, with #i-user seats and their own /fleet link", () => {
+  check("index.html: the fleet slides are the six classes in class order, sized to the shelf grid, with #i-user seats and their own /fleet link", () => {
     const slides = [...doc.querySelectorAll("#fleet-track > article.slide")];
-    assert.deepEqual(slides.map((a) => norm(a.querySelector(".eyebrow").textContent)), ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"]);
-    assert.deepEqual(slides.map((a) => a.id), ["class-business-suv", "class-business-premium-suv", "class-first-class", "class-sedan-electric", "class-luxury-sprinter"]);
-    assert.deepEqual(slides.map((a) => [...a.querySelectorAll(".lnk")].map((l) => l.getAttribute("href"))), ["business-suv", "business-premium-suv", "first-class", "sedan-electric", "luxury-sprinter"].map((id) => [`/fleet#${id}`]));
+    assert.deepEqual(slides.map((a) => norm(a.querySelector(".eyebrow").textContent)), ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", "Luxury Sprinter"]);
+    assert.deepEqual(slides.map((a) => a.id), ["class-business-suv", "class-business-premium-suv", "class-first-class", "class-executive-sedan", "class-electric-class", "class-luxury-sprinter"]);
+    assert.deepEqual(slides.map((a) => [...a.querySelectorAll(".lnk")].map((l) => l.getAttribute("href"))), ["business-suv", "business-premium-suv", "first-class", "executive-sedan", "electric-class", "luxury-sprinter"].map((id) => [`/fleet#${id}`]));
     slides.forEach((a, i) => assert.deepEqual([...a.querySelectorAll("source")].map((src) => src.getAttribute("sizes")), [SLIDE_SIZES(i), SLIDE_SIZES(i)], a.id));
-    assert.deepEqual(slides.map((a) => a.querySelector(".chips li use").getAttribute("href")), Array(5).fill("#i-user"));
+    assert.deepEqual(slides.map((a) => a.querySelector(".chips li use").getAttribute("href")), Array(6).fill("#i-user"));
+    assert.deepEqual(slides.slice(3, 5).map((a) => [norm(a.querySelector("h3").textContent), a.querySelector("img").getAttribute("src"), a.querySelector("img").getAttribute("alt")]), [["Mercedes-Benz E-Class or similar", "/fleet/cadillac-ct5-ct6-600.webp", "Black Cadillac CT5 sedan in a lobby"], ["Cadillac Lyriq or similar", "/fleet/cadillac-lyriq-600.webp", "Black Cadillac Lyriq electric SUV at dusk"]]);
     assert.equal(doc.querySelectorAll('main use[href="#i-seat"]').length, 0);
     for (const a of doc.querySelectorAll("#fleet-track .lnk")) {
       assert.equal(a.lastElementChild, a.lastChild, "the arrow is the last node of the link");
@@ -163,7 +164,7 @@ const BY_HOUR = KEYS.filter((k) => k !== "sprinter");
 
 const HERO_C = {
   "rates.html": { img: "/fleet/page-rates-900.webp", gold: "rates", eyebrow: "Rates", btns: ["Book a car", "Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Rates</li></ol></nav>', preload: false },
-  "fleet.html": { img: "/fleet/page-fleet-900.webp", gold: "five classes", eyebrow: "Fleet", btns: null, after: ["You book a class. We confirm your car in writing before your ride.", `Child, infant and booster seats are $${CHILD_SEAT_CENTS / 100} per seat, charged at booking. Count children and infants as passengers when you choose a class.`], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Fleet</li></ol></nav>', preload: true },
+  "fleet.html": { img: "/fleet/page-fleet-900.webp", gold: "six classes", eyebrow: "Fleet", btns: null, after: ["You book a class. We confirm your car in writing before your ride.", `Child, infant and booster seats are $${CHILD_SEAT_CENTS / 100} per seat, charged at booking. Count children and infants as passengers when you choose a class.`], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Fleet</li></ol></nav>', preload: true },
   "about.html": { img: "/fleet/page-about-900.webp", gold: "NYC\u00a0LUX\u00a0RIDE", eyebrow: "Chauffeur and black car service in New York City", btns: null, crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">About</li></ol></nav>', preload: true },
   "contact.html": { img: "/fleet/page-contact-900.webp", gold: "NYC\u00a0LUX\u00a0RIDE", eyebrow: "Reservations and inquiries", btns: ["Call +1 (646) 775-0556", "Book on WhatsApp"], crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">Contact</li></ol></nav>', preload: true },
   "faq.html": { img: "/fleet/page-faq-900.webp", gold: "questions", eyebrow: "Support", btns: null, crumbs: '<nav class="crumbs" aria-label="Breadcrumb"><ol role="list"><li><a href="/">Home</a></li><li aria-current="page">FAQ</li></ol></nav>', preload: true },
@@ -245,8 +246,18 @@ check("fleet.html: the class jump list of #fleet-all is tabs, one per class in c
   const doc = load("fleet.html");
   const ul = doc.querySelector('#fleet-all nav[aria-label="Vehicle classes"] > ul');
   assert.equal(ul.className, "jumps jumps--tabs");
-  assert.deepEqual([...ul.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["#fleet-all", "All vehicles"], ["#business-suv", "Business SUV"], ["#business-premium-suv", "Business Premium SUV"], ["#first-class", "First Class"], ["#sedan-electric", "Sedan & Electric"], ["#luxury-sprinter", "Luxury Sprinter"]]);
-  assert.deepEqual([...doc.querySelectorAll(".fleet-set")].map((set) => [set.id, set.querySelectorAll(".fleet-card").length]), [["business-suv", 3], ["business-premium-suv", 1], ["first-class", 2], ["sedan-electric", 4], ["luxury-sprinter", 5]]);
+  assert.deepEqual([...ul.querySelectorAll("a")].map((a) => [a.getAttribute("href"), norm(a.textContent)]), [["#fleet-all", "All vehicles"], ["#business-suv", "Business SUV"], ["#business-premium-suv", "Business Premium SUV"], ["#first-class", "First Class"], ["#executive-sedan", "Executive Sedan"], ["#electric-class", "Electric Class"], ["#luxury-sprinter", "Luxury Sprinter"]]);
+  assert.deepEqual([...doc.querySelectorAll(".fleet-set")].map((set) => [set.id, set.querySelectorAll(".fleet-card").length]), [["business-suv", 3], ["business-premium-suv", 1], ["first-class", 2], ["executive-sedan", 1], ["electric-class", 1], ["luxury-sprinter", 5]]);
+  assert.deepEqual([...doc.querySelectorAll("#executive-sedan .fleet-card__name, #electric-class .fleet-card__name")].map((h) => norm(h.textContent)), ["Mercedes-Benz E-Class or similar", "Cadillac Lyriq or similar"]);
+  assert.deepEqual([...doc.querySelectorAll("#executive-sedan figcaption.slate, #electric-class figcaption.slate")].map((f) => norm(f.textContent)), ["Cadillac CT5 Executive Sedan", "Lyriq Electric Class"]);
+  for (const file of ["fleet.html", "chauffeur-service-nyc.html", "black-car-service-brooklyn.html"]) {
+    const card = [...load(file).querySelectorAll(".fleet-card")].find((c) => c.querySelector('img[src*="cadillac-ct5-ct6"]'));
+    assert.deepEqual([norm(card.querySelector(".fleet-card__name").textContent), [...card.querySelectorAll(".fleet-card__feats li")].map((li) => norm(li.textContent)).pop()], ["Mercedes-Benz E-Class or similar", "Pictured: Cadillac CT5"], file);
+  }
+  const plate = [...load("services.html").querySelectorAll("figure")].find((f) => f.querySelector('img[src*="cadillac-ct5-ct6"]'));
+  assert.deepEqual([plate.querySelector("img").getAttribute("alt"), norm(plate.querySelector("figcaption").textContent)], ["Black Cadillac CT5 sedan in a lobby", "Cadillac CT5 Executive Sedan"]);
+  assert.equal(norm(load("blog/flying-from-new-jersey-jfk-laguardia-november-19.html").querySelector("main figure figcaption").textContent), "Cadillac XT6");
+  assert.doesNotMatch(norm(doc.querySelector("main").textContent), /Sedan & Electric|CT6|XT6|Continental/);
   assert.deepEqual([...doc.querySelectorAll("#business-premium-suv .fleet-card__name")].map((h) => norm(h.textContent)), ["Cadillac Escalade ESV"]);
 });
 
@@ -538,7 +549,7 @@ check("the three posts that gained links keep their dateModified, so a new lastm
   const doc = load("rates.html");
   const rows = (sel) => [...doc.querySelectorAll(sel)];
   check("rates.html: each airport row ends with Book in its LaGuardia cell, each hourly row with Book by the hour in its Three hours cell, never in the th (C-06, F42)", () => {
-    assert.deepEqual(rows("#airport-rates tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?class=${k}">Book<span class="sr-only"> a ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`));
+    assert.deepEqual(rows("#airport-rates tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?class=${k}">Book<span class="sr-only"> ${/^[AEIOU]/.test(CLASSES[k].name) ? "an" : "a"} ${CLASSES[k].name.replace("&", "&amp;")}${k === "electric" ? " car" : ""}</span></a>`));
     assert.deepEqual(rows("#hourly tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...BY_HOUR.map((k) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=3&amp;class=${k}">Book by the hour<span class="sr-only">, ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`), ...SPRINTERS.map((v) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=${v.minHours}&amp;class=sprinter&amp;sprinter=${SPRINTER_KEY.get(v)}">Book by the hour<span class="sr-only">, ${v.name}</span></a>`)]);
     assert.deepEqual(rows("#sprinter-airport tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...SPRINTER_KEY].map(([v, k]) => `<a class="lnk lnk--row" href="/book?class=sprinter&amp;sprinter=${k}">Book<span class="sr-only"> ${/^[AEIOU]/.test(v.name) ? "an" : "a"} ${v.name}</span></a>`));
     assert.equal(doc.querySelectorAll(".rate-table th a, .rate-table td:not(:last-child) a.lnk--row").length, 0);
@@ -568,10 +579,10 @@ check("the three posts that gained links keep their dateModified, so a new lastm
 {
   const doc = load("fleet.html");
   const cards = [...doc.querySelectorAll("article.fleet-card")];
-  const SET = { "business-suv": "suv", "business-premium-suv": "premium", "first-class": "first", "sedan-electric": "sedan", "luxury-sprinter": "sprinter" };
+  const SET = { "business-suv": "suv", "business-premium-suv": "premium", "first-class": "first", "executive-sedan": "sedan", "electric-class": "electric", "luxury-sprinter": "sprinter" };
   const vehicleOf = (c) => SPRINTERS.find((v) => v.name === norm(c.querySelector("h3.fleet-card__name").textContent));
-  check("fleet.html: the 15 rate links point at the airport row of their class, or the Sprinter's own row on rates.html, the 15 Book a car links carry ?class=, the Sprinter ones their Sprinter too, text and aria-label kept (C-05, C-06)", () => {
-    assert.equal(cards.length, 15);
+  check("fleet.html: the 13 rate links point at the airport row of their class, or the Sprinter's own row on rates.html, the 13 Book a car links carry ?class=, the Sprinter ones their Sprinter too, text and aria-label kept (C-05, C-06)", () => {
+    assert.equal(cards.length, 13);
     assert.deepEqual(cards.filter(vehicleOf).map((c) => SPRINTER_KEY.get(vehicleOf(c))), [...SPRINTER_KEY.values()]);
     for (const c of cards) {
       const k = SET[c.closest(".fleet-set").id];
@@ -612,7 +623,7 @@ check("the three posts that gained links keep their dateModified, so a new lastm
 }
 {
   const doc = load("about.html");
-  check("about.html: The service in figures says 5 vehicle classes, the number of CLASSES (C-01)", () => {
+  check("about.html: The service in figures says 6 vehicle classes, the number of CLASSES (C-01)", () => {
     const dt = [...doc.querySelectorAll("main dl.facts dt")].find((d) => norm(d.textContent) === "Vehicle classes");
     assert.equal(norm(dt.nextElementSibling.textContent), String(Object.keys(CLASSES).length));
   });
@@ -704,7 +715,7 @@ check(`assets/${cssFile}: every selector of the @layer pages block starts with .
   assert.deepEqual(list.filter((s) => !s.startsWith(".home")), []);
 });
 
-const CLASS_ORDER = ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"];
+const CLASS_ORDER = ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", "Luxury Sprinter"];
 for (const file of ["chauffeur-service-nyc.html", "limousine-service-nyc.html", "black-car-service-brooklyn.html"]) {
   check(`${file}: the fleet cards follow the class order`, () => {
     const classes = [...load(file).querySelectorAll("article.fleet-card figcaption.slate")].map((f) => norm(f.textContent.replace(f.querySelector("b").textContent, "")));

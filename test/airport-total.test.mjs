@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceLeg, legLines, hourlyLines, bookingRef, classTotal, shownLines, rateKey, RATE_KEYS } from "../api/_trip.mjs";
 import { sessionParams } from "../api/_stripe.mjs";
-import { AIRPORT_FARES, AIRPORT_TOTALS, AIRPORT_PLACES, CLASSES, VEHICLES, MEET_AND_GREET, percentCents, NYC_TAX_PERCENT, BCF_PERCENT, TIP_PERCENTS, TIP_CUSTOM } from "../api/_rates.mjs";
+import { AIRPORT_FARES, AIRPORT_TOTALS, AIRPORT_PLACES, CLASSES, VEHICLES, MEET_AND_GREET, percentCents, NYC_TAX_PERCENT, BCF_PERCENT, TIP_PERCENTS, TIP_CUSTOM, DISTANCE_RATES, WAIT_CENTS_PER_MINUTE, TOLL_CLASS, CLASS_DEFAULT_VEHICLE } from "../api/_rates.mjs";
 import { PLACE_LIST } from "../api/_places.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
@@ -13,7 +13,8 @@ const TABLE = {
   suv: { name: "Business SUV", far: [15500, 1376, 349, 18500], lga: [13701, 1216, 308, 16500], nj: [16846, 0, 379, 18500] },
   premium: { name: "Business Premium SUV", far: [18650, 1655, 420, 22000], lga: [15950, 1416, 359, 19000], nj: [20269, 0, 456, 22000] },
   first: { name: "First Class", far: [26749, 2374, 602, 31000], lga: [21350, 1895, 480, 25000], nj: [29071, 0, 654, 31000] },
-  sedan: { name: "Sedan & Electric", far: [14151, 1256, 318, 17000], lga: [11901, 1056, 268, 14500], nj: [15379, 0, 346, 17000] },
+  sedan: { name: "Executive Sedan", far: [14151, 1256, 318, 17000], lga: [11901, 1056, 268, 14500], nj: [15379, 0, 346, 17000] },
+  electric: { name: "Electric Class", far: [15050, 1336, 339, 18000], lga: [12801, 1136, 288, 15500], nj: [16357, 0, 368, 18000] },
   sprinter: { name: "Luxury Sprinter", far: [39348, 3492, 885, 45000], lga: [39348, 3492, 885, 45000], nj: [45208, 0, 1017, 47500] },
 };
 const SPRINTERS = {
@@ -73,8 +74,8 @@ await test("percentCents rounds the half cent up and is exact: 15500 at 8.875 is
   assert.equal(percentCents(0, NYC_TAX_PERCENT), 0);
 });
 
-await test("the owner's table: five classes in order, every fare and total exact, tax and Black Car Fund from the fare, $12.75 tolls on every leg, and no New York sales tax at Newark or Teterboro, whose fare is higher by the tax so the total stays the same", () => {
-  assert.deepEqual(Object.keys(CLASSES), ["suv", "premium", "first", "sedan", "sprinter"]);
+await test("the owner's table: six classes in order, every fare and total exact, tax and Black Car Fund from the fare, $12.75 tolls on every leg, and no New York sales tax at Newark or Teterboro, whose fare is higher by the tax so the total stays the same", () => {
+  assert.deepEqual(Object.keys(CLASSES), ["suv", "premium", "first", "sedan", "electric", "sprinter"]);
   assert.deepEqual(Object.values(CLASSES).map((c) => c.name), Object.values(TABLE).map((c) => c.name));
   assert.deepEqual(AIRPORT_PLACES, ["jfk", "lga", "ewr", "teb"]);
   for (const cls of Object.keys(TABLE)) {
@@ -88,7 +89,7 @@ await test("the owner's table: five classes in order, every fare and total exact
       assert.equal(priceLeg(rateKey(cls), zone).tolls, TOLLS, `${cls} ${zone} tolls`);
     }
   }
-  assert.deepEqual(Object.keys(CLASSES).map((cls) => [AIRPORT_TOTALS[rateKey(cls)].jfk, AIRPORT_TOTALS[rateKey(cls)].lga]), [[18500, 16500], [22000, 19000], [31000, 25000], [17000, 14500], [45000, 45000]]);
+  assert.deepEqual(Object.keys(CLASSES).map((cls) => [AIRPORT_TOTALS[rateKey(cls)].jfk, AIRPORT_TOTALS[rateKey(cls)].lga]), [[18500, 16500], [22000, 19000], [31000, 25000], [17000, 14500], [18000, 15500], [45000, 45000]]);
   for (const cls of Object.keys(TABLE)) {
     const [jfkFare, jfkTax, jfkBcf] = figures(cls, "jfk");
     const [njFare, , njBcf] = figures(cls, "ewr");
@@ -241,7 +242,7 @@ await test("a custom gratuity is the same in every class total and every hourly 
   const percent = await priced(toAirport("jfk", { tip: "20" }));
   for (const cls of Object.keys(CLASSES)) assert.equal(classTotal(percent.trip, cls), AIRPORT_TOTALS[rateKey(cls)].jfk + percentCents(AIRPORT_FARES[rateKey(cls)].jfk, "20"), cls);
   const hourly = await priced({ ...BASE, trip_type: "hour", from_text: MANHATTAN, hours: "3", class: "suv", vehicle: "suv-denali", tip: "custom", tip_amount: "40" });
-  for (const [cls, total] of [["suv", 33338], ["premium", 35005], ["first", 58340], ["sedan", 28337], ["sprinter", null]]) assert.equal(classTotal(hourly.trip, cls), total && total + 4000, cls);
+  for (const [cls, total] of [["suv", 33338], ["premium", 35005], ["first", 58340], ["sedan", 28337], ["electric", 30004], ["sprinter", null]]) assert.equal(classTotal(hourly.trip, cls), total && total + 4000, cls);
   for (const [vehicle, total] of [["suv-suburban", 31670], ["suv-denali", 33338], ["suv-navigator", 33338]]) assert.equal(priceTrip({ ...hourly.trip, vehicle }, ON).total, total + 4000, vehicle);
 });
 
@@ -265,17 +266,23 @@ await test("meet and greet adds 2500 only on priced airport pickups", async () =
   }
 });
 
-await test("the gratuity is a percent of the class fare with its cents: First Class at LaGuardia 15% is 3203, Sedan & Electric at LaGuardia 10% is 1190", async () => {
+await test("the gratuity is a percent of the class fare with its cents: First Class at LaGuardia 15% is 3203, Executive Sedan at LaGuardia 10% is 1190, Electric Class at LaGuardia 10% is 1280", async () => {
   const first = await priced(fromAirport("lga", { class: "first", tip: "15" }));
   assert.deepEqual(pairs(first.price.lines), [...legOf("first", "lga"), ["Gratuity for your chauffeur (15%)", 3203]]);
   assert.equal(first.price.total, 25000 + 3203);
   const sedan = await priced(toAirport("lga", { class: "sedan", tip: "10" }));
   assert.equal(sedan.price.tip, 1190);
   assert.equal(sedan.price.total, 14500 + 1190);
+  const electric = await priced(toAirport("lga", { class: "electric", tip: "10" }));
+  assert.deepEqual(pairs(electric.price.lines), [...legOf("electric", "lga"), ["Gratuity for your chauffeur (10%)", 1280]]);
+  assert.equal(electric.price.total, 15500 + 1280);
 });
 
 const HOURLY = [
   ["sedan", "sedan", "3", [25500, 2263, 574], 28337],
+  ["electric", "electric", "3", [27000, 2396, 608], 30004],
+  ["electric", "electric", "4", [36000, 3195, 810], 40005],
+  ["electric", "electric", "12", [108000, 9585, 2430], 120015],
   ["suv", "suv-suburban", "3", [28500, 2529, 641], 31670],
   ["suv", "suv-denali", "3", [30000, 2663, 675], 33338],
   ["suv", "suv-navigator", "3", [30000, 2663, 675], 33338],
@@ -302,6 +309,23 @@ await test("hourly tip is a percent of the hourly fare only", async () => {
   const { price } = await priced({ ...BASE, trip_type: "hour", from_text: MANHATTAN, hours: "3", class: "sedan", tip: "20" });
   assert.deepEqual(pairs(price.lines).at(-1), ["Gratuity for your chauffeur (20%)", 5100]);
   assert.equal(price.total, 28337 + 5100);
+});
+
+await test("the Electric Class costs 180/170 of the Executive Sedan, rounded to whole dollars at each airport and to whole cents by the hour and by distance and time, with the same waiting charge", () => {
+  assert.deepEqual(CLASSES.electric, { name: "Electric Class", seats: 3, bags: "" });
+  assert.deepEqual(VEHICLES.electric, { cls: "electric", model: "Cadillac Lyriq or similar", hourly: 9000 });
+  assert.deepEqual(CLASSES.sedan, { name: "Executive Sedan", seats: 3, bags: "" });
+  assert.deepEqual(VEHICLES.sedan, { cls: "sedan", model: "Mercedes-Benz E-Class or similar", hourly: 8500 });
+  assert.deepEqual(AIRPORT_TOTALS.electric, { jfk: 18000, lga: 15500, ewr: 18000, teb: 18000 });
+  assert.deepEqual(AIRPORT_TOTALS.sedan, { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 });
+  for (const zone of ["jfk", "ewr", "teb"]) assert.equal(AIRPORT_TOTALS.electric[zone], Math.round((AIRPORT_TOTALS.sedan[zone] * 180) / 170 / 100) * 100, zone);
+  assert.equal(VEHICLES.electric.hourly, Math.round((VEHICLES.sedan.hourly * 180) / 170));
+  assert.deepEqual(DISTANCE_RATES.electric, Object.fromEntries(Object.entries(DISTANCE_RATES.sedan).map(([k, v]) => [k, Math.round((v * 180) / 170)])));
+  assert.deepEqual(DISTANCE_RATES.electric, { base: 2647, mile: 318, minute: 53, minimum: 9212 });
+  assert.equal(WAIT_CENTS_PER_MINUTE.electric, WAIT_CENTS_PER_MINUTE.sedan);
+  assert.equal(TOLL_CLASS.electric, TOLL_CLASS.sedan);
+  assert.equal(CLASS_DEFAULT_VEHICLE.electric, "electric");
+  assert.deepEqual(Object.keys(CLASSES).slice(3, 5), ["sedan", "electric"]);
 });
 
 await test("the return example: Fare 31000, tax 2752, Black Car Fund 698, tolls 2550, total 37000, 15% tip 4650", async () => {

@@ -11,8 +11,8 @@ const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE
 const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + days * 864e5));
 const DATE = nyDate(5);
 const SLUGS = ["chevrolet-suburban", "cadillac-escalade", "mercedes-s-class", "cadillac-lyriq", "sprinter-limo"];
-const CARD_KEYS = ["suv", "premium", "first", "sedan", "sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
-const CARD_PHOTOS = [...SLUGS.slice(0, 4).map((s) => `${s}-card`), "sprinter-executive-card", "sprinter-luxury-jet-card", "", "sprinter-limo-black-card", "sprinter-white-limo-card"];
+const CARD_KEYS = ["suv", "premium", "first", "sedan", "electric", "sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
+const CARD_PHOTOS = [...SLUGS.slice(0, 3).map((s) => `${s}-card`), "cadillac-ct5-ct6", `${SLUGS[3]}-card`, "sprinter-executive-card", "sprinter-luxury-jet-card", "", "sprinter-limo-black-card", "sprinter-white-limo-card"];
 const VAN_RATIO = 400 / 300;
 const RATIO = 960 / 1192;
 const GOLD = "rgb(168, 133, 28)";
@@ -24,21 +24,21 @@ const INK = "rgb(15, 19, 25)";
 const ring = (color, px) => `${color} 0px 0px 0px ${px}px inset`;
 
 const ONE_WAY = [
-  [320, 640, 68, [152, 156, 128, 112, 132, 132, 132, 132, 156]],
-  [375, 812, 92, [108, 132, 128, 88, 132, 132, 132, 108, 132]],
-  [390, 844, 92, [88, 112, 108, 88, 88, 112, 112, 88, 112]],
-  [430, 932, 92, [88, 88, 108, 88, 88, 88, 88, 88, 112]],
-  [768, 1024, 124, [88, 88, 88, 88, 88, 88, 88, 88, 88]],
-  [1024, 768, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
-  [1280, 800, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
-  [1366, 768, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
-  [1440, 900, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
-  [1920, 1080, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
+  [320, 640, 68, [152, 156, 128, 132, 112, 132, 132, 132, 132, 156]],
+  [375, 812, 92, [108, 132, 128, 108, 88, 132, 132, 132, 108, 132]],
+  [390, 844, 92, [88, 112, 108, 108, 88, 88, 112, 112, 88, 112]],
+  [430, 932, 92, [88, 88, 108, 88, 88, 88, 88, 88, 88, 112]],
+  [768, 1024, 124, [88, 88, 88, 88, 88, 88, 88, 88, 88, 88]],
+  [1024, 768, 124, [78, 78, 78, 78, 78, 78, 78, 78, 78, 78]],
+  [1280, 800, 124, [78, 78, 78, 78, 78, 78, 78, 78, 78, 78]],
+  [1366, 768, 124, [78, 78, 78, 78, 78, 78, 78, 78, 78, 78]],
+  [1440, 900, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96, 96]],
+  [1920, 1080, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96, 96]],
 ];
 const BY_THE_HOUR = [
-  [390, 844, 92, [108, 132, 128, 108, 108, 108, 108, 108, 108]],
-  [768, 1024, 124, [108, 108, 108, 108, 108, 108, 108, 108, 108]],
-  [1440, 900, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96]],
+  [390, 844, 92, [108, 132, 128, 128, 108, 108, 108, 108, 108, 108]],
+  [768, 1024, 124, [108, 108, 108, 108, 108, 108, 108, 108, 108, 108]],
+  [1440, 900, 124, [96, 96, 96, 96, 96, 96, 96, 96, 96, 96]],
 ];
 const FIRST_SCREEN = [1280, 1366, 1440, 1920];
 
@@ -88,7 +88,7 @@ for (const slug of SLUGS) {
   });
 }
 
-for (const slug of CARD_PHOTOS.slice(4).filter(Boolean)) {
+for (const slug of CARD_PHOTOS.slice(5).filter(Boolean)) {
   await check(`P5 ${slug}: the Sprinter card master is 400x300, with 300 and 400 in AVIF and WebP, and no card file wider than the master`, () => {
     const image = MANIFEST.images.find((i) => i.slug === slug);
     assert.ok(image, `${slug} is not in fleet/MANIFEST.json`);
@@ -170,19 +170,19 @@ for (const [engine, type] of ENGINES) {
   const browser = await type.launch();
   for (const [width, height, tile, heights] of ONE_WAY) {
     const ctx = await context(browser, { viewport: { width, height } });
-    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? ", every class price up to the Executive Sprinter is in the first screen" : ""}, each class photo is the 960x1192 studio photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
+    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? ", every class price up to the Executive Sprinter is in the first screen" : ""}, each class photo is the 960x1192 studio photo or, for the Executive Sedan, the 400x300 Cadillac CT5 photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
       const p = await open(ctx, "/book");
       await options(p);
       const r = await rows(p);
       assert.deepEqual(r.map((x) => x.row), heights, "row heights");
-      assert.deepEqual(r.map((x) => x.tile[0]), Array(9).fill(tile), "tile widths");
-      assert.deepEqual(r.map((x) => x.left), Array(9).fill(4), "tile left insets");
+      assert.deepEqual(r.map((x) => x.tile[0]), Array(10).fill(tile), "tile widths");
+      assert.deepEqual(r.map((x) => x.left), Array(10).fill(4), "tile left insets");
       if (width < 600) assert.deepEqual(r.map((x) => [x.tile[1], x.top, x.bottom]), heights.map((h) => [80, (h - 80) / 2, (h - 80) / 2]), "80 px tiles centred in the row");
       else assert.deepEqual(r.map((x) => [x.tile[1], x.top, x.bottom]), heights.map((h) => [h - 8, 4, 4]), "tile heights and insets");
-      if (width >= 600) assert.deepEqual(r.map((x) => [x.name, x.model]), Array(9).fill([1, 1]), "name and model lines");
-      if (FIRST_SCREEN.includes(width)) assert.ok(r.slice(0, 5).every((x) => x.price <= height) && r.every((x, i) => !i || x.price > r[i - 1].price), `price ends ${r.map((x) => Math.round(x.price))}`);
+      if (width >= 600) assert.deepEqual(r.map((x) => [x.name, x.model]), Array(10).fill([1, 1]), "name and model lines");
+      if (FIRST_SCREEN.includes(width)) assert.ok(r.slice(0, 6).every((x) => x.price <= height) && r.every((x, i) => !i || x.price > r[i - 1].price), `price ends ${r.map((x) => Math.round(x.price))}`);
       assert.deepEqual(r.map((x) => x.src.replace(/-(300|400)\.(avif|webp)$/, "")), CARD_PHOTOS, r.map((x) => x.src).join(", "));
-      assert.ok(r.every((x, i) => (i < 4 ? Math.abs(x.ratio - RATIO) / RATIO < 0.005 : CARD_PHOTOS[i] ? Math.abs(x.ratio - VAN_RATIO) / VAN_RATIO < 0.005 : x.ratio === 0)), `natural ratios ${r.map((x) => x.ratio.toFixed(4))}`);
+      assert.ok(r.every((x, i) => (i < 5 && i !== 3 ? Math.abs(x.ratio - RATIO) / RATIO < 0.005 : CARD_PHOTOS[i] ? Math.abs(x.ratio - VAN_RATIO) / VAN_RATIO < 0.005 : x.ratio === 0)), `natural ratios ${r.map((x) => x.ratio.toFixed(4))}`);
       assert.ok((await sideways(p)) <= 0, "the page scrolls sideways");
       assert.deepEqual(p.errors, []);
       await p.close();
@@ -209,8 +209,8 @@ for (const [engine, type] of ENGINES) {
       for (const path of ["/", "/locations/jfk-airport", "/book"]) {
         const p = await open(ctx, path);
         const tiles = await p.evaluate(() => [...document.querySelectorAll("label.bk-card")].filter((c) => c.checkVisibility()).map((c) => Math.round(c.querySelector("picture").getBoundingClientRect().width)));
-        assert.deepEqual(tiles, Array(5).fill(92), path);
-        assert.deepEqual(await p.$$eval("label.bk-card", (l) => l.filter((c) => !c.checkVisibility()).map((c) => c.getAttribute("for"))), CARD_KEYS.slice(4).map((k) => `bk-c-${k}`), `${path}: without javascript the Sprinter rows stay hidden behind the Luxury Sprinter row`);
+        assert.deepEqual(tiles, Array(6).fill(92), path);
+        assert.deepEqual(await p.$$eval("label.bk-card", (l) => l.filter((c) => !c.checkVisibility()).map((c) => c.getAttribute("for"))), CARD_KEYS.slice(5).map((k) => `bk-c-${k}`), `${path}: without javascript the Sprinter rows stay hidden behind the Luxury Sprinter row`);
         assert.ok((await sideways(p)) <= 0, `${path} scrolls sideways`);
         await p.close();
       }

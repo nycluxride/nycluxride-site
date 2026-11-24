@@ -5,7 +5,8 @@ export const CLASSES = {
   suv: { name: "Business SUV", seats: 5, bags: "3 large plus 3 small bags" },
   premium: { name: "Business Premium SUV", seats: 5, bags: "3 large plus 3 small bags" },
   first: { name: "First Class", seats: 3, bags: "2 large plus 1 small bag" },
-  sedan: { name: "Sedan & Electric", seats: 3, bags: "" },
+  sedan: { name: "Executive Sedan", seats: 3, bags: "" },
+  electric: { name: "Electric Class", seats: 3, bags: "" },
   sprinter: { name: "Luxury Sprinter", seats: 14, bags: "10 large plus 2 small bags" },
 };
 export const VEHICLES = {
@@ -13,7 +14,8 @@ export const VEHICLES = {
   "suv-denali": { cls: "suv", model: "GMC Denali", hourly: 10000 },
   "suv-navigator": { cls: "suv", model: "Lincoln Navigator", hourly: 10000 },
   premium: { cls: "premium", model: "Cadillac Escalade ESV", hourly: 10500 },
-  sedan: { cls: "sedan", model: "", hourly: 8500 },
+  sedan: { cls: "sedan", model: "Mercedes-Benz E-Class or similar", hourly: 8500 },
+  electric: { cls: "electric", model: "Cadillac Lyriq or similar", hourly: 9000 },
   first: { cls: "first", model: "", hourly: 17500 },
   "sprinter-executive": { cls: "sprinter", name: "Executive Sprinter", hourly: 17500, seats: 14, minHours: 4 },
   "sprinter-luxury-jet": { cls: "sprinter", name: "Luxury Jet Sprinter", hourly: 21500, seats: 8, minHours: 4 },
@@ -22,7 +24,7 @@ export const VEHICLES = {
   "sprinter-white-limo": { cls: "sprinter", name: "White Luxury Limo Sprinter", hourly: 27500, seats: 10, minHours: 4 },
 };
 export const RETIRED_VEHICLES = { "sprinter-shuttle": { cls: "sprinter", name: "Shuttle Sprinter" }, "sprinter-jet": { cls: "sprinter", name: "Jet Sprinter" } };
-export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", sprinter: "sprinter-executive" };
+export const CLASS_DEFAULT_VEHICLE = { suv: "suv-suburban", premium: "premium", first: "first", sedan: "sedan", electric: "electric", sprinter: "sprinter-executive" };
 export const PLACES = {
   manhattan: "Manhattan",
   brooklyn: "Brooklyn",
@@ -44,6 +46,7 @@ export const AIRPORT_FARES = {
   premium: { jfk: 18650, lga: 15950, ewr: 20269, teb: 20269 },
   first: { jfk: 26749, lga: 21350, ewr: 29071, teb: 29071 },
   sedan: { jfk: 14151, lga: 11901, ewr: 15379, teb: 15379 },
+  electric: { jfk: 15050, lga: 12801, ewr: 16357, teb: 16357 },
   "sprinter-executive": { jfk: 39348, lga: 39348, ewr: 45208, teb: 45208 },
   "sprinter-luxury-jet": { jfk: 50597, lga: 48346, ewr: 56944, teb: 56944 },
   "sprinter-presidential": { jfk: 57346, lga: 55095, ewr: 64768, teb: 64768 },
@@ -55,6 +58,7 @@ export const AIRPORT_TOTALS = {
   premium: { jfk: 22000, lga: 19000, ewr: 22000, teb: 22000 },
   first: { jfk: 31000, lga: 25000, ewr: 31000, teb: 31000 },
   sedan: { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 },
+  electric: { jfk: 18000, lga: 15500, ewr: 18000, teb: 18000 },
   "sprinter-executive": { jfk: 45000, lga: 45000, ewr: 47500, teb: 47500 },
   "sprinter-luxury-jet": { jfk: 57500, lga: 55000, ewr: 59500, teb: 59500 },
   "sprinter-presidential": { jfk: 65000, lga: 62500, ewr: 67500, teb: 67500 },
@@ -66,6 +70,7 @@ export const DISTANCE_RATES = {
   premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
   first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
+  electric: { base: 2647, mile: 318, minute: 53, minimum: 9212 },
   "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 25000 },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
@@ -89,7 +94,7 @@ export const MAX_BAGS = 14;
 export const HOURS = { min: 3, max: 12 };
 export const PASSENGERS = { min: 1, max: 14 };
 export const FREE_WAIT_MINUTES = { local: 15, domestic: 45, international: 60 };
-export const WAIT_CENTS_PER_MINUTE = { sedan: 120, suv: 150, premium: 180, first: 280, sprinter: 400 };
+export const WAIT_CENTS_PER_MINUTE = { sedan: 120, electric: 120, suv: 150, premium: 180, first: 280, sprinter: 400 };
 export const CANCEL_TIERS = [{ hours: 24, percent: 0 }, { hours: 12, percent: 25 }, { hours: 2, percent: 50 }, { hours: 0, percent: 100 }];
 export const MIN_NOTICE_MINUTES = 90;
 export const PAID_NOTICE_MINUTES = 60;
@@ -97,7 +102,7 @@ export const AUTO_LEAD_MINUTES = 5;
 export const AUTO_GUARD_MINUTES = 2;
 export const MAX_ADVANCE_DAYS = 365;
 export const DESCRIPTOR_CODES = { jfk: "JFK", lga: "LGA", ewr: "EWR", teb: "TEB", hourly: "HOUR", distance: "RIDE" };
-export const TOLL_CLASS = { suv: "1", premium: "1", first: "1", sedan: "1", sprinter: "1" };
+export const TOLL_CLASS = { suv: "1", premium: "1", first: "1", sedan: "1", electric: "1", sprinter: "1" };
 export const PA_TOLLS = { 1: { offPeak: 1479, peak: 1679 }, 2: { offPeak: 4334, peak: 4534 }, "8A": { offPeak: 1680, peak: 2100 } };
 export const PA_PEAK = { weekday: [[360, 600], [960, 1200]], weekend: [[660, 1260]] };
 export const NJTP_TOLLS = {

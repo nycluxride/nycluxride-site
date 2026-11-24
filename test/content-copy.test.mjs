@@ -118,16 +118,17 @@ const RATES_FACTS = {
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
 const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls not in your price. Each charge comes with an itemized receipt.";
 const RATES_FAQ = [
-  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $170, Business Premium SUV $220, First Class $310 and Luxury Sprinter from $450. A gratuity is optional."],
-  ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Sedan & Electric is $145, Business Premium SUV $190, First Class $250 and Luxury Sprinter from $450."],
-  ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For Sedan & Electric that's $255 plus taxes and fees, with tolls and parking after the ride."],
+  ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Executive Sedan is $170, Electric Class $180, Business Premium SUV $220, First Class $310 and Luxury Sprinter from $450. A gratuity is optional."],
+  ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Executive Sedan is $145, Electric Class $155, Business Premium SUV $190, First Class $250 and Luxury Sprinter from $450."],
+  ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For an Executive Sedan that's $255 plus taxes and fees, with tolls and parking after the ride."],
   ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];
 const RATES_CLASSES = [
   ["airport-suv", "Business SUV", "Chevrolet Suburban or similar, GMC Denali, Lincoln Navigator", "185", "165"],
   ["airport-premium", "Business Premium SUV", "Cadillac Escalade ESV", "220", "190"],
   ["airport-first", "First Class", "Mercedes-Benz S-Class, BMW 7 Series", "310", "250"],
-  ["airport-sedan", "Sedan & Electric", "Cadillac Lyriq or similar, Cadillac CT5 or CT6, Cadillac XT6, Lincoln Continental", "170", "145"],
+  ["airport-sedan", "Executive Sedan", "Mercedes-Benz E-Class or similar", "170", "145"],
+  ["airport-electric", "Electric Class", "Cadillac Lyriq or similar", "180", "155"],
   ["airport-sprinter", "Luxury Sprinter", "Five kinds of Sprinter, lowest prices shown", "450 to $475", "450"],
 ];
 const RATES_AIRPORT_OFFERS = RATES_CLASSES.filter(([id]) => id !== "airport-sprinter").flatMap(([id, name, , far, lga]) => [
@@ -477,15 +478,17 @@ check("rates.html: the OfferCatalog has an airport offer per car class for JFK, 
     assert.deepEqual(o.priceSpecification, { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: true }, o.name);
     assert.deepEqual([].concat(o.areaServed).map((a) => [a["@type"], a.iataCode]), iata.map((c) => ["Airport", c]), o.name);
   });
-  assert.deepEqual(catalog.itemListElement.slice(0, 13), airport);
-  const hourly = catalog.itemListElement.slice(13);
-  assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Sedan & Electric", "Hourly and as directed, Luxury Sprinter", "Meet and greet", "Child seat", "Small dog", "Large dog"]);
+  assert.deepEqual(catalog.itemListElement.slice(0, 15), airport);
+  const hourly = catalog.itemListElement.slice(15);
+  assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Executive Sedan", "Hourly and as directed, Electric Class", "Hourly and as directed, Luxury Sprinter", "Meet and greet", "Child seat", "Small dog", "Large dog"]);
   assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Child, infant or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
   assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);
-  assert.deepEqual(hourly.slice(0, 5).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], [undefined, "175", "275"]]);
-  assert.deepEqual(hourly[4].priceSpecification.eligibleQuantity, { "@type": "QuantitativeValue", minValue: 4, unitCode: "HUR" });
+  assert.deepEqual(hourly.slice(0, 6).map((o) => { const s = o.priceSpecification; return [s.price, s.minPrice, s.maxPrice]; }), [[undefined, "95", "100"], ["105", undefined, undefined], ["175", undefined, undefined], ["85", undefined, undefined], ["90", undefined, undefined], [undefined, "175", "275"]]);
+  assert.deepEqual(hourly[3].priceSpecification.eligibleQuantity, hourly[4].priceSpecification.eligibleQuantity);
+  assert.deepEqual(hourly[4].url, "https://www.nycluxride.com/rates#electric-class");
+  assert.deepEqual(hourly[5].priceSpecification.eligibleQuantity, { "@type": "QuantitativeValue", minValue: 4, unitCode: "HUR" });
 });
 
 const { MIN_NOTICE_MINUTES } = await import(join(ROOT, "api/_rates.mjs"));

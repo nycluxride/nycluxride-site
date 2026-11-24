@@ -24,7 +24,7 @@ const MANHATTAN = "350 5th Ave, New York, NY 10118";
 const ME = { name: "Ana Lopez", email: "ana.lopez@example.com", phone: "+1 212 555 0100", rider: "me", reach: "phone" };
 const OWNER = { trip_type: "one", from_text: "Newark Liberty (EWR)", from_id: "ewr", to_text: RIVERSIDE, date: "2026-10-14", time: "07:30", passengers: "2", class: "sedan", action: "pay", ...ME };
 const BACK = { return: "1", return_date: "2026-10-18", return_time: "18:00" };
-const CLASSES = ["suv", "premium", "first", "sedan", "sprinter"];
+const CLASSES = ["suv", "premium", "first", "sedan", "electric", "sprinter"];
 const ENV_KEYS = ["GOOGLE_MOCK", "GOOGLE_MAPS_SERVER_KEY", "PLACE_TICKET_SECRET", "PAYMENTS_ENABLED", "BOOK_MOCK", "STRIPE_SECRET_KEY", "VERCEL_ENV"];
 const realFetch = globalThis.fetch;
 
@@ -131,7 +131,7 @@ await test("the owner's trip, Newark Liberty (EWR) to 19 Coventry Ln, Riverside,
     assert.deepEqual([p.fare, p.tax, p.bcf, p.tolls, p.total], [f, 0, percentCents(f, BCF_PERCENT), 2250, f + percentCents(f, BCF_PERCENT) + 2250], cls);
     totals.push(p.total);
   }
-  assert.deepEqual(totals, [31555, 37586, 41947, 24183, 68232]);
+  assert.deepEqual(totals, [31555, 37586, 41947, 24183, 25496, 68232]);
   const tipped = (await priced({ ...OWNER, tip: "20" })).price;
   assert.deepEqual([tipped.tip, tipped.value, tipped.total], [percentCents(21450, "20"), 21450, 24183 + 4290]);
 });
@@ -161,7 +161,7 @@ await test("Stripe: the line items carry Tolls, the Checkout text says only extr
   const rebuilt = receipt(metadata, ON);
   assert.deepEqual(shownLines(rebuilt.lines).map(({ label, cents }) => [label, cents]), items);
   assert.deepEqual(rebuilt.notes, price.notes);
-  assert.equal(rebuilt.summary, "Wed, Oct 14, 2026, 7:30 AM. Sedan & Electric, 52.5 miles and 64 min.");
+  assert.equal(rebuilt.summary, "Wed, Oct 14, 2026, 7:30 AM. Executive Sedan, 52.5 miles and 64 min.");
   assert.equal(rebuilt.value, 21450);
 });
 
@@ -197,7 +197,7 @@ await test("round trip: each direction is estimated on its own route, $22.50 out
   const rebuilt = receipt(metadata, ON);
   assert.deepEqual(shownLines(rebuilt.lines).map(({ label, cents }) => [label, cents]), items);
   assert.deepEqual(rebuilt.notes, [POLICY.later.waiting]);
-  assert.equal(rebuilt.summary, "Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. Sedan & Electric, 2 rides, 105.4 miles and 134 min.");
+  assert.equal(rebuilt.summary, "Wed, Oct 14, 2026, 7:30 AM. Return Sun, Oct 18, 2026, 6:00 PM. Executive Sedan, 2 rides, 105.4 miles and 134 min.");
   const events = bookingEvents(session(metadata));
   assert.deepEqual(events.map((event) => (new Date(event.end.dateTime) - new Date(event.start.dateTime)) / 60000), [67, 67]);
 });
@@ -229,7 +229,7 @@ await test("stops: the whole route with its stop is estimated, the stop rule com
   assert.deepEqual([trip.legs[0].ride, trip.legs[0].plain.ride], [{ tenths: 551, minutes: 72, tolls: 2250 }, { tenths: 525, minutes: 64, tolls: 2250 }]);
   assert.deepEqual(shownLines(price.lines).map(({ label, cents }) => [label, cents]), [["Fare", 21450], ["Taxes and fees", 483], ["Tolls", 2250], ["Extra stop", STOP_FEE_CENTS]]);
   assert.equal(price.total, 21450 + 483 + 2250 + STOP_FEE_CENTS);
-  assert.equal(serviceLabel(trip), "Sedan & Electric, 55.1 miles and 72 min");
+  assert.equal(serviceLabel(trip), "Executive Sedan, 55.1 miles and 72 min");
   const sprinter = (await priced({ ...fields, class: "sprinter", passengers: "2" })).price;
   const whole = fare("sprinter", 551, 72);
   assert.deepEqual([sprinter.fare, sprinter.tolls, sprinter.stops, sprinter.total], [whole, 2250, 0, whole + percentCents(whole, BCF_PERCENT) + 2250]);
@@ -345,7 +345,7 @@ await test("tamper: the toll estimate rides in the signed route token, a changed
   const options = await bookPost(new Request(`${SITE}/api/book`, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", origin: SITE, "sec-fetch-site": "same-origin" }, body: JSON.stringify({ ...fields, route: changed, action: "options", nonce: "nonce-tolls-tamper-0001" }) }));
   const answer = await options.json();
   assert.deepEqual(answer.price.lines.map(({ label, cents }) => [label, cents]), [["Fare", 21450], ["Taxes and fees", 483], ["Tolls", 2250]]);
-  assert.deepEqual([answer.price.total_cents, answer.price.notes, answer.classes.map((c) => c.total_cents)], [24183, [POLICY.later.waiting], [31555, 37586, 41947, 24183, 68232]]);
+  assert.deepEqual([answer.price.total_cents, answer.price.notes, answer.classes.map((c) => c.total_cents)], [24183, [POLICY.later.waiting], [31555, 37586, 41947, 24183, 25496, 68232]]);
   assert.match(answer.route, ROUTE);
 });
 
@@ -445,9 +445,9 @@ await test("the toll table in api/_rates.mjs: Port Authority E-ZPass by vehicle 
   assert.deepEqual(["10:59", "11:00", "14:00", "20:59", "21:00"].map((time) => at("2026-11-14", time)), [1479, 1679, 1679, 1679, 1479]);
   assert.deepEqual([at("2026-11-15", "14:00"), at("2026-11-13", "07:00"), at("2026-11-13", "12:00")], [1679, 1679, 1479]);
   assert.deepEqual([crossingCents(nycToUtc("2026-11-09", "08:00"), "2"), crossingCents(nycToUtc("2026-11-09", "14:00"), "2"), crossingCents(nycToUtc("2026-11-09", "17:00"), "8A"), crossingCents(nycToUtc("2026-11-09", "14:00"), "8A")], [4534, 4334, 2100, 1680]);
-  assert.deepEqual([TOLL_CLASS, TOLL_GROUP], [{ suv: "1", premium: "1", first: "1", sedan: "1", sprinter: "1" }, "1"]);
+  assert.deepEqual([TOLL_CLASS, TOLL_GROUP], [{ suv: "1", premium: "1", first: "1", sedan: "1", electric: "1", sprinter: "1" }, "1"]);
   assert.throws(() => tollClassOf({ ...TOLL_CLASS, sprinter: "2" }), /toll-config/);
-  assert.throws(() => tollClassOf({ suv: "3", premium: "3", first: "3", sedan: "3", sprinter: "3" }), /toll-config/);
+  assert.throws(() => tollClassOf({ suv: "3", premium: "3", first: "3", sedan: "3", electric: "3", sprinter: "3" }), /toll-config/);
 });
 
 await test("the fallback finds the table tolls on the route Google drew: Newark Liberty to 19 Coventry Ln enters the Turnpike at 14, leaves at 18E and crosses the George Washington Bridge into New York, all in one part from the airport to past the bridge, the way back pays only the Turnpike, a ride that leaves the Turnpike at an exit with no table entry or a stop on the bridge is never split", () => {
@@ -487,7 +487,7 @@ await test("the owner's trip on a weekday at 2:00 PM, Newark Liberty to 19 Coven
     assert.deepEqual([p.fare, p.tolls, p.total], [cf, 2224, cf + percentCents(cf, BCF_PERCENT) + 2224], cls);
     totals.push(p.total);
   }
-  assert.deepEqual(totals, [32526, 38787, 43301, 24924, 70430]);
+  assert.deepEqual(totals, [32526, 38787, 43301, 24924, 26282, 70430]);
   const { metadata, items, submit } = built(trip, price);
   assert.deepEqual([items.at(-1), submit, metadata.tolls_cents, metadata.tolls_est_cents, metadata.miles, metadata.minutes], [["Tolls", 2224], CHECKOUT.submitOutsideTolled, "2224", "2224", "52.5", "79"]);
   assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);

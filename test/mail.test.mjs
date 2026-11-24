@@ -609,20 +609,36 @@ await test("hourly booking: the hours, the vehicle model, the typed gratuity, th
   assert.ok(forOther.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. The same car and chauffeur stay with them for the hours you booked. If your day might run long"));
 });
 
-await test("airport trip from New Jersey: priced by distance and time, no tolls line, the outside note, the miles and minutes, and an escaped class name", async () => {
+await test("airport trip from New Jersey: priced by distance and time, no tolls line, the outside note, the miles and minutes, and every ampersand of the letter escaped", async () => {
   setEnv();
   const session = paid(NEW_JERSEY);
   const [customer, owner] = bookingLetters(session, SETTINGS);
   assert.equal(customer.subject, "[TEST] Your NYC LUX RIDE booking 83558982, Fri Nov 20, 5:15 AM");
-  assert.equal(owner.subject, "[TEST] New booking 83558982: Fri Nov 20, 5:15 AM, Sedan & Electric, Secaucus to Newark Liberty (EWR)");
-  assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: One way", "Pickup: Secaucus, NJ 07094", "Drop-off: Newark Liberty (EWR)", "Date: Fri, Nov 20, 2026", "Time: 5:15 AM, New York time", "Passengers: 2", "Vehicle: Sedan & Electric"]);
+  assert.equal(owner.subject, "[TEST] New booking 83558982: Fri Nov 20, 5:15 AM, Executive Sedan, Secaucus to Newark Liberty (EWR)");
+  assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: One way", "Pickup: Secaucus, NJ 07094", "Drop-off: Newark Liberty (EWR)", "Date: Fri, Nov 20, 2026", "Time: 5:15 AM, New York time", "Passengers: 2", "Vehicle: Executive Sedan"]);
   assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $153.79", "Taxes and fees: $3.46", "Gratuity for your chauffeur (20%): $30.76", "Paid: $188.01"]);
   assert.ok(customer.text.includes(`\n${POLICY.later.outside}\n`));
-  assert.ok(customer.text.includes("\nFri, Nov 20, 2026, 5:15 AM. Sedan & Electric, 9.0 miles and 18 min.\n"));
+  assert.ok(customer.text.includes("\nFri, Nov 20, 2026, 5:15 AM. Executive Sedan, 9.0 miles and 18 min.\n"));
   assert.ok(customer.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. You get 15 minutes of free waiting from the pickup time.\n"));
   const doc = checkHtml(customer);
-  assert.ok(customer.html.includes("Sedan &#38; Electric") && !customer.html.includes("Sedan & Electric"));
-  assert.equal(tripTable(doc)[0][1].find(([label]) => label === "Vehicle")[1], "Sedan &amp; Electric");
+  assert.doesNotMatch(customer.html, /&(?!#\d+;|[a-z]+;)/);
+  assert.equal(tripTable(doc)[0][1].find(([label]) => label === "Vehicle")[1], "Executive Sedan");
+  checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` });
+});
+
+await test("the same New Jersey trip in the Electric Class: the subject, the vehicle line, the receipt line and the payment use Electric Class and its Newark fare", async () => {
+  setEnv({ GOOGLE_MOCK: "true" });
+  const electric = await booked({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-20", time: "05:15", passengers: "2", class: "electric", tip: "20", rider: "me", ...ME, reach: "phone" });
+  assert.equal(electric.total, 16357 + 368 + 3271);
+  setEnv();
+  const session = paid(electric);
+  const [customer, owner] = bookingLetters(session, SETTINGS);
+  assert.ok(owner.subject.endsWith(", Electric Class, Secaucus to Newark Liberty (EWR)"), owner.subject);
+  assert.equal(sectionOf(customer.text, "Your trip").at(-1), "Vehicle: Electric Class");
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare: $163.57", "Taxes and fees: $3.68", "Gratuity for your chauffeur (20%): $32.71", "Paid: $199.96"]);
+  assert.ok(customer.text.includes(" AM. Electric Class, 9.0 miles and 18 min.\n"));
+  const doc = checkHtml(customer);
+  assert.equal(tripTable(doc)[0][1].find(([label]) => label === "Vehicle")[1], "Electric Class");
   checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` });
 });
 
@@ -775,7 +791,7 @@ await test("both emails as they go out for a one way trip, a round trip, an hour
     [ONE_WAY, { live: true }, "Your NYC LUX RIDE booking 83558982, Sun Nov 8, 10:00 AM", "New booking 83558982: Sun Nov 8, 10:00 AM, Business SUV, 253 West 72nd Street to Newark Liberty (EWR)"],
     [ROUND, {}, "[TEST] Your NYC LUX RIDE booking 83558982, Thu Nov 12, 7:30 AM", "[TEST] New booking 83558982: Thu Nov 12, 7:30 AM, Business Premium SUV, JFK to 350 5th Ave, return Sun Nov 15, 6:00 PM"],
     [HOURLY, {}, "[TEST] Your NYC LUX RIDE booking 83558982, Tue Dec 1, 2:00 PM", "[TEST] New booking 83558982: Tue Dec 1, 2:00 PM, Business Premium SUV, 4 hours from 1 Main Street"],
-    [NEW_JERSEY, {}, "[TEST] Your NYC LUX RIDE booking 83558982, Fri Nov 20, 5:15 AM", "[TEST] New booking 83558982: Fri Nov 20, 5:15 AM, Sedan & Electric, Secaucus to Newark Liberty (EWR)"],
+    [NEW_JERSEY, {}, "[TEST] Your NYC LUX RIDE booking 83558982, Fri Nov 20, 5:15 AM", "[TEST] New booking 83558982: Fri Nov 20, 5:15 AM, Executive Sedan, Secaucus to Newark Liberty (EWR)"],
   ];
   for (const [fix, options, customerSubject, ownerSubject] of trips) {
     const session = paid(fix, options);

@@ -83,7 +83,7 @@ const cards = (page) => page.$$eval(".bk-card__price", (o) => o.map((x) => (x.qu
 const panel = (page) => page.evaluate(() => ({ lines: [...document.querySelectorAll("#price-lines tr:not(.bk-hint)")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]), total: (document.getElementById("price-total").firstChild || {}).textContent }));
 const shown = (page) => page.evaluate(() => ["bk-vehicle-f", "bk-sprinter-f"].map((id) => document.getElementById(id).checkVisibility()));
 const choice = (page) => page.$eval("#bk-choice", (c) => [c.firstChild.textContent, c.querySelector("small").textContent]);
-const vans = async (page) => (await cards(page)).slice(4);
+const vans = async (page) => (await cards(page)).slice(5);
 const names = (page) => page.$$eval(".bk-card__name", (n) => n.map((x) => x.textContent));
 const scopes = (page) => page.$$eval("[name=class][data-v]", (r) => r.map((x) => (x.parentElement.querySelector(".bk-scope") || {}).textContent || ""));
 const picked = (page) => page.$eval("[name=class]:checked", (r) => [r.value, r.dataset.v || ""]);
@@ -107,10 +107,10 @@ const ONE_URL = `/book?pickup=JFK&dropoff=${encodeURIComponent("350 5th Ave, New
 
 const page = await open(HOURLY_URL);
 
-await check("S1 by the hour the hours start at 3 for the other cars, each Sprinter has its own card after the four classes and asks for 4 hours, the picker under the cards is gone, and picking a Sprinter card moves to 4 hours with that Sprinter's price and no wedding, prom or event question", async () => {
+await check("S1 by the hour the hours start at 3 for the other cars, each Sprinter has its own card after the five classes and asks for 4 hours, the picker under the cards is gone, and picking a Sprinter card moves to 4 hours with that Sprinter's price and no wedding, prom or event question", async () => {
   await view(page);
   assert.deepEqual(await hourOptions(page), ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]);
-  assert.deepEqual(await names(page), ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", ...SPRINTERS.map((key) => VEHICLES[key].name)]);
+  assert.deepEqual(await names(page), ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", ...SPRINTERS.map((key) => VEHICLES[key].name)]);
   assert.deepEqual(await vans(page), SPRINTERS.map(() => "4 hours minimum"));
   assert.deepEqual(await shown(page), [true, false]);
   assert.deepEqual([await page.$("#bk-c-sprinter"), await page.$$eval("[name=class]", (r) => r.filter((x) => x.value === "sprinter").map((x) => x.dataset.v))], [null, SPRINTERS]);
@@ -161,7 +161,11 @@ await check("S3 the Sprinter cards work from the keyboard and read well to a scr
     await totalIs(page, total(key, 4));
   }
   await page.keyboard.press("ArrowUp");
+  assert.deepEqual([await page.evaluate(() => document.activeElement.id), await picked(page)], ["bk-c-electric", ["electric", ""]]);
+  await page.keyboard.press("ArrowUp");
   assert.deepEqual([await page.evaluate(() => document.activeElement.id), await picked(page)], ["bk-c-sedan", ["sedan", ""]]);
+  await page.keyboard.press("ArrowDown");
+  assert.deepEqual([await page.evaluate(() => document.activeElement.id), await picked(page)], ["bk-c-electric", ["electric", ""]]);
   await page.keyboard.press("ArrowDown");
   assert.deepEqual([await page.evaluate(() => document.activeElement.id), await picked(page)], ["bk-c-sprinter-executive", ["sprinter", "sprinter-executive"]]);
   await totalIs(page, total("sprinter-executive", 4));
@@ -192,13 +196,13 @@ await check("S4 passengers follow each Sprinter card: above 8 the Luxury Jet, ab
     await totalIs(page, total("sprinter-executive", 4));
     await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
     assert.deepEqual(await vans(page), SPRINTERS.map((k) => (VEHICLES[k].seats < seats + 1 ? `Seats ${VEHICLES[k].seats}` : cash(total(k, 4)))), key);
-    assert.deepEqual(await page.$$eval(".bk-card", (l) => l.slice(4).map((x) => x.classList.contains("is-small"))), SPRINTERS.map((k) => VEHICLES[k].seats < seats + 1), key);
+    assert.deepEqual(await page.$$eval(".bk-card", (l) => l.slice(5).map((x) => x.classList.contains("is-small"))), SPRINTERS.map((k) => VEHICLES[k].seats < seats + 1), key);
     assert.equal(await page.getAttribute(`#bk-c-${key}`, "aria-describedby"), `bk-fit bk-m-${key} bk-s-${key} bk-b-${key}`, key);
   }
   await pax(page, 14);
   await totalIs(page, total("sprinter-executive", 4));
   await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
-  assert.deepEqual(await cards(page), ["Seats 5", "Seats 5", "Seats 3", "Seats 3", cash(total("sprinter-executive", 4)), "Seats 8", "Seats 12", cash(total("sprinter-limo", 4)), "Seats 10"]);
+  assert.deepEqual(await cards(page), ["Seats 5", "Seats 5", "Seats 3", "Seats 3", "Seats 3", cash(total("sprinter-executive", 4)), "Seats 8", "Seats 12", cash(total("sprinter-limo", 4)), "Seats 10"]);
   await page.click('label[for="bk-c-sprinter-white-limo"]');
   await page.waitForFunction(() => document.getElementById("bk-bar-q").textContent === "Too small for 14 passengers");
   assert.deepEqual([await page.isVisible("#price"), await page.textContent("#q-fix")], [false, "Show cars for 14"]);

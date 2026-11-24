@@ -40,7 +40,7 @@ const ICON = (id) => `<svg class="icon" aria-hidden="true" focusable="false"><us
 const MEET = ['<fieldset class="bk-meet" id="bk-meet-f" data-show="from-priced">', '<legend>Where we meet<span class="bk-nojs"> (airport pickups)</span></legend>', '<label class="bk-mrow" for="bk-meet-no"><input type="radio" id="bk-meet-no" name="meet" value="" checked><span class="bk-mrow__t">At the curb or pickup area</span><span class="bk-mrow__p">Included</span><span class="bk-mrow__s">Your chauffeur confirms the exact spot by phone or WhatsApp once you have your bags.</span></label>', '<label class="bk-mrow" for="bk-meet"><input type="radio" id="bk-meet" name="meet" value="1"><span class="bk-mrow__t">Inside the terminal with a name sign</span><span class="bk-mrow__p" id="bk-meet-p"></span><span class="bk-mrow__s" id="bk-meet-h"><span id="bk-meet-bc">Your chauffeur waits inside near baggage claim. </span>Airport parking is charged after the ride.</span></label>', '<p class="bk-mrow__x" id="bk-meet-t57" hidden>For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.</p>', "</fieldset>"].join("\n");
 const INCL = `<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline">${ICON("i-plane-arrive")}<span>Free waiting</span> <small>after you land</small></li><li>${ICON("i-clock")}<span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline">${ICON("i-shield")}<span>Live flight tracking</span></li><li>${ICON("i-wifi")}<span>Free Wi-Fi</span> <small>in every class</small></li><li>${ICON("i-phone")}<span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>`;
 const INCL_FACTS = ["Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Free Wi-Fi in every class", "We answer 24 hours a day, every day"];
-const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"><button class="bk-pill" type="button" tabindex="-1" data-c="suv"><span>Business SUV</span><span id="bk-pp-suv"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="premium"><span>Business Premium SUV</span><span id="bk-pp-premium"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="first"><span>First Class</span><span id="bk-pp-first"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sedan"><span>Sedan &amp; Electric</span><span id="bk-pp-sedan"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sprinter"><span>Luxury Sprinter</span><span id="bk-pp-sprinter"></span></button></div>';
+const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"><button class="bk-pill" type="button" tabindex="-1" data-c="suv"><span>Business SUV</span><span id="bk-pp-suv"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="premium"><span>Business Premium SUV</span><span id="bk-pp-premium"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="first"><span>First Class</span><span id="bk-pp-first"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sedan"><span>Executive Sedan</span><span id="bk-pp-sedan"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="electric"><span>Electric Class</span><span id="bk-pp-electric"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sprinter"><span>Luxury Sprinter</span><span id="bk-pp-sprinter"></span></button></div>';
 const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Book and pay online</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>`;
 const EXT = `${ICON("i-external")}<span class="sr-only"> (opens in a new tab)</span>`;
 const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#policies" target="_blank" rel="noopener">cancellation, no-show and waiting <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>.</p>`;
@@ -51,7 +51,7 @@ const MONITOR = "Set the pickup time to your scheduled landing time. We track yo
 const MONITOR_TEB = "For a private flight, add the details as a note in the Details step.";
 const P1_TERMS = POLICY.cancelShort;
 const VAN_PHOTOS = { "sprinter-executive": ["sprinter-executive-card", "The black Executive Sprinter seen from the back"], "sprinter-luxury-jet": ["sprinter-luxury-jet-card", "The black Luxury Jet Sprinter with its side door open"], "sprinter-limo": ["sprinter-limo-black-card", "Inside the Limo Sprinter: black leather lounge seats with pink and blue lights"], "sprinter-white-limo": ["sprinter-white-limo-card", "The White Luxury Limo Sprinter in a parking lot"] };
-const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Cadillac Lyriq or similar", sprinter: "Five kinds of Sprinter" };
+const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Mercedes-Benz E-Class or similar", electric: "Cadillac Lyriq or similar", sprinter: "Five kinds of Sprinter" };
 
 const nt = (s) => s.replace(/\s+/g, " ").trim();
 const read = (f) => readFileSync(join(ROOT, f), "utf8");
@@ -408,7 +408,7 @@ check("every class card states its luggage as data-large and data-small read fro
     assert.ok(c.bags === "" || m, `${k}: ${c.bags}`);
     assert.deepEqual([card.dataset.large, card.dataset.small], m ? [m[1], m[2]] : [undefined, undefined], k);
   }
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], [undefined, undefined], ["10", "2"], ...VANS.map(() => ["10", "2"])]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], [undefined, undefined], [undefined, undefined], ["10", "2"], ...VANS.map(() => ["10", "2"])]);
   for (const h of HOSTS) for (const [k, l, s] of [["suv", 3, 3], ["premium", 3, 3], ["first", 2, 1], ["sprinter", 10, 2], ...VANS.map((v) => [v, 10, 2])]) assert.ok(new RegExp(`for="bk-c-${k}" data-seats="\\d+"( data-min="\\d+")? data-large="${l}" data-small="${s}">`).test(parts[h]), `${h} ${k}`);
 });
 
@@ -424,24 +424,24 @@ check("step 2: trips our dispatch team prices show the notes field before Email 
   assert.ok(pay.includes('a.concat(P2>0&&ab()<"e"?dw():(x=(d.activeElement==q?E.notes.value=q.value:q.value=E.notes.value).trim())?"Notes: "+x:[])'), "the step 2 messages carry no Notes line, or the two notes fields do not mirror each other");
 });
 
-check("five class rows and five pills, in the order Business SUV, Business Premium SUV, First Class, Sedan & Electric, a row for each Sprinter in the order of VEHICLES, then the Luxury Sprinter row for a browser without JavaScript, each with its own photo, the Presidential with a plain panel", () => {
-  const order = ["suv", "premium", "first", "sedan", "sprinter"];
-  const names = ["Business SUV", "Business Premium SUV", "First Class", "Sedan & Electric", "Luxury Sprinter"];
+check("six class rows and six pills, in the order Business SUV, Business Premium SUV, First Class, Executive Sedan, Electric Class, a row for each Sprinter in the order of VEHICLES, then the Luxury Sprinter row for a browser without JavaScript, each with its own photo, the Presidential with a plain panel", () => {
+  const order = ["suv", "premium", "first", "sedan", "electric", "sprinter"];
+  const names = ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", "Luxury Sprinter"];
   assert.deepEqual(Object.keys(CLASSES), order);
   assert.deepEqual(VANS, ["sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"]);
   assert.deepEqual([...$("bk-cards").querySelectorAll("input[name=class]")].map((r) => [r.value, r.dataset.v || ""]), [...order.filter((c) => c !== "sprinter").map((c) => [c, ""]), ...VANS.map((v) => ["sprinter", v]), ["sprinter", ""]]);
-  assert.deepEqual([...$("bk-cards").querySelectorAll(".bk-card__name")].map((n) => nt(n.textContent)), [...names.slice(0, 4), "Executive Sprinter", "Luxury Jet Sprinter", "Presidential Sprinter", "Limo Sprinter", "White Luxury Limo Sprinter", names[4]]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll(".bk-card__name")].map((n) => nt(n.textContent)), [...names.slice(0, 5), "Executive Sprinter", "Luxury Jet Sprinter", "Presidential Sprinter", "Limo Sprinter", "White Luxury Limo Sprinter", names[5]]);
   assert.deepEqual([...$("bk-pills").querySelectorAll(".bk-pill")].map((b) => [b.dataset.c, nt(b.firstElementChild.textContent)]), order.map((c, i) => [c, names[i]]));
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => c.dataset.seats), ["5", "5", "3", "3", "14", "8", "12", "14", "10", "14"]);
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].slice(4, 9).map((c) => c.dataset.seats), VANS.map((v) => String(VEHICLES[v].seats)));
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-card-300.webp", "/fleet/sprinter-luxury-jet-card-300.webp", "/fleet/sprinter-limo-black-card-300.webp", "/fleet/sprinter-white-limo-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => c.dataset.seats), ["5", "5", "3", "3", "3", "14", "8", "12", "14", "10", "14"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].slice(5, 10).map((c) => c.dataset.seats), VANS.map((v) => String(VEHICLES[v].seats)));
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/cadillac-ct5-ct6-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-card-300.webp", "/fleet/sprinter-luxury-jet-card-300.webp", "/fleet/sprinter-limo-black-card-300.webp", "/fleet/sprinter-white-limo-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
   const plain = form.querySelector('label[for="bk-c-sprinter-presidential"]');
   assert.deepEqual([plain.querySelector("picture, img"), plain.children[1].outerHTML], [null, '<span class="bk-ph" aria-hidden="true"></span>']);
   const first = form.querySelector('label[for="bk-c-first"] picture > img');
   assert.deepEqual([first.getAttribute("width"), first.getAttribute("height")], ["960", "1192"]);
   assert.match(first.getAttribute("alt"), /^Black Mercedes-Benz S-Class /);
   const alts = ["Black Chevrolet Suburban in a white studio", "Black Cadillac Escalade ESV in a white studio", "Black Mercedes-Benz S-Class in a white studio", "Black Cadillac Lyriq in a white studio", "Black Mercedes-Benz Sprinter van in a white studio"];
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), [...alts.slice(0, 4).map((a) => ["960", "1192", a]), ...Object.values(VAN_PHOTOS).map(([, a]) => ["400", "300", a]), ["960", "1192", alts[4]]]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), [...alts.slice(0, 3).map((a) => ["960", "1192", a]), ["400", "300", "Black Cadillac CT5 sedan in a lobby"], ["960", "1192", alts[3]], ...Object.values(VAN_PHOTOS).map(([, a]) => ["400", "300", a]), ["960", "1192", alts[4]]]);
   const sizes = "(min-width: 600px) 128px, 96px";
   assert.deepEqual([...$("bk-cards").querySelectorAll("picture")].map((p) => [...p.querySelectorAll("source")].map((s) => s.getAttribute("sizes"))), [...order, ...Object.keys(VAN_PHOTOS)].map(() => [sizes, sizes]));
 });
@@ -469,7 +469,7 @@ check("class rows follow CLASSES with photo, name, model line, seats and bags wi
     assert.deepEqual([nt(cap.querySelector('[aria-hidden="true"]:not(svg)').textContent), nt(cap.querySelector(".sr-only").textContent)], [String(c.seats), `Up to ${c.seats} passengers`], k);
     const bags = card.querySelector(".bk-card__bags");
     if (c.bags) assert.deepEqual([bags.id, !!bags.querySelector('use[href="#i-case"]'), nt(bags.querySelector('[aria-hidden="true"]:not(svg)').textContent), nt(bags.querySelector(".sr-only").textContent), [...bags.querySelectorAll('[aria-hidden="true"]:not(svg) > span.nowrap')].map((n) => n.textContent)], [`bk-b-${k}`, true, ...BAGS[k], BAGS[k][0].split(/(?<=,) /)], k);
-    else assert.ok(bags === null && k === "sedan", k);
+    else assert.ok(bags === null && ["sedan", "electric"].includes(k), k);
     assert.equal($(`bk-p-${k}`).textContent, "", k);
     assert.ok(card.querySelector('svg.bk-card__check use[href="#i-check"]'), k);
     const img = card.querySelector("picture > img");
