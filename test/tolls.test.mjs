@@ -976,8 +976,11 @@ await test("tamper: the return crossing rides in the signed route token from /ap
   assert.deepEqual([answer.price.lines.map(({ label, cents }) => [label, cents]), answer.price.total_cents], [[["Fare", 19330], ["Taxes and fees", 435], ["Tolls", 2720], ["Child seats (1 x $15.00)", 1500]], 23985]);
 });
 
-const LINCOLN_CUTS = [{ cut: { latitude: 40.758471, longitude: -73.998027, heading: 300 } }, { cut: { latitude: 40.767469, longitude: -74.020878, heading: 272 } }];
-const LINCOLN_LEGS = [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.368 }] }, null];
+const WILLOW_CUT = { cut: { latitude: 40.76087, longitude: -74.027305, heading: 206 } };
+const LINCOLN_CUTS = [{ cut: { latitude: 40.753014, longitude: -73.99542, heading: 300 } }, WILLOW_CUT];
+const LINCOLN_LEGS = [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.425 }] }, null];
+const EIGHTH_CUTS = [{ cut: { latitude: 40.754742, longitude: -73.993622, heading: 299 } }, WILLOW_CUT];
+const EIGHTH_LEGS = [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.404 }] }, null];
 const HOB_LABEL = "1332 Clinton Street, Hoboken, NJ";
 const WEE_LABEL = "1 Hackensack Avenue, Weehawken, NJ";
 const EIGHTH = "500 8th Ave, New York, NY 10018";
@@ -994,7 +997,7 @@ const lincolnAnswers = ({ legs, total, first = {} } = {}) => {
   };
   return sent;
 };
-const LINCOLN_SPLIT = [leg(420, 2251), leg(300, 1600, { travelAdvisory: { tollInfo: {} } }), leg(420, 2265)];
+const LINCOLN_SPLIT = [leg(170, 913), leg(750, 4047, { travelAdvisory: { tollInfo: {} } }), leg(220, 1156)];
 
 await test("the Lincoln and Holland tunnels into New Jersey are free parts of the toll fallback: on the live lines into New Jersey the plan cuts the route before and after the tunnel, outside the tube, and lines into New York, over a bridge into New Jersey or with no crossing keep their plans", () => {
   const MAN = { address: MANHATTAN };
@@ -1002,8 +1005,8 @@ await test("the Lincoln and Holland tunnels into New Jersey are free parts of th
   const T4 = { address: T4_ADDRESS };
   const CPW = { placeId: "mock-communipaw" };
   assert.deepEqual(tollPlan(lineOf([MAN, HOB], "2026-12-01", "14:00"), []), { marks: LINCOLN_CUTS, legs: LINCOLN_LEGS });
-  assert.deepEqual(tollPlan(lineOf([{ address: EIGHTH }, { placeId: "mock-weehawken" }], "2026-12-01", "14:00"), []), { marks: LINCOLN_CUTS, legs: LINCOLN_LEGS });
-  assert.deepEqual(tollPlan(lineOf([T4, CPW], "2026-12-01", "17:00"), []), { marks: [{ cut: { latitude: 40.723791, longitude: -74.006028, heading: 289 } }, { cut: { latitude: 40.731667, longitude: -74.040775, heading: 277 } }], legs: [null, { tolls: [{ kind: "free", id: "holland", share: 0.314 }] }, null] });
+  assert.deepEqual(tollPlan(lineOf([{ address: EIGHTH }, { placeId: "mock-weehawken" }], "2026-12-01", "14:00"), []), { marks: EIGHTH_CUTS, legs: EIGHTH_LEGS });
+  assert.deepEqual(tollPlan(lineOf([T4, CPW], "2026-12-01", "17:00"), []), { marks: [{ cut: { latitude: 40.723596, longitude: -74.00463, heading: 283 } }, { cut: { latitude: 40.731858, longitude: -74.042896, heading: 277 } }], legs: [null, { tolls: [{ kind: "free", id: "holland", share: 0.321 }] }, null] });
   const none = {
     "1332 Clinton St to 350 5th Ave, Lincoln Tunnel into New York": lineOf([HOB, MAN], "2026-12-01", "14:00"),
     "1 Gateway Center to 350 5th Ave, Lincoln Tunnel into New York": lineOf([{ placeId: "mock-newark" }, MAN], "2026-12-01", "14:00"),
@@ -1031,12 +1034,12 @@ await test("the Lincoln Tunnel into New Jersey, where Google gives tolls with no
   for (const key of ["origin", "destination", "departureTime", "extraComputations", "routeModifiers"]) assert.deepEqual(sent[1].body[key], sent[0].body[key], key);
   lincolnAnswers({ legs: LINCOLN_SPLIT });
   assert.equal((await computeRoute(ends, nycToUtc("2026-12-01", "18:00"), null)).tolls, PEAK);
-  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(300, 1600), LINCOLN_SPLIT[2]] });
+  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(750, 4047), LINCOLN_SPLIT[2]] });
   assert.equal((await computeRoute(ends, at2, null)).tolls, OFF_PEAK, "no toll seen on the tunnel part");
-  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(300, 1600, tolled(money("1", 0))), LINCOLN_SPLIT[2]] });
+  lincolnAnswers({ legs: [LINCOLN_SPLIT[0], leg(750, 4047, tolled(money("1", 0))), LINCOLN_SPLIT[2]] });
   assert.equal((await computeRoute(ends, at2, null)).tolls, 100 + OFF_PEAK, "Google's price on the tunnel part");
   for (const [legs, total, line] of [
-    [[LINCOLN_SPLIT[0], LINCOLN_SPLIT[1], leg(420, 2265, { travelAdvisory: { tollInfo: {} } })], undefined, "route-tolls unpriced leg 3/3 2265m plan g,free,g"],
+    [[LINCOLN_SPLIT[0], LINCOLN_SPLIT[1], leg(220, 1156, { travelAdvisory: { tollInfo: {} } })], undefined, "route-tolls unpriced leg 3/3 1156m plan g,free,g"],
     [LINCOLN_SPLIT, 6400, "route-tolls detour"],
     [[LINCOLN_SPLIT[0], LINCOLN_SPLIT[1]], undefined, "route-tolls legs"],
   ]) {
@@ -1071,6 +1074,118 @@ await test("bookings into New Jersey over the Lincoln Tunnel get the Tolls line:
   const late = await logged(() => priced({ ...base, date: "2027-01-05" }, R_NOW));
   assert.deepEqual([late.value.trip.legs[0].ride, late.value.price.tolls, late.value.price.estimate, tollsIn(late.value.trip), shownLines(late.value.price.lines).map(({ label }) => label)], [{ tenths: 38, minutes: 19 }, 0, null, false, ["Fare", "Taxes and fees"]]);
   assert.ok(late.lines.includes("route-tolls stale"), JSON.stringify(late.lines));
+});
+
+const LINCOLN_NY_PORTAL = [40.75887, -73.9992];
+const LINCOLN_NJ_PORTAL = [40.76654, -74.02291];
+const DYER_34TH = [40.75393, -73.99757];
+const RAMP_37TH = [40.75533, -73.995];
+const WILLOW_RAMP = [40.76179, -74.02659];
+const PRODUCTION_LINCOLN = [[40.758471, -73.998027, 300], [40.767469, -74.020878, 272]];
+const WASHINGTON_HEIGHTS_FORT_LEE = "uyixFvlgbMtH|C`F|FoAvK?\\u@jH@hAJT]vCKJu@tHIbBFR_W`yBG^SH}ArGUhBEb@Or@KHOEGM@s@PiBXsA\\k@f@{@Le@l@gDsBu@Mf@iBfE|Ax@BF@R]|AS`BOvDMvASbBhMxG";
+const SOHO_JERSEY_CITY = "owpwF|aubMeA[YzEKl@Q`AYn@[`@g@Ty@AKB_AEs@Re@X]`@Wj@Qn@Ix@s@dOm@nI_A|SOdCkB`SoAzLgC|XUzDmAnZIvBUjBmDzOa@pAm@rAm@fAoAjBo@|AQj@S`Ay@zRlHl@JgBNQRaElKx@XCjr@`GxAJFHRB|EaUl@kC?a@z@qFHi@xCZlCPv@{M";
+const WEE = { placeId: "mock-weehawken" };
+
+await test("the cuts around a tunnel into New Jersey sit on the streets outside the Port Authority's roads: on the live lines from 350 5th Ave and 500 8th Ave the first cut is on West 34th or West 37th Street at least 100 m before Dyer Avenue or the 37th Street ramp and the second on Willow Avenue past the ramps from the helix, where production cut 1,868 m and 1,061 m along the December 2 lines, on the Lincoln Tunnel Expressway before the New York portal, and again inside the tube in New Jersey; the Holland cuts sit before the Watts Street ramp and before the Turnpike's Newark Bay Extension; a line that starts or ends on the tunnel roads keeps the tunnel part to its end, a line 90 m beside the tube is no tunnel part, and the George Washington Bridge into New Jersey, which Google prices, keeps no plan", () => {
+  const meters = (line, point) => Math.round(along(line, point).at);
+  const MAN = { address: MANHATTAN };
+  const HOB = { placeId: "mock-clinton" };
+  const cases = [
+    ["350 5th Ave to 1332 Clinton St, December 1", lineOf([MAN, HOB], "2026-12-01", "14:00"), DYER_34TH, [1121, 1942, 4217, 4840], [913, 4960], [1833, 4010]],
+    ["350 5th Ave to 1332 Clinton St, December 2", lineOf([MAN, HOB], "2026-12-02", "14:00"), DYER_34TH, [1156, 1976, 4252, 4875], [948, 4995], [1868, 4045]],
+    ["500 8th Ave to 1 Hackensack Ave, December 2", lineOf([{ address: EIGHTH }, WEE], "2026-12-02", "14:00"), RAMP_37TH, [415, 1170, 3445, 4068], [281, 4188], [1061, 3238]],
+  ];
+  for (const [name, line, entry, marks, cuts, before] of cases) {
+    assert.deepEqual([entry, LINCOLN_NY_PORTAL, LINCOLN_NJ_PORTAL, WILLOW_RAMP].map((point) => meters(line, point)), marks, name);
+    assert.deepEqual(tollPlan(line, []).marks.map(({ cut }) => meters(line, [cut.latitude, cut.longitude])), cuts, name);
+    assert.deepEqual(PRODUCTION_LINCOLN.map((cut) => meters(line, cut)), before, name);
+    assert.ok(cuts[0] <= marks[0] - 100 && cuts[1] >= marks[3] + 100, name);
+    assert.ok(before[0] > marks[0] && before[0] < marks[1] && before[1] < marks[2], name);
+  }
+  assert.deepEqual(tollPlan(cases[1][1], []), { marks: LINCOLN_CUTS, legs: LINCOLN_LEGS });
+  const owner = lineOf([{ address: T4_ADDRESS }, { placeId: "mock-communipaw" }], "2026-12-01", "17:00");
+  const holland = [[40.72384, -74.00622], [40.72501, -74.00697], [40.73056, -74.03633], [40.73197, -74.04605]].map((point) => meters(owner, point));
+  const hollandCuts = tollPlan(owner, []).marks.map(({ cut }) => meters(owner, [cut.latitude, cut.longitude]));
+  assert.deepEqual([holland, hollandCuts], [[30680, 30843, 33445, 34300], [30543, 34033]]);
+  assert.ok(hollandCuts[0] <= holland[0] - 100 && hollandCuts[1] > holland[2] && holland[3] - hollandCuts[1] >= 200);
+  assert.deepEqual(tollPlan(decodePath(SOHO_JERSEY_CITY), []), { marks: [{ cut: { latitude: 40.728387, longitude: -74.039978, heading: 186 } }], legs: [{ tolls: [{ kind: "free", id: "holland", share: 0.298 }] }, null] });
+  const eighth = cases[2][1];
+  const arcs = arcsOf(eighth);
+  assert.deepEqual(tollPlan(eighth.slice(arcs.findIndex((at) => at >= 600)), []), { marks: [WILLOW_CUT], legs: [{ tolls: [{ kind: "free", id: "lincoln", share: 0.346 }] }, null] });
+  assert.deepEqual(tollPlan(eighth.slice(0, arcs.findIndex((at) => at >= 4000) + 1), []), { marks: [EIGHTH_CUTS[0]], legs: [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.421 }] }] });
+  const bridge = decodePath(WASHINGTON_HEIGHTS_FORT_LEE);
+  assert.deepEqual([intoJersey(bridge), tollPlan(bridge, [])], [true, { reason: "none" }]);
+  const beside = [[40.76098, -74.00299], [40.76242, -74.00601], [40.76492, -74.01201], [40.76642, -74.01561]];
+  assert.deepEqual([intoJersey(beside), tollPlan(beside, [])], [true, { reason: "none" }]);
+});
+
+const GRAND_CENTRAL_HOBOKEN = "}pvwFjpobML[iCaBo@Ui@DQZKD_B_AqGgEcB}@mApDsRnm@gBrF}C~JmWvx@nVfPh@ZN?pIlF\\iALIZe@h@_BNIHFHpA[lDY~AUx@?Lqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAlAf@JXt@p@jBtCl@j@bAh@dCbAP?lBhApC|BVPL?n@h@vAv@r@XjE`Axg@nKc@`E{EaA";
+const BATTERY_PARK_WEEHAWKEN = "_qnwFzdwbMDLLBBCRCLBVTx@oCDIFWLIj@aB{@O_Ec@_Dg@iBc@iEiAyJ{A{F_AqKyAoSeC}QwBqF_@_Mi@oR{@_]sAuA?yEXaAGo@MsAm@oBcA_A]{E{@}ASDWOmAUw@uH_FaOqJcb@qXrAmE?YOUyH{EqBq@_Ag@c@Wc@_AS_Ag@oDQs@_@w@cAmAw@{@q@c@YGS@u@Pa@Tm@n@wEjJ_BvEc@pBk@rD_@rAqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAlAf@JXt@p@jBtCl@j@bAh@dCbAP?lBhApC|BVPL?n@h@vAv@r@X`@JSrBpGtG";
+const EMPIRE_SECAUCUS = "owuwFzhqbMsLf_@aBrFmG~RwAfEuBxGoCoB{AwBeCkEi@o@_@Wk@Ia@Bm@Xi@f@o@dA}DhIwAjEa@fBk@rD_@rAqo@lrBw@jCa@tBOzAAbBHrATnA`@pAh@bAv@`AbCrBbBjAf@VNAtClAzB~Ab@Jt@Kr@[`@_@\\k@Rs@H{@AaAOw@[u@_@c@k@_@uDwAsDaAaDo@aDc@aA@}@Pw@`@m@h@q@hAsJ`Y}FpR{A~DcHrQsBbGmB`H{ClLqC`LkDzMOF[bAm@rAm@`AaAfAuEvE}AhAqBhAUE{M~CyH`B}@QYUO_@Ek@Fi@PYnA_Aj@Q\\@VTJ\\B^MlAKh@kCtJm@~AS^}CrEOg@Hu@Jg@`@wAWm@WeAWSc@Na@NH`@";
+const LINK_40TH = [40.7593, -73.99874];
+const DYER_30TH = [40.75191, -73.99958];
+const HELIX_TOP = [40.76476, -74.0218];
+
+await test("the other live approaches to the Lincoln Tunnel into New Jersey on December 2 get the same cuts outside the Port Authority roads: 89 E 42nd St to 1332 Clinton St at 5:00 PM by 11th Avenue and the West 40th Street ramp, 200 Vesey St to 1 Hackensack Ave by 10th Avenue and Dyer Avenue at West 30th Street, and 350 5th Ave to 1 Harmon Meadow Blvd, Secaucus, which leaves the helix on Route 495, are cut at least 100 m before the first Port Authority road and 100 m past the ramps or the top of the helix, where production cut between that road and the New York portal and inside the tube in New Jersey", () => {
+  const cases = [
+    ["89 E 42nd St to 1332 Clinton St", GRAND_CENTRAL_HOBOKEN, [LINK_40TH, LINCOLN_NY_PORTAL, LINCOLN_NJ_PORTAL, WILLOW_RAMP], [3240, 3421, 5696, 6319], [{ cut: { latitude: 40.760345, longitude: -73.998596, heading: 208 } }, WILLOW_CUT], 0.305, [3092, 6439], [[40.758926, -73.998059], [40.767469, -74.020878]], [3312, 5489]],
+    ["200 Vesey St to 1 Hackensack Ave", BATTERY_PARK_WEEHAWKEN, [DYER_30TH, LINCOLN_NY_PORTAL, LINCOLN_NJ_PORTAL, WILLOW_RAMP], [5164, 6297, 8572, 9195], [{ cut: { latitude: 40.752066, longitude: -74.000986, heading: 29 } }, WILLOW_CUT], 0.458, [5018, 9315], [[40.758477, -73.998024], [40.767469, -74.020878]], [6189, 8365]],
+    ["350 5th Ave to 1 Harmon Meadow Blvd", EMPIRE_SECAUCUS, [DYER_34TH, LINCOLN_NY_PORTAL, LINCOLN_NJ_PORTAL, HELIX_TOP], [1156, 1976, 4252, 5080], [LINCOLN_CUTS[0], { cut: { latitude: 40.77156, longitude: -74.030099, heading: 302 } }], 0.324, [948, 6255], PRODUCTION_LINCOLN, [1868, 4045]],
+  ];
+  for (const [name, text, points, marks, cuts, share, at, production, before] of cases) {
+    const line = decodePath(text);
+    const meters = (point) => Math.round(along(line, point).at);
+    assert.deepEqual(points.map(meters), marks, name);
+    assert.deepEqual([intoJersey(line), tollPlan(line, [])], [true, { marks: cuts, legs: [null, { tolls: [{ kind: "free", id: "lincoln", share }] }, null] }], name);
+    assert.deepEqual(cuts.map(({ cut }) => meters([cut.latitude, cut.longitude])), at, name);
+    assert.deepEqual(production.map(meters), before, name);
+    assert.ok(at[0] <= marks[0] - 100 && at[1] >= marks[3] + 100, name);
+    assert.ok(before[0] > marks[0] && before[0] < marks[1] && before[1] < marks[2], name);
+  }
+});
+
+await test("the live failure on December 2 at 2:00 PM and the fix: with production's waypoints Google's first part from 350 5th Ave or 500 8th Ave holds the Lincoln Tunnel approach and has tolls with no price, route-tolls unpriced leg 1/3 plan g,free,g as in the live log, and with the new cuts both other parts have no toll, the tunnel part is $0 and the toll is the return crossing alone, $14.79 for a drop-off before 4:00 PM or after 8:00 PM and $16.79 in the peak, with no log line", async () => {
+  mock();
+  const departure = nycToUtc("2026-12-02", "14:00");
+  for (const [ends, minutes, tenths, detail] of [
+    [[{ address: MANHATTAN }, { placeId: "mock-clinton" }], 20, 38, "leg 1/3 1858m plan g,free,g"],
+    [[{ address: EIGHTH }, WEE], 12, 28, "leg 1/3 1056m plan g,free,g"],
+  ]) {
+    const line = lineOf(ends, "2026-12-02", "14:00");
+    const plan = tollPlan(line, []);
+    const meters = mockRoute(null, ends, departure).miles * 1609.344;
+    const old = mockSplit(splitBody(ends, departure, PRODUCTION_LINCOLN)).routes[0];
+    assert.deepEqual(old.legs.map((item) => Boolean(item.travelAdvisory)), [true, true, true], detail);
+    assert.deepEqual(priceSplit({ ...plan, legs: [null, { tolls: [{ kind: "free", id: "lincoln", share: 0.368 }] }, null] }, old, departure, meters), { reason: "unpriced", detail });
+    const fresh = mockSplit(splitBody(ends, departure, plan.marks.map(({ cut }) => [cut.latitude, cut.longitude, cut.heading]))).routes[0];
+    assert.deepEqual(fresh.legs.map((item) => Boolean(item.travelAdvisory)), [false, true, false], detail);
+    assert.deepEqual(priceSplit(plan, fresh, departure, meters), { cents: 0 }, detail);
+    const { value, lines } = await logged(() => computeRoute(ends, departure, null));
+    assert.deepEqual([value.ok, value.minutes, Math.round(value.miles * 10), value.tolls, lines], [true, minutes, tenths, OFF_PEAK, []], detail);
+    const dropOff = (time) => new Date(nycToUtc("2026-12-02", time).getTime() + minutes * 60000);
+    assert.deepEqual(["14:00", "15:30", "15:50", "17:00", "19:35", "20:00"].map((time) => returnCents(line, dropOff(time))), [OFF_PEAK, OFF_PEAK, PEAK, PEAK, PEAK, OFF_PEAK], detail);
+  }
+});
+
+await test("bookings on December 2 into New Jersey over the Lincoln Tunnel: 350 5th Ave to 1332 Clinton St and 500 8th Ave to 1 Hackensack Ave pay the return crossing alone, $14.79 at 2:00 PM and $16.79 at 5:00 PM, through Stripe, the metadata and the receipt, while JFK T4 to 500 Communipaw Ave at 5:00 PM stays at Google's $10.41 plus $16.79 and 1332 Clinton St to 350 5th Ave at Google's $20.79", async () => {
+  mock();
+  const base = { trip_type: "one", from_text: MANHATTAN, to_text: HOB_LABEL, to_ticket: signed("mock-clinton", HOB_LABEL), date: "2026-12-02", time: "14:00", passengers: "2", class: "suv", action: "pay", ...ME };
+  const weehawken = { ...base, from_text: EIGHTH, to_text: WEE_LABEL, to_ticket: signed("mock-weehawken", WEE_LABEL) };
+  for (const [fields, ride] of [
+    [base, { tenths: 38, minutes: 20, tolls: OFF_PEAK }],
+    [{ ...base, time: "17:00" }, { tenths: 38, minutes: 20, tolls: PEAK }],
+    [weehawken, { tenths: 28, minutes: 12, tolls: OFF_PEAK }],
+    [{ ...weehawken, time: "17:00" }, { tenths: 28, minutes: 12, tolls: PEAK }],
+  ]) {
+    const { trip, price } = await priced(fields, R_NOW);
+    assert.deepEqual([trip.legs[0].ride, price.tolls, price.estimate, price.notes], [ride, ride.tolls, ride.tolls, [POLICY.later.distance]], `${fields.from_text} ${fields.time}`);
+    const { metadata, items } = built(trip, price);
+    assert.deepEqual([metadata.tolls_cents, metadata.tolls_est_cents, items.find(([label]) => label === "Tolls")], [String(ride.tolls), String(ride.tolls), ["Tolls", ride.tolls]]);
+    assert.deepEqual(shownLines(receipt(metadata, ON).lines).map(({ label, cents }) => [label, cents]), items);
+  }
+  assert.equal((await priced(OWNER_JC(R_NOW), R_NOW)).price.tolls, HOLLAND_GOOGLE + PEAK);
+  const home = await priced({ ...base, from_text: HOB_LABEL, from_ticket: signed("mock-clinton", HOB_LABEL), to_text: MANHATTAN, to_ticket: undefined }, R_NOW);
+  assert.deepEqual([home.trip.legs[0].ride.tolls, home.price.tolls], [2079, 2079]);
 });
 
 await test("the second Routes call has its own budget per instance: once 60 split calls are spent in the window, the route keeps today's behavior, logs route-tolls budget and Google is asked only once", async () => {

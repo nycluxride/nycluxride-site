@@ -8,6 +8,7 @@ const STOP_M = 1000;
 const DETOUR = 0.02;
 const JOIN_M = 5000;
 const AXIS_DEG = 35;
+const STEP_M = 10;
 const TABLE_UNTIL = Date.parse(TOLL_TABLE_UNTIL);
 const CROSSINGS = [
   { id: "gwb", a: [40.8537, -73.9642], b: [40.85, -73.9446], radius: 200, lead: 500, trail: 300, span: 3000, after: ["18E", "18W"] },
@@ -16,8 +17,8 @@ const CROSSINGS = [
   { id: "outerbridge", a: [40.5243, -74.2552], b: [40.52545, -74.2338], radius: 150, lead: 300, trail: 300, span: 3000 },
 ];
 const TUNNELS = [
-  { id: "holland", a: [40.72799, -74.024], b: [40.72666, -74.016], radius: 100, lead: 1000, trail: 1500, span: 3000 },
-  { id: "lincoln", a: [40.7642, -74.0125], b: [40.7617, -74.0065], radius: 120, lead: 800, trail: 800, span: 3000 },
+  { id: "holland", a: [40.72799, -74.024], b: [40.72666, -74.016], radius: 100, lead: 100, trail: 100, span: 3000, ny: [[[40.72454, -74.00746], [40.72564, -74.00813], [40.72609, -74.00684], [40.72499, -74.00617]], [[40.72502, -74.00733], [40.72554, -74.00873], [40.72651, -74.0081], [40.72599, -74.0067]], [[40.72533, -74.00783], [40.72613, -74.01591], [40.7272, -74.01572], [40.7264, -74.00765]], [[40.72605, -74.01527], [40.72717, -74.02181], [40.72822, -74.0215], [40.7271, -74.01496]], [[40.72822, -74.0215], [40.72747, -74.017], [40.72641, -74.01731], [40.72717, -74.02181]], [[40.72373, -74.00855], [40.72329, -74.00815], [40.7231, -74.00795], [40.72358, -74.00577], [40.72452, -74.00569], [40.72555, -74.00705]]], nj: [[[40.72813, -74.02288], [40.72819, -74.02098], [40.72711, -74.02092], [40.72705, -74.02283]], [[40.72705, -74.02111], [40.72795, -74.02666], [40.72901, -74.02636], [40.72811, -74.02081]], [[40.72785, -74.0259], [40.72848, -74.03261], [40.72955, -74.03244], [40.72893, -74.02572]], [[40.72839, -74.03204], [40.72912, -74.03516], [40.73015, -74.03474], [40.72942, -74.03162]], [[40.72897, -74.03476], [40.7303, -74.03705], [40.73116, -74.03618], [40.72982, -74.03389]], [[40.73201, -74.04174], [40.73002, -74.04168], [40.72923, -74.03981], [40.72943, -74.03602], [40.72956, -74.03422], [40.7311, -74.03653], [40.73125, -74.03678], [40.7316, -74.03749], [40.73165, -74.0377], [40.73191, -74.03938]]] },
+  { id: "lincoln", a: [40.7642, -74.0125], b: [40.7617, -74.0065], radius: 120, lead: 100, trail: 100, span: 3000, ny: [[[40.75827, -73.99908], [40.75861, -74.00043], [40.75963, -73.99998], [40.7593, -73.99864]], [[40.75843, -73.9999], [40.76277, -74.0102], [40.76371, -74.00951], [40.75937, -73.99921]], [[40.76371, -74.00946], [40.76251, -74.00701], [40.7616, -74.00779], [40.7628, -74.01023]], [[40.75888, -74.00031], [40.75164, -74.00012], [40.75135, -73.99988], [40.75092, -73.99891], [40.75484, -73.99496], [40.75536, -73.99446], [40.7592, -73.99352], [40.75966, -73.99692], [40.75967, -73.99897], [40.75923, -74.00016]]], nj: [[[40.7643, -74.01122], [40.76348, -74.00892], [40.76251, -74.00953], [40.76333, -74.01183]], [[40.76251, -74.00958], [40.76691, -74.02005], [40.76785, -74.01936], [40.76345, -74.00889]], [[40.77136, -74.02916], [40.76155, -74.02676], [40.76244, -74.02312], [40.76255, -74.02277], [40.76267, -74.02256], [40.76288, -74.02232], [40.76297, -74.02225], [40.7673, -74.01895], [40.76885, -74.02103], [40.76964, -74.02349]]] },
 ];
 const GATES = [
   { id: "13", at: [40.64095, -74.20992], radius: 100, margin: 2000 },
@@ -123,6 +124,27 @@ function pointAt(path, arcs, at) {
   return { latitude: round(a[0] + (b[0] - a[0]) * t), longitude: round(a[1] + (b[1] - a[1]) * t), heading: bearing(a, b) };
 }
 
+function inRing([lat, lng], ring) {
+  let hit = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [[y1, x1], [y2, x2]] = [ring[i], ring[j]];
+    if (y1 > lat !== y2 > lat && lng < ((x2 - x1) * (lat - y1)) / (y2 - y1) + x1) hit = !hit;
+  }
+  return hit;
+}
+
+function edgeOf(path, arcs, at, rings, step) {
+  const inside = (spot) => {
+    const { latitude, longitude } = pointAt(path, arcs, spot);
+    return rings.some((ring) => inRing([latitude, longitude], ring));
+  };
+  if (!inside(at)) return null;
+  const total = arcs[arcs.length - 1];
+  let edge = at;
+  while (edge + step >= 0 && edge + step <= total && inside(edge + step)) edge += step;
+  return edge;
+}
+
 function stopArcs(path, arcs, stops) {
   const found = [];
   let from = 1;
@@ -146,7 +168,9 @@ function crossingsOn(path, arcs) {
     const ends = visits(path, arcs, to, item.radius);
     for (const start of visits(path, arcs, from, item.radius)) {
       const end = ends.find((at) => at > start && at - start <= item.span);
-      if (end !== undefined) hits.push({ kind, id: item.id, after: item.after || [], from: start, to: end, start: start - item.lead, end: end + item.trail });
+      if (end === undefined) continue;
+      const [entry, exit] = kind === "pa" ? [start, end] : [edgeOf(path, arcs, start, item.ny, -STEP_M), edgeOf(path, arcs, end, item.nj, STEP_M)];
+      if (entry !== null && exit !== null) hits.push({ kind, id: item.id, after: item.after || [], from: start, to: end, start: entry - item.lead, end: exit + item.trail });
     }
   }
   return hits;
