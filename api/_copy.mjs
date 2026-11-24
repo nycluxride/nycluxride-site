@@ -19,7 +19,7 @@ export const REASONS = {
   "long-trip": { group: "price", text: "For very long trips, we'll send you a price." },
   "other-airport": { group: "price", text: "For this airport, we'll send you a price." },
   "outside-city": { group: "price", text: "Flat airport rates are for New York City addresses. For other places, we'll send you a price." },
-  "outside-hourly": { group: "price", text: "For hourly bookings that start outside New York City, we'll send you a price." },
+  "outside-hourly": { group: "price", text: "For this pickup, we'll send you a price." },
   "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, we'll send you a price." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
   "sprinter-price": { group: "price", text: "For this Sprinter on this trip, we'll send you a price." },

@@ -9247,7 +9247,7 @@ for (const width of [1440, 390]) {
         await typed(p, "to", "Niagara Falls, ON L2E 6T2");
       },
     };
-    for (const [what, pick] of [["an hourly booking from outside New York City", "outside-hourly"], ["a trip outside the United States", "outside-us"]]) {
+    for (const [what, pick] of [["an hourly booking typed outside New York City and not picked", "outside-hourly"], ["a trip outside the United States", "outside-us"]]) {
       await check(`B196 at ${width} ${what} that our dispatch team prices asks the child, infant and booster seat counts with its request on step 2, between the request text and the notes, and both the WhatsApp and the email text list each chosen type, with CLS 0`, async () => {
         const p = await open(ctx, G, "/book");
         await ends[pick](p);
@@ -9574,6 +9574,130 @@ for (const width of [1440, 390]) {
     });
     await ctx.close();
   }
+}
+
+{
+  const ctx = await context(G, { viewport: { width: 390, height: 844 } });
+  await check("B221 with GOOGLE_MOCK by the hour from 1332 Clinton Street, Hoboken, NJ, picked from the list, 4 hours in a Business Premium SUV for 5 passengers at 5:40 PM shows $429.45 with the hourly lines and pays through to the confirmation", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.click('label[for="bk-hour"]');
+    await place(p, "from", "1332 clinton", "1332 Clinton Street");
+    await p.waitForFunction(() => /^v1\./.test(document.getElementById("bk-from-ticket").value));
+    await p.selectOption("#bk-hours", "4");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "17:40");
+    await view(p);
+    await priced(p);
+    await pax(p, 5);
+    await p.click('label[for="bk-c-premium"]');
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$429.45");
+    assert.deepEqual(await panel(p), { lines: [["Fare, 4 hours", "$420.00"], [L_FEES, "$9.45"]], total: "$429.45", notes: NOTES.hourly });
+    assert.equal(await p.isVisible("#q-outside-hourly"), false);
+    await next(p);
+    assert.equal(await p.isChecked("#bk-t-0"), true);
+    await details(p);
+    const [post] = await Promise.all([p.waitForRequest((r) => r.url().endsWith("/api/book") && JSON.parse(r.postData() || "{}").action === "pay"), p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    const sent = JSON.parse(post.postData());
+    assert.deepEqual(["trip_type", "from_text", "hours", "class", "passengers", "time"].map((k) => sent[k]), ["hour", "1332 Clinton Street, Hoboken, NJ", "4", "premium", "5", "17:40"]);
+    assert.ok(!Object.keys(sent).some((k) => /lat|lng|near|location/.test(k)), Object.keys(sent).join(" "));
+    await p.waitForSelector("#cf-receipt", { state: "visible" });
+    assert.equal(await p.textContent("#cf-total"), "$429.45");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B222 with GOOGLE_MOCK by the hour from a pickup typed and not picked shows the hourly price request, and a pick in Stamford, CT, shows the price with no New York tax", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.click('label[for="bk-hour"]');
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "17:40");
+    await place(p, "from", "1332 Clinton St, Hoboken, NJ 07030", "");
+    await p.click("#bk-view");
+    await p.waitForSelector("#q-outside-hourly", { state: "visible" });
+    assert.equal((await p.textContent("#q-outside-hourly p")).trim(), "For this pickup, we'll send you a price.");
+    assert.equal(await p.isVisible("#price"), false);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+    const q = await open(ctx, G, "/book");
+    await q.click('label[for="bk-hour"]');
+    await place(q, "from", "30 station pla", "30 Station Place");
+    await q.waitForFunction(() => /^v1\./.test(document.getElementById("bk-from-ticket").value));
+    await q.selectOption("#bk-hours", "4");
+    await pickDate(q, "#bk-date-btn", DATE);
+    await setTime(q, "17:40");
+    await view(q);
+    await priced(q);
+    await pax(q, 5);
+    await q.click('label[for="bk-c-premium"]');
+    await q.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$429.45");
+    assert.deepEqual(await panel(q), { lines: [["Fare, 4 hours", "$420.00"], [L_FEES, "$9.45"]], total: "$429.45", notes: NOTES.hourly });
+    assert.equal(await q.isVisible("#q-outside-hourly"), false);
+    assert.deepEqual(q.errors, []);
+    await q.close();
+  });
+  await check("B223 with GOOGLE_MOCK by the hour from Newark Liberty (EWR) for a 10-hour day in a Business SUV offers meet and greet inside the terminal, shows $971.38 and $996.38 with it, and pays through to the confirmation", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.click('label[for="bk-hour"]');
+    await place(p, "from", "newark", "Newark Liberty (EWR)");
+    await p.selectOption("#bk-hours", "10");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "09:00");
+    await view(p);
+    await priced(p);
+    await p.click('label[for="bk-c-suv"]');
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$971.38");
+    assert.deepEqual(await panel(p), { lines: [["Fare, 10 hours", "$950.00"], [L_FEES, "$21.38"]], total: "$971.38", notes: NOTES.hourly });
+    await next(p);
+    assert.equal(await p.isVisible("#bk-meet-f"), true);
+    assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-meet").parentNode.querySelector(".bk-mrow__t").textContent, document.getElementById("bk-meet-p").textContent]), ["Inside the terminal with a name sign", "+$25.00"]);
+    await p.check("#bk-meet");
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$996.38");
+    assert.deepEqual((await panel(p)).lines, [["Fare, 10 hours", "$950.00"], [L_FEES, "$21.38"], ["Meet and greet", "$25.00"]]);
+    assert.equal(await p.isChecked("#bk-t-0"), true);
+    await details(p);
+    const [post] = await Promise.all([p.waitForRequest((r) => r.url().endsWith("/api/book") && JSON.parse(r.postData() || "{}").action === "pay"), p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
+    const sent = JSON.parse(post.postData());
+    assert.deepEqual(["trip_type", "from_text", "from_id", "hours", "class", "meet"].map((k) => sent[k]), ["hour", "Newark Liberty (EWR)", "ewr", "10", "suv", "1"]);
+    await p.waitForSelector("#cf-receipt", { state: "visible" });
+    assert.equal(await p.textContent("#cf-total"), "$996.38");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B224 with GOOGLE_MOCK by the hour from Teterboro (TEB) offers meet and greet in the FBO lobby, and a Westchester address picked from the list shows the Westchester tax in the price", async () => {
+    const p = await open(ctx, G, "/book");
+    await p.click('label[for="bk-hour"]');
+    await place(p, "from", "teterboro", "Teterboro (TEB)");
+    await p.selectOption("#bk-hours", "4");
+    await pickDate(p, "#bk-date-btn", DATE);
+    await setTime(p, "09:00");
+    await view(p);
+    await priced(p);
+    await p.click('label[for="bk-c-suv"]');
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$388.55");
+    await next(p);
+    assert.equal(await p.isVisible("#bk-meet-f"), true);
+    assert.equal(await p.evaluate(() => document.getElementById("bk-meet").parentNode.querySelector(".bk-mrow__t").textContent), "In the FBO lobby with a name sign");
+    await p.check("#bk-meet");
+    await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$413.55");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+    const q = await open(ctx, G, "/book");
+    await q.click('label[for="bk-hour"]');
+    await place(q, "from", "2 popham", "2 Popham Road");
+    await q.waitForFunction(() => /^v1\./.test(document.getElementById("bk-from-ticket").value));
+    await q.selectOption("#bk-hours", "4");
+    await pickDate(q, "#bk-date-btn", DATE);
+    await setTime(q, "09:00");
+    await view(q);
+    await priced(q);
+    await q.click('label[for="bk-c-suv"]');
+    await q.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, "$420.38");
+    assert.deepEqual(await panel(q), { lines: [["Fare, 4 hours", "$380.00"], [L_FEES, "$40.38"]], total: "$420.38", notes: NOTES.hourly });
+    await next(q);
+    assert.equal(await q.isVisible("#bk-meet-f"), false);
+    assert.deepEqual(q.errors, []);
+    await q.close();
+  });
+  await ctx.close();
 }
 
 for (const [name, b] of ENGINES.slice(1)) await b.close();

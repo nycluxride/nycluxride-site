@@ -712,6 +712,55 @@ await test("pick signs a ticket for the longest place ID of 300 characters, as G
   assert.equal(calls.length, 1);
 });
 
+await test("pick signs the region of an address outside New York City from Place Details, with no distance mark: 1332 Clinton Street in Hoboken, Jersey City, Newark, Yonkers, Scarsdale, Stamford and Princeton", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  const picks = [["mock-clinton", "1332 Clinton Street, Hoboken, NJ", "NJ"], ["mock-jersey-city", "30 Hudson Street, Jersey City, NJ", "NJ"], ["mock-newark", "1 Gateway Center, Newark, NJ", "NJ"], ["mock-yonkers", "40 South Broadway, Yonkers, NY", "6511"], ["mock-scarsdale", "2 Popham Road, Scarsdale, NY", "5581"], ["mock-stamford", "30 Station Place, Stamford, CT", "CT"], ["mock-princeton", "Nassau Hall, Princeton, NJ", "NJ"]];
+  for (const [id, label, region] of picks) {
+    const res = await call(pick(id, label));
+    assert.deepEqual([res.body.kind, res.body.zone, res.body.area], ["ok", "outside", "Outside New York City"], label);
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id, zone: "outside", expired: false, region }, label);
+    assert.ok(!JSON.parse(Buffer.from(res.body.ticket.split(".")[1], "base64url").toString("utf8")).n, label);
+    assert.ok(!("near" in res.body), label);
+  }
+  assert.equal(calls.length, 0);
+});
+
+await test("pick signs the region of another airport too, so Westchester County Airport picked from the list prices by the hour at the Westchester rate, while JFK and Newark keep the region of their zone", async () => {
+  process.env.GOOGLE_MOCK = "true";
+  const label = "Westchester County Airport, White Plains, NY";
+  const res = await call(pick("mock-hpn", label));
+  assert.deepEqual([res.body.kind, res.body.zone, res.body.airport], ["ok", "airport-other", true]);
+  assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "mock-hpn", zone: "airport-other", expired: false, region: "5581" });
+  const trip = await resolveTrip(readInput({ trip_type: "hour", from_text: label, from_ticket: res.body.ticket, date: "2026-10-14", time: "07:30", passengers: "2", hours: "3", class: "sedan", tip: "0" }), { now: Date.now() });
+  assert.deepEqual([checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), trip.ends.from.region, priceTrip(trip).tax], [{ kind: "price", reason: "", hold: "" }, "5581", 2136]);
+  const one = await resolveTrip(readInput({ trip_type: "one", from_text: label, from_ticket: res.body.ticket, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-10-14", time: "07:30", passengers: "2", class: "sedan", tip: "0" }), { now: Date.now() });
+  assert.deepEqual(checkTrip(one, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "quote", reason: "airport-to-airport", field: "" });
+  for (const zone of ["jfk", "ewr", "teb", "manhattan"]) assert.equal(verifyTicket(signTicket("ChIJairport", zone, label, NOW, 0, "NJ"), label, NOW).region, undefined, zone);
+  assert.equal(calls.length, 0);
+});
+
+await test("pick of an address far from the city prices by the hour with its region, at 24.98 and 25.03 miles north of Midtown alike, and the longest place ID with a region at another airport still fits the ticket pattern", async () => {
+  process.env.GOOGLE_MAPS_SERVER_KEY = SERVER_KEY;
+  const label = "1 Main Street, Valley Cottage, NY";
+  for (const latitude of [41.1165, 41.1171, 42.6526]) {
+    reply = answer(200, { ...details({ state: "NY", county: "Rockland County", city: "Valley Cottage", zip: "10989", address: `${label} 10989, USA` }), location: { latitude, longitude: -73.984 } });
+    const res = await call(pick("ChIJvalley", label));
+    assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJvalley", zone: "outside", expired: false, region: "3921" }, String(latitude));
+    const trip = await resolveTrip(readInput({ trip_type: "hour", from_text: label, from_ticket: res.body.ticket, date: "2026-10-14", time: "07:30", passengers: "2", hours: "3", class: "sedan", tip: "0" }), { now: Date.now() });
+    assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "price", reason: "", hold: "" }, String(latitude));
+    assert.deepEqual([priceTrip(trip).fare, priceTrip(trip).tax], [25500, 2136]);
+  }
+  const id = `Ei${"x".repeat(298)}`;
+  for (const [zone, region] of [["airport-other", "6511"], ["outside", "6511"], ["airport-other", "NJ"]]) {
+    const ticket = signTicket(id, zone, label, NOW, 0, region);
+    assert.equal(ticket.length, zone === "outside" ? 551 : region === "NJ" ? 557 : 559, zone);
+    assert.match(ticket, TICKET);
+    assert.deepEqual(verifyTicket(ticket, label, NOW), { id, zone, expired: false, region }, zone);
+    assert.equal(readInput({ trip_type: "hour", from_ticket: ticket }).from_ticket, ticket, zone);
+  }
+  assert.equal(readInput({ trip_type: "hour", from_ticket: `v1.${"a".repeat(513)}.${"b".repeat(43)}` }).from_ticket, "");
+});
+
 await test("pick: no key answers off without a call, a Details failure answers error and logs places-pick with the status", async () => {
   assert.deepEqual((await call(pick("ChIJedition", "The label"))).body, { kind: "off" });
   assert.equal(calls.length, 0);

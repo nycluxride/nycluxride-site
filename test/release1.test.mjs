@@ -187,14 +187,38 @@ check("weddings: decorations by special arrangement booked several days ahead, a
   assert.deepEqual(files.filter((x) => main(x).includes("We don't provide alcohol")), [f]);
 });
 
-check("hourly bookings may travel outside New York City with tolls charged after the ride, and still start in the city", () => {
+check("hourly bookings may travel outside New York City with tolls charged after the ride, and start from any pickup", () => {
   assert.match(main("roadshow-transportation-nyc.html"), /To keep the same car through the Connecticut meeting, book the day by the hour from New York\. Hourly bookings can travel outside the city, and tolls are charged after the ride\./);
-  assert.match(main("wedding-car-service-nyc.html"), /book it by the hour from your New York address\. On an hourly booking, tolls and parking are charged after the ride\./);
+  assert.match(main("wedding-car-service-nyc.html"), /a venue outside the city, book it by the hour\. On an hourly booking, tolls and parking are charged after the ride\./);
   const stamford = "Yes. Book the trip to Stamford and back as a one-way booking with a return, and the total shows before you pay. If the same car should wait for you there, book the day by the hour. On an hourly booking, tolls are charged after the ride.";
   assert.deepEqual([faq("roadshow-transportation-nyc.html", "q-rs-stamford"), ldAnswer("roadshow-transportation-nyc.html", "Can we add a Stamford meeting?")], [stamford, stamford]);
   assert.match(main("blog/roadshow-day-manhattan-planning-november-19.html"), /book the day by the hour\. On an hourly booking, tolls are charged after the ride\./);
   for (const f of ["roadshow-transportation-nyc.html", "blog/roadshow-day-manhattan-planning-november-19.html", "wedding-car-service-nyc.html"]) assert.doesNotMatch(main(f), /(^|\. )Tolls (and parking )?are charged after the ride\./, f);
-  assert.match(main("locations/long-island.html"), /Hourly bookings start in New York City\./);
+  assert.match(main("locations/long-island.html"), /See pet friendly car service\. Book by the hour from any pickup\./);
+  const island = "Yes. Book by the hour from any pickup on Long Island, or book a one-way ride to the city.";
+  assert.deepEqual([faq("locations/long-island.html", "q-li-hourly"), ldAnswer("locations/long-island.html", "Can I book by the hour from Long Island?")], [island, island]);
+  assert.match(main("locations/westchester-county.html"), /dog friendly car service\. Book by the hour from any pickup\./);
+  assert.doesNotMatch(main("locations/westchester-county.html"), /From Westchester, book/);
+  assert.doesNotMatch(main("locations/long-island.html"), /From Long Island, book/);
+});
+
+check("no page or FAQ answer limits where an hourly booking starts, and the Teterboro, Greenwich, Stamford and wedding answers say an hourly booking can start there", () => {
+  for (const f of files) {
+    const text = `${main(f)} ${ld(f).filter((n) => n["@type"] === "FAQPage").flatMap((n) => n.mainEntity).map((q) => q.acceptedAnswer.text).join(" ")}`;
+    assert.doesNotMatch(text, /Hourly bookings (start|can't start) (in|there)|in or near New York City|New York City or nearby|From farther out|Yes, from New York\.|can start at JFK or LaGuardia\.|From Teterboro, book the|by the hour from your New York address/, f);
+  }
+  const teb = "Yes. An hourly booking can start at JFK, LaGuardia, Newark or Teterboro.";
+  assert.deepEqual([faq("roadshow-transportation-nyc.html", "q-rs-airport"), ldAnswer("roadshow-transportation-nyc.html", "Can the day start at JFK or Teterboro?")], [teb, teb]);
+  assert.match(main("roadshow-transportation-nyc.html"), /An hourly booking can start there too\. You can also book the ride from Teterboro to your first meeting as an airport transfer\./);
+  assert.match(main("blog/roadshow-day-manhattan-planning-november-19.html"), /The day can start at JFK, LaGuardia, Newark or Teterboro\..*An hourly booking can start there too\. You can also book the ride from the FBO/);
+  assert.equal(ldAnswer("locations/greenwich-ct.html", "Can I book a day of meetings in Manhattan?"), "Yes. Book by the hour from any pickup, with a 3-hour minimum, or 4 hours in a Sprinter. The same car waits between stops.");
+  assert.match(main("locations/greenwich-ct.html"), /For a day in Manhattan, book the car by the hour from Greenwich\./);
+  assert.match(ldAnswer("locations/stamford-ct.html", "Can you drive our team to Manhattan meetings?"), /Book the car by the hour from any pickup, with a 3-hour minimum, or 4 hours in a Sprinter\.$/);
+  assert.match(main("locations/hamptons.html"), /drop you at your building\. Book it one way, or by the hour from any pickup\./);
+  assert.equal(ldAnswer("wedding-car-service-nyc.html", "Can the car go to a New Jersey venue?"), "Yes. Book the ride to the venue one way and add the ride back to New York as the return. To keep the car there all day, book it by the hour.");
+  assert.match(main("wedding-car-service-nyc.html"), /New Jersey\. Book by the hour from any pickup\. For a venue outside the city, you can also book the ride/);
+  for (const f of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) assert.equal(norm(pages.get(f).querySelector("#q-outside-hourly p").textContent), COPY.REASONS["outside-hourly"].text, f);
+  assert.equal(COPY.REASONS["outside-hourly"].text, "For this pickup, we'll send you a price.");
 });
 
 check("the weekly search email ships and the one-time owner questions route does not", () => {

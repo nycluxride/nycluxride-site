@@ -142,8 +142,13 @@ await test("hourly lines have no tolls line and the hourly note", async () => {
   assert.equal(price.service, "hourly");
 });
 
-await test("hourly meet and greet is offered from JFK and LaGuardia only, one way from every priced airport, never on a drop-off", async () => {
+await test("hourly meet and greet is offered from JFK, LaGuardia, Newark Liberty and Teterboro, one way from every priced airport, never on a drop-off or at another airport", async () => {
   assert.equal((await priced({ ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk", meet: "1" })).meet, 2500);
+  for (const [from_text, from_id] of [["LaGuardia (LGA)", "lga"], ["Newark Liberty (EWR)", "ewr"], ["Newark Liberty (EWR), Terminal C", "ewr-tc"], ["Teterboro (TEB)", "teb"], ["Teterboro (TEB), Signature Aviation East", "teb-sig-east"]]) {
+    const { trip, price } = await run({ ...HOURLY, from_text: localById(from_id).label, from_id, meet: "1" });
+    assert.deepEqual([trip.meetOffered, trip.meet, price.meet, pairs(price.lines).at(-1)], [true, true, 2500, ["Meet and greet", 2500]], from_text);
+  }
+  for (const from_id of ["hpn", "isp", "swf-atlantic"]) assert.deepEqual(await run({ ...HOURLY, from_text: localById(from_id).label, from_id, meet: "1" }).then(({ trip }) => [trip.meetOffered, trip.meet]), [false, false], from_id);
   assert.equal((await run({ ...HOURLY, meet: "1" })).trip.meet, false);
   for (const code of ["JFK", "LGA", "EWR", "TEB"]) {
     const { trip } = await run({ ...FROM_JFK, from_text: code, from_id: "", meet: "1" });
@@ -247,8 +252,9 @@ await test("legsOf: pickup to stop 1 to stop 2 to drop-off, plus the return leg 
   assert.deepEqual(one.legs.map((leg) => [leg.airport, leg.direction, leg.reason]), [["jfk", "from-airport", ""], ["jfk", "to-airport", ""]]);
 });
 
-await test("hourly reasons: outside-hourly, hours-range, the Sprinter 4-hour minimum, then the class reason seats with the Limo Sprinter's 10 seats", async () => {
-  for (const from_text of ["Newark Liberty (EWR)", "Teterboro (TEB)", "Hoboken, NJ", "Westchester County (HPN)"]) await isQuote({ ...HOURLY, from_text }, "outside-hourly");
+await test("hourly reasons: outside-hourly for typed text outside the city with no pick, hours-range, the Sprinter 4-hour minimum, then the class reason seats with the Limo Sprinter's 10 seats", async () => {
+  for (const from_text of ["Hoboken, NJ", "1332 Clinton Street, Hoboken, NJ 07030"]) await isQuote({ ...HOURLY, from_text }, "outside-hourly");
+  for (const from_text of ["Newark Liberty (EWR)", "Teterboro (TEB)", "Westchester County (HPN)"]) assert.equal((await priced({ ...HOURLY, from_text })).fare, 25500, from_text);
   await isQuote({ ...HOURLY, hours: "2" }, "hours-range");
   await isQuote({ ...HOURLY, hours: "13" }, "hours-range");
   assert.equal((await priced({ ...HOURLY, hours: "12" })).fare, 102000);
@@ -502,14 +508,14 @@ await test("the flight is kept only at an airport pickup, the return flight only
 });
 
 await test("strings are cleaned and cut to 200 code points, ids must match the id pattern, tickets the ticket pattern", () => {
-  const trip = readInput({ ...BASE, from_text: `  ${"A".repeat(250)}  `, passengers: " 02 ", from_id: "JFK", to_id: "a".repeat(25), from_ticket: "v1.short.mac", to_ticket: `v1.${"a".repeat(507)}.${"b".repeat(43)}` });
+  const trip = readInput({ ...BASE, from_text: `  ${"A".repeat(250)}  `, passengers: " 02 ", from_id: "JFK", to_id: "a".repeat(25), from_ticket: "v1.short.mac", to_ticket: `v1.${"a".repeat(513)}.${"b".repeat(43)}` });
   assert.equal(trip.from_text, "A".repeat(200));
   assert.equal(trip.passengers, "2");
   assert.deepEqual([trip.from_id, trip.to_id, trip.from_ticket, trip.to_ticket], ["", "", "", ""]);
   const good = `v1.${"a".repeat(40)}.${"b".repeat(43)}`;
   assert.equal(readInput({ ...BASE, from_ticket: good }).from_ticket, good);
-  const longest = `v1.${"a".repeat(506)}.${"b".repeat(43)}`;
-  assert.deepEqual([longest.length, readInput({ ...BASE, to_ticket: longest }).to_ticket], [553, longest]);
+  const longest = `v1.${"a".repeat(512)}.${"b".repeat(43)}`;
+  assert.deepEqual([longest.length, readInput({ ...BASE, to_ticket: longest }).to_ticket], [559, longest]);
   assert.equal(readInput({ ...BASE, from_id: "jfk-t4" }).from_id, "jfk-t4");
   assert.equal(readInput({ ...BASE, from_text: "350 Fifth Avenue\ud800" }).from_text, "350 Fifth Avenue");
   assert.equal(readInput({ ...BASE, from_text: "a\nb\u202ec\u2066d\u0000e" }).from_text, "a b c d e");
@@ -1203,7 +1209,7 @@ await test("the pickup must be an exact spot: a picked city, borough, neighborho
     for (let i = 0; i < 2; i++) await isQuote({ ...RIDE, from_text: town, from_ticket: old }, "pickup-address");
     await isQuote({ ...RIDE, to_text: town, to_ticket: old, ...ROUND_TRIP }, "return-address");
     assert.equal((await priced({ ...RIDE, to_text: town, to_ticket: old })).service, "distance");
-    await isQuote({ ...HOURLY, from_text: "Hoboken, NJ, USA", from_ticket: PICKS[0][1] }, "outside-hourly");
+    await isQuote({ ...HOURLY, from_text: "Hoboken, NJ, USA", from_ticket: PICKS[0][1] }, "pickup-address");
     await isQuote({ ...BASE, from_text: PICKS[3][0], from_ticket: PICKS[3][1], to_text: "Westchester County (HPN)", to_id: "hpn" }, "other-airport");
     await isQuote({ ...BASE, from_text: PICKS[3][0], from_ticket: PICKS[3][1], to_text: "CN Tower, 290 Bremner Blvd, Toronto, ON M5V 3L9", to_id: "" }, "outside-us");
     const EXACT = [
@@ -2363,11 +2369,161 @@ await test("sales tax: a stop in New Jersey makes the trip interstate as Example
   });
 });
 
-await test("sales tax: hourly bookings start in New York City and pay the city rate, from an address and from JFK", async () => {
+await test("sales tax: hourly bookings from New York City pay the city rate, from an address and from JFK", async () => {
   for (const fields of [HOURLY, { ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk" }]) {
     const price = await priced(fields);
     assert.deepEqual([price.fare, price.tax], [25500, percentCents(25500, "8.875")]);
     assert.deepEqual(pairs(price.lines).slice(0, 3), [["Fare, 3 hours", 25500], [TAX, 2263], [BCF, 574]]);
+  }
+});
+
+const CLINTON = "1332 Clinton Street, Hoboken, NJ";
+const SCARSDALE_PICK = "2 Popham Road, Scarsdale, NY";
+const HPN_PICK = "Westchester County Airport, White Plains, NY";
+const NEAR_HOUR = { trip_type: "hour", from_text: CLINTON, date: "2026-11-29", time: "17:40", passengers: "5", hours: "4", class: "premium", tip: "0", action: "pay" };
+const SUV_HOUR = { ...NEAR_HOUR, passengers: "2", class: "suv" };
+const pickTicket = (id, label, region, at = NOW, zone = "outside") => signTicket(id, zone, label, at, 0, region);
+const SUV_FARE = VEHICLES["suv-suburban"].hourly * 4;
+const SUV_BCF = percentCents(SUV_FARE, "2.25");
+const suvPickups = () => [
+  ["Newark Liberty (EWR)", { from_text: "Newark Liberty (EWR)", from_id: "ewr" }, "NJ", "0"],
+  ["Newark Liberty (EWR), Terminal B", { from_text: "Newark Liberty (EWR), Terminal B", from_id: "ewr-tb" }, "NJ", "0"],
+  ["Teterboro (TEB)", { from_text: "Teterboro (TEB)", from_id: "teb" }, "NJ", "0"],
+  ["Teterboro (TEB), Atlantic Aviation", { from_text: "Teterboro (TEB), Atlantic Aviation", from_id: "teb-atlantic" }, "NJ", "0"],
+  ["John F. Kennedy (JFK)", { from_text: "John F. Kennedy (JFK)", from_id: "jfk" }, "8081", "8.875"],
+  ["LaGuardia (LGA)", { from_text: "LaGuardia (LGA)", from_id: "lga" }, "8081", "8.875"],
+  ["1332 Clinton Street, Hoboken", { from_text: CLINTON, from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") }, "NJ", "0"],
+  ["30 Station Place, Stamford", { from_text: "30 Station Place, Stamford, CT", from_ticket: pickTicket("mock-stamford", "30 Station Place, Stamford, CT", "CT") }, "CT", "0"],
+  ["Nassau Hall, Princeton", { from_text: "Nassau Hall, Princeton, NJ", from_ticket: pickTicket("mock-princeton", "Nassau Hall, Princeton, NJ", "NJ") }, "NJ", "0"],
+  ["1500 Market Street, Philadelphia", { from_text: "1500 Market Street, Philadelphia, PA", from_ticket: pickTicket("ChIJmarket", "1500 Market Street, Philadelphia, PA", "PA") }, "PA", "0"],
+  ["2 Popham Road, Scarsdale", { from_text: SCARSDALE_PICK, from_ticket: pickTicket("mock-scarsdale", SCARSDALE_PICK, "5581") }, "5581", "8.375"],
+  ["40 South Broadway, Yonkers", { from_text: "40 South Broadway, Yonkers, NY", from_ticket: pickTicket("mock-yonkers", "40 South Broadway, Yonkers, NY", "6511") }, "6511", "8.875"],
+  ["Westchester County (HPN)", { from_text: "Westchester County (HPN)", from_id: "hpn" }, "5581", "8.375"],
+  ["Westchester County (HPN) typed", { from_text: "Westchester County (HPN)" }, "5581", "8.375"],
+  ["Westchester County Airport, picked", { from_text: HPN_PICK, from_ticket: pickTicket("mock-hpn", HPN_PICK, "5581", NOW, "airport-other") }, "5581", "8.375"],
+  ["Long Island MacArthur (ISP)", { from_text: "Long Island MacArthur (ISP)", from_id: "isp" }, "4711", "8.75"],
+];
+
+await test("hourly from any pickup: api/_rates.mjs has no list of hourly start zones and no distance from Midtown, every pickup the site can place prices at the class's hourly rate", () => {
+  for (const name of ["HOURLY_START", "HOURLY_NEAR", "EARTH_MILES"]) assert.ok(!(name in RATES), name);
+  assert.deepEqual([VEHICLES["suv-suburban"].hourly, VEHICLES.premium.hourly, RATES.TAX_AREAS["5581"].percent, RATES.TAX_AREAS["4711"].percent], [9500, 10500, "8.375", "8.75"]);
+});
+
+await test("hourly from any pickup: 4 hours in a Business SUV from Newark Liberty, Teterboro, JFK, LaGuardia, Hoboken, Stamford, Princeton, Philadelphia, a Westchester address, Yonkers, Westchester County Airport and MacArthur, each with the tax of where it starts and never New York City tax on a New Jersey pickup", async () => {
+  await withMock(async () => {
+    const pickups = suvPickups();
+    for (const [name, fields, region, percent] of pickups) {
+      const { trip, result, price } = await run({ ...SUV_HOUR, ...fields });
+      assert.deepEqual([result, trip.ends.from.region, trip.vehicle], [{ kind: "price", reason: "", hold: "" }, region, "suv-suburban"], name);
+      const tax = percentCents(SUV_FARE, percent);
+      assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.total, price.service, price.notes], [SUV_FARE, tax, SUV_BCF, 0, SUV_FARE + tax + SUV_BCF, "hourly", [POLICY.later.hourly]], name);
+      assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", SUV_FARE], ...(tax ? [[TAX, tax]] : []), [BCF, SUV_BCF]], name);
+      assert.equal(classTotal(trip, "suv"), SUV_FARE + tax + SUV_BCF, name);
+    }
+    const totals = async (fields) => (await priced({ ...SUV_HOUR, ...fields })).total;
+    assert.deepEqual(await Promise.all([0, 2, 6, 10, 4].map((i) => totals(pickups[i][1]))), [38855, 38855, 38855, 42038, 42228]);
+  });
+});
+
+await test("hourly from any pickup: the customer's 4 hours in a Business Premium SUV from 1332 Clinton Street, Hoboken, NJ, Sun Nov 29 at 5:40 PM for 5 passengers, is priced at the hourly rate of $105 with the Black Car Fund and no New York sales tax for a New Jersey pickup, $429.45", async () => {
+  await withMock(async () => {
+    const { trip, price } = await run({ ...NEAR_HOUR, from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") });
+    assert.deepEqual([trip.ends.from.zone, trip.ends.from.region, trip.ends.from.place, trip.vehicle], ["outside", "NJ", "mock-clinton", "premium"]);
+    assert.ok(!("near" in trip.ends.from));
+    assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", 42000], [BCF, 945]]);
+    assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.total, price.service, price.notes], [VEHICLES.premium.hourly * 4, 0, 945, 0, 42945, "hourly", [POLICY.later.hourly]]);
+    assert.deepEqual(pairs(shownLines(price.lines)), [["Fare, 4 hours", 42000], ["Taxes and fees", 945]]);
+    assert.equal(classTotal(trip, "premium"), 42945);
+    assert.equal(classTotal(trip, "suv"), VEHICLES["suv-suburban"].hourly * 4 + percentCents(VEHICLES["suv-suburban"].hourly * 4, "2.25"));
+    assert.equal(classTotal(trip, "sedan"), null);
+  });
+});
+
+await test("hourly from any pickup: Jersey City and Newark pay no New York sales tax, Yonkers the Yonkers rate of 8.875% and Scarsdale the Westchester rate of 8.375%, each with the same hourly fare and Black Car Fund", async () => {
+  await withMock(async () => {
+    const pickups = [
+      ["mock-clinton", CLINTON, "NJ", 0],
+      ["mock-jersey-city", "30 Hudson Street, Jersey City, NJ", "NJ", 0],
+      ["mock-newark", "1 Gateway Center, Newark, NJ", "NJ", 0],
+      ["mock-yonkers", "40 South Broadway, Yonkers, NY", "6511", 3728],
+      ["mock-scarsdale", SCARSDALE_PICK, "5581", 3518],
+    ];
+    for (const [id, from_text, region, tax] of pickups) {
+      const price = await priced({ ...NEAR_HOUR, from_text, from_ticket: pickTicket(id, from_text, region) });
+      assert.deepEqual([price.fare, price.tax, price.bcf, price.total], [42000, tax, 945, 42945 + tax], from_text);
+      assert.equal(price.tax, region === "NJ" ? 0 : percentCents(42000, RATES.TAX_AREAS[region].percent), from_text);
+    }
+  });
+});
+
+await test("hourly from any pickup: 10 hours for a day of meetings from Newark Liberty, Teterboro with meet and greet, and Hoboken, priced at 10 times the hourly rate with no New York tax, and the day can end back at the airport", async () => {
+  await withMock(async () => {
+    const ewr = await priced({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "10", flight: "UA 1234" });
+    assert.deepEqual([ewr.fare, ewr.tax, ewr.bcf, ewr.meet, ewr.total], [95000, 0, 2138, 0, 97138]);
+    const teb = await run({ ...SUV_HOUR, from_text: "Teterboro (TEB)", from_id: "teb", hours: "10", meet: "1" });
+    assert.deepEqual([teb.trip.meet, teb.price.fare, teb.price.tax, teb.price.meet, teb.price.total], [true, 95000, 0, 2500, 99638]);
+    assert.deepEqual(pairs(teb.price.lines), [["Fare, 10 hours", 95000], [BCF, 2138], ["Meet and greet", 2500]]);
+    const hoboken = await priced({ ...NEAR_HOUR, from_ticket: pickTicket("mock-clinton", CLINTON, "NJ"), hours: "10" });
+    assert.deepEqual([hoboken.fare, hoboken.tax, hoboken.bcf, hoboken.total], [105000, 0, 2363, 107363]);
+    await isQuote({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "13" }, "hours-range");
+    assert.equal((await priced({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "12" })).fare, 114000);
+  });
+});
+
+await test("hourly from any pickup: typed text outside the city with no pick, typed text that needs a ZIP, a pickup abroad, a New York State pickup with no tax area and posted coordinates, zones or regions keep their requests, and an expired ticket is checked again with Place Details", async () => {
+  await withMock(async () => {
+    for (const from_text of [CLINTON, "1332 Clinton St, Hoboken, NJ 07030", "30 Hudson Street, Jersey City, NJ", "1 Gateway Center, Newark, NJ 07102", "40 S Broadway, Yonkers, NY 10701", "2 Popham Rd, Scarsdale, NY 10583", "30 Station Place, Stamford, CT"]) await isQuote({ ...NEAR_HOUR, from_text }, "outside-hourly");
+    await isQuote({ ...NEAR_HOUR, from_text: "40 South Broadway, Yonkers, NY" }, "unplaced", "from_text");
+    await isQuote({ ...NEAR_HOUR, from_text: "Hoboken" }, "unplaced", "from_text");
+    await isQuote({ ...NEAR_HOUR, from_text: "Toronto, ON" }, "outside-hourly");
+    const tower = "CN Tower, Bremner Boulevard, Toronto, ON, Canada";
+    await isQuote({ ...NEAR_HOUR, from_text: tower, from_ticket: signTicket("mock-cn-tower", "abroad", tower, NOW) }, "outside-hourly");
+    await isQuote({ ...NEAR_HOUR, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") }, "outside-hourly");
+    await isQuote({ ...NEAR_HOUR, from_text: "Republic (FRG)", from_id: "frg" }, "outside-hourly");
+    const posted = { from_lat: "40.753", from_lng: "-74.0343", lat: "40.753", lng: "-74.0343", near: "1", from_near: "1", from_zone: "manhattan", from_region: "8081", from_place: "mock-clinton", location: "40.753,-74.0343" };
+    await isQuote({ ...NEAR_HOUR, ...posted }, "outside-hourly");
+    await isQuote({ ...NEAR_HOUR, ...posted, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") }, "outside-hourly");
+    const old = NOW - (TICKET_TTL + 60) * 1000;
+    const fresh = await run({ ...SUV_HOUR, from_text: SCARSDALE_PICK, from_ticket: pickTicket("mock-scarsdale", SCARSDALE_PICK, "5581", old) });
+    assert.deepEqual([fresh.result, fresh.trip.ends.from.region, fresh.price.total], [{ kind: "price", reason: "", hold: "" }, "5581", 42038]);
+    const airport = await run({ ...SUV_HOUR, from_text: HPN_PICK, from_ticket: pickTicket("mock-hpn", HPN_PICK, "", old, "airport-other") });
+    assert.deepEqual([airport.result, airport.trip.ends.from.zone, airport.trip.ends.from.region, airport.price.total], [{ kind: "price", reason: "", hold: "" }, "airport-other", "5581", 42038]);
+  });
+});
+
+await test("hourly from any pickup: a tampered ticket and a ticket for another label are never read, so the pickup is typed text and keeps the request for typed text", async () => {
+  await withMock(async () => {
+    const plain = pickTicket("mock-scarsdale", SCARSDALE_PICK, "5581");
+    const [, payload, mac] = plain.split(".");
+    const forged = `v1.${Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(payload, "base64url").toString("utf8")), j: "NJ" })).toString("base64url")}.${mac}`;
+    await isQuote({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: forged }, "unplaced", "from_text");
+    await isQuote({ ...NEAR_HOUR, from_text: "30 Station Place, Stamford, CT", from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") }, "outside-hourly");
+    await isQuote({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: `v1.${payload}.${mac.slice(0, -1)}${mac.endsWith("A") ? "B" : "A"}` }, "unplaced", "from_text");
+    await isQuote({ ...NEAR_HOUR, from_ticket: `v1.${payload}.${mac}` }, "outside-hourly");
+    assert.equal((await priced({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: plain })).tax, 3518);
+  });
+});
+
+await test("hourly from any pickup: every pickup keeps the other hourly rules, 3 to 12 hours, the Sprinter 4-hour minimum, the seats of each class and a street address for a town pick, also a town in New York State", async () => {
+  await withMock(async () => {
+    for (const fields of [{ from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") }, { from_text: "Newark Liberty (EWR)", from_id: "ewr" }, { from_text: "Teterboro (TEB)", from_id: "teb" }]) {
+      await isQuote({ ...NEAR_HOUR, ...fields, hours: "13" }, "hours-range");
+      await isQuote({ ...NEAR_HOUR, ...fields, hours: "2" }, "hours-range");
+      await isError({ ...NEAR_HOUR, ...fields, class: "sprinter", sprinter: "sprinter-executive", hours: "3" }, "sprinter-hours");
+      await isClass({ ...NEAR_HOUR, ...fields, class: "sedan" }, "seats");
+      const sprinter = await priced({ ...NEAR_HOUR, ...fields, class: "sprinter", sprinter: "sprinter-executive", passengers: "12" });
+      assert.deepEqual([sprinter.fare, sprinter.tax, sprinter.total], [VEHICLES["sprinter-executive"].hourly * 4, 0, VEHICLES["sprinter-executive"].hourly * 4 + percentCents(VEHICLES["sprinter-executive"].hourly * 4, "2.25")]);
+    }
+    await isQuote({ ...NEAR_HOUR, from_text: "Hoboken, NJ, USA", from_ticket: signTicket("mock-hoboken", "outside", "Hoboken, NJ, USA", NOW, 2, "NJ") }, "pickup-address");
+    await isQuote({ ...NEAR_HOUR, from_text: "Yonkers, NY, USA", from_ticket: signTicket("ChIJyonkers", "outside", "Yonkers, NY, USA", NOW, 2) }, "pickup-address");
+    await isQuote({ ...NEAR_HOUR, from_text: "Westchester County, NY, USA", from_ticket: signTicket("ChIJwestchester", "outside", "Westchester County, NY, USA", NOW, 1) }, "pickup-address");
+  });
+});
+
+await test("hourly from New York City is unchanged: Manhattan, Brooklyn, JFK and LaGuardia pay the city rate, and meet and greet at JFK and LaGuardia is $25", async () => {
+  for (const fields of [{}, { from_text: "277 Bedford Ave, Brooklyn, NY 11211" }, { from_text: "John F. Kennedy (JFK)", from_id: "jfk", meet: "1" }, { from_text: "LaGuardia (LGA)", from_id: "lga", meet: "1" }]) {
+    const price = await priced({ ...HOURLY, ...fields });
+    assert.deepEqual([price.fare, price.tax, price.bcf, price.meet, price.total], [25500, 2263, 574, fields.meet ? 2500 : 0, 28337 + (fields.meet ? 2500 : 0)], JSON.stringify(fields));
   }
 });
 

@@ -11,7 +11,8 @@ import { bookingLetters } from "../api/_mail.mjs";
 import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY } from "../api/_copy.mjs";
 import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES, CLASSES, WAIT_CENTS_PER_MINUTE } from "../api/_rates.mjs";
-import { ROUTE, signTicket, signRoute, routeKey } from "../api/_ticket.mjs";
+import { ROUTE, signTicket, signRoute, routeKey, placeProof } from "../api/_ticket.mjs";
+import { POST as placesPost } from "../api/places.mjs";
 import { localById } from "../api/_places.mjs";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
@@ -1209,6 +1210,112 @@ await test("handler: an end that names only an area answers its request with its
   assert.equal(calls.length, 0);
 });
 
+await test("handler: the customer's booking by the hour from 1332 Clinton Street, Hoboken, NJ, picked from the list, is priced on options and quote, and pay opens the Checkout Session with the metadata keys of a booking by the hour in the city, while typed text, a tampered ticket, posted coordinates and a pickup abroad keep the outside-hourly request with no Stripe call", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const session = "3f2b8c1e-4a5d-4e6f-9a7b-1c2d3e4f5a6b";
+  const picked = async (id, label) => {
+    const res = await placesPost(new Request(`${LOCAL}/api/places`, { method: "POST", headers: { "content-type": "application/json", origin: LOCAL }, body: JSON.stringify({ action: "pick", id, label, session, proof: placeProof(id, label) }) }));
+    return (await res.json()).ticket;
+  };
+  const label = "1332 Clinton Street, Hoboken, NJ";
+  const ticket = await picked("mock-clinton", label);
+  const fields = { ...trip({ trip_type: "hour", from_text: label, from_ticket: ticket, passengers: "5", hours: "4", class: "premium", vehicle: "premium", tip: "0", rider: "me", ...ME, reach: "phone" }), time: "17:40" };
+  const shown = [{ label: "Fare, 4 hours", cents: 42000 }, { label: FEES, cents: 945 }];
+  for (const action of ["options", "quote"]) {
+    const body = await readJson(await post({ ...fields, action }), 200);
+    assert.deepEqual([body.kind, body.reason, body.pay, body.hold, body.service, body.price.total_cents, body.price.lines, body.price.notes, body.meet], ["options", "", true, "", "hourly", 42945, shown, [POLICY.later.hourly], false], action);
+    assert.equal(body.classes.find((c) => c.class === "premium").total_cents, 42945, action);
+  }
+  assert.equal(calls.length, 0);
+  const paid = await readJson(await post({ ...fields, action: "pay" }), 200);
+  assert.deepEqual([paid.kind, paid.url], ["pay", CHECKOUT_URL]);
+  assert.equal(calls.length, 1);
+  const form = formOf(calls[0]);
+  assert.deepEqual([form.get("line_items[0][price_data][product_data][name]"), form.get("line_items[0][price_data][unit_amount]"), form.get("line_items[1][price_data][product_data][name]"), form.get("line_items[1][price_data][unit_amount]"), form.has("line_items[2][quantity]")], ["Fare, 4 hours", "42000", FEES, "945", false]);
+  assert.deepEqual(["service", "class", "vehicle", "hours", "from_text", "zones", "places", "time", "passengers", "fare_cents", "tax_cents", "bcf_cents", "total_cents"].map((key) => form.get(`metadata[${key}]`)), ["hourly", "premium", "premium", "4", label, "from outside", "from mock-clinton", "17:40", "5", "42000", "0", "945", "42945"]);
+  assert.equal(form.get("custom_text[submit][message]"), SUBMIT_HOURLY);
+  assert.match(form.get("payment_intent_data[statement_descriptor_suffix]"), /^HOUR [A-Z]{3}\d{2}$/);
+  const city = "277 Bedford Avenue, Brooklyn, NY";
+  calls = [];
+  await readJson(await post({ ...fields, from_text: city, from_ticket: await picked("mock-bedford", city), action: "pay" }), 200);
+  const keys = (entries) => [...entries.keys()].filter((key) => key.startsWith("metadata[")).sort();
+  assert.deepEqual(keys(form), keys(formOf(calls[0])), "no metadata key is added for a pickup near the city");
+  calls = [];
+  assertRedirect(await formPost(fields), CHECKOUT_URL);
+  assert.equal(calls.length, 1);
+  calls = [];
+  const [, payload, mac] = ticket.split(".");
+  const quotes = [
+    { ...fields, from_ticket: "" },
+    { ...fields, from_ticket: "", from_lat: "40.753", from_lng: "-74.0343", lat: "40.753", lng: "-74.0343", near: "1", from_near: "1", from_zone: "manhattan" },
+    { ...fields, from_ticket: `v1.${payload}.${mac.slice(0, -1)}${mac.endsWith("A") ? "B" : "A"}` },
+    { ...fields, from_text: "1332 Clinton Street, Hoboken, NJ 07030" },
+    { ...fields, from_text: "30 Station Place, Stamford, CT", from_ticket: "" },
+    { ...fields, from_text: "Toronto, ON", from_ticket: "" },
+    { ...fields, from_text: "CN Tower, Bremner Boulevard, Toronto, ON, Canada", from_ticket: await picked("mock-cn-tower", "CN Tower, Bremner Boulevard, Toronto, ON, Canada") },
+  ];
+  for (const quote of quotes) {
+    for (const action of ["options", "quote", "pay"]) {
+      const body = await readJson(await post({ ...quote, action }), 200);
+      assert.deepEqual([body.kind, body.reason, body.hourly, body.text, "price" in body], ["quote", "outside-hourly", false, "For this pickup, we'll send you a price.", false], `${quote.from_text} ${action}`);
+    }
+    assertRedirect(await formPost(quote), "/book#q-outside-hourly");
+  }
+  const long = await readJson(await post({ ...fields, hours: "13", action: "options" }), 200);
+  assert.deepEqual([long.kind, long.reason, long.hourly], ["quote", "hours-range", true]);
+  assert.equal(calls.length, 0, "no Stripe call for a pickup that is not priced");
+});
+
+await test("handler: by the hour from Newark Liberty, Teterboro with meet and greet, Stamford, Princeton and a Westchester address picked from the list, options price each class, pay opens the Checkout Session with the same metadata keys as a city booking, and the no-JavaScript post pays too", async () => {
+  setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
+  const session = "3f2b8c1e-4a5d-4e6f-9a7b-1c2d3e4f5a6c";
+  const picked = async (id, label) => {
+    const res = await placesPost(new Request(`${LOCAL}/api/places`, { method: "POST", headers: { "content-type": "application/json", origin: LOCAL }, body: JSON.stringify({ action: "pick", id, label, session, proof: placeProof(id, label) }) }));
+    return (await res.json()).ticket;
+  };
+  const base = { ...trip({ trip_type: "hour", passengers: "2", hours: "4", class: "suv", vehicle: "suv-suburban", tip: "0", rider: "me", ...ME, reach: "phone" }), time: "17:40" };
+  const city = "277 Bedford Avenue, Brooklyn, NY";
+  calls = [];
+  await readJson(await post({ ...base, from_text: city, from_ticket: await picked("mock-bedford", city), action: "pay" }), 200);
+  const keys = (entries) => [...entries.keys()].filter((key) => key.startsWith("metadata[")).sort();
+  const cityKeys = keys(formOf(calls[0]));
+  const cases = [
+    ["EWR", { from_text: "Newark Liberty (EWR)", from_id: "ewr", flight: "UA 1234" }, "from ewr", "from ewr", 0, true],
+    ["TEB", { from_text: "Teterboro (TEB), Signature Aviation East", from_id: "teb-sig-east", meet: "1", sign: "Ana Lopez" }, "from teb", "from teb-sig-east", 0, true],
+    ["Stamford", { from_text: "30 Station Place, Stamford, CT", from_ticket: await picked("mock-stamford", "30 Station Place, Stamford, CT") }, "from outside", "from mock-stamford", 0, false],
+    ["Princeton", { from_text: "Nassau Hall, Princeton, NJ", from_ticket: await picked("mock-princeton", "Nassau Hall, Princeton, NJ") }, "from outside", "from mock-princeton", 0, false],
+    ["Scarsdale", { from_text: "2 Popham Road, Scarsdale, NY", from_ticket: await picked("mock-scarsdale", "2 Popham Road, Scarsdale, NY") }, "from outside", "from mock-scarsdale", 3183, false],
+  ];
+  for (const [name, end, zones, places, tax, meet] of cases) {
+    const fields = { ...base, ...end };
+    const meetCents = end.meet ? 2500 : 0;
+    const total = 38000 + tax + 855 + meetCents;
+    const options = await readJson(await post({ ...fields, action: "options" }), 200);
+    assert.deepEqual([options.kind, options.reason, options.pay, options.service, options.meet, options.meet_cents, options.price.total_cents], ["options", "", true, "hourly", meet, meet ? 2500 : null, total], name);
+    assert.deepEqual(options.price.lines, [{ label: "Fare, 4 hours", cents: 38000 }, { label: FEES, cents: tax + 855 }, ...(meetCents ? [{ label: "Meet and greet", cents: 2500 }] : [])], name);
+    assert.equal(options.classes.find((c) => c.class === "suv").total_cents, total, name);
+    calls = [];
+    const paid = await readJson(await post({ ...fields, action: "pay" }), 200);
+    assert.deepEqual([paid.kind, paid.url, calls.length], ["pay", CHECKOUT_URL, 1], name);
+    const form = formOf(calls[0]);
+    assert.deepEqual(["service", "hours", "zones", "places", "meet", "fare_cents", "tax_cents", "bcf_cents", "meet_cents", "total_cents"].map((key) => form.get(`metadata[${key}]`)), ["hourly", "4", zones, places, meetCents ? "1" : "0", "38000", String(tax), "855", String(meetCents), String(total)], name);
+    assert.equal(form.get(`line_items[${meetCents ? 2 : 1}][price_data][product_data][name]`), meetCents ? "Meet and greet" : FEES, name);
+    assert.deepEqual(keys(form).filter((key) => !cityKeys.includes(key)), meetCents ? ["metadata[sign_name]"] : end.flight ? ["metadata[flight]"] : [], name);
+    assert.ok(keys(form).length <= cityKeys.length + 1, name);
+    calls = [];
+    assertRedirect(await formPost(fields), CHECKOUT_URL);
+    assert.equal(calls.length, 1, name);
+  }
+  calls = [];
+  const typed = await readJson(await post({ ...base, from_text: "Westchester County (HPN)", action: "options" }), 200);
+  assert.deepEqual([typed.kind, typed.reason, typed.meet, typed.price.total_cents], ["options", "", false, 38000 + 3183 + 855]);
+  const frg = await readJson(await post({ ...base, from_text: "Republic (FRG)", from_id: "frg", action: "options" }), 200);
+  assert.deepEqual([frg.kind, frg.reason, frg.hourly], ["quote", "outside-hourly", false]);
+  const noAirport = await readJson(await post({ ...trip({ trip_type: "one", from_text: "Newark Liberty (EWR)", from_id: "ewr", to_text: "Teterboro (TEB)", to_id: "teb", passengers: "2", class: "suv" }), action: "options" }), 200);
+  assert.deepEqual([noAirport.kind, noAirport.reason, noAirport.hourly], ["quote", "airport-to-airport", true]);
+  assert.equal(calls.length, 0);
+});
+
 await test("handler: a picked city, borough, neighborhood or ZIP code as the pickup asks for the pickup street address on a one way trip priced by distance, an airport trip at the flat rate, an airport trip priced by distance, a trip with a stop priced online and an hourly booking, and never reaches Stripe, while a map spot, a hotel and an airport pickup pay as before with the builder's body", async () => {
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const picked = (label, zone, level) => ({ from_text: label, from_ticket: signTicket(`ChIJ${level}${zone}`, zone, label, Date.now(), level), from_id: "" });
@@ -1222,7 +1329,7 @@ await test("handler: a picked city, borough, neighborhood or ZIP code as the pic
   for (const pick of PICKS) {
     for (const [name, base] of TRIPS) {
       const fields = trip({ ...base, ...pick, ...ME, reach: "phone" });
-      const want = pick.from_text.startsWith("Hoboken") && name === "hourly" ? "outside-hourly" : "pickup-address";
+      const want = "pickup-address";
       assertRedirect(await formPost(fields), `/book#q-${want}`);
       for (const action of ["options", "quote", "pay"]) {
         const body = await readJson(await post({ ...fields, action }), 200);

@@ -13,7 +13,8 @@ import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
 import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
-import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges } from "../api/_mail.mjs";
+import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges, reminderLetter } from "../api/_mail.mjs";
+import { dueLegs } from "../api/_remind.mjs";
 import { GET } from "../api/book.mjs";
 import { POST } from "../api/stripe-webhook.mjs";
 
@@ -297,6 +298,13 @@ const TO_T5 = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "J
 const SEATS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", rider: "me", ...ME, reach: "phone" });
 const DOGS = await booked({ trip_type: "one", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, date: "2026-11-12", time: "07:30", passengers: "3", class: "suv", meet: "1", sign: "Lopez Family", tip: "15", infant_seats: "1", booster_seats: "2", small_dogs: "1", large_dogs: "2", rider: "me", ...ME, reach: "phone" });
 const HOURLY_JFK = await booked({ trip_type: "hour", from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", date: "2026-12-01", time: "14:00", passengers: "1", hours: "4", class: "premium", vehicle: "premium", flight: "BA 117", meet: "1", tip: "0", rider: "me", ...ME, reach: "phone" });
+const CLINTON = "1332 Clinton Street, Hoboken, NJ";
+const HOBOKEN_HOURLY = await booked({ trip_type: "hour", from_text: CLINTON, from_ticket: signTicket("mock-clinton", "outside", CLINTON, NOW, 0, "NJ"), date: "2026-11-29", time: "17:40", passengers: "5", hours: "4", class: "premium", vehicle: "premium", tip: "0", rider: "me", ...ME, reach: "phone" });
+const AIRPORT_HOUR = { trip_type: "hour", date: "2026-11-29", time: "09:00", passengers: "2", hours: "10", class: "suv", vehicle: "suv-suburban", meet: "1", tip: "0", rider: "me", ...ME, reach: "phone" };
+const EWR_HOURLY = await booked({ ...AIRPORT_HOUR, from_text: "Newark Liberty (EWR), Terminal C", from_id: "ewr-tc", flight: "UA 1234" });
+const TEB_HOURLY = await booked({ ...AIRPORT_HOUR, from_text: "Teterboro (TEB), Atlantic Aviation", from_id: "teb-atlantic" });
+const SCARSDALE = "2 Popham Road, Scarsdale, NY";
+const SCARSDALE_HOURLY = await booked({ ...AIRPORT_HOUR, meet: "", hours: "4", from_text: SCARSDALE, from_ticket: signTicket("mock-scarsdale", "outside", SCARSDALE, NOW, 0, "5581") });
 const NASSAU = await booked({ trip_type: "one", from_text: "1 Old Country Rd, Mineola, NY 11501", to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const NEWARK_ROUND = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "Newark Liberty (EWR)", to_id: "ewr", date: "2026-11-12", time: "07:30", return: "1", return_date: "2026-11-15", return_time: "18:00", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
 const picked = (name, id, zone, text, region = "") => ({ [`${name}_text`]: text, [`${name}_ticket`]: signTicket(id, zone, text, NOW, 0, region) });
@@ -607,6 +615,62 @@ await test("hourly booking: the hours, the vehicle model, the typed gratuity, th
   const other = paid(HOURLY, { metadata: { rider: "other", passenger_name: "Ben Ortiz", passenger_phone: "+1 917 555 0199" } });
   const [forOther] = bookingLetters(other, SETTINGS);
   assert.ok(forOther.text.includes("\nWhere to meet your chauffeur\nYour chauffeur comes to the pickup address. The same car and chauffeur stay with them for the hours you booked. If your day might run long"));
+});
+
+await test("hourly booking from an airport outside the city: 10 hours from Newark Liberty Terminal C and from Teterboro, each with meet and greet, give both emails with the terminal and FBO lobby wording, a 10-hour calendar event, one reminder and the receipt, with no New York tax", async () => {
+  setEnv();
+  for (const [fix, place, zone, short, where] of [[EWR_HOURLY, "Newark Liberty (EWR), Terminal C", "from ewr", "Newark Liberty (EWR)", `${MAIL.where.inside} ${MAIL.day.tracked}`], [TEB_HOURLY, "Teterboro (TEB), Atlantic Aviation", "from teb", "Teterboro (TEB)", MAIL.where.lobby]]) {
+    assert.deepEqual([fix.total, fix.metadata.service, fix.metadata.zones, fix.metadata.meet, fix.metadata.meet_cents, fix.metadata.tax_cents, fix.metadata.bcf_cents, fix.metadata.sign_name], [99638, "hourly", zone, "1", "2500", "0", "2138", ME.name], place);
+    assert.deepEqual(Object.keys(fix.metadata).filter((key) => !(key in HOURLY_JFK.metadata)), [], place);
+    const session = paid(fix, { live: true });
+    const [customer, owner] = bookingLetters(session, SETTINGS);
+    assert.equal(owner.subject, `New booking 83558982: Sun Nov 29, 9:00 AM, Business SUV, 10 hours from ${short}`, place);
+    assert.deepEqual(sectionOf(customer.text, "Your trip").slice(1, 3), ["Trip: By the hour, 10 hours", `Pickup: ${place}`], place);
+    assert.ok(sectionOf(customer.text, "Your trip").includes("Meet and greet: Yes"), place);
+    assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare, 10 hours: $950.00", "Taxes and fees: $21.38", "Meet and greet: $25.00", "Paid: $996.38"], place);
+    assert.equal(sectionOf(customer.text, "Where to meet your chauffeur")[0], `${where} ${fill(MAIL.day.hourly, { who: MAIL.day.you })} ${MAIL.day.long}`, place);
+    checkHtml(customer);
+    checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });
+    const events = bookingEvents(session);
+    assert.deepEqual(events.map((e) => [e.start.dateTime, e.end.dateTime]), [["2026-11-29T14:00:00.000Z", "2026-11-30T00:00:00.000Z"]], place);
+    assert.deepEqual([dueLegs(session, "2026-11-29"), dueLegs(session, "2026-11-28")], [["a"], []], place);
+    assert.ok(reminderLetter(session, ["a"]).text.includes(`\nPickup: ${place}\n`), place);
+    assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total, place);
+  }
+});
+
+await test("hourly booking from a Westchester address: 4 hours from 2 Popham Road, Scarsdale, picked from the list, charge the Westchester rate of 8.375% and the receipt adds up", async () => {
+  setEnv();
+  assert.deepEqual([SCARSDALE_HOURLY.total, SCARSDALE_HOURLY.metadata.zones, SCARSDALE_HOURLY.metadata.tax_cents, SCARSDALE_HOURLY.metadata.bcf_cents, SCARSDALE_HOURLY.metadata.meet], [42038, "from outside", "3183", "855", "0"]);
+  const session = paid(SCARSDALE_HOURLY, { live: true });
+  const [customer] = bookingLetters(session, SETTINGS);
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare, 4 hours: $380.00", "Taxes and fees: $40.38", "Paid: $420.38"]);
+  assert.equal(sectionOf(customer.text, "Where to meet your chauffeur")[0], `${MAIL.where.address} ${fill(MAIL.day.hourly, { who: MAIL.day.you })} ${MAIL.day.long}`);
+  assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
+});
+
+await test("hourly booking from New Jersey: 4 hours from 1332 Clinton Street, Hoboken, NJ give both emails, the owner text, a 4-hour calendar event and one reminder the day before, with the fare and the Black Car Fund and no sales tax", async () => {
+  setEnv();
+  assert.deepEqual([HOBOKEN_HOURLY.total, HOBOKEN_HOURLY.metadata.service, HOBOKEN_HOURLY.metadata.zones, HOBOKEN_HOURLY.metadata.tax_cents, HOBOKEN_HOURLY.metadata.bcf_cents], [42945, "hourly", "from outside", "0", "945"]);
+  assert.deepEqual(Object.keys(HOBOKEN_HOURLY.metadata).filter((key) => !(key in HOURLY.metadata)), ["places"]);
+  const session = paid(HOBOKEN_HOURLY, { live: true });
+  const [customer, owner] = bookingLetters(session, SETTINGS);
+  assert.equal(customer.subject, "Your NYC LUX RIDE booking 83558982, Sun Nov 29, 5:40 PM");
+  assert.equal(owner.subject, "New booking 83558982: Sun Nov 29, 5:40 PM, Business Premium SUV, 4 hours from 1332 Clinton Street");
+  assert.deepEqual(sectionOf(customer.text, "Your trip"), ["Reference: 83558982", "Trip: By the hour, 4 hours", `Pickup: ${CLINTON}`, "Date: Sun, Nov 29, 2026", "Time: 5:40 PM, New York time", "Passengers: 5", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)"]);
+  assert.deepEqual(sectionOf(customer.text, "Your payment"), ["Fare, 4 hours: $420.00", "Taxes and fees: $9.45", "Paid: $429.45"]);
+  assert.ok(customer.text.includes(`\n${NOTES.hourly}\n`));
+  checkHtml(customer);
+  checkHtml(owner, { stripeLink: `https://dashboard.stripe.com/payments/${session.payment_intent}` });
+  const sms = bookingText(session);
+  assert.ok(sms.includes("\nSun Nov 29, 5:40 PM\n4 hours from 1332 Clinton Street\nCadillac Escalade ESV (Business Premium SUV)\nPaid $429.45\n"), sms);
+  const events = bookingEvents(session);
+  assert.deepEqual(events.map((e) => [e.summary, e.location, e.start.dateTime, e.end.dateTime]), [["83558982 Business Premium SUV: 4 hours from 1332 Clinton Street", CLINTON, "2026-11-29T22:40:00.000Z", "2026-11-30T02:40:00.000Z"]]);
+  assert.deepEqual([dueLegs(session, "2026-11-29"), dueLegs(session, "2026-11-28")], [["a"], []]);
+  const reminder = reminderLetter(session, ["a"]);
+  assert.equal(reminder.subject, "Your ride tomorrow, Sun Nov 29, 5:40 PM, NYC LUX RIDE booking 83558982");
+  assert.ok(reminder.text.includes(`\nPickup: ${CLINTON}\n`), reminder.text);
+  assert.equal(receipt(session.metadata, readSettings({}), undefined).lines.reduce((sum, line) => sum + line.cents, 0), session.amount_total);
 });
 
 await test("airport trip from New Jersey: priced by distance and time, no tolls line, the outside note, the miles and minutes, and every ampersand of the letter escaped", async () => {
@@ -1090,7 +1154,7 @@ await test("a booking paid before the metadata was packed, with from_zone, from_
 
 await test("every booking shape written with zones, places and seats rebuilds the same emails, owner text, calendar events, refund note, receipt and confirmation page as the old keys: one way, round trip, hourly, stops, a JFK terminal, New Jersey, Nassau, someone else riding, child seats and pets", async () => {
   setEnv();
-  for (const [name, fix] of Object.entries({ ONE_WAY, ROUND, HOURLY, NEW_JERSEY, STOPS, STOPS_ROUND, STOPS_FAR, STOP_ONE_WAY, TERMINAL, NO_FLIGHT, NO_RETURN_FLIGHT, FOR_OTHER, TO_T5, SEATS, DOGS, HOURLY_JFK, NASSAU, NEWARK_ROUND, CONNECTICUT, WORST, WORST_DOGS })) {
+  for (const [name, fix] of Object.entries({ ONE_WAY, ROUND, HOURLY, HOBOKEN_HOURLY, EWR_HOURLY, TEB_HOURLY, SCARSDALE_HOURLY, NEW_JERSEY, STOPS, STOPS_ROUND, STOPS_FAR, STOP_ONE_WAY, TERMINAL, NO_FLIGHT, NO_RETURN_FLIGHT, FOR_OTHER, TO_T5, SEATS, DOGS, HOURLY_JFK, NASSAU, NEWARK_ROUND, CONNECTICUT, WORST, WORST_DOGS })) {
     assert.deepEqual(LEGACY_KEYS.filter((k) => k in fix.metadata), [], name);
     assert.ok(Object.keys(fix.metadata).length <= 48, name);
     const packed = paid(fix);

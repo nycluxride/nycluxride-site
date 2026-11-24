@@ -1,7 +1,7 @@
-import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS, HOURLY_START } from "./_rates.mjs";
+import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -74,7 +74,7 @@ function vehicleList(trip) {
 
 function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null, draw = false } = {}) {
   const { group, text, google, map, short } = REASONS[reason];
-  const hourly = HOURLY_START.includes(trip.from);
+  const hourly = hourlyStart(trip);
   return {
     kind: "quote",
     ref,
@@ -216,7 +216,7 @@ async function handlePost(request) {
   const trip = await resolveTrip(input, { env: process.env, request, now, map: size });
   const check = checkTrip(trip, now, settings);
   if (check.kind === "invalid") return invalid(check.code);
-  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}${REASONS[check.reason].short && !HOURLY_START.includes(trip.from) ? "-short" : ""}`);
+  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}${REASONS[check.reason].short && !hourlyStart(trip) ? "-short" : ""}`);
   if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size, draw));
   if (check.reason) return reply(200, quoteBody(trip, ref, check.reason, now, { scope: "class" }), `/book#q-${check.reason}`);
   const price = priceTrip(trip, settings);

@@ -40,7 +40,6 @@ export const PLACES = {
 export const ADDRESS_PLACES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "outside"];
 export const AIRPORT_PLACES = ["jfk", "lga", "ewr", "teb"];
 export const AIRPORT_STATES = { jfk: "NY", lga: "NY", ewr: "NJ", teb: "NJ" };
-export const HOURLY_START = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"];
 export const AIRPORT_FARES = {
   suv: { jfk: 15500, lga: 13701, ewr: 16846, teb: 16846 },
   premium: { jfk: 18650, lga: 15950, ewr: 20269, teb: 20269 },

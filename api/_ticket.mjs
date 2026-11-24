@@ -2,12 +2,13 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { norm, ZONES } from "./_places.mjs";
 import { googleMock } from "./_http.mjs";
 
-export const TICKET = /^v1\.[A-Za-z0-9_-]{20,506}\.[A-Za-z0-9_-]{43}$/;
+export const TICKET = /^v1\.[A-Za-z0-9_-]{20,512}\.[A-Za-z0-9_-]{43}$/;
 export const ROUTE = /^r1\.[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{43}$/;
 export const TICKET_TTL = 21600;
 const INFO = "nlr place ticket v1";
 const SKEW_S = 300;
 const REGION = /^(?:\d{4}|[A-Z]{2})$/;
+const REGIONED = ["outside", "airport-other"];
 
 export function ticketKey() {
   const secret = String(process.env.PLACE_TICKET_SECRET || "").trim();
@@ -41,7 +42,7 @@ export function signTicket(id, zone, label, now, area = 0, region = "") {
   const key = ticketKey();
   if (!key) return "";
   const level = area === 2 ? 2 : area ? 1 : 0;
-  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(level && { a: level }), ...(zone === "outside" && !level && REGION.test(region) && { j: region }) })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ v: 1, id, z: zone, h: labelHash(label), t: Math.floor(Number(now) / 1000), ...(level && { a: level }), ...(REGIONED.includes(zone) && !level && REGION.test(region) && { j: region }) })).toString("base64url");
   const ticket = `v1.${payload}.${mac(key, payload)}`;
   return TICKET.test(ticket) ? ticket : "";
 }
