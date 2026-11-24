@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
-import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS } from "./_copy.mjs";
+import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, SPRINTER_BUSY } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionBusy } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -55,24 +55,25 @@ function rideBody(trip, size, draw) {
   return { ride: { kind: "ok", ...leg(legs.find((item) => !item.back)), ...(back && { back: leg(back) }), ...(map ? { map } : { attribution: "Google Maps" }) } };
 }
 
-function classList(trip, tripReason) {
+function classList(trip, tripReason, now) {
   return Object.keys(CLASSES).map((cls) => {
-    const reason = tripReason || classReason(trip, cls);
+    const reason = tripReason || noticeReason(trip, cls, now) || classReason(trip, cls);
     return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason ? null : classTotal(trip, cls), reason };
   });
 }
 
-function vehicleList(trip) {
+function vehicleList(trip, now) {
   const hourly = trip.trip_type === "hour";
   return Object.keys(VEHICLES)
     .filter((key) => VEHICLES[key].cls === "sprinter" || (hourly && VEHICLES[key].cls === "suv"))
     .map((key) => {
       const priced = { ...trip, class: VEHICLES[key].cls, vehicle: key };
-      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: classReason(priced, priced.class) ? null : priceTrip(priced).total };
+      const late = noticeReason(priced, priced.class, now);
+      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) ? null : priceTrip(priced).total, ...(late && { reason: late }) };
     });
 }
 
-function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null, draw = false } = {}) {
+function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, size = null, draw = false, cause = reason } = {}) {
   const { group, text, google, map, short } = REASONS[reason];
   const hourly = hourlyStart(trip);
   return {
@@ -84,7 +85,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     text: map && draw && googleUp() ? map : google && googleUp() ? google : short && !hourly ? short : text,
     hourly,
     field: ["unplaced", "county", "airport-zip"].includes(reason) ? field : "",
-    classes: classList(trip, scope === "trip" ? reason : ""),
+    classes: classList(trip, scope === "trip" ? cause : "", now),
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
     seat_cents: CHILD_SEAT_CENTS,
@@ -92,6 +93,7 @@ function quoteBody(trip, ref, reason, now, { field = "", scope = "trip", total, 
     large_dog_cents: LARGE_DOG_CENTS,
     stop_cents: STOP_FEE_CENTS,
     earliest: firstSlot(now),
+    sprinter_from: sprinterFrom(now),
     ...(trip.route && { route: trip.route }),
     ...rideBody(trip, size, draw),
     ...contactLinks(trip, ref, total),
@@ -108,8 +110,8 @@ function optionsBody(trip, ref, check, now, size, draw) {
     ref,
     service: serviceOf(chargedTrip(trip)),
     legs: hourly ? 0 : trip.legs.length,
-    classes: classList(trip, ""),
-    vehicles: vehicleList(trip),
+    classes: classList(trip, "", now),
+    vehicles: vehicleList(trip, now),
     tips: TIP_PERCENTS,
     tip_custom: TIP_RANGE,
     meet: trip.meetOffered,
@@ -124,6 +126,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
     pay: Boolean(price) && !check.hold,
     hold: check.hold,
     earliest: firstSlot(now),
+    sprinter_from: sprinterFrom(now),
     ...(trip.route && { route: trip.route }),
     ...rideBody(trip, size, draw),
     ...contactLinks(trip, ref, price ? price.total : undefined),
@@ -158,6 +161,8 @@ function rememberMock(params) {
     amount_total: Number(metadata.total_cents),
     currency: params.get("line_items[0][price_data][currency]"),
     client_reference_id: params.get("client_reference_id"),
+    created: Math.floor(Date.now() / 1000),
+    custom_text: { submit: { message: params.get("custom_text[submit][message]") } },
     metadata,
   });
   while (mockSessions.size > MOCK_LIMIT) mockSessions.delete(mockSessions.keys().next().value);
@@ -181,7 +186,7 @@ function sessionBody(session) {
     total_cents: session.amount_total,
     value_cents: value,
     currency: session.currency || "usd",
-    notes,
+    notes: sessionBusy(session, metadata.class, metadata.pickup_at) ? [SPRINTER_BUSY, ...notes] : notes,
     ...(metadata.short_notice === "1" && { short_notice: true }),
   };
 }
@@ -216,7 +221,9 @@ async function handlePost(request) {
   const trip = await resolveTrip(input, { env: process.env, request, now, map: size });
   const check = checkTrip(trip, now, settings);
   if (check.kind === "invalid") return invalid(check.code);
-  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, check.reason, now, { field: check.field, size, draw }), `/book#q-${check.reason}${REASONS[check.reason].short && !hourlyStart(trip) ? "-short" : ""}`);
+  const late = noticeReason(trip, trip.class, now);
+  if (late && trip.action === "pay") return invalid(late);
+  if (check.kind === "quote") return reply(200, quoteBody(trip, ref, late || check.reason, now, { field: check.field, size, draw, cause: check.reason }), `/book#q-${check.reason}${REASONS[check.reason].short && !hourlyStart(trip) ? "-short" : ""}`);
   if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size, draw));
   if (check.reason) return reply(200, quoteBody(trip, ref, check.reason, now, { scope: "class" }), `/book#q-${check.reason}`);
   const price = priceTrip(trip, settings);

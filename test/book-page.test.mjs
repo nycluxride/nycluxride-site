@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES, SITE_ORIGIN } = await load("_rates.mjs");
+const { CHECKOUT_ORIGINS, MAX_ADVANCE_DAYS, MIN_NOTICE_MINUTES, SPRINTER_NOTICE_HOURS, SPRINTER_BUSY_HOURS, AUTO_LEAD_MINUTES, AUTO_GUARD_MINUTES, AIRPORT_FARES, AIRPORT_TOTALS, MEET_AND_GREET, STOP_FEE_CENTS, VEHICLES, SITE_ORIGIN } = await load("_rates.mjs");
 const { REASONS, ERRORS, NOTES, POLICY } = await load("_copy.mjs");
 
 const CONFIRMED_IDS = ["cf", "cf-h", "cf-test", "cf-refrow", "cf-ref", "cf-copy", "cf-noref", "cf-fail", "cf-retry", "cf-missing", "cf-none", "cf-trip", "cf-route", "cf-rows", "cf-other", "cf-next", "cf-day", "cf-policy", "cf-acts", "cf-ics", "cf-return", "cf-quiet", "cf-gcal", "cf-share", "cf-wa", "cf-print", "cf-receipt", "cf-receipt-h", "cf-lines", "cf-total", "cf-notes", "cf-summary", "cf-help", "cf-home", "cf-status"];
@@ -286,7 +286,7 @@ check("the pay and done scripts carry no comment, hold no price figure, and pay.
 });
 
 check("the pickup that fills in by itself (owner request 2) is the first slot MIN_NOTICE_MINUTES plus AUTO_LEAD_MINUTES ahead, it moves once it is less than MIN_NOTICE_MINUTES plus AUTO_GUARD_MINUTES away, and the scripts hold no NLR- reference (owner request 5)", () => {
-  const slot = SRC.match(/AQ=\(\)=>\{for\(let t=Math\.ceil\(\(Date\.now\(\)\+AO\+([\de.]+)\+([\de.]+)\)\/6e5\)\*6e5/);
+  const slot = SRC.match(/AQ=\(m=([\de.]+)\)=>\{for\(let t=Math\.ceil\(\(Date\.now\(\)\+AO\+m\+([\de.]+)\)\/6e5\)\*6e5/);
   assert.ok(slot, "no auto slot");
   assert.deepEqual([Number(slot[1]), Number(slot[2])], [MIN_NOTICE_MINUTES * 6e4, AUTO_LEAD_MINUTES * 6e4]);
   const guard = SRC.match(/ED\.value\+" "\+ET\.value<ny\(Date\.now\(\)\+AO\+([\de.]+)\+([\de.]+)\)/);
@@ -308,8 +308,45 @@ check("the price box and the confirmation receipt (owner change 2) hold the Taxe
   assert.match(DONE, /y=o&&\(b\.ln\|\|\["Tolls"\]\)\.some\(l=>\/\^Tolls\/\.test\(l\)\)/, "a saved Taxes and fees line never counts as a tolls line");
   for (const s of [SRC, DONE]) assert.doesNotMatch(s, /sales tax|Black Car Fund|airport fees|workers' compensation|next hour|an hour away/i);
   assert.ok(PAY.includes('"short-notice":["Less than 90 minutes away","Change the time"]'));
+  assert.equal(SPRINTER_NOTICE_HOURS * 36e5, 108e5);
+  assert.equal(SPRINTER_BUSY_HOURS * 36e5, 864e5);
+  assert.ok(PAY.includes('S9=y=>y=="sprinter"&&ED.value+" "+ET.value<(SF||ny(Date.now()+AO+108e5+59999))'), "the cards use the server's first Sprinter minute, or SPRINTER_NOTICE_HOURS from the corrected clock before the first answer");
+  assert.ok(PAY.includes(`'<span class="bk-fig">Book ${SPRINTER_NOTICE_HOURS} hours ahead</span>'`));
+  assert.ok(PAY.includes(`"sprinter-notice":["Book a Sprinter ${SPRINTER_NOTICE_HOURS} hours ahead","Change the date"]`));
+  assert.ok(PAY.includes('(e=>e&&(SF=e.date+" "+e.time))(r.sprinter_from)') && PAY.includes('if(r.code=="sprinter-notice")return SU(""),op("options")'));
   assert.ok(PAY.includes('"For a pickup within the next 90 minutes, email or WhatsApp us."'));
   assert.ok(SRC.includes('<p class="bk-cal__note">For a pickup within the next 90 minutes, email or WhatsApp us.</p>'));
+});
+
+check("the child seat limits: each class card carries the limits of CHILD_SEAT_LIMITS, pay.js turns a card off with a short reason for too many child seats, no adult or too many seats with one adult, the selected card shows the request block, the fix picks the first car that fits, and a seat change marks the cards at once", () => {
+  assert.ok(PAY.includes('KR=l=>{let d=l.dataset,s=SN(),a=+PA.value-s;return d.kids==null?"":s>d.kids?"child-seats":a<d.adults?"adult":a==1&&s>d.kids1?"one-adult":""}'));
+  assert.ok(PAY.includes('Kx=(k,l)=>k=="adult"?"Needs an adult":"Fits "+(k=="one-adult"?l.dataset.kids1+" with 1 adult":l.dataset.kids+" child seat"+(l.dataset.kids>1?"s":""))'));
+  assert.ok(PAY.includes('fc=n=>[...F.querySelectorAll("[name=class]")].find(i=>+i.parentNode.dataset.seats>=n&&!S9(i.value)&&!KR(i.parentNode))'));
+  assert.ok(PAY.includes('y?{total_cents:null,reason:y}:c.reason?{}:c}'));
+  assert.ok(PAY.includes('qh=(c,l)=>/^(seats|child-seats|adult|one-adult)$/.test(c.reason)?null:'));
+  assert.ok(PAY.includes('"child-seats":["Too many child seats for this car","Show cars that fit"],adult:["This car needs an adult","Show cars that fit"],"one-adult":["Too many child seats for 1 adult","Show cars that fit"]'));
+  assert.ok(PAY.includes('else if(/^(seats|child-seats|adult|one-adult)$/.test(r)){let x=fc(+PA.value);x&&(x.checked=!0,dc(x))}'));
+  assert.ok(PAY.includes('k?\'<span class="bk-fig">\'+Kx(k,l)+"</span>"'));
+});
+
+check("the two SUVs line: under SPRINTER_BUSY_HOURS the cards line shows while a Sprinter can be booked and the price box line shows for a chosen Sprinter, both on the server corrected clock", () => {
+  assert.ok(PAY.includes('Sb=()=>ED.value&&ET.value&&!S9("sprinter")&&ny(Date.now()+AO+864e5+59999)>ED.value+" "+ET.value'));
+  assert.ok(PAY.includes('pz=()=>{let n=+PA.value,w=N("busy")&&Sb();') && PAY.includes('N("busy")&&(N("busy").hidden=!w)'));
+  assert.ok(PAY.includes('i.dataset.v&&tk(i,"bk-busy",w);'), "each Sprinter card points to the cards line only while it shows");
+  assert.ok(PAY.includes('q.dataset.r=r;$("price-busy")&&($("price-busy").hidden=!(E.class.value=="sprinter"&&Sb()));'), "the price box line follows every answer and every change of car");
+});
+
+check("a Sprinter link with no pickup fills in the first slot 3 hours plus AUTO_LEAD_MINUTES ahead with no auto move, Change the date leaves only the times a Sprinter can be booked on the first Sprinter day, a group no car can seat gets the Sprinter notice, and the bar keeps Email to reserve like every other request", () => {
+  const H = SPRINTER_NOTICE_HOURS * 36e5;
+  assert.ok(PAY.includes(`a1=f=>(f||RS<3)&&!ED.value&&!ET.value&&((QC||E.class?.value)=="sprinter"?(AD=AT=0,am(AQ(${H / 1e5}e5))):(AD=AT=1,am(AQ())))`));
+  assert.ok(PAY.includes('", the earliest time to book "+(AT?"online.":"a Sprinter.")'));
+  assert.ok(PAY.includes('a==ED&&SF&&ab()=="search"&&E.class.value=="sprinter"&&v+" "+o.value<SF'));
+  assert.ok(PAY.includes('let u=()=>{sw("search");T("wait","");ds()}'));
+  assert.ok(PAY.includes('f=="sf"?SF.slice(11)<="23:50"?SF.slice(0,10):nd(SF.slice(0,10))'), "after 11:50 PM the calendar opens on the next day, the first day with a time a Sprinter can take");
+  assert.ok(PAY.includes(`S9(E.class?.value)?"Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.":`));
+  assert.ok(PAY.includes('S8=()=>!fc(+PA.value)&&S9("sprinter")') && PAY.includes('reason:S8()?"sprinter-notice":"seats"') && PAY.includes('CL[c.class]=c.reason=="seats"&&S8()?{...c,reason:"sprinter-notice"}:c') && PAY.includes('r.reason=="seats"&&S8()&&(r.reason="sprinter-notice")'));
+  assert.ok(!SRC.includes("bar-fix") && !SHEETS.includes("bar-fix"));
+  assert.ok(!SHEETS.includes("#q-sprinter-notice.is-on) #bk-bar-mail"), "the bar under the Sprinter notice shows Email to reserve");
 });
 
 check("pay.js, done.js and lux.js store only the booking state in sessionStorage and never use localStorage or cookies", () => {
@@ -354,7 +391,7 @@ check("child seats: pay.js reprices on a change of any seat count, keys the pric
   assert.match(PAY, /b&&\(b\.ariaDisabled!="true"\?\(s\.value=\+s\.value\+\(u\|\|-1\),dc\(s\)\):u&&s!=PA&&\(u=s\.closest\("fieldset"\)\.name,iv\(\{code:u,field:u\}\)\)\)/, "More pressed at the limit shows the message named by the fieldset of the count, child_seats or dogs");
   assert.match(PAY, /SX=mS\(PA,"passengers"\);KX=KS\(\)\.map\(s=>mS\(s,s\.labels\[0\]\.firstChild\.data\.trim\(\)\.toLowerCase\(\)\+"s"\)\);/);
   assert.match(PAY, /x\.setAttribute\("aria-labelledby",\(s\.labels\[0\]\.id=s\.id\+"-l"\)\+\(s==PA\?" bk-pax-h":""\)\);s==PA\|\|x\.setAttribute\(D,s\.getAttribute\(D\)\);s\.before\(x\);/, "a seat count's stepper keeps the hint of its select as its description");
-  assert.match(PAY, /WM2="";V\(\);BK&&sv\(\);uk\(\$\("e-dogs"\)\);uk\(\$\("e-child_seats"\)\);su\(\);n=="passengers"&&\(fs\(\),ps\(\),pz\(\),V\(\),su\(\)\);/);
+  assert.match(PAY, /WM2="";V\(\);BK&&sv\(\);uk\(\$\("e-dogs"\)\);uk\(\$\("e-child_seats"\)\);su\(\);\(n=="passengers"\|\|\/_seats\$\/\.test\(n\)\)&&\(n=="passengers"&&fs\(\),ps\(\),pz\(\),V\(\),su\(\)\);/, "a change of the passengers or of any seat count marks the cards again at once");
   assert.match(PAY, /GO\|\|\(n=>n\.previousElementSibling==DF\|\|n\.before\(KF,DF\)\)\(\$\(c\.details\?"bk-check":"bk-qnotes-f"\)\);/, "the child seats and the pets move together, the pets right after the seats");
   assert.match(PAY, /r\.seat_cents&&T\("bk-kids-p",\(KC=M\(r\.seat_cents\)\)\+" each"\)/);
   assert.match(PAY, /filter\(x=>!\/\^\(Meet\|Gratuity\|Child\|Extra\|Small\|Large\)\/\.test\(x\)\)/);

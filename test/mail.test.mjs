@@ -11,7 +11,7 @@ import { JSDOM } from "jsdom";
 import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc, bookingData } from "../api/_trip.mjs";
 import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
-import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY } from "../api/_copy.mjs";
+import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY, SPRINTER_BUSY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
 import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges, reminderLetter } from "../api/_mail.mjs";
 import { dueLegs } from "../api/_remind.mjs";
@@ -597,6 +597,40 @@ await test("round trip with meet and greet, the sign name, notes and someone els
   const where = [...doc.querySelectorAll("h2")].find((h) => h.textContent === MAIL.where.heading).nextElementSibling;
   assert.deepEqual([where.tagName, where.innerHTML, where.nextElementSibling.innerHTML], ["P", `<strong>Ride out</strong><br>${MAIL.where.insideOther} ${MAIL.day.tracked} ${MAIL.where.landing}`, `<strong>Return ride</strong><br>${MAIL.where.address}`]);
   assert.deepEqual(tripTable(odoc).find(([heading]) => heading === MAIL.ownerTrip)[1][1], ["Trip", "Round trip"]);
+});
+
+await test("a Sprinter booked under SPRINTER_BUSY_HOURS before its pickup tells the rider, and the owner in the copy of the customer email, that two SUVs come if no Sprinter is free, right after the paid and confirmed steps, while a Sprinter booked earlier and an SUV booked late do not", async () => {
+  setEnv();
+  const van = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "8", class: "sprinter", sprinter: "sprinter-executive", tip: "0", rider: "me", ...ME, reach: "phone" });
+  const suv = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "2", class: "suv", tip: "0", rider: "me", ...ME, reach: "phone" });
+  const pickup = Date.parse(van.metadata.pickup_at);
+  assert.equal(van.metadata.pickup_at, "2026-11-12T12:30:00.000Z");
+  const at = (fix, hours) => ({ ...paid(fix), created: Math.floor((pickup - hours * 3600000) / 1000) });
+  const steps = MAIL.steps.map(([label, value]) => `${label}: ${value}`).join("\n");
+  for (const [session, busy, name] of [[at(van, 5), true, "a Sprinter booked 5 hours ahead"], [at(van, 23.9), true, "23.9 hours ahead"], [at(van, 24), false, "exactly 24 hours ahead"], [at(van, 30), false, "30 hours ahead"], [paid(van), false, "no booking time"], [at(suv, 5), false, "an SUV booked 5 hours ahead"]]) {
+    const [customer, owner] = bookingLetters(session, SETTINGS);
+    for (const letter of [customer, owner]) {
+      assert.equal(letter.text.includes(`${steps}\n\n${SPRINTER_BUSY}\n`), busy, `${name} ${letter.kind}`);
+      assert.equal(letter.text.split(SPRINTER_BUSY).length - 1, busy ? 1 : 0, `${name} ${letter.kind}`);
+      assert.equal(letter.html.includes(`>${SPRINTER_BUSY}</p>`), busy, `${name} ${letter.kind}`);
+      checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : undefined);
+    }
+  }
+});
+
+await test("the two SUVs line follows what the Stripe page showed: a Sprinter paid under SPRINTER_BUSY_HOURS ahead on a page with no two SUVs line, as before this release, gets none in either email or on the confirmation page, and one whose page showed it gets it in both", async () => {
+  setEnv({ STRIPE_SECRET_KEY: KEY, STRIPE_WEBHOOK_SECRET: SECRET });
+  const van = await booked({ trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "8", class: "sprinter", sprinter: "sprinter-executive", tip: "0", rider: "me", ...ME, reach: "phone" });
+  const created = Math.floor((Date.parse(van.metadata.pickup_at) - 5 * 3600000) / 1000);
+  const submit = CHECKOUT.submit;
+  for (const [message, busy, name] of [[submit, false, "a page with no two SUVs line"], [`${submit} ${SPRINTER_BUSY}`, true, "a page with the two SUVs line"]]) {
+    const session = paid(van);
+    Object.assign(session, { created, custom_text: { submit: { message } } });
+    for (const letter of bookingLetters(session, SETTINGS)) assert.equal(letter.text.split(SPRINTER_BUSY).length - 1, busy ? 1 : 0, `${name} ${letter.kind}`);
+    const body = await (await lookup(session)).json();
+    assert.equal(body.notes[0] === SPRINTER_BUSY, busy, name);
+    assert.equal(body.notes.filter((n) => n === SPRINTER_BUSY).length, busy ? 1 : 0, name);
+  }
 });
 
 await test("hourly booking: the hours, the vehicle model, the typed gratuity, the hourly note and the hourly meeting wording, for the rider and for someone else", async () => {

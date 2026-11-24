@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-22T22:25:40.123Z",
+  "generatedAt": "2026-11-24T16:15:43.199Z",
   "generator": "scripts/images.mjs",
   "targetWidths": [
     300,
@@ -230,10 +230,10 @@
     "webp": "cwebp -q 80 -m 6 -sharp_yuv -af -pass 10 -quiet {tmp.png} -o {out.webp}"
   },
   "totals": {
-    "masters": 63,
-    "masterBytes": 22214798,
-    "variantCount": 691,
-    "variantBytes": 50900945,
+    "masters": 64,
+    "masterBytes": 22893104,
+    "variantCount": 703,
+    "variantBytes": 51687303,
     "cropCount": 0,
     "cropBytes": 0
   },
@@ -2030,6 +2030,119 @@
       "srcset": {
         "avif": "/fleet/logo-64.avif 64w, /fleet/logo-96.avif 96w, /fleet/logo-128.avif 128w, /fleet/logo-192.avif 192w",
         "webp": "/fleet/logo-64.webp 64w, /fleet/logo-96.webp 96w, /fleet/logo-128.webp 128w, /fleet/logo-192.webp 192w"
+      }
+    },
+    {
+      "slug": "mercedes-e-class",
+      "master": {
+        "path": "fleet/mercedes-e-class.webp",
+        "url": "/fleet/mercedes-e-class.webp",
+        "width": 1600,
+        "height": 1200,
+        "bytes": 678306,
+        "aspectRatio": 1.3333
+      },
+      "variants": [
+        {
+          "path": "fleet/mercedes-e-class-300.avif",
+          "url": "/fleet/mercedes-e-class-300.avif",
+          "format": "avif",
+          "width": 300,
+          "height": 225,
+          "bytes": 10511
+        },
+        {
+          "path": "fleet/mercedes-e-class-300.webp",
+          "url": "/fleet/mercedes-e-class-300.webp",
+          "format": "webp",
+          "width": 300,
+          "height": 225,
+          "bytes": 16322
+        },
+        {
+          "path": "fleet/mercedes-e-class-400.avif",
+          "url": "/fleet/mercedes-e-class-400.avif",
+          "format": "avif",
+          "width": 400,
+          "height": 300,
+          "bytes": 16494
+        },
+        {
+          "path": "fleet/mercedes-e-class-400.webp",
+          "url": "/fleet/mercedes-e-class-400.webp",
+          "format": "webp",
+          "width": 400,
+          "height": 300,
+          "bytes": 25498
+        },
+        {
+          "path": "fleet/mercedes-e-class-600.avif",
+          "url": "/fleet/mercedes-e-class-600.avif",
+          "format": "avif",
+          "width": 600,
+          "height": 450,
+          "bytes": 31285
+        },
+        {
+          "path": "fleet/mercedes-e-class-600.webp",
+          "url": "/fleet/mercedes-e-class-600.webp",
+          "format": "webp",
+          "width": 600,
+          "height": 450,
+          "bytes": 47810
+        },
+        {
+          "path": "fleet/mercedes-e-class-900.avif",
+          "url": "/fleet/mercedes-e-class-900.avif",
+          "format": "avif",
+          "width": 900,
+          "height": 675,
+          "bytes": 58916
+        },
+        {
+          "path": "fleet/mercedes-e-class-900.webp",
+          "url": "/fleet/mercedes-e-class-900.webp",
+          "format": "webp",
+          "width": 900,
+          "height": 675,
+          "bytes": 87748
+        },
+        {
+          "path": "fleet/mercedes-e-class-1100.avif",
+          "url": "/fleet/mercedes-e-class-1100.avif",
+          "format": "avif",
+          "width": 1100,
+          "height": 825,
+          "bytes": 81637
+        },
+        {
+          "path": "fleet/mercedes-e-class-1100.webp",
+          "url": "/fleet/mercedes-e-class-1100.webp",
+          "format": "webp",
+          "width": 1100,
+          "height": 825,
+          "bytes": 118106
+        },
+        {
+          "path": "fleet/mercedes-e-class-1400.avif",
+          "url": "/fleet/mercedes-e-class-1400.avif",
+          "format": "avif",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 118907
+        },
+        {
+          "path": "fleet/mercedes-e-class-1400.webp",
+          "url": "/fleet/mercedes-e-class-1400.webp",
+          "format": "webp",
+          "width": 1400,
+          "height": 1050,
+          "bytes": 173124
+        }
+      ],
+      "srcset": {
+        "avif": "/fleet/mercedes-e-class-300.avif 300w, /fleet/mercedes-e-class-400.avif 400w, /fleet/mercedes-e-class-600.avif 600w, /fleet/mercedes-e-class-900.avif 900w, /fleet/mercedes-e-class-1100.avif 1100w, /fleet/mercedes-e-class-1400.avif 1400w",
+        "webp": "/fleet/mercedes-e-class-300.webp 300w, /fleet/mercedes-e-class-400.webp 400w, /fleet/mercedes-e-class-600.webp 600w, /fleet/mercedes-e-class-900.webp 900w, /fleet/mercedes-e-class-1100.webp 1100w, /fleet/mercedes-e-class-1400.webp 1400w"
       }
     },
     {

@@ -228,7 +228,10 @@ if (rates) {
     assert.ok(answers[0].includes(`Luxury Sprinter from $${far}.`), answers[0]);
     assert.ok(answers[1].includes(`Luxury Sprinter from $${lga}.`), answers[1]);
     const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
-    assert.doesNotMatch(all, /\$\s*(?:500|400|350)(?![\d.])|"price":"(?:500|400|350)"/);
+    const minimum = `$${DISTANCE_RATES["sprinter-executive"].minimum / 100} minimum`;
+    assert.equal(minimum, "$350 minimum");
+    assert.equal(all.split(minimum).length - 1, 1, "the Executive Sprinter's distance minimum appears once, in the distance and time table");
+    assert.doesNotMatch(all.split(minimum).join(" "), /\$\s*(?:500|400|350)(?![\d.])|"price":"(?:500|400|350)"/);
   });
   check(`${RATES}: the retired $85 to $175 range appears nowhere`, () => {
     const all = [rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");

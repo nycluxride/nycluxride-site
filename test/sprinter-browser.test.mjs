@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const { VEHICLES, AIRPORT_TOTALS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const { VEHICLES, AIRPORT_TOTALS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, SPRINTER_NOTICE_HOURS } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const { HEADINGS, REASONS, SPRINTER_BUSY } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET"];
 const SPRINTERS = Object.keys(VEHICLES).filter((key) => VEHICLES[key].cls === "sprinter");
 const DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + 3 * 864e5));
@@ -202,7 +203,7 @@ await check("S4 passengers follow each Sprinter card: above 8 the Luxury Jet, ab
   await pax(page, 14);
   await totalIs(page, total("sprinter-executive", 4));
   await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
-  assert.deepEqual(await cards(page), ["Seats 5", "Seats 5", "Seats 3", "Seats 3", "Seats 3", cash(total("sprinter-executive", 4)), "Seats 8", "Seats 12", cash(total("sprinter-limo", 4)), "Seats 10"]);
+  assert.deepEqual(await cards(page), ["Seats 6", "Seats 6", "Seats 3", "Seats 3", "Seats 3", cash(total("sprinter-executive", 4)), "Seats 8", "Seats 12", cash(total("sprinter-limo", 4)), "Seats 10"]);
   await page.click('label[for="bk-c-sprinter-white-limo"]');
   await page.waitForFunction(() => document.getElementById("bk-bar-q").textContent === "Too small for 14 passengers");
   assert.deepEqual([await page.isVisible("#price"), await page.textContent("#q-fix")], [false, "Show cars for 14"]);
@@ -451,7 +452,7 @@ for (const width of [390, 1440]) {
     assert.ok(await p.isVisible("#luxury-sprinter"));
     const rows = await p.$$eval("#luxury-sprinter tbody tr", (r) => r.map((tr) => [tr.querySelector("th").firstChild.textContent, ...[...tr.querySelectorAll("td")].map((td) => td.firstChild.textContent.trim())]));
     assert.deepEqual(rows, SPRINTERS.map((key) => [VEHICLES[key].name, String(VEHICLES[key].seats), `$${VEHICLES[key].hourly / 100}`, `$${((VEHICLES[key].hourly * 4) / 100).toLocaleString("en-US")}`]));
-    assert.match(await p.textContent("#sprinter-caption"), /4-hour minimum\. Taxes and fees are added at booking\./);
+    assert.match(await p.textContent("#sprinter-caption"), /4-hour minimum\. Book a Sprinter at least 3 hours ahead\. If no Sprinter is free, we send two SUVs\. Taxes and fees are added at booking\./);
     await p.locator("#sprinter-airport").scrollIntoViewIfNeeded();
     assert.ok(await p.isVisible("#sprinter-airport"));
     const NAMES = { jfk: "JFK", ewr: "Newark", teb: "Teterboro", lga: "LaGuardia" };
@@ -536,6 +537,349 @@ await check("S18 at 1440 the Luxury Sprinter pill names the Sprinter its price b
   assert.deepEqual([await picked(p), ...(await choice(p))], [["sprinter", "sprinter-white-limo"], "White Luxury Limo Sprinter", "Luxury Sprinter"]);
   assert.deepEqual(p.errors, []);
   await p.context().close();
+});
+
+const NY_SLOT = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const slotAt = (ms) => {
+  const p = Object.fromEntries(NY_SLOT.formatToParts(new Date(Math.ceil(ms / 6e5) * 6e5)).map(({ type, value }) => [type, value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+};
+const NOTICE_MS = SPRINTER_NOTICE_HOURS * 36e5;
+const CLASS_KEYS = ["suv", "premium", "first", "sedan", "electric"];
+const SOON_MS = 2 * 36e5;
+const soonUrl = (at, extra = "&class=sprinter&sprinter=sprinter-limo") => `/book?pickup=JFK&dropoff=${encodeURIComponent("350 5th Ave, New York, NY 10118")}&date=${at.date}&time=${at.time}${extra}`;
+const notice = (p) => p.evaluate(() => ({
+  cards: [...document.querySelectorAll(".bk-card")].map((l) => [l.firstChild.dataset.v || l.firstChild.value, l.classList.contains("is-small"), (l.querySelector(".bk-card__price .bk-fig") || {}).textContent]),
+  blocks: [...document.querySelectorAll("#quote .bk-q")].filter((e) => e.getClientRects().length).map((e) => [e.id, e.querySelector("h3").textContent, e.querySelector("p").textContent]),
+  shown: ["price", "bk-next", "q-mail", "q-wa", "q-body", "bk-qnotes-f", "q-fix"].map((id) => document.getElementById(id).checkVisibility()),
+  fix: document.getElementById("q-fix").textContent,
+  bar: document.getElementById("bk-bar-q").textContent,
+  wide: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+}));
+async function described(p, sel) {
+  const cdp = await p.context().newCDPSession(p);
+  const { root } = await cdp.send("DOM.getDocument");
+  const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: sel });
+  const { nodes } = await cdp.send("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false });
+  await cdp.detach();
+  return (nodes[0].description || {}).value || "";
+}
+const settled = (p) => p.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk") && !document.getElementById("bk-wait").textContent.startsWith("Finding") && !document.getElementById("price-total").getAttribute("aria-busy"));
+const OFF = SPRINTERS.map((key) => [key, true, "Book 3 hours ahead"]);
+const NOTICE_BLOCK = [["q-sprinter-notice", HEADINGS.sprinter, REASONS["sprinter-notice"].text]];
+const QUIET = [false, false, true, true, true, true, true];
+
+for (const width of [390, 1440]) {
+  await check(`S19 at ${width} a pickup under 3 hours away turns the five Sprinter cards off like a seat limit, dimmed with Book 3 hours ahead in the price, keeps a chosen Sprinter on the vehicle step with Book a Sprinter 3 hours ahead, Change the date and no price or pay button, keeps Email and WhatsApp to reserve, and another car brings the price back`, async () => {
+    const p = await open(soonUrl(slotAt(Date.now() + SOON_MS)), { width, height: 900 });
+    await view(p);
+    await settled(p);
+    const s = await notice(p);
+    assert.deepEqual(s.cards, [...CLASS_KEYS.map((cls) => [cls, false, cash(AIRPORT_TOTALS[cls].jfk)]), ...OFF]);
+    assert.deepEqual([await picked(p), s.blocks, s.shown, s.fix, s.bar, s.wide], [["sprinter", "sprinter-limo"], NOTICE_BLOCK, QUIET, "Change the date", "Book a Sprinter 3 hours ahead", 0]);
+    assert.equal(await p.getByRole("radio", { name: "Limo Sprinter Book 3 hours ahead", exact: true }).count(), 1);
+    assert.deepEqual(await p.$$eval(".bk-card.is-small picture", (x) => x.map((e) => getComputedStyle(e).opacity)), ["0.6", "0.6", "0.6", "0.6"], "the four Sprinter photos dim like a card that is too small, the Presidential has a plain panel");
+    await p.click('label[for="bk-c-suv"]');
+    await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+    const suv = await notice(p);
+    assert.deepEqual([suv.blocks, suv.shown.slice(0, 2), suv.cards.slice(5)], [[], [true, true], OFF]);
+    await p.click('label[for="bk-c-sprinter-executive"]');
+    await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+    await settled(p);
+    const back = await notice(p);
+    assert.deepEqual([await picked(p), back.blocks, back.shown], [["sprinter", "sprinter-executive"], NOTICE_BLOCK, QUIET]);
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+  });
+}
+
+await check("S20 with the pickup under 3 hours away, more passengers than a car seats no longer moves the rider into a Sprinter that is off: a Sedan picked for 4 passengers asks for a larger car that is on, and at 7 passengers, which only a Sprinter seats, the SUV stays chosen with the Sprinter notice instead of the seat block, Email and WhatsApp to reserve stay, and Change the date moves the group into a Sprinter", async () => {
+  const p = await open(soonUrl(slotAt(Date.now() + SOON_MS), ""));
+  await view(p);
+  await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+  await pax(p, 4);
+  await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+  await p.click('label[for="bk-c-sedan"]');
+  await p.waitForSelector("#q-seats", { state: "visible" });
+  assert.deepEqual([await picked(p), await p.textContent("#q-fix")], [["sedan", ""], "Show cars for 4"]);
+  await p.click('label[for="bk-c-suv"]');
+  await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+  await pax(p, 7);
+  await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+  assert.deepEqual(await picked(p), ["suv", ""]);
+  assert.doesNotMatch(await p.textContent("#bk-wait"), /Changed to/);
+  await settled(p);
+  const seven = await notice(p);
+  assert.deepEqual([await p.isVisible("#q-seats"), seven.blocks, seven.shown, seven.fix, seven.bar, seven.cards.slice(5)], [false, NOTICE_BLOCK, QUIET, "Change the date", "Book a Sprinter 3 hours ahead", OFF], "no car seats 7 under 3 hours, so the rider is told to book a Sprinter 3 hours ahead");
+  await p.click("#q-fix");
+  await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+  assert.deepEqual(await picked(p), ["sprinter", "sprinter-executive"], "Change the date moves the 7 passengers into the first Sprinter that seats them");
+  assert.deepEqual(p.errors, []);
+  await p.context().close();
+});
+
+await check("S21 Change the date opens the calendar on the first day a Sprinter can be booked, and a pickup moved past 3 hours brings the five Sprinter cards back with their prices and the chosen Sprinter's total", async () => {
+  const p = await open(soonUrl(slotAt(Date.now() + SOON_MS)));
+  await view(p);
+  await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+  const first = await p.evaluate(() => fetch("/api/book", { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ trip_type: "one", from_text: "JFK", from_id: "jfk", to_text: "350 5th Ave, New York, NY 10118", date: "2030-01-01", time: "12:00", passengers: "1", class: "suv", action: "options" }) }).then((r) => r.json()).then((b) => (b.sprinter_from.time <= "23:50" ? b.sprinter_from.date : new Date(Date.parse(b.sprinter_from.date) + 864e5).toISOString().slice(0, 10))));
+  await p.click("#q-fix");
+  await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+  await p.waitForFunction((d) => document.activeElement.dataset.day === d, first);
+  await p.click(`#bk-cal [data-day="${DATE}"]`);
+  await p.selectOption("#bk-time", "12:40", { force: true });
+  await view(p);
+  await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].jfk);
+  await settled(p);
+  const s = await notice(p);
+  assert.deepEqual([s.cards.slice(5), s.blocks, s.shown.slice(0, 2)], [SPRINTERS.map((key) => [key, false, cash(AIRPORT_TOTALS[key].jfk)]), [], [true, true]]);
+  assert.deepEqual(p.errors, []);
+  await p.context().close();
+});
+
+await check("S22 the 3 hours are counted by the server clock: a pickup 20 minutes short of 3 hours is off and one just past 3 hours is priced, by the hour too, and a browser clock two days slow changes nothing", async () => {
+  for (const [ms, off] of [[Date.now() + NOTICE_MS - 20 * 6e4, true], [Date.now() + NOTICE_MS + 6e4, false]]) {
+    const p = await open(soonUrl(slotAt(ms)));
+    await view(p);
+    await settled(p);
+    if (!off) await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].jfk);
+    const s = await notice(p);
+    assert.deepEqual([s.cards.slice(5).map((c) => c[1]), s.blocks.length, s.shown[0]], [SPRINTERS.map(() => off), off ? 1 : 0, !off], String(off));
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+  }
+  const at = slotAt(Date.now() + SOON_MS);
+  const hourly = await open(`/book?trip-type=hour&hours=4&class=sprinter&sprinter=sprinter-white-limo&pickup=${encodeURIComponent("277 Bedford Ave, Brooklyn, NY 11211")}&date=${at.date}&time=${at.time}`);
+  await view(hourly);
+  await settled(hourly);
+  const h = await notice(hourly);
+  assert.deepEqual([h.cards.slice(5), h.blocks], [OFF, NOTICE_BLOCK]);
+  assert.deepEqual(hourly.errors, []);
+  await hourly.context().close();
+  const slow = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  await slow.route((url) => !url.href.startsWith(G.base), (route) => route.fulfill({ status: 204, body: "" }));
+  await slow.addInitScript(() => { const real = Date.now; Date.now = () => real() - 2 * 864e5; });
+  const p = await slow.newPage();
+  p.setDefaultTimeout(8000);
+  await p.goto(`${G.base}${soonUrl(at)}`, { waitUntil: "load" });
+  await view(p);
+  await settled(p);
+  const s = await notice(p);
+  assert.deepEqual([s.cards.slice(5), s.blocks], [OFF, NOTICE_BLOCK]);
+  await slow.close();
+});
+
+await check("S23 the server has the last word: answers rewritten to price a Sprinter 2 hours away let the rider reach the pay button, the pay post is refused and the rider lands back on the vehicles with the notice, and a saved trip whose pickup is now under 3 hours away reopens on the vehicles, not on the details", async () => {
+  const at = slotAt(Date.now() + SOON_MS);
+  const p = await open(soonUrl(at));
+  let rewrite = true;
+  const paid = [];
+  await p.route("**/api/book", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    if (body.action === "pay") paid.push(body.date);
+    if (!rewrite || body.action === "pay") return route.continue();
+    return route.continue({ postData: JSON.stringify({ ...body, date: DATE, time: "12:40" }) });
+  });
+  await view(p);
+  await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].jfk);
+  await p.click("#bk-next");
+  await stepIs(p, "details");
+  await p.fill("#bk-name", "Ana Lopez");
+  await p.fill("#bk-email", "ana.lopez@example.com");
+  await p.fill("#bk-phone", "212 555 0100");
+  rewrite = false;
+  await p.click("#bk-submit");
+  await stepIs(p, "options");
+  await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+  await settled(p);
+  assert.deepEqual([paid, p.url().includes("booking-confirmed"), (await notice(p)).cards.slice(5), await p.textContent("#bk-status")], [[at.date], false, OFF, ""], "the status no longer says the payment page is opening");
+  await p.unroute("**/api/book");
+  const s = await open(soonUrl({ date: DATE, time: "12:40" }));
+  await view(s);
+  await totalIs(s, AIRPORT_TOTALS["sprinter-limo"].jfk);
+  await s.click("#bk-next");
+  await stepIs(s, "details");
+  const saved = await s.evaluate((t) => { const b = JSON.parse(sessionStorage.getItem("nlr-book")); b.fields = { ...b.fields, date: t.date, time: t.time }; return JSON.stringify(b); }, at);
+  await s.context().addInitScript((v) => sessionStorage.setItem("nlr-book", v), saved);
+  await s.reload({ waitUntil: "load" });
+  await stepIs(s, "options");
+  await s.waitForSelector("#q-sprinter-notice", { state: "visible" });
+  assert.deepEqual([await picked(s), await s.isVisible("#bk-submit"), await s.isVisible("#bk-next")], [["sprinter", "sprinter-limo"], false, false]);
+  assert.deepEqual([...p.errors, ...s.errors].filter((e) => !/422/.test(e)), []);
+  await p.context().close();
+  await s.context().close();
+});
+
+await check("S25 Change the date then Enter on the first Sprinter day leaves only the times from the server's first Sprinter minute, clears a pickup time a Sprinter can't take and says so under the time, and the first time left prices every Sprinter, also when the pickup is already on that day, and another car brings every time back", async () => {
+  for (const hours of [1.75, 2.5]) {
+    const p = await open(soonUrl(slotAt(Date.now() + hours * 36e5)));
+    await view(p);
+    await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+    await settled(p);
+    await p.click("#q-fix");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+    const from = await p.evaluate(() => ({ date: SF.slice(0, 10), time: SF.slice(11) }));
+    const day = from.time <= "23:50" ? from.date : new Date(Date.parse(from.date) + 864e5).toISOString().slice(0, 10);
+    await p.waitForFunction((d) => document.activeElement.dataset.day === d, day);
+    await p.keyboard.press("Enter");
+    await p.waitForFunction((d) => document.getElementById("bk-date").value === d, day);
+    const t = await p.evaluate(() => ({ value: document.getElementById("bk-time").value, open: [...document.getElementById("bk-time").options].filter((o) => o.value && !o.disabled).map((o) => o.value), hint: document.getElementById("bk-time-h").hidden ? "" : document.getElementById("bk-time-h").textContent }));
+    if (day === from.date) assert.ok(t.open.length && t.open.every((v) => v >= from.time), JSON.stringify([t.open[0], from]));
+    assert.ok(t.value === "" || `${day} ${t.value}` >= `${from.date} ${from.time}`, JSON.stringify([t.value, from]));
+    if (t.value === "") {
+      assert.equal(t.hint, `Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.`);
+      await p.selectOption("#bk-time", t.open[0], { force: true });
+    }
+    await view(p);
+    await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].jfk);
+    await settled(p);
+    const s = await notice(p);
+    assert.deepEqual([s.cards.slice(5), s.blocks, s.shown.slice(0, 2)], [SPRINTERS.map((key) => [key, false, cash(AIRPORT_TOTALS[key].jfk)]), [], [true, true]], String(hours));
+    if (hours === 2.5) {
+      await p.click('label[for="bk-c-suv"]');
+      await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+      await p.click("#bk-edit");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+      const earliest = await p.evaluate(() => fetch("/api/book", { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ trip_type: "one", from_text: "JFK", from_id: "jfk", to_text: "350 5th Ave, New York, NY 10118", date: "2030-01-01", time: "12:00", passengers: "1", class: "suv", action: "options" }) }).then((r) => r.json()).then((b) => b.earliest));
+      const off = await p.$$eval("#bk-time option", (o) => o.filter((x) => x.value && x.disabled).map((x) => x.value));
+      assert.ok(off.every((v) => `${day} ${v}` < `${earliest.date} ${earliest.time}`), `an SUV on that day can take any time from the 90 minute online cutoff: ${JSON.stringify([off.at(-1), earliest])}`);
+      const all = await p.$$eval("#bk-time option", (o) => o.filter((x) => x.value).length);
+      assert.ok(off.length < all - t.open.length, "the times a Sprinter can't take are back for the SUV");
+    }
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+  }
+});
+
+await check("S29 with the server clock at 9:30 PM the first Sprinter minute is 12:30 AM the next day, so Change the date leaves none of the pickup day's times for a Sprinter, 11:30 PM included, and the next day opens from 12:30 AM", async () => {
+  const at = slotAt(Date.now() + SOON_MS);
+  const next = new Date(Date.parse(at.date) + 864e5).toISOString().slice(0, 10);
+  const p = await open(soonUrl(at));
+  await p.route("**/api/book", async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    if (body.sprinter_from) body.sprinter_from = { date: next, time: "00:30" };
+    await route.fulfill({ response: res, json: body });
+  });
+  await view(p);
+  await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+  await settled(p);
+  await p.click("#q-fix");
+  await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+  await p.waitForFunction((d) => document.activeElement.dataset.day === d, next);
+  const times = () => p.evaluate(() => ({ date: document.getElementById("bk-date").value, value: document.getElementById("bk-time").value, open: [...document.getElementById("bk-time").options].filter((o) => o.value && !o.disabled).map((o) => o.value), late: document.querySelector('#bk-time option[value="23:30"]').disabled }));
+  assert.deepEqual(await times(), { date: at.date, value: "", open: [], late: true });
+  await p.keyboard.press("Enter");
+  await p.waitForFunction((d) => document.getElementById("bk-date").value === d, next);
+  const t = await times();
+  assert.deepEqual([t.open[0], t.open.every((v) => v >= "00:30"), t.late], ["00:30", true, false]);
+  assert.deepEqual(p.errors, []);
+  await p.context().close();
+});
+
+await check("S26 a Sprinter Book link with no pickup time fills in a pickup at least 3 hours ahead by the server clock, so the Sprinter it names is priced with no notice, one way and by the hour", async () => {
+  for (const [path, key, cents] of [[`/book?pickup=JFK&dropoff=${encodeURIComponent("350 5th Ave, New York, NY 10118")}&class=sprinter&sprinter=sprinter-limo`, "sprinter-limo", AIRPORT_TOTALS["sprinter-limo"].jfk], [`/book?trip-type=hour&hours=4&class=sprinter&sprinter=sprinter-luxury-jet&pickup=${encodeURIComponent("277 Bedford Ave, Brooklyn, NY 11211")}`, "sprinter-luxury-jet", total("sprinter-luxury-jet", 4)]]) {
+    const p = await open(path);
+    const when = await p.evaluate(() => [document.getElementById("bk-date").value, document.getElementById("bk-time").value]);
+    await view(p);
+    await totalIs(p, cents);
+    await settled(p);
+    const from = await p.evaluate(() => SF);
+    assert.ok(when.join(" ") >= from, JSON.stringify([when, from]));
+    const s = await notice(p);
+    assert.deepEqual([await picked(p), s.blocks, s.shown.slice(0, 2), s.cards.slice(5).map((c) => c[1])], [["sprinter", key], [], [true, true], SPRINTERS.map(() => false)]);
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+  }
+});
+
+await check("S27 at 320 and 390 the bar under the cards keeps Email to reserve with the trip while the Sprinter notice is on, like every other request, with its line readable and no sideways scroll, it goes back to the price bar once another car is chosen, and Change the date in the notice opens the calendar on the first Sprinter day", async () => {
+  for (const width of [320, 390]) {
+    const p = await open(soonUrl(slotAt(Date.now() + SOON_MS)), { width, height: 800 });
+    await view(p);
+    await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+    await settled(p);
+    await p.evaluate(() => scrollTo(0, 0));
+    await p.waitForSelector("#bk-bar-mail", { state: "visible" });
+    const bar = () => p.evaluate(() => {
+      const r = document.getElementById("bk-bar-mail").getBoundingClientRect(), q = document.getElementById("bk-bar-q").getBoundingClientRect();
+      return [document.getElementById("bk-bar").classList.contains("is-q"), document.getElementById("bk-bar-q").textContent, document.getElementById("bk-bar-mail").textContent, r.bottom <= innerHeight, r.right <= innerWidth, r.height >= 44, q.width >= 100, document.getElementById("bk-bar-mail").getAttribute("href") === document.getElementById("q-mail").getAttribute("href"), [...document.querySelectorAll("#bk-bar button")].filter((b) => b.checkVisibility()).length, document.documentElement.scrollWidth - document.documentElement.clientWidth];
+    });
+    assert.deepEqual(await bar(), [true, "Book a Sprinter 3 hours ahead", "Email to reserve", true, true, true, true, true, 0, 0], String(width));
+    assert.match(decodeURIComponent(await p.getAttribute("#bk-bar-mail", "href")), /Limo Sprinter/, "the email carries the trip with its Sprinter");
+    await p.click('label[for="bk-c-suv"]');
+    await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+    assert.deepEqual([await p.isHidden("#bk-bar-mail"), await p.evaluate(() => document.getElementById("bk-bar").classList.contains("is-q"))], [true, false]);
+    await p.click('label[for="bk-c-sprinter-limo"]');
+    await p.waitForSelector("#q-sprinter-notice", { state: "visible" });
+    await settled(p);
+    await p.click("#q-fix");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
+    await p.waitForFunction(() => document.activeElement.dataset.day === (SF.slice(11) <= "23:50" ? SF.slice(0, 10) : new Date(Date.parse(SF.slice(0, 10)) + 864e5).toISOString().slice(0, 10)));
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+  }
+});
+
+for (const width of [390, 1440]) {
+  await check(`S28 at ${width} a Sprinter pickup under 24 hours away shows the two SUVs line once above the Sprinter cards and once in the price box of a chosen Sprinter, both priced, the price box line goes with another car, and neither line shows 25 hours away or under the 3 hour notice`, async () => {
+    const busy = (p) => p.evaluate(() => ["bk-busy", "price-busy"].map((id) => { const e = document.getElementById(id); return [e.checkVisibility(), e.textContent]; }).concat([[document.documentElement.scrollWidth - document.documentElement.clientWidth, document.getElementById("bk-busy").nextElementSibling.htmlFor]]));
+    const p = await open(soonUrl(slotAt(Date.now() + 5 * 36e5)), { width, height: 900 });
+    await view(p);
+    await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].jfk);
+    await settled(p);
+    assert.deepEqual(await busy(p), [[true, SPRINTER_BUSY], [true, SPRINTER_BUSY], [0, "bk-c-sprinter-executive"]]);
+    assert.deepEqual((await notice(p)).cards.slice(5), SPRINTERS.map((key) => [key, false, cash(AIRPORT_TOTALS[key].jfk)]), "the Sprinters 5 hours away are priced");
+    assert.equal(SPRINTER_BUSY, "Due to high demand, if no Sprinter is free, we send two SUVs.");
+    for (const key of SPRINTERS) assert.ok((await described(p, `#bk-c-${key}`)).startsWith(`${SPRINTER_BUSY} `), `a screen reader hears the two SUVs line on the ${key} card`);
+    await p.click('label[for="bk-c-suv"]');
+    await totalIs(p, AIRPORT_TOTALS.suv.jfk);
+    assert.deepEqual((await busy(p)).map((x) => x[0]), [true, false, 0], "an SUV keeps the line above the Sprinter cards and drops it from the price box");
+    await p.click('label[for="bk-c-sprinter-white-limo"]');
+    await totalIs(p, AIRPORT_TOTALS["sprinter-white-limo"].jfk);
+    assert.deepEqual((await busy(p)).map((x) => x[0]), [true, true, 0]);
+    assert.deepEqual(p.errors, []);
+    await p.context().close();
+    for (const [hours, why] of [[25, "25 hours away"], [2, "under the 3 hour notice"]]) {
+      const q = await open(soonUrl(slotAt(Date.now() + hours * 36e5)), { width, height: 900 });
+      await view(q);
+      if (hours === 25) await totalIs(q, AIRPORT_TOTALS["sprinter-limo"].jfk);
+      else await q.waitForSelector("#q-sprinter-notice", { state: "visible" });
+      await settled(q);
+      assert.deepEqual((await busy(q)).map((x) => x[0]), [false, false, 0], why);
+      assert.ok(!(await described(q, "#bk-c-sprinter-limo")).includes(SPRINTER_BUSY), why);
+      assert.deepEqual(q.errors, []);
+      await q.context().close();
+    }
+  });
+}
+
+await check("S24 without javascript a Sprinter under 3 hours away posts to the server and lands on the Sprinter notice message under the vehicle cards, and the same trip in an SUV goes on to payment", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false, reducedMotion: "reduce" });
+  await ctx.route((url) => !url.href.startsWith(G.base), (route) => route.fulfill({ status: 204, body: "" }));
+  const at = slotAt(Date.now() + SOON_MS);
+  for (const [cls, want] of [["sprinter", /#e-sprinter-notice$/], ["suv", /\/booking-confirmed\?session_id=cs_mock_/]]) {
+    const p = await ctx.newPage();
+    p.setDefaultTimeout(8000);
+    await p.goto(`${G.base}/book`, { waitUntil: "load" });
+    await p.fill("#bk-from", "John F. Kennedy (JFK), Terminal 4");
+    await p.fill("#bk-to", "350 5th Ave, New York, NY 10118");
+    await p.fill("#bk-date", at.date);
+    await p.selectOption("#bk-time", at.time);
+    await p.check(cls === "sprinter" ? "#bk-c-sprinter" : "#bk-c-suv");
+    if (cls === "sprinter") await p.selectOption("#bk-sprinter", "sprinter-limo");
+    await p.fill("#bk-name", "Ana Lopez");
+    await p.fill("#bk-email", "ana.lopez@example.com");
+    await p.fill("#bk-phone", "212 555 0100");
+    await Promise.all([p.waitForURL(want), p.click("#bk-submit")]);
+    if (cls === "sprinter") {
+      assert.deepEqual([await p.isVisible("#e-sprinter-notice"), (await p.textContent("#e-sprinter-notice")).trim()], [true, "Book a Sprinter at least 3 hours ahead. Choose a later pickup or another car, or send us the trip."]);
+      assert.deepEqual([await p.isVisible("#q-mail"), await p.isVisible("#q-wa")], [true, true], "Email and WhatsApp to reserve stay on the page");
+      assert.ok(await p.evaluate(() => document.getElementById("bk-cards").contains(document.getElementById("e-sprinter-notice"))));
+    }
+    await p.close();
+  }
+  await ctx.close();
 });
 
 await page.context().close();

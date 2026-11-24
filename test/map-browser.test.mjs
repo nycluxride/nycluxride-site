@@ -909,8 +909,8 @@ await check("M27 a New Jersey address to JFK: the caption reads 25.0 miles, abou
   const n = await p.evaluate(() => ({ text: document.getElementById("bk-route-n").textContent, attr: getComputedStyle(document.querySelector("#bk-route-n .bk-attr")).visibility }));
   assert.deepEqual([n.text, n.attr], ["25.0 miles, about 45 min by car. Google Maps", "hidden"]);
   const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
-  assert.deepEqual(cards, [...["suv", "premium", "first", "sedan", "electric", "sprinter"].map((c) => cash(priceRide(rateKey(c), { tenths: 250, minutes: 45 }, ["jfk"], "0").total)), ...Array(4).fill("Price on request")]);
-  assert.deepEqual(cards, ["$167.95", "$204.24", "$273.51", "$144.69", "$153.89", "$402.33", ...Array(4).fill("Price on request")], "New Jersey to JFK carries no New York sales tax, and the Sprinters with no rate by distance send a price");
+  assert.deepEqual(cards, [...["suv", "premium", "first", "sedan", "electric"].map((c) => cash(priceRide(rateKey(c), { tenths: 250, minutes: 45 }, ["jfk"], "0").total)), ...Array(5).fill("Book 3 hours ahead")], "the pickup that filled in by itself is under 3 hours away, so the Sprinters are off");
+  assert.deepEqual(cards, ["$167.95", "$204.24", "$273.51", "$144.69", "$153.89", ...Array(5).fill("Book 3 hours ahead")], "New Jersey to JFK carries no New York sales tax, and the Sprinters need 3 hours");
   assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("#price-lines th")].some((t) => t.textContent === "Tolls"))));
   const [value, shifts] = await cls(p);
   assert.equal(value, 0, shifts.join(" | "));
@@ -1464,7 +1464,7 @@ for (const phone of [true, false]) {
     assert.deepEqual([...readRoute(body.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[4000, 420]]);
     assert.equal(routes(ctx).length, 1, "no second route request");
     const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
-    assert.deepEqual(cards, [...["suv", "premium", "first", "sedan", "electric", "sprinter"].map((c) => cash(priceRide(rateKey(c), { tenths: 4000, minutes: 420 }, [], "0").total)), ...Array(4).fill("Price on request")]);
+    assert.deepEqual(cards, [...["suv", "premium", "first", "sedan", "electric"].map((c) => cash(priceRide(rateKey(c), { tenths: 4000, minutes: 420 }, [], "0").total)), ...Array(5).fill("Book 3 hours ahead")], "the pickup that filled in by itself is under 3 hours away, so the Sprinters are off");
     assert.deepEqual(cards.slice(0, 5), ["$1,950.93", "$2,332.32", "$2,589.99", "$1,467.29", "$1,555.29"], "New Jersey to Niagara Falls carries no New York sales tax");
     await p.waitForTimeout(300);
     const [value, shifts] = await cls(p);

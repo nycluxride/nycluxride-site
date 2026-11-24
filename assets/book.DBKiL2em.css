@@ -384,7 +384,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk.is-js #bk-bags>.field{flex-wrap:nowrap}
 .bk-bags>p{order:1}
 @media (min-width:600px) and (max-width:1023px){.bk.is-js #bk-bags{max-width:21rem}}
-.bk-cards>#bk-bagfit{grid-column:1/-1;justify-self:stretch;margin:0}
+.bk-cards>:is(#bk-bagfit,#bk-busy){grid-column:1/-1;justify-self:stretch;margin:0}
 @media (min-width:1024px){#bk-bags-h{text-align:end}@container opts (min-width:46rem){.bk.is-js #bk-pax-h{grid-area:2/2;align-self:start;justify-self:end;max-width:13rem;margin:-12px 0 0;text-wrap:balance}.bk.is-js #bk-bags{grid-row:2;display:grid;grid-template-columns:auto auto auto 1fr;column-gap:24px;margin:-12px 0 -8px}.bk.is-js #bk-bags>.field{grid-row:1/3;flex-direction:column;align-items:start;gap:2px}#bk-bags-h{grid-area:2/4;margin:0}#e-bags{grid-column:1/-1}#bk-bagfit{grid-column:1/-1;justify-self:end}}}
 #bk-incl-h{margin-top:16px}
 #bk-reach{align-self:start}
@@ -467,6 +467,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk-q p{margin-top:8px;color:var(--ink-2)}
 #q-edit,#q-retry{margin-top:12px;justify-self:start}
 #q-fix{justify-self:start}
+#price-busy{margin:12px 0 0}
 #bk-go>.btn{width:100%}
 .bk-act:not(:has(.bk-q:target,.bk-q.is-on))>#q-body,html:has(.bk-page .bk) :is(.site-header__desk,.site-header__lines,.actionbar),html:has(.bk-page .bk[data-step$=s]) .site-nav,.bk.is-js .field:has(>.bk-stepper)>select,.bk.is-js .field:has(>.bk-stepper)::after,.bk:has(#bk-r-other:checked) #bk-phone-h>span:not(.bk-cc-h),.bk .field:has(>.bk-e.is-on)>.field__hint:not(.bk-e,.bk-js-only),.bk.is-js #bk-det:has(#bk-notes-f.is-open) #bk-notes-add,.bk:has(#price[hidden]) #bk-tot,.bk[data-step=details] :is(.bk-map,.bk-drive),.bk:has(#bk-route:not([hidden]))>.bk-drive,.bk:has(.bk-q:is(.is-on,:target)) #bk-next3,.bk:not(.is-js) .bk-quote:has(:is(#q-short-notice,#q-far-ahead,#q-paused,#q-clock-change):target)~.bk-go #bk-submit,html:has(.bk-conf) :is(.site-header__desk .btn,.actionbar__cell--book){display:none}
 .bk-tip:disabled{opacity:.55}

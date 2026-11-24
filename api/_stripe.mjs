@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
-import { CHECKOUT, LABELS, POLICY } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText } from "./_trip.mjs";
+import { CHECKOUT, LABELS, POLICY, SPRINTER_BUSY } from "./_copy.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText, sprinterBusy } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -197,7 +197,8 @@ export function sessionParams(input, price, ref, settings, now, origin) {
   const afterSubmit = [TLC_BASE_LICENSE ? fill(CHECKOUT.license, { license: TLC_BASE_LICENSE }) : "", fill(CHECKOUT.afterSubmit, { ref })].filter(Boolean).join(" ");
   const metadata = metadataFor(trip, price, ref);
   const expires = Math.floor(Number(now) / 1000) + EXPIRES_AFTER_S;
-  const short = nycToUtc(trip.date, trip.time).getTime() < (expires + PAID_NOTICE_MINUTES * 60) * 1000;
+  const pickup = nycToUtc(trip.date, trip.time).getTime();
+  const short = pickup < (expires + PAID_NOTICE_MINUTES * 60) * 1000;
   if (short) metadata.short_notice = "1";
   return encodeForm({
     mode: "payment",
@@ -212,7 +213,7 @@ export function sessionParams(input, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: submitText(trip, hourly) },
+      submit: { message: sprinterBusy(trip.class, pickup, now) ? `${submitText(trip, hourly)} ${SPRINTER_BUSY}` : submitText(trip, hourly) },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,

@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
-import { CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS } from "../api/_rates.mjs";
+import { CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, CLASSES } from "../api/_rates.mjs";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const BASELINE = JSON.parse(readFileSync(join(ROOT, "test/fixtures/seo-baseline.json"), "utf8")).pages;
@@ -378,6 +378,7 @@ const FREE = ["Free waiting", "45 minutes after a domestic landing, 60 after an 
 const HOUR = ["By the hour", "Any class, with a 3-hour minimum, or 4 hours in a Sprinter."];
 const CHILD = ["Child seats", `Child, infant and booster seats, ${SEAT}, charged at booking.`];
 const AHEAD = ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."];
+const AHEAD_SPRINTER = [AHEAD[0], `${AHEAD[1]} Book a Sprinter at least 3 hours ahead. If no Sprinter is free, we send two SUVs.`];
 const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
 const IN_AREA = { "midtown-manhattan": "in Midtown", manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
 const RAILS = {};
@@ -385,7 +386,7 @@ for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.htm
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
 RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees and any taxes included."];
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
-RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 14 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Book and pay online, with a 4-hour minimum."], ["No smoking", "In any of our vehicles."], AHEAD];
+RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 14 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Book and pay online, with a 4-hour minimum."], ["No smoking", "In any of our vehicles."], AHEAD_SPRINTER];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
 const DISTANCE = ["Your price", "Priced by distance and time. You see the total before you pay."];
 const DOGS = ["Dogs", "Small and large dogs, charged once per booking. Service animals ride free."];
@@ -411,9 +412,9 @@ RAILS["long-distance-car-service/nyc-to-connecticut.html"] = [["Distance", "Abou
 RAILS["pet-friendly-car-service-nyc.html"] = [["Dogs", "Up to 3 small and 3 large dogs on one booking, in any class."], ["Dog price", `${DOG_PRICE}, charged once per booking.`], ["Service animals", "Free on every trip, as the law requires."], CHILD, AHEAD];
 RAILS["private-jet-car-service-nyc.html"] = [["Airfields", "Six private airfields around New York"], ["Teterboro price", PRICE("New York City address")[1]], ["Other airfields", "For these airports, we'll send you a price."], ["For a passenger", "Add their name and mobile number, and the receipt comes to you."], CHILD, AHEAD];
 RAILS["roadshow-transportation-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Where it starts", "Any address in the five boroughs, JFK or LaGuardia."], ["Between meetings", "The same car and chauffeur stay with you all day."], ["Accounts", "Monthly billing for companies that book often."], AHEAD];
-RAILS["sprinter-van-service-nyc.html"] = [["Seats", "Up to 14 passengers in one van."], ["Bags", "10 large and 2 small bags."], DISTANCE, ["By the hour", "A Sprinter by the hour has a 4-hour minimum."], AHEAD];
+RAILS["sprinter-van-service-nyc.html"] = [["Seats", "Up to 14 passengers in one van."], ["Bags", "10 large and 2 small bags."], DISTANCE, ["By the hour", "A Sprinter by the hour has a 4-hour minimum."], ["Booking ahead", "Book a Sprinter at least 3 hours ahead. If no Sprinter is free, we send two SUVs."]];
 RAILS["cruise-terminal-car-service-nyc.html"] = [["Terminals", "Manhattan, Brooklyn and Cape Liberty in Bayonne."], DISTANCE, ["Pier to airport", PRICE("New York City address")[1]], CHILD, AHEAD];
-RAILS["wedding-car-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Wedding party", "Up to 14 guests in one Luxury Sprinter."], ["Outside the city", DISTANCE[1]], CHILD, AHEAD];
+RAILS["wedding-car-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Wedding party", "Up to 14 guests in one Luxury Sprinter."], ["Outside the city", DISTANCE[1]], CHILD, AHEAD_SPRINTER];
 RAILS["car-service-with-car-seat-nyc.html"] = [CHILD, ["How to ask", "Choose the seats when you book online, or tell us by phone, email or WhatsApp."], ["Passengers", "Count children and infants as passengers."], PRICE("New York City address"), FREE];
 
 for (const [file, rows] of Object.entries(RAILS)) {
@@ -820,6 +821,36 @@ check("about.html: the vehicle count in At a glance equals the vehicles listed o
   const fleet = read("fleet.html").document.querySelectorAll("h3.fleet-card__name").length;
   const dt = [...read("about.html").document.querySelectorAll("dt")].find((d) => d.textContent.trim() === "Vehicles");
   assert.deepEqual([fleet, dt.nextElementSibling.textContent.trim()], [13, "13"]);
+});
+
+const SUV_SEATS = CLASSES.suv.seats;
+const PAGE_FILES = (dir = "") => readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (["test", "node_modules", "assets", "fleet", "scripts", "api"].includes(e.name) || e.name.startsWith(".") ? [] : PAGE_FILES(join(dir, e.name))) : e.name.endsWith(".html") ? [join(dir, e.name)] : []));
+const pageText = (html) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&nbsp;|\s+/g, " ");
+
+check(`every page and its structured data seats ${SUV_SEATS} in a Business SUV or Business Premium SUV, as CLASSES says, and no sentence still gives an SUV 5 seats`, () => {
+  assert.deepEqual([CLASSES.suv.seats, CLASSES.premium.seats], [6, 6]);
+  const SUV = /\b(SUVs?|Escalade|Suburban|Denali|Navigator)\b/;
+  const FIVE = [/\b(seats?|takes?|carr(y|ies)|holds?|fits?|room for|up to)\s+(up to\s+)?5\b(?!\s*(minutes|miles|hours|stops|days|AM|PM|:|,\d))/i, /\b5 (passengers|people|seats|each|in an? SUV)\b/i, /\bfour or five\b/i];
+  const found = [];
+  for (const file of PAGE_FILES()) {
+    for (const sentence of pageText(read(file).html).split(/(?<=[.!?"])\s+/)) if (SUV.test(sentence) && FIVE.some((re) => re.test(sentence))) found.push(`${file}: ${sentence.trim().slice(0, 160)}`);
+    if (/\b(more than 5|6 to 14)\b/.test(pageText(read(file).html))) found.push(`${file}: a group size bucket still ends an SUV at 5`);
+  }
+  assert.deepEqual(found, []);
+  const has = (file, text) => assert.ok(norm(pageText(read(file).html)).includes(text), `${file}: ${text}`);
+  has("about.html", `3 in a sedan, ${SUV_SEATS} in an SUV, 14 in a Sprinter.`);
+  has("blog/nyc-prom-limo-booking-guide-march-13.html", `Two Business SUVs carry ${2 * SUV_SEATS} between them, ${SUV_SEATS} each with 3 large and 3 small bags, and they arrive as two groups at two times.`);
+  has("blog/wedding-event-limo-nyc-march-27.html", `A Business SUV carries ${SUV_SEATS} with room for luggage`);
+  has("blog/wedding-event-limo-nyc-march-27.html", `For a wedding party of ${SUV_SEATS + 1} to 14, one Sprinter works better than several cars`);
+  has("chauffeur-service-nyc.html", `Groups of more than ${SUV_SEATS} ride in the Luxury Sprinter class`);
+  has("long-distance-car-service/nyc-to-atlantic-city.html", "For four to six, the Business SUV or Business Premium SUV keeps everyone in one car.");
+  for (const file of ["locations/upper-west-side.html", "locations/long-island-city.html"]) has(file, `Business SUV ${SUV_SEATS} seats , 3 large and 3 small bags`);
+  const boston = read("long-distance-car-service/nyc-to-boston.html").document;
+  const answer = `A Business SUV or Business Premium SUV. Both seat ${SUV_SEATS} and take 3 large and 3 small bags.`;
+  assert.deepEqual([norm(boston.querySelector("#q-bos-four .acc__body").textContent), ldAnswer(boston, "Which car fits four people and bags?")], [answer, answer]);
+  const philly = read("blog/nyc-to-philadelphia-kids-car-or-amtrak-november-19.html").document;
+  assert.deepEqual([...philly.querySelectorAll('a[href="#groups-of-three-to-five"], h2#groups-of-three-to-five')].map((e) => norm(e.textContent)), Array(3).fill("Groups of three to six"));
+  assert.deepEqual([...read("schedule.html").document.querySelectorAll("#s-passengers option")].map((o) => o.textContent), ["Select a number", "1", "2", "3", "4", "5", "6", "7 to 14"]);
 });
 
 if (failures) {

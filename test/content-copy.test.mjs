@@ -491,7 +491,7 @@ check("rates.html: the OfferCatalog has an airport offer per car class for JFK, 
   assert.deepEqual(hourly[5].priceSpecification.eligibleQuantity, { "@type": "QuantitativeValue", minValue: 4, unitCode: "HUR" });
 });
 
-const { MIN_NOTICE_MINUTES } = await import(join(ROOT, "api/_rates.mjs"));
+const { MIN_NOTICE_MINUTES, SPRINTER_NOTICE_HOURS } = await import(join(ROOT, "api/_rates.mjs"));
 const COPY = await import(join(ROOT, "api/_copy.mjs"));
 const NOTICE = {
   N1: `Book online at least ${MIN_NOTICE_MINUTES} minutes before pickup.`,
@@ -544,9 +544,15 @@ for (const [file, p] of pages) {
     assert.deepEqual(all.filter((v) => OLD_NOTICE.some((re) => re.test(v))).map((v) => v.slice(0, 160)), []);
     assert.deepEqual(all.flatMap(hourHits), []);
   });
-  check(`${file}: every online notice sentence says ${MIN_NOTICE_MINUTES} minutes and is an approved form`, () => {
+  check(`${file}: every online notice sentence says ${MIN_NOTICE_MINUTES} minutes, or ${SPRINTER_NOTICE_HOURS} hours in the one Sprinter sentence, and is an approved form`, () => {
     const notice = /\b(at least|within the next) (\d+) (minutes|hours?)\b(?= before pickup| ahead|,)/g;
-    for (const v of [p.text, ...p.strings]) for (const m of v.matchAll(notice)) assert.equal(Number(m[2]), MIN_NOTICE_MINUTES, v.slice(Math.max(0, m.index - 60), m.index + 60));
+    for (const v of [p.text, ...p.strings]) {
+      for (const m of v.matchAll(notice)) {
+        const near = v.slice(Math.max(0, m.index - 60), m.index + 60);
+        if (v.slice(0, m.index).endsWith("Book a Sprinter ")) assert.ok(v.startsWith(COPY.SPRINTER_AHEAD, m.index - "Book a Sprinter ".length) && Number(m[2]) === SPRINTER_NOTICE_HOURS && m[3] === "hours", near);
+        else assert.equal(Number(m[2]), MIN_NOTICE_MINUTES, near);
+      }
+    }
     const forms = Object.values(NOTICE);
     for (const b of p.blocks.filter((x) => /at least \d+ minutes (before pickup|ahead)|within the next \d+ minutes/.test(x))) assert.ok(forms.some((f) => b.includes(f)) || b.includes(NOTICE.N1.replace(" before pickup.", "")), b.slice(0, 200));
   });

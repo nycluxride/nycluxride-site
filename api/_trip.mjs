@@ -21,6 +21,7 @@ import {
   MEET_AND_GREET,
   CHILD_SEAT_CENTS,
   CHILD_SEATS,
+  CHILD_SEAT_LIMITS,
   SMALL_DOG_CENTS,
   LARGE_DOG_CENTS,
   DOG_SIZES,
@@ -31,11 +32,13 @@ import {
   HOURS,
   PASSENGERS,
   MIN_NOTICE_MINUTES,
+  SPRINTER_NOTICE_HOURS,
+  SPRINTER_BUSY_HOURS,
   AUTO_LEAD_MINUTES,
   MAX_ADVANCE_DAYS,
   CONTACT,
 } from "./_rates.mjs";
-import { LABELS, NOTES, POLICY, MESSAGE, MAIL } from "./_copy.mjs";
+import { LABELS, NOTES, POLICY, MESSAGE, MAIL, SPRINTER_BUSY } from "./_copy.mjs";
 import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, placeRegion, placeFits, endRegion, zoneRegion, inNewYork, localById, areaText, routeText, typedZip } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, routeRide, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
@@ -243,6 +246,23 @@ export function firstSlot(now) {
   }
 }
 
+export function sprinterFrom(now) {
+  for (let at = Math.ceil((Number(now) + SPRINTER_NOTICE_HOURS * HOUR_MS) / MINUTE_MS) * MINUTE_MS; ; at += MINUTE_MS) {
+    const [date, time] = wallTime(at).split(" ");
+    if (!clockChange(date, time)) return { date, time };
+  }
+}
+
+export const sprinterBusy = (cls, pickup, now) => cls === "sprinter" && Number.isFinite(pickup) && pickup < Number(now) + SPRINTER_BUSY_HOURS * HOUR_MS;
+
+export function sessionBusy(session, cls, pickupAt) {
+  const said = session.custom_text && session.custom_text.submit && session.custom_text.submit.message;
+  if (typeof said === "string") return cls === "sprinter" && said.includes(SPRINTER_BUSY);
+  return sprinterBusy(cls, Date.parse(pickupAt), Number(session.created) * 1000);
+}
+
+export const noticeReason = (trip, cls, now) => (cls === "sprinter" && validDate(trip.date) && TIME.test(trip.time) && nycToUtc(trip.date, trip.time).getTime() < Number(now) + SPRINTER_NOTICE_HOURS * HOUR_MS ? "sprinter-notice" : "");
+
 function endsOf(trip) {
   if (trip.ends) return trip.ends;
   const end = (zone) => (zone ? { text: "", zone, place: "", id: "", ...regionOf(zoneRegion(zone)) } : null);
@@ -436,12 +456,25 @@ export const rateKey = (cls, vehicle) => (has(AIRPORT_TOTALS, cls) ? cls : has(V
 const legRated = (key, item) => Boolean(item.reason) || ((item.ride && !item.flat ? has(DISTANCE_RATES, key) : has(AIRPORT_TOTALS[key], item.airport)) && (!item.plain || legRated(key, item.plain)));
 export const tripRated = (trip, key) => trip.trip_type !== "one" || (trip.legs || legsOf(trip)).every((item) => legRated(key, item));
 
+export function childReason(trip, cls) {
+  const limit = has(CHILD_SEAT_LIMITS, cls) && CHILD_SEAT_LIMITS[cls];
+  if (!limit) return "";
+  const seats = seatTotal(trip);
+  const adults = Number(trip.passengers) - seats;
+  if (seats > limit.seats) return "child-seats";
+  if (limit.adults && adults < limit.adults) return "adult";
+  if (limit.oneAdult !== undefined && adults === 1 && seats > limit.oneAdult) return "one-adult";
+  return "";
+}
+
 export function classReason(trip, cls) {
   if (!has(CLASSES, cls)) return "";
   const key = vehicleFor(trip, cls);
   const vehicle = VEHICLES[key];
   if (trip.trip_type === "hour" && Number(trip.hours) < (vehicle.minHours || HOURS.min)) return "min-hours";
   if (Number(trip.passengers) > (vehicle.seats || CLASSES[cls].seats)) return "seats";
+  const kids = childReason(trip, cls);
+  if (kids) return kids;
   if (!tripRated(trip, rateKey(cls, key))) return "sprinter-price";
   return "";
 }
@@ -518,7 +551,7 @@ export function checkTrip(trip, now, settings) {
   if (trip.tip !== "custom" && !TIP_PERCENTS.includes(trip.tip)) return invalid("tip");
   const spatial = spatialReason(trip);
   if (spatial) return { kind: "quote", reason: spatial.reason, field: spatial.field };
-  return { kind: "price", reason: classReason(trip, trip.class), hold: holdFor(trip, current, settings) };
+  return { kind: "price", reason: noticeReason(trip, trip.class, current) || classReason(trip, trip.class), hold: holdFor(trip, current, settings) };
 }
 
 const counts = (kinds, chosen) => Object.fromEntries(kinds.map((k) => [k, INTEGER.test((chosen || {})[k] || "") ? Number(chosen[k]) : 0]));

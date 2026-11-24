@@ -1284,7 +1284,7 @@ async function engineChecks(engine, b) {
         for (const q of ["wifi", "Wi-Fi", "wi-fi", "internet"]) assert.deepEqual(hits[q], ["q-wifi"], q);
         assert.ok(hits["meet and greet"].length && hits.bags.length);
         assert.deepEqual([hits["meet & greet"], hits["meet&greet"], hits["Meet&Greet"], hits.luggage], [hits["meet and greet"], hits["meet and greet"], hits["meet and greet"], hits.bags]);
-        assert.deepEqual([hits.carseat, hits["baby seat"], hits.refund, hits.tip, hits.ewr], [["q-child-seats"], ["q-child-seats"], ["q-cancellation"], ["q-tolls-and-gratuity"], ["q-airport-rates"]]);
+        assert.deepEqual([hits.carseat, hits["baby seat"], hits.refund, hits.tip, hits.ewr], [["q-child-seats"], ["q-child-seats", "q-children-passengers"], ["q-cancellation"], ["q-tolls-and-gratuity"], ["q-airport-rates"]]);
       });
       const words = {};
       try {
@@ -1292,9 +1292,9 @@ async function engineChecks(engine, b) {
       } catch (e) {
         words.error = String(e.message).split("\n")[0];
       }
-      check(`${engine}: /faq: child's seat finds the child seat answer with either apostrophe, and driver finds the answers about the chauffeur's waiting, pickup and fees`, () => {
+      check(`${engine}: /faq: child's seat finds the child seat answer and the children as passengers answer with its child seat limits, with either apostrophe, and driver finds the answers about the chauffeur's waiting, pickup and fees`, () => {
         assert.equal(words.error, undefined);
-        assert.deepEqual([words["child's seat"], words["child’s seat"]], [["q-child-seats"], ["q-child-seats"]]);
+        assert.deepEqual([words["child's seat"], words["child’s seat"]], [["q-child-seats", "q-children-passengers"], ["q-child-seats", "q-children-passengers"]]);
         assert.deepEqual(words.driver, ["q-hourly-service", "q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-no-show", "q-tolls-and-gratuity"]);
         assert.deepEqual(words["driver wait"], ["q-meet-and-greet", "q-flight-delay", "q-jfk-pickup-point", "q-complimentary-waiting", "q-waiting-charges", "q-no-show"]);
         assert.deepEqual(words["will the driver wait"], ["q-jfk-pickup-point", "q-waiting-charges"]);

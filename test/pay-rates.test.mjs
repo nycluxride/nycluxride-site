@@ -127,7 +127,9 @@ test("the Sprinter airport table has one row per Sprinter in VEHICLES order with
   const table = row("sprinter-airport");
   assert.equal(table.closest("section").id, "airport");
   assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Sprinter", "One-way totals"]);
-  assert.equal(squash(table.querySelector("caption")), "Luxury Sprinter airport transfers to or from any New York City address.");
+  assert.equal(squash(table.querySelector("caption")), `Luxury Sprinter airport transfers to or from any New York City address. ${copy.SPRINTER_AHEAD} ${copy.SPRINTER_SWAP}`);
+  assert.equal(copy.SPRINTER_AHEAD, "Book a Sprinter at least 3 hours ahead.");
+  assert.equal(copy.SPRINTER_SWAP, "If no Sprinter is free, we send two SUVs.");
   assert.deepEqual([...table.querySelectorAll("tfoot td")].map(squash), ["One-way totals in either direction, with tolls, airport fees and taxes included."]);
   const NAMES = { jfk: "JFK", ewr: "Newark", teb: "Teterboro", lga: "LaGuardia" };
   const rows = [...table.querySelectorAll("tbody tr")];
@@ -260,7 +262,7 @@ test("the Sprinter table lists each Sprinter with its seats, hourly rate and the
   assert.equal(table.tagName, "TABLE");
   assert.equal(table.closest("section").id, "hourly");
   assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Sprinter", "Seats", "Per hour", "Four hours"]);
-  assert.equal(squash(table.querySelector("caption")), "Luxury Sprinter hourly rates. Every Sprinter has a 4-hour minimum. Taxes and fees are added at booking.");
+  assert.equal(squash(table.querySelector("caption")), `Luxury Sprinter hourly rates. Every Sprinter has a 4-hour minimum. ${copy.SPRINTER_AHEAD} ${copy.SPRINTER_SWAP} Taxes and fees are added at booking.`);
   const rows = [...table.querySelectorAll("tbody tr")];
   assert.deepEqual(rows.map((tr) => tr.id), sprinters.map(([k]) => k.replace("sprinter-", "hourly-")));
   for (const [i, [key, v]] of sprinters.entries()) {
@@ -392,7 +394,7 @@ test("the distance and time table has one row per class, the Luxury Sprinter too
     assert.equal(squash(cell), `${dollars(base)} base, $${(mile / 100).toFixed(2)} per mile, $${(minute / 100).toFixed(2)} per minute, ${dollars(minimum)} minimum`, cls);
     assert.equal(cell.querySelectorAll("span.nowrap").length, 4, cls);
   }
-  assert.equal(squash(row("distance-sprinter").querySelector("td")), "$80 base, $9.00 per mile, $1.45 per minute, $250 minimum");
+  assert.equal(squash(row("distance-sprinter").querySelector("td")), "$80 base, $9.00 per mile, $1.45 per minute, $350 minimum");
   assert.equal(row("distance-sprinter").dataset.seats, String(CLASSES.sprinter.seats));
   assert.equal(squash(row("distance-sprinter").querySelector("th small")), "Other Sprinters, we'll send you a price");
   assert.deepEqual(Object.keys(DISTANCE_RATES), [...CAR_KEYS, "sprinter-executive"]);

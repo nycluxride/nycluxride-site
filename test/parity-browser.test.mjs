@@ -12,7 +12,7 @@ const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/N
 const DATE = nyDate(5);
 const SLUGS = ["chevrolet-suburban", "cadillac-escalade", "mercedes-s-class", "cadillac-lyriq", "sprinter-limo"];
 const CARD_KEYS = ["suv", "premium", "first", "sedan", "electric", "sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
-const CARD_PHOTOS = [...SLUGS.slice(0, 3).map((s) => `${s}-card`), "cadillac-ct5-ct6", `${SLUGS[3]}-card`, "sprinter-executive-card", "sprinter-luxury-jet-card", "", "sprinter-limo-black-card", "sprinter-white-limo-card"];
+const CARD_PHOTOS = [...SLUGS.slice(0, 3).map((s) => `${s}-card`), "mercedes-e-class", `${SLUGS[3]}-card`, "sprinter-executive-card", "sprinter-luxury-jet-card", "", "sprinter-limo-black-card", "sprinter-white-limo-card"];
 const VAN_RATIO = 400 / 300;
 const RATIO = 960 / 1192;
 const GOLD = "rgb(168, 133, 28)";
@@ -170,7 +170,7 @@ for (const [engine, type] of ENGINES) {
   const browser = await type.launch();
   for (const [width, height, tile, heights] of ONE_WAY) {
     const ctx = await context(browser, { viewport: { width, height } });
-    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? ", every class price up to the Executive Sprinter is in the first screen" : ""}, each class photo is the 960x1192 studio photo or, for the Executive Sedan, the 400x300 Cadillac CT5 photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
+    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? ", every class price up to the Executive Sprinter is in the first screen" : ""}, each class photo is the 960x1192 studio photo or, for the Executive Sedan, the 400x300 Mercedes-Benz E-Class photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
       const p = await open(ctx, "/book");
       await options(p);
       const r = await rows(p);

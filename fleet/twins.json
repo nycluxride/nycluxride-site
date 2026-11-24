@@ -77,6 +77,12 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAACwCACdASpAACsAPsVWnkunpSKhtVgKAPAYiWUAxNtT2SKZGWwhW+pc4zZanYUJwD8XUFUSGzqJX478KLUwoZsMXggWU80E9t/ZorUX+gAA/vQpHaZ0m/yu5297N+8JosVytIirBjdfPD6Bzs8dWViQJ3jGgWDvGPW85uDyqIU/BOsOY41B2wARzZ0Ha2XymabglctRxP0k7wj93cPQTqto972De3qJ9fkRHSwmdNkCCV0nFcTCHmVppUbsuWg20gRl1vwyAAA="
   },
+  "mercedes-e-class.webp": {
+    "sha256": "d8c9f680a43a31529d4635462720d0697ced51ab272a5e0db410371bf5ed140f",
+    "width": 64,
+    "height": 48,
+    "src": "data:image/webp;base64,UklGRg4BAABXRUJQVlA4IAIBAAAQCwCdASpAADAAPrVKmUunJKIhurmcAOAWiUAUu+sgpeH2TaGMneYsArKhe26BizpJu8fxEShVTKjBLwdtSIAClZWU0NthLlCoVsu85B+wakNLToa61Cubhtz33cS1quwAAP7qISTVNqzpkaQ5jvOFdeHlJWipjn/DFfdQUBgs3KRXVaKFahTZScAyw6AgcNLSie9I2RKX4rF8FlsQ8IbYJSeQq67gVji9/8smqWVJT0WmD8UKybUfRGOk5G0G3Dgz3RMTkUKH1ZUzE1/qh9AdKSH/y7ENocRGXvZ0F1D+fpM4y+quYElB7Kg3uoIcVdVz9thnRjHgsnWi6F30bw6AAAA="
+  },
   "mercedes-s-class.webp": {
     "sha256": "9b42feadd15bf075813f78199a0a5eb8c940a4d45679e839b6286f2e62e3ae39",
     "width": 64,

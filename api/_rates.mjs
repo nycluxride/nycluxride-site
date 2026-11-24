@@ -2,8 +2,8 @@ import { TAX_AREAS, NYC_TAX_AREA } from "./_salestax.mjs";
 
 export { PUB_718, ZIP_SOURCE, TAX_AREAS, NYC_TAX_AREA, COUNTY_AREAS, CITY_AREAS, CITY_ZIPS, ZIP_AREAS } from "./_salestax.mjs";
 export const CLASSES = {
-  suv: { name: "Business SUV", seats: 5, bags: "3 large plus 3 small bags" },
-  premium: { name: "Business Premium SUV", seats: 5, bags: "3 large plus 3 small bags" },
+  suv: { name: "Business SUV", seats: 6, bags: "3 large plus 3 small bags" },
+  premium: { name: "Business Premium SUV", seats: 6, bags: "3 large plus 3 small bags" },
   first: { name: "First Class", seats: 3, bags: "2 large plus 1 small bag" },
   sedan: { name: "Executive Sedan", seats: 3, bags: "" },
   electric: { name: "Electric Class", seats: 3, bags: "" },
@@ -70,7 +70,7 @@ export const DISTANCE_RATES = {
   first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
   electric: { base: 2647, mile: 318, minute: 53, minimum: 9212 },
-  "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 25000 },
+  "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 35000 },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
@@ -86,6 +86,7 @@ export const SMALL_DOG_CENTS = 2000;
 export const LARGE_DOG_CENTS = 4500;
 export const STOP_FEE_CENTS = 2000;
 export const CHILD_SEATS = ["toddler", "infant", "booster"];
+export const CHILD_SEAT_LIMITS = { suv: { seats: 3, adults: 1, oneAdult: 2 }, premium: { seats: 3, adults: 1, oneAdult: 2 }, sedan: { seats: 1 }, electric: { seats: 1 } };
 export const DOG_SIZES = ["small", "large"];
 export const MAX_DOGS = 3;
 export const BAG_SIZES = ["large", "medium", "small"];
@@ -97,6 +98,8 @@ export const WAIT_CENTS_PER_MINUTE = { sedan: 120, electric: 120, suv: 150, prem
 export const CANCEL_TIERS = [{ hours: 24, percent: 0 }, { hours: 12, percent: 25 }, { hours: 2, percent: 50 }, { hours: 0, percent: 100 }];
 export const MIN_NOTICE_MINUTES = 90;
 export const PAID_NOTICE_MINUTES = 60;
+export const SPRINTER_NOTICE_HOURS = 3;
+export const SPRINTER_BUSY_HOURS = 24;
 export const AUTO_LEAD_MINUTES = 5;
 export const AUTO_GUARD_MINUTES = 2;
 export const MAX_ADVANCE_DAYS = 365;

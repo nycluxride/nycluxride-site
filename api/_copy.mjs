@@ -1,8 +1,20 @@
-import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS } from "./_rates.mjs";
+import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE_HOURS, CLASSES, CHILD_SEAT_LIMITS } from "./_rates.mjs";
+
+export const SPRINTER_AHEAD = `Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.`;
+export const SPRINTER_SWAP = "If no Sprinter is free, we send two SUVs.";
+export const SPRINTER_BUSY = `Due to high demand, ${SPRINTER_SWAP[0].toLowerCase()}${SPRINTER_SWAP.slice(1)}`;
+const [SUV, PREMIUM] = [CLASSES.suv.name, CLASSES.premium.name];
+const { suv: SUV_SEATS, sedan: SEDAN_SEATS } = CHILD_SEAT_LIMITS;
+const seatCount = (n) => `${n} child seat${n === 1 ? "" : "s"}`;
+export const CHILD_LIMITS = {
+  sedan: `An ${CLASSES.sedan.name} or ${CLASSES.electric.name} car takes ${seatCount(SEDAN_SEATS.seats)}.`,
+  suv: `A ${SUV} or ${PREMIUM} takes up to ${seatCount(SUV_SEATS.seats)}, or ${SUV_SEATS.oneAdult} with only ${SUV_SEATS.adults} adult, and needs at least ${SUV_SEATS.adults} adult.`,
+};
 
 export const HEADINGS = {
   price: "Get a price for this trip",
   phone: "Reserve this trip by email or WhatsApp",
+  sprinter: `Book a Sprinter ${SPRINTER_NOTICE_HOURS} hours ahead`,
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
@@ -22,7 +34,11 @@ export const REASONS = {
   "outside-hourly": { group: "price", text: "For this pickup, we'll send you a price." },
   "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, we'll send you a price." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
+  "child-seats": { group: "phone", text: `This car can't take that many child seats. An ${CLASSES.sedan.name} or ${CLASSES.electric.name} car takes ${SEDAN_SEATS.seats}, an SUV up to ${SUV_SEATS.seats}. Choose another car, or send us the trip.` },
+  adult: { group: "phone", text: `A ${SUV} or ${PREMIUM} needs at least ${SUV_SEATS.adults} adult on board. Children count as passengers. Choose another car, or send us the trip.` },
+  "one-adult": { group: "phone", text: `With only ${SUV_SEATS.adults} adult, a ${SUV} or ${PREMIUM} takes up to ${seatCount(SUV_SEATS.oneAdult)}. Choose another car, or send us the trip.` },
   "sprinter-price": { group: "price", text: "For this Sprinter on this trip, we'll send you a price." },
+  "sprinter-notice": { group: "sprinter", text: `We need ${SPRINTER_NOTICE_HOURS} hours to arrange a Sprinter. Choose a later pickup or another car, or send us the trip.` },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
   "clock-change": { group: "phone", text: "A pickup or return at this hour can't be booked online because the clocks change. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },
   "short-notice": { group: "phone", text: "For a pickup within the next 90 minutes, email info@nycluxride.com or message us on WhatsApp." },
@@ -45,6 +61,7 @@ export const ERRORS = {
   class: { field: "class", text: "Choose a vehicle class." },
   vehicle: { field: "vehicle", text: "Choose a vehicle." },
   "sprinter-hours": { field: "hours", text: "A Sprinter is booked for 4 hours or more." },
+  "sprinter-notice": { field: "class", text: `${SPRINTER_AHEAD} Choose a later pickup or another car, or send us the trip.` },
   flight: { field: "flight", text: "Type the flight number with letters and numbers only." },
   return_flight: { field: "return_flight", text: "Type the return flight number with letters and numbers only." },
   tip: { field: "tip", text: "Choose a gratuity from the list." },

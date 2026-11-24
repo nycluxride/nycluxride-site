@@ -6,8 +6,8 @@ import { sessionParams, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters, bookingText, bookingEvents, reminderLetter } from "../api/_mail.mjs";
 import { POST as bookPost, GET as bookGet } from "../api/book.mjs";
 import { routeKey, signRoute } from "../api/_ticket.mjs";
-import { ERRORS, REASONS, LABELS, MAIL, POLICY } from "../api/_copy.mjs";
-import { VEHICLES, RETIRED_VEHICLES, CLASSES, CLASS_DEFAULT_VEHICLE, AIRPORT_TOTALS, AIRPORT_FARES, DISTANCE_RATES, HOURS, PASSENGERS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents } from "../api/_rates.mjs";
+import { ERRORS, REASONS, LABELS, MAIL, POLICY, HEADINGS, SPRINTER_AHEAD, SPRINTER_SWAP, SPRINTER_BUSY } from "../api/_copy.mjs";
+import { VEHICLES, RETIRED_VEHICLES, CLASSES, CLASS_DEFAULT_VEHICLE, AIRPORT_TOTALS, AIRPORT_FARES, DISTANCE_RATES, HOURS, PASSENGERS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, SPRINTER_NOTICE_HOURS, MIN_NOTICE_MINUTES } from "../api/_rates.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
@@ -205,11 +205,11 @@ await test("the White Luxury Limo Sprinter to or from LaGuardia has no price yet
 
 await test("trips priced by distance and time: the Executive Sprinter keeps today's Sprinter distance rates and prices, and the Luxury Jet, Presidential, Limo and White Luxury Limo Sprinters get the we'll send you a price path, one way, with stops, to an airport outside the city and on a round trip with a ride priced by distance", async () => {
   process.env.GOOGLE_MOCK = "true";
-  assert.deepEqual(DISTANCE_RATES["sprinter-executive"], { base: 8000, mile: 900, minute: 145, minimum: 25000 });
+  assert.deepEqual(DISTANCE_RATES["sprinter-executive"], { base: 8000, mile: 900, minute: 145, minimum: 35000 });
   assert.equal(rateKey("sprinter", "sprinter-executive"), "sprinter-executive");
   const TRIPS = [
-    ["one way by distance", { ...AIRPORT, to_text: BROOKLYN, to_id: "" }, 27782],
-    ["one way by distance, round trip", { ...AIRPORT, to_text: BROOKLYN, to_id: "", ...BACK }, 55564],
+    ["one way by distance", { ...AIRPORT, to_text: BROOKLYN, to_id: "" }, 38894],
+    ["one way by distance, round trip", { ...AIRPORT, to_text: BROOKLYN, to_id: "", ...BACK }, 77788],
     ["a stop", { ...AIRPORT, from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "26 Ann St, New York, NY 10038", to_text: "55 Church St, New York, NY 10007", to_id: "" }, 47000],
     ["New Jersey to JFK", { ...AIRPORT, from_text: "Secaucus, NJ 07094", to_text: "John F. Kennedy (JFK)", to_id: "jfk" }, 40233],
     ["JFK to Connecticut", { ...AIRPORT, from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: "1 Greenwich Ave, Greenwich, CT 06830", to_id: "" }, null],
@@ -227,9 +227,10 @@ await test("trips priced by distance and time: the Executive Sprinter keeps toda
     }
   }
   const ride = await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "", sprinter: "sprinter-executive" });
-  assert.deepEqual(pairs(ride.price.lines), [["Fare", 25000], ["NYC sales tax", 2219], ["Black Car Fund", 563]]);
+  assert.deepEqual(pairs(ride.price.lines), [["Fare", 35000], ["NYC sales tax", 3106], ["Black Car Fund", 788]]);
+  assert.equal(ride.price.fare, DISTANCE_RATES["sprinter-executive"].minimum, "a short ride in the Executive Sprinter costs the $350 minimum fare before taxes and fees");
   assert.deepEqual([ride.price.service, serviceLabel(ride.trip)], ["distance", "Executive Sprinter, 4.6 miles and 27 min"]);
-  assert.equal((await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "" })).price.total, 27782, "the class default is the Executive Sprinter");
+  assert.equal((await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "" })).price.total, 38894, "the class default is the Executive Sprinter");
   for (const key of UNRATED) assert.equal(key in DISTANCE_RATES, false, key);
 });
 
@@ -624,6 +625,49 @@ await test("each Sprinter photo shows the Sprinter its caption and alt name, as 
   assert.deepEqual(files.filter((f) => /^sprinter-executive-(lounge|night|cabin)|^sprinter-luxury-jet-cab/.test(f)), [], "the earlier Luxury Jet photos and the unused cab photo are not deployed");
   for (const slug of Object.keys(PHOTOS)) assert.ok(files.includes(`${slug}.webp`) && files.includes(`${slug}-300.avif`) && files.includes(`${slug}-400.webp`), slug);
   assert.equal(new Set(frames).size, frames.length);
+});
+
+await test("the owner's 3 hour Sprinter notice, followed by the two SUVs sentence everywhere but the FAQ, is said once where each page describes booking a Sprinter: both Sprinter tables on the rates page, the fleet page's Sprinter part, the Sprinter van page's booking fact, the FAQ answer on when to book, visible and in its JSON-LD, and after the 90 minute booking facts and the itinerary step on the limousine and wedding pages", async () => {
+  assert.deepEqual([SPRINTER_NOTICE_HOURS, SPRINTER_AHEAD, SPRINTER_SWAP], [3, "Book a Sprinter at least 3 hours ahead.", "If no Sprinter is free, we send two SUVs."]);
+  const text = (el) => flat(el.textContent);
+  const rates = dom("rates.html");
+  assert.ok(text(rates.getElementById("sprinter-airport-caption")).endsWith(`New York City address. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
+  assert.ok(text(rates.getElementById("sprinter-caption")).includes(`Every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Taxes`));
+  const fleet = dom("fleet.html").getElementById("luxury-sprinter").querySelector("p");
+  assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Our limousine service page`), text(fleet));
+  const van = [...dom("sprinter-van-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);
+  assert.deepEqual(van.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", `${SPRINTER_AHEAD} ${SPRINTER_SWAP}`]);
+  assert.ok(!sentences(dom("sprinter-van-service-nyc.html")).some((t) => new RegExp(`${MIN_NOTICE_MINUTES} minutes|Sooner by email`).test(t)), "the Sprinter van page offers no Sprinter online sooner than 3 hours");
+  const faq = dom("faq.html");
+  const answer = text(faq.querySelector("#q-when-to-book .acc__body"));
+  assert.equal(answer, `Book online at least ${MIN_NOTICE_MINUTES} minutes before pickup. For a pickup within the next ${MIN_NOTICE_MINUTES} minutes, email info@nycluxride.com or message us on WhatsApp. ${SPRINTER_AHEAD}`);
+  const ld = [...faq.querySelectorAll('script[type="application/ld+json"]')].flatMap((el) => JSON.parse(el.textContent)["@graph"]).find((g) => g["@type"] === "FAQPage").mainEntity.find((q) => q.name === "When is the best time to schedule my ride?");
+  assert.equal(ld.acceptedAnswer.text, answer);
+  for (const file of ["rates.html", "fleet.html", "sprinter-van-service-nyc.html", "faq.html", "limousine-service-nyc.html", "wedding-car-service-nyc.html"]) {
+    const body = flat(dom(file).querySelector("main").textContent);
+    assert.equal(body.split(SPRINTER_AHEAD).length - 1, file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
+    assert.equal(body.split(`${SPRINTER_AHEAD} ${SPRINTER_SWAP}`).length - 1, file === "faq.html" ? 0 : file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
+    assert.equal(body.split(SPRINTER_SWAP).length - 1, file === "faq.html" ? 0 : file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
+  }
+  const ahead = `Online at least ${MIN_NOTICE_MINUTES} minutes before pickup. Sooner by email or WhatsApp when a car is free. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`;
+  const limo = dom("limousine-service-nyc.html");
+  assert.deepEqual([...limo.querySelectorAll("dl.facts dt")].filter((dt) => text(dt) === "Booking ahead").map((dt) => text(dt.nextElementSibling)), [ahead]);
+  assert.deepEqual([...limo.querySelectorAll(".assure li")].filter((li) => text(li.querySelector("b")) === "Booking ahead").map((li) => text(li.querySelector("span"))), [ahead]);
+  assert.ok([...limo.querySelectorAll("ol.steps li")].some((li) => text(li) === `Send us the trip at least ${MIN_NOTICE_MINUTES} minutes before pickup. A Sprinter by the hour has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
+  const wedding = [...dom("wedding-car-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);
+  assert.deepEqual(wedding.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", ahead]);
+  for (const t of [SPRINTER_AHEAD, SPRINTER_SWAP, SPRINTER_BUSY, HEADINGS.sprinter, REASONS["sprinter-notice"].text, ERRORS["sprinter-notice"].text]) assert.doesNotMatch(t, /[\u2013\u2014;]/, t);
+});
+
+await test("every full booking form carries the Sprinter notice message and its request block with the texts of api/_copy.mjs, right after the vehicle class message and the Sprinter price block", async () => {
+  assert.deepEqual([ERRORS["sprinter-notice"], REASONS["sprinter-notice"], HEADINGS.sprinter], [{ field: "class", text: `${SPRINTER_AHEAD} Choose a later pickup or another car, or send us the trip.` }, { group: "sprinter", text: "We need 3 hours to arrange a Sprinter. Choose a later pickup or another car, or send us the trip." }, "Book a Sprinter 3 hours ahead"]);
+  for (const file of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) {
+    const d = dom(file);
+    const e = d.getElementById("e-sprinter-notice");
+    const q = d.getElementById("q-sprinter-notice");
+    assert.ok(e.matches("p.bk-e.field__hint") && e.previousElementSibling.id === "e-class" && d.getElementById("bk-cards").contains(e) && flat(e.textContent) === ERRORS["sprinter-notice"].text, file);
+    assert.ok(q.matches("div.bk-q") && q.previousElementSibling.id === "q-sprinter-price" && flat(q.querySelector("h3").textContent) === HEADINGS.sprinter && flat(q.querySelector("p").textContent) === REASONS["sprinter-notice"].text && q.children.length === 2, file);
+  }
 });
 
 if (failures) {
