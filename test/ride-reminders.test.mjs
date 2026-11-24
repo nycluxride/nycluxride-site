@@ -313,12 +313,9 @@ function checkLetter(letter) {
 const whereOf = (letter) => sectionOf(letter.text, MAIL.where.heading);
 const rowsOf = (letter) => sectionOf(letter.text, MAIL.trip);
 
-await test("each daily schedule has its own route and every route runs the same reminder handler", async () => {
-  for (const name of ["ride-reminders-2", "ride-reminders-3"]) {
-    const other = await import(`../api/${name}.mjs`);
-    assert.deepEqual(Object.keys(other), ["GET"], name);
-    assert.equal(other.GET, GET, name);
-  }
+await test("one daily run at 22:00 UTC lands at 5 PM in New York in winter and 6 PM in summer, both send hours", () => {
+  assert.equal(newYork(new Date("2026-12-07T22:30:00Z")).hour, 17);
+  assert.equal(newYork(new Date("2026-07-07T22:30:00Z")).hour, 18);
 });
 
 await test("the route answers GET only and nothing else is exported", () => {
