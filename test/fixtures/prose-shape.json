@@ -314,6 +314,24 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/atlantic-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/bergen-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/bradley-airport.html": {
   "so": 0,
   "sostart": 0,
@@ -341,6 +359,42 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/burlington-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/camden-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/cape-may-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/cumberland-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/edgewater.html": {
   "so": 0,
   "sostart": 0,
@@ -359,6 +413,15 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/essex-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/financial-district.html": {
   "so": 0,
   "sostart": 1,
@@ -369,6 +432,15 @@
   "questions": 0
  },
  "locations/fort-lee.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/gloucester-county-nj.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -396,6 +468,24 @@
   "questions": 0
  },
  "locations/hoboken.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/hudson-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/hunterdon-county-nj.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -467,7 +557,43 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/mercer-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/middlesex-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/midtown-manhattan.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/monmouth-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/morris-county-nj.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -521,7 +647,25 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/ocean-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/paramus.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/passaic-county-nj.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
@@ -566,6 +710,15 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/salem-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/secaucus.html": {
   "so": 0,
   "sostart": 0,
@@ -587,6 +740,15 @@
  "locations/soho.html": {
   "so": 0,
   "sostart": 1,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/somerset-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
   "which": 0,
   "places": 0,
   "triads": 0,
@@ -629,11 +791,29 @@
   "colons": 0,
   "questions": 0
  },
+ "locations/sussex-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
  "locations/teterboro-airport.html": {
   "so": 0,
   "sostart": 0,
   "which": 0,
   "places": 1,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/union-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
+  "which": 0,
+  "places": 0,
   "triads": 0,
   "colons": 0,
   "questions": 0
@@ -650,6 +830,15 @@
  "locations/upper-west-side.html": {
   "so": 0,
   "sostart": 3,
+  "which": 0,
+  "places": 0,
+  "triads": 0,
+  "colons": 0,
+  "questions": 0
+ },
+ "locations/warren-county-nj.html": {
+  "so": 0,
+  "sostart": 0,
   "which": 0,
   "places": 0,
   "triads": 0,

@@ -89,7 +89,7 @@ check("New Jersey pages offer Newark Airport and Teterboro from New Jersey towns
 });
 
 check("private flights: lobby or aircraft-side pickup subject to airport access and rules, with no tail number, private flight tracking or private free waiting claims", () => {
-  for (const f of ["locations/teterboro-airport.html", "private-jet-car-service-nyc.html", "locations/morristown-airport.html", "locations/republic-airport.html", "blog/teterboro-airport-fbos-manhattan-november-19.html"]) {
+  for (const f of ["locations/teterboro-airport.html", "private-jet-car-service-nyc.html", "locations/morristown-airport.html", "locations/republic-airport.html", "blog/teterboro-airport-fbos-manhattan-november-19.html", "locations/newark-airport.html", "locations/new-jersey.html", "locations/bergen-county-nj.html", "locations/morris-county-nj.html", "locations/mercer-county-nj.html", "locations/atlantic-county-nj.html"]) {
     assert.match(main(f), /in the (FBO )?lobby or at the aircraft, subject to airport access and rules\./, f);
   }
   assert.deepEqual(files.filter((f) => /tail number/i.test(main(f))), []);
@@ -227,6 +227,107 @@ check("the weekly search email ships and the one-time owner questions route does
   assert.ok(!existsSync(join(ROOT, "api", "owner-questions.mjs")));
   assert.ok(!existsSync(join(ROOT, "test", "owner-questions.test.mjs")));
   assert.doesNotMatch(readFileSync(join(ROOT, "vercel.json"), "utf8"), /owner-questions/);
+});
+
+check("New Jersey has one page per county: 21 pages under the hub, each with its county and every municipality in the official list as areaServed, a Newark Airport or Philadelphia Airport row and no thin page per town", () => {
+  const COUNTS = { Atlantic: 23, Bergen: 70, Burlington: 40, Camden: 36, "Cape May": 16, Cumberland: 14, Essex: 22, Gloucester: 24, Hudson: 12, Hunterdon: 26, Mercer: 12, Middlesex: 25, Monmouth: 53, Morris: 39, Ocean: 33, Passaic: 16, Salem: 15, Somerset: 21, Sussex: 24, Union: 21, Warren: 22 };
+  const slug = (c) => `locations/${c.toLowerCase().replace(/ /g, "-")}-county-nj.html`;
+  assert.deepEqual(files.filter((f) => /-county-nj\.html$/.test(f)), Object.keys(COUNTS).map(slug).sort());
+  const hub = pages.get("locations/new-jersey.html");
+  const linked = [...hub.querySelectorAll("main #counties ~ ul a")].map((a) => a.getAttribute("href")).filter((h) => h.endsWith("-county-nj"));
+  assert.deepEqual(linked.sort(), Object.keys(COUNTS).map((c) => `/${slug(c).replace(/\.html$/, "")}`).sort());
+  const hubArea = ld("locations/new-jersey.html").find((n) => n["@type"] === "Service").areaServed;
+  assert.deepEqual(hubArea.filter((a) => a["@type"] === "AdministrativeArea").map((a) => a.name).sort(), Object.keys(COUNTS).map((c) => `${c} County`).sort());
+  for (const [county, n] of Object.entries(COUNTS)) {
+    const f = slug(county);
+    const area = ld(f).find((x) => x["@type"] === "Service").areaServed;
+    assert.deepEqual(area[0], { "@type": "AdministrativeArea", name: `${county} County`, containedInPlace: { "@type": "State", name: "New Jersey" } }, f);
+    assert.equal(area.filter((a) => a["@type"] === "City").length, n, f);
+    assert.ok(area.slice(1).every((a) => a.containedInPlace.name === `${county} County` && main(f).includes(a.name)), f);
+    assert.deepEqual([...pages.get(f).querySelectorAll("main nav.crumbs a")].map((a) => a.getAttribute("href")), ["/locations", "/locations/new-jersey"], f);
+    const rows = [...pages.get(f).querySelectorAll("main a.ledger__row .ledger__name")].map((e) => norm(e.textContent));
+    assert.ok(rows.some((r) => / to (Newark|Philadelphia) Airport rates$/.test(r)), f);
+  }
+  for (const [f, town] of [["locations/bergen-county-nj.html", "Closter"], ["locations/bergen-county-nj.html", "North Arlington"], ["locations/camden-county-nj.html", "Pennsauken"], ["locations/camden-county-nj.html", "Barrington"], ["locations/monmouth-county-nj.html", "Avon-by-the-Sea"], ["locations/cape-may-county-nj.html", "Wildwood Crest"], ["locations/gloucester-county-nj.html", "Glassboro"], ["locations/essex-county-nj.html", "Short Hills"]]) assert.ok(main(f).includes(town), `${f}: ${town}`);
+  assert.deepEqual(files.filter((f) => /\bBarri\b/.test(main(f))), []);
+  assert.doesNotMatch(main("locations/new-jersey.html"), /Every ride on this page goes to New York/);
+  assert.equal(faq("locations/new-jersey.html", "q-nj-anywhere"), "Yes. We pick up in all 21 counties, for rides to Newark Liberty, Teterboro, JFK, LaGuardia, New York City and other towns in New Jersey. Find your county on this page, or send us the address.");
+});
+
+check("every page's business entity lists all 21 New Jersey counties", () => {
+  const want = ["Hudson", "Bergen", "Essex", "Morris", "Union", "Mercer", "Atlantic", "Passaic", "Middlesex", "Somerset", "Monmouth", "Ocean", "Hunterdon", "Sussex", "Warren", "Burlington", "Camden", "Gloucester", "Salem", "Cumberland", "Cape May"].map((c) => `${c} County`);
+  for (const f of files) {
+    const biz = ld(f).find((n) => n["@id"] === "https://www.nycluxride.com/#organization" && n["@type"] === "LocalBusiness");
+    if (!biz) continue;
+    assert.deepEqual(biz.areaServed.filter((a) => a.containedInPlace?.name === "New Jersey").map((a) => a.name), want, f);
+  }
+});
+
+check("Signature Newark, the one FBO at Newark Liberty, is on the Newark Airport and private jet pages with its address and how to book it", () => {
+  for (const f of ["locations/newark-airport.html", "private-jet-car-service-nyc.html", "locations/essex-county-nj.html"]) {
+    assert.match(main(f), /Signature Newark/, f);
+    assert.match(main(f), /15 Brewster Road/, f);
+    assert.match(main(f), /Newark Liberty \(EWR\)/, f);
+  }
+  assert.match(main("locations/newark-airport.html"), /Private flights at Newark Liberty use one FBO, Signature Aviation\./);
+  assert.equal(question("private-jet-car-service-nyc.html", "q-jet-ewr"), "Do you go to Signature Flight Support at Newark?");
+  assert.equal(ldAnswer("private-jet-car-service-nyc.html", "Do you go to Signature Flight Support at Newark?"), faq("private-jet-car-service-nyc.html", "q-jet-ewr"));
+  assert.match(pages.get("private-jet-car-service-nyc.html").querySelector('meta[name="description"]').getAttribute("content"), /Teterboro, Newark,/);
+  assert.match(main("locations/morris-county-nj.html"), /Signature Aviation at 1 Airport Road and Atlantic Aviation at 50 Airport Road/);
+  assert.match(main("locations/bergen-county-nj.html"), /Atlantic Aviation, Jet Aviation and Signature Aviation East, South and West/);
+});
+
+check("every New Jersey town page sits under its county: the crumbs and the BreadcrumbList go Service areas, New Jersey, the county, the town, and the airport and route pages near a county link it in the text", () => {
+  const TOWNS = { "alpine-tenafly": "bergen", edgewater: "bergen", englewood: "bergen", "fort-lee": "bergen", paramus: "bergen", hoboken: "hudson", "jersey-city": "hudson", secaucus: "hudson", "weehawken-north-bergen": "hudson", "newark-nj": "essex", "short-hills-livingston": "essex", morristown: "morris", princeton: "mercer", summit: "union" };
+  for (const [town, county] of Object.entries(TOWNS)) {
+    const f = `locations/${town}.html`;
+    const href = `/locations/${county}-county-nj`;
+    assert.deepEqual([...pages.get(f).querySelectorAll("main nav.crumbs a")].map((a) => a.getAttribute("href")), ["/locations", "/locations/new-jersey", href], f);
+    const list = ld(f).find((n) => n["@type"] === "BreadcrumbList").itemListElement;
+    assert.deepEqual(list.map((i) => [i.position, i.item.replace("https://www.nycluxride.com", "")]), [[1, "/"], [2, "/locations"], [3, "/locations/new-jersey"], [4, href], [5, `/locations/${town}`]], f);
+    assert.equal(list[3].name, norm(pages.get(f).querySelector(`main nav.crumbs a[href="${href}"]`).textContent), f);
+    assert.ok(pages.get(`locations/${county}-county-nj.html`).querySelector(`main p a[href="/locations/${town}"]`), `${county} does not link ${town}`);
+  }
+  const BODY = { "locations/teterboro-airport.html": ["bergen"], "locations/newark-airport.html": ["essex", "union"], "locations/morristown-airport.html": ["morris"], "locations/philadelphia-airport.html": ["camden", "gloucester", "burlington"], "long-distance-car-service/nyc-to-atlantic-city.html": ["atlantic"] };
+  for (const [f, counties] of Object.entries(BODY)) for (const c of counties) assert.ok(pages.get(f).querySelector(`main p a[href="/locations/${c}-county-nj"]`), `${f} ${c}`);
+});
+
+check("each county title names the county and NJ within 59 characters, and each paragraph of the town list links a town page once", () => {
+  for (const f of files.filter((x) => /-county-nj\.html$/.test(x))) {
+    const doc = pages.get(f);
+    const county = norm(doc.querySelector("main nav.crumbs [aria-current=page]").textContent);
+    assert.ok(doc.title.startsWith(`${county} NJ Car Service`) && doc.title.endsWith(" | NYC LUX RIDE") && doc.title.length <= 59, doc.title);
+    assert.equal(doc.querySelector('meta[property="og:title"]').getAttribute("content"), doc.title, f);
+    const h = [...doc.querySelectorAll("main h2")].find((x) => norm(x.textContent).startsWith("Towns we serve in"));
+    for (const p of [h.nextElementSibling, h.nextElementSibling.nextElementSibling]) {
+      const hrefs = [...p.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+      assert.equal(new Set(hrefs).size, hrefs.length, f);
+    }
+  }
+  assert.match(main("locations/bergen-county-nj.html"), /Fort Lee, Edgewater and Paramus have their own pages\. Englewood and Englewood Cliffs share one, and so do Alpine and Tenafly\./);
+  assert.match(main("locations/hudson-county-nj.html"), /Jersey City, Hoboken and Secaucus have their own pages, and Weehawken and North Bergen share one\./);
+});
+
+check("the county copy agrees with its own drive times: Newton, Jersey City, Drew, Cherry Hill and Woodbury", () => {
+  const same = (f, id) => assert.equal(ldAnswer(f, question(f, id)), faq(f, id), f);
+  assert.match(faq("locations/sussex-county-nj.html", "q-sus-air"), /^Morristown Airport, about 35 miles, is the closest field for private flights\. For airline flights, Newark Liberty is about 52 miles/);
+  same("locations/sussex-county-nj.html", "q-sus-air");
+  assert.match(main("locations/hudson-county-nj.html"), /Signature Newark, at 15 Brewster Road, is about 14 minutes from Jersey City with light traffic, and Teterboro is about 18 minutes\./);
+  assert.doesNotMatch(main("locations/hudson-county-nj.html"), /closest to most of the county/);
+  assert.match(faq("locations/morris-county-nj.html", "q-mrs-drew"), /about 44 miles, around 75 minutes/);
+  same("locations/morris-county-nj.html", "q-mrs-drew");
+  assert.match(faq("locations/camden-county-nj.html", "q-cam-ewr"), /From Cherry Hill the drive is about 75 miles up the Turnpike, close to 95 minutes/);
+  same("locations/camden-county-nj.html", "q-cam-ewr");
+  assert.match(main("locations/gloucester-county-nj.html"), /From Woodbury, a car reaches Philadelphia Airport in under 30 minutes with light traffic/);
+  assert.doesNotMatch(main("locations/new-jersey.html"), /north of the Meadowlands/);
+  assert.doesNotMatch(main("locations/hudson-county-nj.html"), /North of the Meadowlands/);
+});
+
+check("the private jet page links Signature Newark to the Newark Airport private section and its Service names Newark Liberty", () => {
+  const doc = pages.get("private-jet-car-service-nyc.html");
+  assert.ok(doc.querySelector('#newark + p a[href="/locations/newark-airport#private"]'));
+  assert.ok(pages.get("locations/newark-airport.html").getElementById("private"));
+  assert.match(ld("private-jet-car-service-nyc.html").find((n) => n["@type"] === "Service").description, /the FBOs at Teterboro, Newark Liberty, Westchester, Morristown, Republic, Long Island MacArthur and Stewart airports/);
 });
 
 if (failures) {

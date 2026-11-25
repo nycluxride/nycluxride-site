@@ -33,6 +33,15 @@ for (const r of results) {
   });
 }
 
+const plain = new Map(results.map((r) => [r.file, r.words]));
+const listed = measureSite(ROOT, null, true).filter((r) => r.words < plain.get(r.file));
+check("the county pages are measured again without their list of town names", () => assert.equal(listed.filter((r) => /-county-nj\.html$/.test(r.file)).length, 21));
+for (const r of listed) {
+  check(`${r.file}: at least ${MIN_UNIQUE_WORDS} words of body text no ${r.family} page shares, without the list of town names (${r.unique} of ${r.words})`, () => {
+    assert.ok(r.unique >= MIN_UNIQUE_WORDS, `${r.unique} unique words`);
+  });
+}
+
 if (failures) {
   console.error(`\n${failures} uniqueness assertion(s) failed`);
   process.exit(1);

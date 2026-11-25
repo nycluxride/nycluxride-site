@@ -148,20 +148,20 @@ const policiesFor = (path) =>
     .routes.filter((r) => r.headers && "Content-Security-Policy" in r.headers && new RegExp(r.src).test(path))
     .map((r) => r.headers["Content-Security-Policy"]);
 
-const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", "/car-service-with-car-seat-nyc", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "westchester-airport", "hoboken"].map((a) => `/locations/${a}`), "/long-distance-car-service", "/long-distance-car-service/nyc-to-philadelphia", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `/${s}`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton"].map((a) => `/locations/${a}`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `/long-distance-car-service/${r}`)];
+const SEARCH_PAGES = ["/services", "/chauffeur-service-nyc", "/limousine-service-nyc", "/black-car-service-brooklyn", "/car-service-with-car-seat-nyc", ...["manhattan", "brooklyn", "queens", "bronx", "staten-island", "financial-district", "soho", "upper-east-side", "upper-west-side", "long-island-city", "westchester-airport", "hoboken"].map((a) => `/locations/${a}`), "/long-distance-car-service", "/long-distance-car-service/nyc-to-philadelphia", ...["pet-friendly-car-service-nyc", "private-jet-car-service-nyc", "roadshow-transportation-nyc", "sprinter-van-service-nyc", "cruise-terminal-car-service-nyc", "wedding-car-service-nyc"].map((s) => `/${s}`), ...["philadelphia-airport", "long-island-macarthur-airport", "stewart-airport", "morristown-airport", "republic-airport", "bradley-airport", "midtown-manhattan", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct", "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton", "hudson-county-nj", "bergen-county-nj", "essex-county-nj", "morris-county-nj", "passaic-county-nj", "union-county-nj", "middlesex-county-nj", "somerset-county-nj", "monmouth-county-nj", "ocean-county-nj", "mercer-county-nj", "hunterdon-county-nj", "sussex-county-nj", "warren-county-nj", "burlington-county-nj", "camden-county-nj", "gloucester-county-nj", "salem-county-nj", "cumberland-county-nj", "atlantic-county-nj", "cape-may-county-nj"].map((a) => `/locations/${a}`), ...["nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"].map((r) => `/long-distance-car-service/${r}`)];
 const PAYMENT_PAGES = ["/", "/book", "/booking-confirmed", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", "/locations/teterboro-airport", ...SEARCH_PAGES];
 const PAYMENT_FILES = ["index.html", "book.html", "booking-confirmed.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html", ...SEARCH_PAGES.map((p) => `${p.slice(1)}.html`)];
 
-test("vercel's transformed routes send one identical Content-Security-Policy on the 62 payment pages and none elsewhere", () => {
+test("vercel's transformed routes send one identical Content-Security-Policy on the 83 payment pages and none elsewhere", () => {
   const book = policiesFor("/book");
   assert.equal(book.length, 1);
-  assert.equal(PAYMENT_PAGES.length, 62);
+  assert.equal(PAYMENT_PAGES.length, 83);
   for (const path of PAYMENT_PAGES) assert.deepEqual(policiesFor(path), book, path);
   const paths = ["/rates", "/faq", "/about", "/blog", "/services/x", "/locations/manhattan/x", "/locations", "/locations/jfk-airport/x", "/locations/jfk-airports", "/locations/newark-airport/x", "/car-service-with-car-seat-nyc/x", "/booking", "/book/x", "/books", "/api/book", "/api/places", "/booking-confirmed-old", "/index", "/fleet"];
   for (const path of paths) assert.deepEqual(policiesFor(path), [], path);
 });
 
-test("the 62 payment pages use one header rule each with the same policy text in vercel.json", () => {
+test("the 83 payment pages use one header rule each with the same policy text in vercel.json", () => {
   const rules = (config.headers || []).filter((h) => h.headers.some((x) => x.key === "Content-Security-Policy"));
   assert.deepEqual(rules.map((r) => r.source).sort(), [...PAYMENT_PAGES].sort());
   const values = new Set(rules.map((r) => r.headers.find((x) => x.key === "Content-Security-Policy").value));
@@ -186,7 +186,7 @@ test("the policy needs no new origin: no img-src, connect-src or default-src, so
   assert.ok(!policy.includes("unsafe-eval") && !policy.includes("unsafe-inline"));
 });
 
-test("the 62 payment pages hold no inline script and no inline event handler", () => {
+test("the 83 payment pages hold no inline script and no inline event handler", () => {
   for (const file of PAYMENT_FILES) {
     const html = readFileSync(join(ROOT, file), "utf8");
     const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)].filter(([, attrs, body]) => !/\bsrc=/.test(attrs) && !/type="application\/ld\+json"/.test(attrs) && body.trim());
@@ -260,11 +260,11 @@ test("every api route answers no-store through the /api rule", () => {
   }
 });
 
-test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 21:00 UTC every day, 4 PM in New York in winter and 5 PM in summer, and the owner update at 14:00 UTC, 9 AM in New York on November 25, and their routes exist", () => {
+test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 21:00 UTC every day, 4 PM in New York in winter and 5 PM in summer, and the owner update at 17:00 UTC, noon in New York on November 25, and their routes exist", () => {
   assert.deepEqual(config.crons, [
     { path: "/api/seo-weekly", schedule: "0 13 * * 1" },
     { path: "/api/ride-reminders", schedule: "0 21 * * *" },
-    { path: "/api/owner-update", schedule: "0 14 * * *" },
+    { path: "/api/owner-update", schedule: "0 17 * * *" },
   ]);
   for (const route of ["seo-weekly.mjs", "ride-reminders.mjs", "owner-update.mjs"]) assert.ok(existsSync(join(ROOT, "api", route)), route);
 });

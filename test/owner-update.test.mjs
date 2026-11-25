@@ -12,7 +12,7 @@ import * as route from "../api/owner-update.mjs";
 const { GET } = route;
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RealDate = Date;
-const SEND = "2026-11-25T14:00:00.000Z";
+const SEND = "2026-11-25T17:00:00.000Z";
 const CRON = `cron-${createHash("sha256").update("owner update cron").digest("hex").slice(0, 32)}`;
 const USER = "info@nycluxride.com";
 const PASS = `pw-${createHash("sha256").update("owner update smtp").digest("hex").slice(0, 16)}`;
@@ -20,11 +20,30 @@ const ENV_KEYS = ["CRON_SECRET", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PO
 const LINES = [
   "Assalamu Alaikum,",
   "",
-  "Two quick questions. A short reply is fine.",
+  "These are now live on www.nycluxride.com:",
+  "- Child seats and dogs are chosen on the first step, next to passengers and bags.",
+  "- Car seats are $20 each.",
+  "- Every car photo in the booking form is a studio shot on a white background.",
+  "- Booking is now two steps, with a shorter payment box. The cancellation terms fold under \"Cancellation and terms\" next to the pay button.",
+  "- A page for each of the 21 New Jersey counties with every town you sent, and Signature Newark on the Newark Airport and private jet pages.",
   "",
-  "1. Your JFK to Jersey City booking 39333380 (Business SUV, one child seat) comes to $239.85 with both tolls. You asked for $228 with 12% tax. New York tax does not apply to trips into New Jersey, so to bring that ride to about $228 we would lower prices for trips priced by distance by about 6%, for every car. Flat airport prices and hourly rates stay the same. With the new $20 child seat, that ride would be about $233. Should we lower them?",
+  "One thing to check: on your phone, book a test ride at www.nycluxride.com/book up to the pay button, without paying. Reply OK, or tell me what to change.",
   "",
-  "2. Which toll class are your Sprinters billed at on E-ZPass? A car pays $14.79 to $16.79 at the Hudson River bridges and tunnels. A mini bus pays $16.80 to $21.00 and a vehicle with dual rear wheels pays about $43 to $45. We will charge Sprinter tolls at that rate.",
+  "Your to-do list. Only you can do these because they need your accounts.",
+  "",
+  "1. Google reviews (most important). Send your Google review link to every rider 2 to 4 hours after the ride. Reply to each review within two days and name the trip, for example \"Thank you for riding with us from Morristown to Newark.\" Never offer anything for a review.",
+  "",
+  "2. Google service areas. In Google Maps tap Business, then Edit profile, Location, Service area. Remove all, then add these 20: Manhattan, Brooklyn, Queens, Bronx, Staten Island, Nassau County NY, Suffolk County NY, Westchester County NY, Fairfield County CT, and in New Jersey the Bergen, Hudson, Essex, Union, Middlesex, Morris, Passaic, Somerset, Monmouth, Ocean and Mercer counties.",
+  "",
+  "3. Google categories. Primary: Limousine service. Additional: Chauffeur service. Nothing else.",
+  "",
+  "4. Google services. Under Edit services add Private jet and FBO transportation, New Jersey car service, Long-distance car service and Roadshow transportation. Set your car seat service to $20 per seat.",
+  "",
+  "5. Free listings. Claim your business on Data Axle (local-listings.data-axle.com), Foursquare (business.foursquare.com), Bing Places (bingplaces.com) and Yelp (biz.yelp.com). Use exactly: NYC LUX RIDE, (646) 775-0556, https://www.nycluxride.com/, open 24 hours.",
+  "",
+  "6. Private jet terminals. Ask each front desk to add you to their car service list and to link nycluxride.com/private-jet-car-service-nyc: Signature Newark (973 624 1660), Signature Morristown (973 292 1300), Atlantic Morristown (973 401 1900), and the Teterboro terminals (Atlantic, Jet Aviation and Signature).",
+  "",
+  "7. Old website. Ask Muhammad Bassam Khuram for access to nyc-lux-ride.com so it can send its visitors to nycluxride.com.",
   "",
   "JazakAllah Khair,",
   "Ali",
@@ -191,13 +210,13 @@ await test("without the cron bearer the route answers 401 on the send day and op
   }
 });
 
-await test("the 14:00 UTC cron lands at 9 AM in New York on November 25, 2026", () => {
+await test("the 17:00 UTC cron lands at noon in New York on November 25, 2026", () => {
   const hour = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(SEND));
-  assert.equal(hour, "11/25/2026, 09");
+  assert.equal(hour, "11/25/2026, 12");
 });
 
 await test("on every other New York day the route answers 204 with no body, opens no mail connection and logs nothing", async () => {
-  for (const iso of ["2026-11-24T14:00:00.000Z", "2026-11-25T04:59:59.000Z", "2026-11-26T05:00:00.000Z", "2026-11-26T14:00:00.000Z", "2026-11-22T14:00:00.000Z", "2027-11-25T14:00:00.000Z", "2025-11-25T14:00:00.000Z"]) {
+  for (const iso of ["2026-11-24T17:00:00.000Z", "2026-11-25T04:59:59.000Z", "2026-11-26T05:00:00.000Z", "2026-11-26T17:00:00.000Z", "2026-11-22T17:00:00.000Z", "2027-11-25T17:00:00.000Z", "2025-11-25T17:00:00.000Z"]) {
     setEnv(liveEnv());
     const res = await run(iso);
     assert.equal(res.status, 204, iso);
@@ -226,12 +245,12 @@ await test("the email has the subject, the message id, the exact lines as text a
   await run();
   const { headers, text, html } = parse(smtp.messages[0].data);
   assert.equal(headers.get("to"), "info@nycluxride.com");
-  assert.equal(headers.get("subject"), "Two quick questions about prices");
-  assert.equal(headers.get("message-id"), "<owner-update.20261125@nycluxride.com>");
+  assert.equal(headers.get("subject"), "Website updates and a short to-do list");
+  assert.equal(headers.get("message-id"), "<owner-update.20261125b@nycluxride.com>");
   assert.equal(headers.get("from"), "\"NYC LUX RIDE\" <info@nycluxride.com>");
   assert.equal(headers.has("cc") || headers.has("bcc") || headers.has("reply-to"), false);
   assert.equal(text, LINES.join("\n"));
-  assert.equal(html, `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#111">${LINES.filter(Boolean).map((l) => `<p style="margin:0 0 10px">${l}</p>`).join("")}</body></html>`);
+  assert.equal(html, `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#111">${LINES.filter(Boolean).map((l) => `<p style="margin:0 0 10px">${l.replace(/"/g, "&quot;")}</p>`).join("")}</body></html>`);
   const { document } = new JSDOM(html).window;
   assert.deepEqual([...document.querySelectorAll("p")].map((p) => p.textContent), LINES.filter(Boolean));
   assert.equal(document.querySelectorAll("a, img, script, link, style, iframe, form").length, 0);
@@ -243,7 +262,7 @@ await test("the subject and the lines hold no em dash, en dash or semicolon", as
   const { headers, text, html } = parse(smtp.messages[0].data);
   const { document } = new JSDOM(html).window;
   for (const value of [headers.get("subject"), ...text.split("\n"), document.body.textContent]) assert.doesNotMatch(value, /[–—;]/, value);
-  assert.equal(LINES.filter((l) => /^\d+\. /.test(l)).length, 2);
+  assert.deepEqual(LINES.filter((l) => /^\d+\. /.test(l)).map((l) => l.split(".")[0]), ["1", "2", "3", "4", "5", "6", "7"]);
 });
 
 await test("mail not set up or broken answers 500 with one line and opens no mail connection, and an SMTP refusal answers 500 with the stage and code", async () => {
@@ -277,7 +296,7 @@ await test("no log line carries the cron secret or the SMTP password", async () 
 
 await test("the route file is registered with the static suite and a daily cron, and holds no comment", () => {
   const config = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
-  assert.deepEqual(config.crons.filter((c) => c.path === "/api/owner-update"), [{ path: "/api/owner-update", schedule: "0 14 * * *" }]);
+  assert.deepEqual(config.crons.filter((c) => c.path === "/api/owner-update"), [{ path: "/api/owner-update", schedule: "0 17 * * *" }]);
   assert.match(readFileSync(join(ROOT, "test", "run-all.mjs"), "utf8"), /\n  "owner-update",\n/);
   assert.doesNotMatch(readFileSync(join(ROOT, "api", "owner-update.mjs"), "utf8"), /^\s*\/\/|\/\*/m);
 });

@@ -126,10 +126,18 @@
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations</loc>
-    <lastmod>2026-11-20</lastmod>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/alpine-tenafly</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/atlantic-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/bergen-county-nj</loc>
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>
@@ -145,6 +153,22 @@
     <lastmod>2026-11-22</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/burlington-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/camden-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/cape-may-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/cumberland-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/edgewater</loc>
     <lastmod>2026-11-22</lastmod>
   </url>
@@ -153,12 +177,20 @@
     <lastmod>2026-11-22</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/essex-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/financial-district</loc>
     <lastmod>2026-11-22</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/fort-lee</loc>
     <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/gloucester-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/greenwich-ct</loc>
@@ -170,6 +202,14 @@
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/hoboken</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/hudson-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/hunterdon-county-nj</loc>
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>
@@ -201,8 +241,24 @@
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/mercer-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/middlesex-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/midtown-manhattan</loc>
     <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/monmouth-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/morris-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/morristown</loc>
@@ -214,7 +270,7 @@
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/new-jersey</loc>
-    <lastmod>2026-11-22</lastmod>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/newark-airport</loc>
@@ -225,8 +281,16 @@
     <lastmod>2026-11-22</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/ocean-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/paramus</loc>
     <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/passaic-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/philadelphia-airport</loc>
@@ -245,6 +309,10 @@
     <lastmod>2026-11-22</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/salem-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/secaucus</loc>
     <lastmod>2026-11-22</lastmod>
   </url>
@@ -255,6 +323,10 @@
   <url>
     <loc>https://www.nycluxride.com/locations/soho</loc>
     <lastmod>2026-11-22</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/somerset-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/stamford-ct</loc>
@@ -273,7 +345,15 @@
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>
+    <loc>https://www.nycluxride.com/locations/sussex-county-nj</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
     <loc>https://www.nycluxride.com/locations/teterboro-airport</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/union-county-nj</loc>
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>
@@ -282,6 +362,10 @@
   </url>
   <url>
     <loc>https://www.nycluxride.com/locations/upper-west-side</loc>
+    <lastmod>2026-11-24</lastmod>
+  </url>
+  <url>
+    <loc>https://www.nycluxride.com/locations/warren-county-nj</loc>
     <lastmod>2026-11-24</lastmod>
   </url>
   <url>

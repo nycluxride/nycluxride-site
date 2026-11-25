@@ -23,6 +23,7 @@ const AIRPORT_DISTANCE = ["westchester-airport", "philadelphia-airport", "long-i
 const OUTSIDE = [
   "hoboken", "long-island", "hamptons", "westchester-county", "greenwich-ct", "stamford-ct",
   "new-jersey", "jersey-city", "weehawken-north-bergen", "secaucus", "newark-nj", "fort-lee", "edgewater", "englewood", "paramus", "alpine-tenafly", "short-hills-livingston", "morristown", "summit", "princeton",
+  "hudson-county-nj", "bergen-county-nj", "essex-county-nj", "morris-county-nj", "passaic-county-nj", "union-county-nj", "middlesex-county-nj", "somerset-county-nj", "monmouth-county-nj", "ocean-county-nj", "mercer-county-nj", "hunterdon-county-nj", "sussex-county-nj", "warren-county-nj", "burlington-county-nj", "camden-county-nj", "gloucester-county-nj", "salem-county-nj", "cumberland-county-nj", "atlantic-county-nj", "cape-may-county-nj",
 ].map((a) => `locations/${a}.html`);
 CLOSES.push(...OUTSIDE.filter((f) => !CLOSES.includes(f)));
 
@@ -73,8 +74,8 @@ const pages = new Map(files.map((f) => [f, read(f)]));
 const locations = files.filter((f) => f.startsWith("locations/"));
 const posts = files.filter((f) => f.startsWith("blog/"));
 
-check("there are 42 location pages and 17 blog posts", () => {
-  assert.equal(locations.length, 42);
+check("there are 63 location pages and 17 blog posts", () => {
+  assert.equal(locations.length, 63);
   assert.equal(posts.length, 17);
 });
 

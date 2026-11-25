@@ -18,6 +18,8 @@ const OUTSIDE = {
   "locations/fort-lee.html": "Fort Lee", "locations/edgewater.html": "Edgewater", "locations/englewood.html": "Englewood", "locations/paramus.html": "Paramus", "locations/alpine-tenafly.html": "Alpine and Tenafly",
   "locations/short-hills-livingston.html": "Short Hills and Livingston", "locations/morristown.html": "Morristown", "locations/summit.html": "Summit", "locations/princeton.html": "Princeton",
 };
+const COUNTIES = { "locations/hudson-county-nj.html": "Hudson County", "locations/bergen-county-nj.html": "Bergen County", "locations/essex-county-nj.html": "Essex County", "locations/morris-county-nj.html": "Morris County", "locations/passaic-county-nj.html": "Passaic County", "locations/union-county-nj.html": "Union County", "locations/middlesex-county-nj.html": "Middlesex County", "locations/somerset-county-nj.html": "Somerset County", "locations/monmouth-county-nj.html": "Monmouth County", "locations/ocean-county-nj.html": "Ocean County", "locations/mercer-county-nj.html": "Mercer County", "locations/hunterdon-county-nj.html": "Hunterdon County", "locations/sussex-county-nj.html": "Sussex County", "locations/warren-county-nj.html": "Warren County", "locations/burlington-county-nj.html": "Burlington County", "locations/camden-county-nj.html": "Camden County", "locations/gloucester-county-nj.html": "Gloucester County", "locations/salem-county-nj.html": "Salem County", "locations/cumberland-county-nj.html": "Cumberland County", "locations/atlantic-county-nj.html": "Atlantic County", "locations/cape-may-county-nj.html": "Cape May County" };
+Object.assign(OUTSIDE, COUNTIES);
 const ROUTES = { "long-distance-car-service/nyc-to-philadelphia.html": "NYC to Philadelphia", "long-distance-car-service/nyc-to-boston.html": "NYC to Boston", "long-distance-car-service/nyc-to-washington-dc.html": "NYC to Washington, DC", "long-distance-car-service/nyc-to-atlantic-city.html": "NYC to Atlantic City", "long-distance-car-service/nyc-to-connecticut.html": "NYC to Connecticut" };
 const MONEY = { "chauffeur-service-nyc.html": ["/services", "Services", "Chauffeur service"], "limousine-service-nyc.html": ["/services", "Services", "Limousine service"], "black-car-service-brooklyn.html": ["/locations", "Service areas", "Black car service, Brooklyn"], "car-service-with-car-seat-nyc.html": ["/services", "Services", "Car seats"], "long-distance-car-service.html": ["/services", "Services", "Long-distance car service"],
   "pet-friendly-car-service-nyc.html": ["/services", "Services", "Pet friendly car service"], "private-jet-car-service-nyc.html": ["/services", "Services", "Private jet car service"], "roadshow-transportation-nyc.html": ["/services", "Services", "Roadshow transportation"],
@@ -66,6 +68,27 @@ const PHOTO = {
   "locations/paramus.html": "/fleet/page-contact-900.webp",
   "locations/philadelphia-airport.html": "/fleet/page-jfk-airport-900.webp",
   "locations/princeton.html": "/fleet/page-about-900.webp",
+  "locations/hudson-county-nj.html": "/fleet/page-long-island-city-900.webp",
+  "locations/bergen-county-nj.html": "/fleet/page-bronx-900.webp",
+  "locations/essex-county-nj.html": "/fleet/page-manhattan-900.webp",
+  "locations/morris-county-nj.html": "/fleet/page-rates-900.webp",
+  "locations/passaic-county-nj.html": "/fleet/page-contact-900.webp",
+  "locations/union-county-nj.html": "/fleet/page-upper-west-side-900.webp",
+  "locations/middlesex-county-nj.html": "/fleet/page-about-900.webp",
+  "locations/somerset-county-nj.html": "/fleet/page-queens-900.webp",
+  "locations/monmouth-county-nj.html": "/fleet/page-staten-island-900.webp",
+  "locations/ocean-county-nj.html": "/fleet/page-schedule-900.webp",
+  "locations/mercer-county-nj.html": "/fleet/page-financial-district-900.webp",
+  "locations/hunterdon-county-nj.html": "/fleet/page-bronx-900.webp",
+  "locations/sussex-county-nj.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/warren-county-nj.html": "/fleet/page-laguardia-airport-900.webp",
+  "locations/burlington-county-nj.html": "/fleet/page-contact-900.webp",
+  "locations/camden-county-nj.html": "/fleet/page-financial-district-900.webp",
+  "locations/gloucester-county-nj.html": "/fleet/page-rates-900.webp",
+  "locations/salem-county-nj.html": "/fleet/page-about-900.webp",
+  "locations/cumberland-county-nj.html": "/fleet/page-jfk-airport-900.webp",
+  "locations/atlantic-county-nj.html": "/fleet/page-queens-900.webp",
+  "locations/cape-may-county-nj.html": "/fleet/page-staten-island-900.webp",
   "locations/republic-airport.html": "/fleet/page-laguardia-airport-900.webp",
   "locations/secaucus.html": "/fleet/page-about-900.webp",
   "locations/short-hills-livingston.html": "/fleet/page-queens-900.webp",
@@ -128,6 +151,27 @@ const GOLD = {
   "locations/paramus.html": "Paramus",
   "locations/philadelphia-airport.html": "Philadelphia Airport",
   "locations/princeton.html": "Princeton",
+  "locations/hudson-county-nj.html": "Hudson County",
+  "locations/bergen-county-nj.html": "Bergen County",
+  "locations/essex-county-nj.html": "Essex County",
+  "locations/morris-county-nj.html": "Morris County",
+  "locations/passaic-county-nj.html": "Passaic County",
+  "locations/union-county-nj.html": "Union County",
+  "locations/middlesex-county-nj.html": "Middlesex County",
+  "locations/somerset-county-nj.html": "Somerset County",
+  "locations/monmouth-county-nj.html": "Monmouth County",
+  "locations/ocean-county-nj.html": "Ocean County",
+  "locations/mercer-county-nj.html": "Mercer County",
+  "locations/hunterdon-county-nj.html": "Hunterdon County",
+  "locations/sussex-county-nj.html": "Sussex County",
+  "locations/warren-county-nj.html": "Warren County",
+  "locations/burlington-county-nj.html": "Burlington County",
+  "locations/camden-county-nj.html": "Camden County",
+  "locations/gloucester-county-nj.html": "Gloucester County",
+  "locations/salem-county-nj.html": "Salem County",
+  "locations/cumberland-county-nj.html": "Cumberland County",
+  "locations/atlantic-county-nj.html": "Atlantic County",
+  "locations/cape-may-county-nj.html": "Cape May County",
   "locations/republic-airport.html": "Republic Airport",
   "locations/secaucus.html": "Secaucus",
   "locations/short-hills-livingston.html": "Short Hills and Livingston",
@@ -162,6 +206,9 @@ const POSTS = readdirSync(join(ROOT, "blog")).filter((f) => f.endsWith(".html"))
 
 const CRUMBS = {};
 for (const [file, name] of Object.entries({ ...AREAS, ...AIRPORTS, ...AIRPORT_DISTANCE, ...OUTSIDE })) CRUMBS[file] = [["/locations", "Service areas"], [null, name]];
+for (const [file, name] of Object.entries(COUNTIES)) CRUMBS[file] = [["/locations", "Service areas"], ["/locations/new-jersey", "New Jersey"], [null, name]];
+const TOWN_COUNTY = { "locations/alpine-tenafly.html": "bergen", "locations/edgewater.html": "bergen", "locations/englewood.html": "bergen", "locations/fort-lee.html": "bergen", "locations/paramus.html": "bergen", "locations/hoboken.html": "hudson", "locations/jersey-city.html": "hudson", "locations/secaucus.html": "hudson", "locations/weehawken-north-bergen.html": "hudson", "locations/newark-nj.html": "essex", "locations/short-hills-livingston.html": "essex", "locations/morristown.html": "morris", "locations/princeton.html": "mercer", "locations/summit.html": "union" };
+for (const [file, county] of Object.entries(TOWN_COUNTY)) CRUMBS[file] = [["/locations", "Service areas"], ["/locations/new-jersey", "New Jersey"], [`/locations/${county}-county-nj`, COUNTIES[`locations/${county}-county-nj.html`]], [null, OUTSIDE[file]]];
 for (const [file, name] of Object.entries(ROUTES)) CRUMBS[file] = [["/services", "Services"], ["/long-distance-car-service", "Long-distance car service"], [null, name]];
 for (const [file, [href, text, name]] of Object.entries(MONEY)) CRUMBS[file] = [[href, text], [null, name]];
 CRUMBS["services.html"] = [["/", "Home"], [null, "Services"]];

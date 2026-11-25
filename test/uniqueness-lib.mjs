@@ -38,11 +38,19 @@ const BLOCKS = "p, li, dd, dt, td, th, caption, summary, h2, h3, h4, figcaption,
 const SKIP = "#book-form, nav.crumbs, aside.rail, .section--close, figure.citymap, nav.toc-post";
 const words = (s) => s.toLowerCase().replace(/[’']/g, "").match(/[a-z0-9$]+/g) || [];
 
-export function bodyBlocks(html) {
+export function isNameList(p) {
+  if (p.tagName !== "P" || (p.textContent.match(/,/g) || []).length < 8) return false;
+  let h = p.previousElementSibling;
+  while (h && h.tagName !== "H2") h = h.previousElementSibling;
+  return Boolean(h && /^Towns we serve\b/.test(h.textContent.trim()));
+}
+
+export function bodyBlocks(html, dropNameLists = false) {
   const { document } = new JSDOM(html).window;
   const main = document.querySelector("main");
   if (!main) return [];
   for (const n of main.querySelectorAll(SKIP)) n.remove();
+  if (dropNameLists) for (const p of [...main.querySelectorAll("p")].filter(isNameList)) p.remove();
   const out = [];
   for (const el of main.querySelectorAll(BLOCKS)) {
     if (el.querySelector(BLOCKS.split(", ").filter((t) => !["summary", "caption"].includes(t)).join(", "))) continue;
@@ -89,9 +97,9 @@ export function measure(file, blocks, siblings) {
   return { file, words: blocks.reduce((a, b) => a + b.length, 0), unique: uniqueWords(blocks, allGrams, allShort), grams: own.size, shared };
 }
 
-export function measureSite(root, only = null) {
+export function measureSite(root, only = null, dropNameLists = false) {
   const files = htmlFiles(root);
-  const blocks = new Map(files.filter((f) => familyOf(f)).map((f) => [f, bodyBlocks(readFileSync(join(root, f), "utf8"))]));
+  const blocks = new Map(files.filter((f) => familyOf(f)).map((f) => [f, bodyBlocks(readFileSync(join(root, f), "utf8"), dropNameLists)]));
   const out = [];
   for (const [file, b] of blocks) {
     if (EXISTING.has(file) || (only && !only.includes(file))) continue;
