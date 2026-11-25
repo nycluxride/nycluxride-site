@@ -102,8 +102,8 @@ const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport
 const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, taxes and fees, tolls and airport fees on airport rides to or from New York City, tolls on distance trips, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
 const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips anywhere in the United States are priced by distance and time when you book. Each stop adds a fee, or more if it takes the car out of the way. For very long trips or trips outside the United States, we'll send you a price.";
 
-const RATES_TITLE = "NYC Car Service Rates: Airport Transfers from $145 | NYC LUX RIDE";
-const RATES_DESCRIPTION = "Airport transfers to JFK, Newark and Teterboro from $170, LaGuardia from $145, with tolls, fees and taxes included. Hourly from $85, 3-hour minimum.";
+const RATES_TITLE = "Car Service Rates and Airport Cost from $145 | NYC LUX RIDE";
+const RATES_DESCRIPTION = "A car service to the airport costs from $145 to LaGuardia and $170 to JFK, Newark or Teterboro, with tolls and taxes included. Hourly from $85.";
 const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly minimums start at 3 hours. There's no meter and no surge pricing.";
 const RATES_HOURLY_CAPTION = "Taxes and fees are added at booking. Tolls and parking are charged after the ride.";
 const RATES_FACTS = {
@@ -118,8 +118,10 @@ const RATES_FACTS = {
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
 const RATES_CANCELLATION = "You pay the total at checkout when you book. After the ride, we only charge the same card for extra waiting, stops added during the ride, parking, and tolls not in your price. Each charge comes with an itemized receipt.";
 const RATES_FAQ = [
+  ["How much does a car service to the airport cost?", "From $145 to LaGuardia and $170 to JFK, Newark or Teterboro in an Executive Sedan, from any New York City address. Tolls, airport fees and taxes are included, and the price stays the same in any traffic. Rides from outside the city are priced by distance and time."],
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Executive Sedan is $170, Electric Class $180, Business Premium SUV $220, First Class $310 and Luxury Sprinter from $450. A gratuity is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and taxes included. Executive Sedan is $145, Electric Class $155, Business Premium SUV $190, First Class $250 and Luxury Sprinter from $450."],
+  ["How much is a car service by the hour in NYC?", "From $85 per hour in an Executive Sedan and from $95 in a Business SUV, with a 3-hour minimum, or 4 hours in a Sprinter. Taxes and fees are added at booking, and tolls and parking are charged after the ride."],
   ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For an Executive Sedan that's $255 plus taxes and fees, with tolls and parking after the ride."],
   ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];

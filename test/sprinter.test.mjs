@@ -638,7 +638,7 @@ await test("the owner's 3 hour Sprinter notice, followed by the two SUVs sentenc
   assert.ok(text(rates.getElementById("sprinter-airport-caption")).endsWith(`New York City address. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
   assert.ok(text(rates.getElementById("sprinter-caption")).includes(`Every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Taxes`));
   const fleet = dom("fleet.html").getElementById("luxury-sprinter").querySelector("p");
-  assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Our limousine service page`), text(fleet));
+  assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Our luxury limo service page`), text(fleet));
   const van = [...dom("sprinter-van-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);
   assert.deepEqual(van.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", `${SPRINTER_AHEAD} ${SPRINTER_SWAP}`]);
   assert.ok(!sentences(dom("sprinter-van-service-nyc.html")).some((t) => new RegExp(`${MIN_NOTICE_MINUTES} minutes|Sooner by email`).test(t)), "the Sprinter van page offers no Sprinter online sooner than 3 hours");
