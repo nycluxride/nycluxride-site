@@ -1,4 +1,4 @@
-import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
+import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, STRIPE_MAX_CENTS, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, SPRINTER_BUSY } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
 import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionBusy } from "./_trip.mjs";
@@ -227,6 +227,7 @@ async function handlePost(request) {
   if (trip.action !== "pay") return json(200, optionsBody(trip, ref, check, now, size, draw));
   if (check.reason) return reply(200, quoteBody(trip, ref, check.reason, now, { scope: "class" }), `/book#q-${check.reason}`);
   const price = priceTrip(trip, settings);
+  if (price.total > STRIPE_MAX_CENTS) return invalid("tip_amount");
   if (check.hold) return reply(200, quoteBody(trip, ref, check.hold, now, { scope: "hold", total: price.total }), `/book#q-${check.hold}`);
   const detail = checkDetails(trip, asJson);
   if (detail) return invalid(detail.code);

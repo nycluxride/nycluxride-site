@@ -917,7 +917,7 @@ await test("handler: options answers the 13.1.2 shape with all six classes price
       { vehicle: "sprinter-white-limo", label: "White Luxury Limo Sprinter", seats: 10, total_cents: 75000 },
     ],
     tips: [0, 10, 15, 20, 25],
-    tip_custom: { min_cents: 100, max_cents: 50000 },
+    tip_custom: { min_cents: 100, max_cents: 99999999 },
     meet: true,
     meet_cents: 2500,
     seat_cents: 1500,
@@ -975,7 +975,7 @@ await test("handler: a gratuity the rider types adds the same fixed amount to ev
   const fields = { ...PICKUP_SOON, tip: "custom", tip_amount: "40", action: "quote" };
   const body = await slotted(async () => readJson(await post(fields), 200));
   assert.equal(body.kind, "options");
-  assert.deepEqual([body.tips, body.tip_custom], [[0, 10, 15, 20, 25], { min_cents: 100, max_cents: 50000 }]);
+  assert.deepEqual([body.tips, body.tip_custom], [[0, 10, 15, 20, 25], { min_cents: 100, max_cents: 99999999 }]);
   assert.deepEqual(body.selected, { class: "suv", vehicle: "", tip: "custom", tip_amount: 40, meet: true });
   assert.deepEqual(body.price.lines.slice(3), [{ label: "Meet and greet", cents: 2500 }, { label: "Gratuity for your chauffeur", cents: 4000 }]);
   assert.equal(body.price.total_cents, 25000);
@@ -989,14 +989,14 @@ await test("handler: a gratuity the rider types adds the same fixed amount to ev
   const seats = await slotted(async () => readJson(await post({ ...fields, passengers: "7", action: "options" }), 200));
   assert.deepEqual([seats.price, seats.reason, seats.selected.tip, seats.selected.tip_amount, seats.classes.at(-1).total_cents], [null, "seats", "custom", 40, 51500]);
   const quote = await slotted(async () => readJson(await post({ ...fields, from_text: "350 5th Ave", action: "options" }), 200));
-  assert.deepEqual([quote.kind, quote.reason, quote.tip_custom, quote.tips], ["quote", "unplaced", { min_cents: 100, max_cents: 50000 }, TIP_PERCENTS]);
+  assert.deepEqual([quote.kind, quote.reason, quote.tip_custom, quote.tips], ["quote", "unplaced", { min_cents: 100, max_cents: 99999999 }, TIP_PERCENTS]);
   assert.equal(calls.length, 0);
 });
 
-await test("handler: a typed gratuity that is not 1 to 500 whole dollars is the invalid code tip_amount, a pay post with 40 sends the 4000 line to Stripe", async () => {
+await test("handler: a typed gratuity that is not 1 to 999999 whole dollars is the invalid code tip_amount, a pay post with 40 sends the 4000 line to Stripe", async () => {
   setEnv(LIVE);
   assert.deepEqual(ERRORS.tip_amount, { field: "tip_amount", text: "Type the gratuity in whole dollars, or choose None." });
-  for (const tip_amount of ["", "0", "501", "40.5", "40.00", "$40", "-1", "abc"]) {
+  for (const tip_amount of ["", "0", "1000000", "40.5", "40.00", "$40", "-1", "abc"]) {
     for (const action of ["options", "quote", "pay"]) assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, tip: "custom", tip_amount, action }), 422), { kind: "invalid", code: "tip_amount", field: "tip_amount", text: ERRORS.tip_amount.text }, `${action} ${tip_amount}`);
     assertRedirect(await formPost({ ...STRIPE_JFK, tip: "custom", tip_amount }), "/book#e-tip_amount");
   }
@@ -1011,6 +1011,13 @@ await test("handler: a typed gratuity that is not 1 to 500 whole dollars is the 
   assert.deepEqual([...sent.keys()].filter((key) => key.includes("tip_amount")), []);
   assertRedirect(await formPost({ ...STRIPE_JFK, tip: "custom", tip_amount: "500" }), CHECKOUT_URL);
   assert.equal(formOf(calls.at(-1)).get("metadata[total_cents]"), "68500");
+  assertRedirect(await formPost({ ...STRIPE_JFK, tip: "custom", tip_amount: "999814" }), CHECKOUT_URL);
+  assert.deepEqual([formOf(calls.at(-1)).get("metadata[total_cents]"), stripeTotal(calls.at(-1).init.body)], ["99999900", 99999900], "a gratuity up to Stripe's maximum for one payment goes to Stripe");
+  const sentBefore = calls.length;
+  assert.equal((await readJson(await post({ ...STRIPE_JFK, tip: "custom", tip_amount: "999815", action: "options" }), 200)).kind, "options");
+  assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, tip: "custom", tip_amount: "999815", nonce: "nonce-custom-pay-000002" }), 422), { kind: "invalid", code: "tip_amount", field: "tip_amount", text: ERRORS.tip_amount.text }, "a total over $999,999.99 never reaches Stripe");
+  assertRedirect(await formPost({ ...STRIPE_JFK, tip: "custom", tip_amount: "999815" }), "/book#e-tip_amount");
+  assert.equal(calls.length, sentBefore);
 });
 
 await test("handler: a class reason answers kind options with price null and that reason, the other cards keep their prices", async () => {
@@ -1075,7 +1082,7 @@ await test("handler: a hold keeps the prices in options with pay false, and its 
     assert.deepEqual([body.kind, body.hold, body.pay, body.reason, body.price.total_cents], ["options", hold, false, "", 18500], hold);
     assert.ok(decodeURIComponent(body.whatsapp).endsWith("Total shown: $185.00"));
     const held = await slotted(async () => readJson(await post(fields), 200));
-    assert.deepEqual([held.kind, held.reason, held.tip_custom], ["quote", hold, { min_cents: 100, max_cents: 50000 }], hold);
+    assert.deepEqual([held.kind, held.reason, held.tip_custom], ["quote", hold, { min_cents: 100, max_cents: 99999999 }], hold);
   }
   assert.equal(calls.length, 0);
 });
@@ -1242,7 +1249,7 @@ await test("handler: a trip reason answers the quote shape: classes all null wit
     field: "from_text",
     classes: ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls, i) => ({ class: cls, name: ["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class", "Luxury Sprinter"][i], seats: [6, 6, 3, 3, 3, 14][i], total_cents: null, reason: "unplaced" })),
     tips: TIP_PERCENTS,
-    tip_custom: { min_cents: 100, max_cents: 50000 },
+    tip_custom: { min_cents: 100, max_cents: 99999999 },
     seat_cents: 1500,
     small_dog_cents: 2000,
     large_dog_cents: 4500,
@@ -2369,7 +2376,7 @@ await test("dev server: a full mock-mode booking: options, pay and the paid sess
   const answer = JSON.parse(options.text);
   assert.equal(answer.price.total_cents, 23325);
   assert.ok(sameSlot(answer.earliest, before) || sameSlot(answer.earliest, firstSlot(Date.now())), JSON.stringify(answer.earliest));
-  assert.deepEqual([answer.tip_custom, answer.selected.tip_amount], [{ min_cents: 100, max_cents: 50000 }, 0]);
+  assert.deepEqual([answer.tip_custom, answer.selected.tip_amount], [{ min_cents: 100, max_cents: 99999999 }, 0]);
   const pay = await send("/api/book", fields);
   assert.equal(pay.status, 200);
   assert.equal(pay.headers["cache-control"], "no-store");

@@ -128,7 +128,7 @@ const layout = (page) =>
   page.evaluate(() => {
     const box = (e) => { const b = e.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) }; };
     const $ = (i) => box(document.getElementById(i));
-    return { head: $("bk-opt-h"), pax: $("bk-pax-f"), hint: $("bk-pax-h"), bags: $("bk-bags"), bagHint: $("bk-bags-h"), cards: $("bk-cards"), steppers: [...document.querySelectorAll("#bk-pax-f .bk-stepper, #bk-bags .bk-stepper")].map(box), fields: [...document.querySelectorAll("#bk-bags > .field")].map(box), labels: [...document.querySelectorAll("#bk-bags > .field > label")].map(box), buttons: [...document.querySelectorAll("#bk-bags .bk-stepper button")].map(box), align: getComputedStyle(document.getElementById("bk-bags-h")).textAlign, vw: innerWidth };
+    return { head: $("bk-opt-h"), pax: $("bk-pax-f"), hint: $("bk-pax-h"), bags: $("bk-bags"), bagHint: $("bk-bags-h"), xb: $("bk-xb"), cards: $("bk-cards"), steppers: [...document.querySelectorAll("#bk-pax-f .bk-stepper, #bk-bags .bk-stepper")].map(box), fields: [...document.querySelectorAll("#bk-bags > .field")].map(box), labels: [...document.querySelectorAll("#bk-bags > .field > label")].map(box), buttons: [...document.querySelectorAll("#bk-bags .bk-stepper button")].map(box), align: getComputedStyle(document.getElementById("bk-bags-h")).textAlign, vw: innerWidth };
   });
 function sideBySide(r) {
   assert.equal(r.fields.length, 3);
@@ -137,7 +137,7 @@ function sideBySide(r) {
   assert.ok(r.fields[0].r < r.fields[1].l && r.fields[1].r < r.fields[2].l && r.fields[2].r < Math.min(r.hint.l, r.bagHint.l), `the steppers stay clear of the hints: ${JSON.stringify(r)}`);
   assert.ok(r.hint.t >= r.pax.b && Math.abs(r.hint.t - r.bags.t) <= 1 && r.bagHint.t >= r.hint.b && r.bagHint.b <= r.bags.b, `the hints stack beside the steppers: ${JSON.stringify(r)}`);
   assert.ok(Math.abs(r.hint.r - r.pax.r) <= 1 && Math.abs(r.bagHint.r - r.pax.r) <= 1, JSON.stringify(r));
-  assert.ok(r.cards.t - r.hint.b <= 44, `the cars move down by at most one stepper row: ${JSON.stringify(r)}`);
+  assert.ok(r.xb.h === 44 && r.xb.t >= r.bags.b && r.xb.t - r.hint.b <= 44 && r.cards.t - r.xb.b <= 24, `the cars move down by at most one stepper row, then the closed Child seats and dogs row, under the hints: ${JSON.stringify(r)}`);
 }
 const STATED = Object.values(ROOM).filter((r) => r.length);
 const holds = ([l, s], large, small, medium = 0) => large <= l && large + medium + small <= l + s;
@@ -179,7 +179,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(value, 0, shifts.join(" | "));
     assert.deepEqual(page.errors, []);
   });
-  await check(`BG2 ${width}: ${width < 1024 ? "the bag rows sit between the Passengers hint and the cars, each full width with its stepper at the right edge like the passengers" : "the three bag steppers sit on one line under the heading, each under its size name, beside the Passengers hint, with the bags hint under it at the right edge of the passengers, so the cars move down by at most one stepper row below the hints"}, and every stepper button is 44 px and inside the viewport`, async () => {
+  await check(`BG2 ${width}: ${width < 1024 ? "the bag rows sit between the Passengers hint and the cars, each full width with its stepper at the right edge like the passengers" : "the three bag steppers sit on one line under the heading, each under its size name, beside the Passengers hint, with the bags hint under it at the right edge of the passengers, so the cars move down by at most one stepper row below the hints and then the closed Child seats and dogs row"}, and every stepper button is 44 px and inside the viewport`, async () => {
     const r = await layout(page);
     assert.ok(r.bags.b <= r.cards.t && r.head.b <= r.bags.t, JSON.stringify(r));
     assert.ok(r.buttons.every((b) => b.w === 44 && b.h === 44 && b.l >= 0 && b.r <= r.vw), JSON.stringify(r.buttons));
@@ -366,7 +366,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
   const ctx = await context({ width, height });
-  await check(`BG12 ${width} by ${height}: ${width < 1280 ? "on a narrow desktop the bag rows stack under the passengers hint, steppers at the right edge of the passengers, clear of the cars" : "the bag steppers sit beside the passengers hints, every class price up to the Executive Sprinter stays inside the first screen and the other Sprinter prices follow below"}, with CLS 0 and no horizontal scroll`, async () => {
+  await check(`BG12 ${width} by ${height}: ${width < 1280 ? "on a narrow desktop the bag rows stack under the passengers hint, steppers at the right edge of the passengers, clear of the cars" : "the bag steppers sit beside the passengers hints, the closed Child seats and dogs row follows, every class price up to Electric Class stays inside the first screen and the Sprinter prices follow below"}, with CLS 0 and no horizontal scroll`, async () => {
     const page = await options(ctx);
     await page.evaluate(() => scrollTo(0, 0));
     const r = await layout(page);
@@ -376,7 +376,7 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
     } else {
       sideBySide(r);
       const prices = await page.$$eval(".bk-card__price", (o) => o.map((x) => Math.round(x.getBoundingClientRect().bottom)));
-      assert.ok(prices.length === 10 && prices.slice(0, 6).every((b) => b <= height) && prices.every((b, i) => !i || b > prices[i - 1]), JSON.stringify(prices));
+      assert.ok(prices.length === 10 && prices.slice(0, 5).every((b) => b <= height) && prices.every((b, i) => !i || b > prices[i - 1]), JSON.stringify(prices));
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 0, true);
     const [value, shifts] = await cls(page);

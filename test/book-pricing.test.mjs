@@ -199,10 +199,10 @@ await test("the input codes of 7.3 in order: passengers, hours, class, vehicle, 
   await isError({ ...FROM_JFK, flight: "X".repeat(21) }, "flight");
   await isError({ ...BASE, return: "1", return_date: "2026-10-18", return_time: "18:00", return_flight: "DL_401" }, "return_flight");
   for (const tip of ["5", "100", "x", "15%", "Custom", "other"]) await isError({ ...BASE, tip }, "tip");
-  for (const tip_amount of ["", "0", "00", "501", "40.5", "40.00", "$40", "-1", "abc", "1e3", "9".repeat(30)]) await isError({ ...BASE, tip: "custom", tip_amount }, "tip_amount");
+  for (const tip_amount of ["", "0", "00", "1000000", "40.5", "40.00", "$40", "-1", "abc", "1e3", "9".repeat(30)]) await isError({ ...BASE, tip: "custom", tip_amount }, "tip_amount");
   await isError({ ...BASE, tip: "custom", tip_amount: "40", return: "1", return_date: "2026-10-18", return_time: "18:00", return_flight: "DL_401" }, "return_flight");
   await isError({ ...BASE, tip: "custom", tip_amount: "0", passengers: "0" }, "passengers");
-  for (const tip_amount of ["1", "40", "040", "500"]) assert.equal((await run({ ...BASE, tip: "custom", tip_amount })).result.kind, "price", tip_amount);
+  for (const tip_amount of ["1", "40", "040", "500", "501", "999999"]) assert.equal((await run({ ...BASE, tip: "custom", tip_amount })).result.kind, "price", tip_amount);
 });
 
 await test("the options action falls back to Business SUV when class is missing or unknown, quote and pay do not", async () => {

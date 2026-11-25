@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceLeg, legLines, hourlyLines, bookingRef, classTotal, shownLines, rateKey, RATE_KEYS } from "../api/_trip.mjs";
 import { sessionParams } from "../api/_stripe.mjs";
-import { AIRPORT_FARES, AIRPORT_TOTALS, AIRPORT_PLACES, CLASSES, VEHICLES, MEET_AND_GREET, percentCents, NYC_TAX_PERCENT, BCF_PERCENT, TIP_PERCENTS, TIP_CUSTOM, DISTANCE_RATES, WAIT_CENTS_PER_MINUTE, TOLL_CLASS, CLASS_DEFAULT_VEHICLE } from "../api/_rates.mjs";
+import { AIRPORT_FARES, AIRPORT_TOTALS, AIRPORT_PLACES, CLASSES, VEHICLES, MEET_AND_GREET, percentCents, NYC_TAX_PERCENT, BCF_PERCENT, TIP_PERCENTS, TIP_CUSTOM, STRIPE_MAX_CENTS, DISTANCE_RATES, WAIT_CENTS_PER_MINUTE, TOLL_CLASS, CLASS_DEFAULT_VEHICLE } from "../api/_rates.mjs";
 import { PLACE_LIST } from "../api/_places.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
@@ -209,8 +209,8 @@ await test("TIP_PERCENTS is 0, 10, 15, 20 and 25, and any other tip is the inval
   for (const tip of ["5", "30", "abc", "15.5", "-10"]) assert.deepEqual((await build(toAirport("jfk", { tip }))).check, { kind: "invalid", code: "tip" });
 });
 
-await test("TIP_CUSTOM is $1 to $500 in cents, and a custom 40 on a JFK Business SUV adds Gratuity for your chauffeur 4000 for a total of 22500", async () => {
-  assert.deepEqual(TIP_CUSTOM, { min: 100, max: 50000 });
+await test("TIP_CUSTOM is $1 to $999,999.99 in cents, Stripe's maximum for one payment, and a custom 40 on a JFK Business SUV adds Gratuity for your chauffeur 4000 for a total of 22500", async () => {
+  assert.deepEqual([TIP_CUSTOM, STRIPE_MAX_CENTS], [{ min: 100, max: 99999999 }, 99999999]);
   const { price } = await priced(toAirport("jfk", { tip: "custom", tip_amount: "40" }));
   assert.deepEqual(pairs(price.lines), [...LEG, ["Gratuity for your chauffeur", 4000]]);
   assert.deepEqual([price.tip, price.tipPercent, price.total, price.value], [4000, 0, 22500, 15500]);
@@ -220,9 +220,9 @@ await test("TIP_CUSTOM is $1 to $500 in cents, and a custom 40 on a JFK Business
   assert.deepEqual([pickup.price.total, pickup.price.value], [25000, 18000]);
 });
 
-await test("a custom gratuity of 1 and of 500 passes, and 0, 501, 40.5, -1, empty and abc are the invalid code tip_amount", async () => {
-  for (const [tip_amount, total] of [["1", 18600], ["500", 68500], ["040", 22500]]) assert.equal((await priced(toAirport("jfk", { tip: "custom", tip_amount }))).price.total, total, tip_amount);
-  for (const tip_amount of ["0", "501", "40.5", "-1", "", "abc"]) assert.deepEqual((await build(toAirport("jfk", { tip: "custom", tip_amount }))).check, { kind: "invalid", code: "tip_amount" }, tip_amount);
+await test("a custom gratuity of 1, 500, 501 and 999999 passes, and 0, 1000000, 40.5, -1, empty and abc are the invalid code tip_amount", async () => {
+  for (const [tip_amount, total] of [["1", 18600], ["500", 68500], ["501", 68600], ["999999", 100018400], ["040", 22500]]) assert.equal((await priced(toAirport("jfk", { tip: "custom", tip_amount }))).price.total, total, tip_amount);
+  for (const tip_amount of ["0", "1000000", "40.5", "-1", "", "abc"]) assert.deepEqual((await build(toAirport("jfk", { tip: "custom", tip_amount }))).check, { kind: "invalid", code: "tip_amount" }, tip_amount);
   assert.deepEqual((await build(toAirport("jfk", { tip: "custom" }))).check, { kind: "invalid", code: "tip_amount" });
   const { price } = await priced(toAirport("jfk", { tip: "20", tip_amount: "40" }));
   assert.deepEqual(pairs(price.lines).at(-1), ["Gratuity for your chauffeur (20%)", 3100]);
@@ -233,7 +233,7 @@ await test("a custom gratuity by the hour adds the same fixed amount and the sam
   const { price } = await priced({ ...hourly, tip_amount: "40" });
   assert.deepEqual(pairs(price.lines), [["Fare, 3 hours", 25500], ["NYC sales tax", 2263], ["Black Car Fund", 574], ["Gratuity for your chauffeur", 4000]]);
   assert.deepEqual([price.total, price.tipPercent, price.value], [28337 + 4000, 0, 25500]);
-  for (const tip_amount of ["0", "501", "40.5", "-1", "", "abc"]) assert.deepEqual((await build({ ...hourly, tip_amount })).check, { kind: "invalid", code: "tip_amount" }, tip_amount);
+  for (const tip_amount of ["0", "1000000", "40.5", "-1", "", "abc"]) assert.deepEqual((await build({ ...hourly, tip_amount })).check, { kind: "invalid", code: "tip_amount" }, tip_amount);
 });
 
 await test("a custom gratuity is the same in every class total and every hourly vehicle, a percent follows each fare", async () => {
