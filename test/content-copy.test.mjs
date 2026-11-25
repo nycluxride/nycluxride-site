@@ -112,7 +112,7 @@ const RATES_FACTS = {
   "Tolls and airport fees": "Included on airport rides to or from New York City. On distance trips, tolls are added at booking. On hourly trips, they are charged to your card after the ride",
   Taxes: "Added at booking on hourly and distance trips. Airport prices already include them",
   "Extra stops": "$20 per stop, charged at booking, or more if the stop takes the car out of the way. A stop added during an airport ride is charged after the ride",
-  "Child seats": "Child, infant and booster seats, $15 per seat, charged once at booking, even on a round trip",
+  "Child seats": "Child, infant and booster seats, $20 per seat, charged once at booking, even on a round trip",
   Pets: "$20 per small dog and $45 per large dog, charged once at booking, even on a round trip. Service animals ride free",
 };
 const RATES_FOOTNOTE = "All prices in USD. Hourly and distance prices are before tax, tolls and parking.";
@@ -334,7 +334,7 @@ check("services.html: the Rates list names the three bookable extras, with pets 
   const items = [...pages.get("services.html").document.querySelectorAll("#rates ul.assure li")].map((li) => [li.querySelector("use").getAttribute("href"), squash(li.querySelector("b").textContent), squash(li.querySelector("span").textContent)]);
   assert.deepEqual(items, [
     ["#i-plane-arrive", "Meet and greet", "Your chauffeur waits inside the terminal with a name sign, for an extra charge, plus any airport parking"],
-    ["#i-shield", "Child seats", "Child, infant and booster seats, $15 per seat, charged at booking."],
+    ["#i-shield", "Child seats", "Child, infant and booster seats, $20 per seat, charged at booking."],
     ["#i-check", "Pets", "Small and large dogs, for an extra charge per booking. Service animals ride free"],
   ]);
   assert.equal(squash(pages.get("schedule.html").document.getElementById("s-notes-hint").textContent), "The seat you'd like and each child's age, weight and height for child seats, pets, extra stops, a car waiting between meetings, or anything your chauffeur should know.");
@@ -481,7 +481,7 @@ check("rates.html: the OfferCatalog has an airport offer per car class for JFK, 
   assert.deepEqual(catalog.itemListElement.slice(0, 15), airport);
   const hourly = catalog.itemListElement.slice(15);
   assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Executive Sedan", "Hourly and as directed, Electric Class", "Hourly and as directed, Luxury Sprinter", "Meet and greet", "Child seat", "Small dog", "Large dog"]);
-  assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Child, infant or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "15", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "15", valueAddedTaxIncluded: false } });
+  assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Child, infant or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "20", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "20", valueAddedTaxIncluded: false } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price, valueAddedTaxIncluded: false } });
   assert.deepEqual(hourly.slice(-2), [dog("Small dog", "20"), dog("Large dog", "45")]);

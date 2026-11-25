@@ -665,7 +665,7 @@ await test("shownLines, the display of the price box, the confirmation page and 
   const price = await priced({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", booster_seats: "1" });
   const charged = JSON.parse(JSON.stringify(price.lines));
   const shown = shownLines(price.lines);
-  assert.deepEqual(pairs(shown), [["Fare", 15500], ["Taxes and fees", 1725], ["Tolls", 1275], ["Meet and greet", 2500], ["Child seats (2 x $15.00)", 3000], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(shown), [["Fare", 15500], ["Taxes and fees", 1725], ["Tolls", 1275], ["Meet and greet", 2500], ["Child seats (2 x $20.00)", 4000], ["Gratuity for your chauffeur (15%)", 2325]]);
   assert.equal(1725, price.tax + price.bcf);
   assert.deepEqual(price.lines, charged);
   for (const lines of [price.lines, (await priced(HOURLY)).lines, receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines]) {
@@ -1619,10 +1619,10 @@ await test("airport transfers to or from a New York City address keep their flat
 });
 
 const SEATS_MAX = { infant_seats: "4", toddler_seats: "4", booster_seats: "4" };
-const seatLine = (n) => [`Child seats (${n} x $15.00)`, n * 1500];
+const seatLine = (n) => [`Child seats (${n} x $20.00)`, n * 2000];
 
-await test("child seats: CHILD_SEAT_CENTS is 1500 in api/_rates.mjs and the seat types are the child, infant and booster seats the car seat page names, each with its own form field", () => {
-  assert.equal(RATES.CHILD_SEAT_CENTS, 1500);
+await test("child seats: CHILD_SEAT_CENTS is 2000 in api/_rates.mjs and the seat types are the child, infant and booster seats the car seat page names, each with its own form field", () => {
+  assert.equal(RATES.CHILD_SEAT_CENTS, 2000);
   assert.deepEqual(RATES.CHILD_SEATS, ["toddler", "infant", "booster"]);
   assert.deepEqual(LABELS.seatTypes, { toddler: "Child seats", infant: "Infant seats", booster: "Booster seats" });
   assert.deepEqual(readInput({ ...BASE, infant_seats: " 02 ", toddler_seats: "", booster_seats: "1" }).seats, { toddler: "", infant: "2", booster: "1" });
@@ -1630,59 +1630,59 @@ await test("child seats: CHILD_SEAT_CENTS is 1500 in api/_rates.mjs and the seat
   assert.deepEqual(readInput({ ...HOURLY, booster_seats: "1" }).seats, { toddler: "", infant: "", booster: "1" });
 });
 
-await test("child seats on a one way airport trip: 0, 1 and the maximum of one seat per passenger (12 in a Luxury Sprinter) add count x $15.00 once as their own line after meet and greet and before the gratuity, with no NYC sales tax or Black Car Fund on them, like meet and greet, and the fare, tax, tolls and gratuity unchanged", async () => {
+await test("child seats on a one way airport trip: 0, 1 and the maximum of one seat per passenger (12 in a Luxury Sprinter) add count x $20.00 once as their own line after meet and greet and before the gratuity, with no NYC sales tax or Black Car Fund on them, like meet and greet, and the fare, tax, tolls and gratuity unchanged", async () => {
   const base = await priced({ ...FROM_JFK, meet: "1", tip: "15" });
   assert.deepEqual(pairs(base.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
   assert.deepEqual([base.seats, base.seatCount, base.total, base.value], [0, 0, 23325, 18000]);
   const one = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1" });
   assert.deepEqual(pairs(one.lines), [...LEG, ["Meet and greet", 2500], seatLine(1), ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.deepEqual([one.fare, one.tax, one.bcf, one.tolls, one.meet, one.seats, one.seatCount, one.tip, one.total, one.value], [15500, 1376, 349, 1275, 2500, 1500, 1, 2325, 24825, 19500]);
+  assert.deepEqual([one.fare, one.tax, one.bcf, one.tolls, one.meet, one.seats, one.seatCount, one.tip, one.total, one.value], [15500, 1376, 349, 1275, 2500, 2000, 1, 2325, 25325, 20000]);
   const fare = AIRPORT_FARES["sprinter-executive"].jfk;
   const max = await priced({ ...FROM_JFK, meet: "1", tip: "15", class: "sprinter", passengers: "12", ...SEATS_MAX });
   const tip = RATES.percentCents(fare, "15");
   assert.deepEqual(pairs(max.lines).slice(4), [["Meet and greet", 2500], seatLine(12), ["Gratuity for your chauffeur (15%)", tip]]);
-  assert.deepEqual([max.fare, max.seats, max.seatCount, max.total], [fare, 18000, 12, AIRPORT_TOTALS["sprinter-executive"].jfk + 2500 + 18000 + tip]);
-  assert.equal(max.total, 71402);
+  assert.deepEqual([max.fare, max.seats, max.seatCount, max.total], [fare, 24000, 12, AIRPORT_TOTALS["sprinter-executive"].jfk + 2500 + 24000 + tip]);
+  assert.equal(max.total, 77402);
   assert.equal(max.tax, RATES.percentCents(fare, RATES.NYC_TAX_PERCENT), "the seats add no sales tax");
   assert.equal(max.bcf, RATES.percentCents(fare, RATES.BCF_PERCENT), "the seats add no Black Car Fund");
   assert.equal(max.lines.reduce((sum, l) => sum + l.cents, 0), max.total);
-  assert.equal((await priced({ ...BASE, passengers: "3", toddler_seats: "2" })).total, AIRPORT_TOTALS.suv.jfk + 3000);
+  assert.equal((await priced({ ...BASE, passengers: "3", toddler_seats: "2" })).total, AIRPORT_TOTALS.suv.jfk + 4000);
 });
 
 await test("child seats on a round trip are charged once for the booking, not once per ride: 0, 1 and the maximum (12 in a Luxury Sprinter both ways)", async () => {
   const none = await priced({ ...BASE, ...ROUND_TRIP, class: "first", passengers: "3", tip: "10" });
   assert.deepEqual([none.legs.length, none.total], [2, 2 * AIRPORT_TOTALS.first.jfk + RATES.percentCents(2 * AIRPORT_FARES.first.jfk, "10")]);
   const one = await priced({ ...BASE, ...ROUND_TRIP, class: "first", passengers: "3", tip: "10", booster_seats: "1" });
-  assert.deepEqual([one.legs.length, one.seats, one.total - none.total, one.tip], [2, 1500, 1500, none.tip]);
+  assert.deepEqual([one.legs.length, one.seats, one.total - none.total, one.tip], [2, 2000, 2000, none.tip]);
   assert.equal(one.lines.filter((l) => l.label.startsWith("Child seats")).length, 1);
-  assert.deepEqual(one.lines.at(-2), { label: "Child seats (1 x $15.00)", cents: 1500 });
+  assert.deepEqual(one.lines.at(-2), { label: "Child seats (1 x $20.00)", cents: 2000 });
   const full = await priced({ ...BASE, ...ROUND_TRIP, class: "first", passengers: "3", infant_seats: "1", toddler_seats: "1", booster_seats: "1" });
-  assert.equal(full.total, 2 * AIRPORT_TOTALS.first.jfk + 4500);
+  assert.equal(full.total, 2 * AIRPORT_TOTALS.first.jfk + 6000);
   const max = await priced({ ...BASE, ...ROUND_TRIP, class: "sprinter", passengers: "12", ...SEATS_MAX });
-  assert.deepEqual([max.legs.length, max.seats, max.total], [2, 18000, 2 * AIRPORT_TOTALS["sprinter-executive"].jfk + 18000]);
+  assert.deepEqual([max.legs.length, max.seats, max.total], [2, 24000, 2 * AIRPORT_TOTALS["sprinter-executive"].jfk + 24000]);
   assert.deepEqual(pairs(max.lines).at(-1), seatLine(12));
 });
 
-await test("child seats on an hourly booking: 0, 1 and the maximum (3 in a Business SUV with 6 passengers) add count x $15.00 once, after the fare, tax and Black Car Fund, and the gratuity stays a percent of the fare", async () => {
+await test("child seats on an hourly booking: 0, 1 and the maximum (3 in a Business SUV with 6 passengers) add count x $20.00 once, after the fare, tax and Black Car Fund, and the gratuity stays a percent of the fare", async () => {
   const fare = 8500 * 3;
   const none = await priced({ ...HOURLY, tip: "20" });
   assert.deepEqual(pairs(none.lines), [["Fare, 3 hours", fare], ["NYC sales tax", 2263], ["Black Car Fund", 574], ["Gratuity for your chauffeur (20%)", 5100]]);
   const one = await priced({ ...HOURLY, tip: "20", infant_seats: "1" });
   assert.deepEqual(pairs(one.lines), [["Fare, 3 hours", fare], ["NYC sales tax", 2263], ["Black Car Fund", 574], seatLine(1), ["Gratuity for your chauffeur (20%)", 5100]]);
-  assert.deepEqual([one.total - none.total, one.value], [1500, fare + 1500]);
+  assert.deepEqual([one.total - none.total, one.value], [2000, fare + 2000]);
   const max = await priced({ ...HOURLY, class: "suv", vehicle: "suv-denali", passengers: "6", toddler_seats: "2", booster_seats: "1" });
   assert.deepEqual(pairs(max.lines), [["Fare, 3 hours", 30000], ["NYC sales tax", 2663], ["Black Car Fund", 675], seatLine(3)]);
-  assert.equal(max.total, 30000 + 2663 + 675 + 4500);
+  assert.equal(max.total, 30000 + 2663 + 675 + 6000);
 });
 
-await test("child seats on trips priced by distance and time: one way and return trip add count x $15.00 once on top of the route fare, tax and Black Car Fund", async () => {
+await test("child seats on trips priced by distance and time: one way and return trip add count x $20.00 once on top of the route fare, tax and Black Car Fund", async () => {
   await withMock(async () => {
     const one = await priced({ ...RIDE, class: "suv", passengers: "3", booster_seats: "2" });
     assert.deepEqual(pairs(one.lines), [["Fare", 11000], ["NYC sales tax", 976], ["Black Car Fund", 248], seatLine(2)]);
-    assert.deepEqual([one.total, one.service], [12224 + 3000, "distance"]);
+    assert.deepEqual([one.total, one.service], [12224 + 4000, "distance"]);
     const back = await priced({ ...RIDE, ...ROUND_TRIP, to_text: GREENWICH, class: "sedan", tip: "15", infant_seats: "1" });
     assert.deepEqual(pairs(back.lines), [["Fare", 29400], ["Black Car Fund", 662], seatLine(1), ["Gratuity for your chauffeur (15%)", 4410]]);
-    assert.equal(back.total, 29400 + 662 + 4410 + 1500);
+    assert.equal(back.total, 29400 + 662 + 4410 + 2000);
   });
 });
 
@@ -1702,20 +1702,20 @@ await test("the seat limit: at most one child seat per passenger, counted over t
 
 await test("class totals and the too small car reason include the seats: every priced class card adds the seats once, the Sprinter keeps its own reasons, and a car with fewer seats than passengers keeps the seats reason", async () => {
   const { trip } = await run({ ...BASE, passengers: "3", toddler_seats: "1" });
-  assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => AIRPORT_TOTALS[rateKey(cls)].jfk + 1500));
+  assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => AIRPORT_TOTALS[rateKey(cls)].jfk + 2000));
   const two = await run({ ...BASE, passengers: "3", toddler_seats: "2" });
-  assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(two.trip, cls)), [AIRPORT_TOTALS.suv.jfk + 3000, AIRPORT_TOTALS.premium.jfk + 3000, AIRPORT_TOTALS.first.jfk + 3000, null, null, AIRPORT_TOTALS["sprinter-executive"].jfk + 3000]);
+  assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(two.trip, cls)), [AIRPORT_TOTALS.suv.jfk + 4000, AIRPORT_TOTALS.premium.jfk + 4000, AIRPORT_TOTALS.first.jfk + 4000, null, null, AIRPORT_TOTALS["sprinter-executive"].jfk + 4000]);
   const crowd = await run({ ...BASE, passengers: "5", infant_seats: "5", class: "first" });
   assert.deepEqual(crowd.result, { kind: "price", reason: "seats", hold: "" });
   assert.equal(classTotal(crowd.trip, "first"), null);
   assert.equal(classTotal(crowd.trip, "suv"), null);
-  assert.equal(classTotal(crowd.trip, "sprinter"), AIRPORT_TOTALS["sprinter-executive"].jfk + 7500);
+  assert.equal(classTotal(crowd.trip, "sprinter"), AIRPORT_TOTALS["sprinter-executive"].jfk + 10000);
 });
 
 await test("the reserve by email and WhatsApp messages and the dispatch quote path list each seat type with its count after meet and greet, only for the types chosen, and nothing when no seat is chosen", async () => {
   const { trip, price } = await run({ ...FROM_JFK, meet: "1", tip: "15", passengers: "5", infant_seats: "1", booster_seats: "2" });
   const text = composeMessage(trip, "48213590", price.total);
-  assert.ok(text.includes("\nVehicle: Business SUV\nMeet and greet: Yes\nInfant seats: 1\nBooster seats: 2\nGratuity: 15%\nTotal shown: $278.25"), text);
+  assert.ok(text.includes("\nVehicle: Business SUV\nMeet and greet: Yes\nInfant seats: 1\nBooster seats: 2\nGratuity: 15%\nTotal shown: $293.25"), text);
   assert.ok(!text.includes("Child seats:") && !/toddler/i.test(text), text);
   const links = contactLinks(trip, "48213590", price.total);
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nInfant seats: 1\nBooster seats: 2\n"), href);
@@ -1728,14 +1728,14 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
 });
 
 await test("the receipt rebuilds the seat line from the payment metadata, with the price per seat it was paid at, adds it to the value, and leaves it out when the booking has no seats", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "4500", child_seats: "3", infant_seats: "1", booster_seats: "2" };
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "6000", child_seats: "3", infant_seats: "1", booster_seats: "2" };
   const r = receipt(meta, ON);
-  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $15.00)", 4500], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(r.value, 15500 + 2500 + 4500);
-  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 27825);
-  assert.deepEqual(pairs(receipt({ ...meta, seats_cents: "4000", child_seats: "2" }, ON).lines)[5], ["Child seats (2 x $20.00)", 4000], "an old booking keeps the price per seat it was paid at");
-  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "" }, ON).lines)[5], ["Child seats", 4500]);
-  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "7" }, ON).lines)[5], ["Child seats", 4500]);
+  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.equal(r.value, 15500 + 2500 + 6000);
+  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 29325);
+  assert.deepEqual(pairs(receipt({ ...meta, seats_cents: "3000", child_seats: "2" }, ON).lines)[5], ["Child seats (2 x $15.00)", 3000], "an old booking keeps the price per seat it was paid at");
+  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "" }, ON).lines)[5], ["Child seats", 6000]);
+  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "7" }, ON).lines)[5], ["Child seats", 6000]);
   const none = { ...meta };
   for (const k of ["seats_cents", "child_seats", "infant_seats", "booster_seats"]) delete none[k];
   assert.deepEqual(pairs(receipt(none, ON).lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
@@ -1787,8 +1787,8 @@ await test("the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church 
     assert.deepEqual([sprinter.total, sprinter.service, sprinter.notes], [AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS, "airport", [NOTES.included, POLICY.later.airport]]);
     assert.equal(sprinter.total, 47000, "the client's LaGuardia trip by 26 Ann St to 55 Church St in the Luxury Sprinter is $470.00");
     const extras = await priced({ ...STOPS, tip: "20", meet: "1", toddler_seats: "1" });
-    assert.deepEqual([extras.fare, extras.tax, extras.bcf, extras.stops, extras.meet, extras.seats, extras.tip, extras.total], [13701, 1216, 308, 2000, 2500, 1500, percentCents(13701, "20"), 18500 + 2500 + 1500 + percentCents(13701, "20")], "the stop fee is untaxed and outside the gratuity, like meet and greet and child seats");
-    assert.deepEqual(pairs(extras.lines).map(([label]) => label), ["Fare", TAX, BCF, "Tolls and airport fees", "Meet and greet", "Extra stop", "Child seats (1 x $15.00)", "Gratuity for your chauffeur (20%)"]);
+    assert.deepEqual([extras.fare, extras.tax, extras.bcf, extras.stops, extras.meet, extras.seats, extras.tip, extras.total], [13701, 1216, 308, 2000, 2500, 2000, percentCents(13701, "20"), 18500 + 2500 + 2000 + percentCents(13701, "20")], "the stop fee is untaxed and outside the gratuity, like meet and greet and child seats");
+    assert.deepEqual(pairs(extras.lines).map(([label]) => label), ["Fare", TAX, BCF, "Tolls and airport fees", "Meet and greet", "Extra stop", "Child seats (1 x $20.00)", "Gratuity for your chauffeur (20%)"]);
     const owner = await priced({ ...STOPS, class: "sprinter", route: signRoute([[stopKey([ANN]), 125, 46]], NOW) });
     assert.deepEqual([distanceFare("sprinter-executive", 125, 46), 8000 + 11250 + 46 * 145], [35000, 25920]);
     assert.deepEqual([pairs(owner.lines), owner.total, (await priced({ ...STOPS, route: signRoute([[stopKey([ANN]), 125, 46]], NOW) })).total], [pairs(sprinter.lines), AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS, 18500]);
@@ -2641,11 +2641,11 @@ await test("pets: SMALL_DOG_CENTS is 2000 and LARGE_DOG_CENTS is 4500 in api/_ra
 await test("pets on a one way airport trip: 1 small dog and 2 large dogs add $20.00 and 2 x $45.00 as two lines of their own after the child seats and before the gratuity, untaxed and outside the gratuity like the child seats, and the fare, tax, tolls and gratuity stay the same", async () => {
   const base = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1" });
   const dogs = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1", ...DOGS });
-  assert.deepEqual(pairs(dogs.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (1 x $15.00)", 1500], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(dogs.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (1 x $20.00)", 2000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
   assert.deepEqual([dogs.fare, dogs.tax, dogs.bcf, dogs.tolls, dogs.meet, dogs.seats, dogs.tip], [base.fare, base.tax, base.bcf, base.tolls, base.meet, base.seats, base.tip]);
   assert.deepEqual([dogs.dogs, dogs.dogCounts, dogs.dogCents], [11000, { small: 1, large: 2 }, { small: 2000, large: 9000 }]);
-  assert.deepEqual([base.total, dogs.total, dogs.value], [24825, 35825, 15500 + 2500 + 1500 + 11000]);
-  assert.equal(dogs.lines.reduce((sum, l) => sum + l.cents, 0), 35825);
+  assert.deepEqual([base.total, dogs.total, dogs.value], [25325, 36325, 15500 + 2500 + 2000 + 11000]);
+  assert.equal(dogs.lines.reduce((sum, l) => sum + l.cents, 0), 36325);
   assert.deepEqual(pairs(shownLines(dogs.lines)).slice(-3), [...dogLines, ["Gratuity for your chauffeur (15%)", 2325]], "the dog lines are never merged with the fees or each other");
   assert.deepEqual(pairs((await priced({ ...BASE, small_dogs: "1" })).lines).at(-1), ["Small dog (1 x $20.00)", 2000]);
   assert.deepEqual(pairs((await priced({ ...BASE, large_dogs: "1" })).lines).at(-1), ["Large dog (1 x $45.00)", 4500]);
@@ -2733,8 +2733,8 @@ await test("the pet limit: 0 to 3 dogs of each size, on one way, round trip and 
 await test("the reserve by email and WhatsApp messages and the dispatch quote path list each dog size with its count after the child seats, only for the sizes chosen, and nothing when no dog is chosen", async () => {
   const { trip, price } = await run({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", ...DOGS });
   const text = composeMessage(trip, "48213590", price.total);
-  assert.ok(text.includes("\nMeet and greet: Yes\nInfant seats: 1\nSmall dogs: 1\nLarge dogs: 2\nGratuity: 15%\nTotal shown: $358.25"), text);
-  assert.equal(price.total, 35825);
+  assert.ok(text.includes("\nMeet and greet: Yes\nInfant seats: 1\nSmall dogs: 1\nLarge dogs: 2\nGratuity: 15%\nTotal shown: $363.25"), text);
+  assert.equal(price.total, 36325);
   const links = contactLinks(trip, "48213590", price.total);
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nSmall dogs: 1\nLarge dogs: 2\n"), href);
   assert.ok(!/dogs: /.test(composeMessage((await run(FROM_JFK)).trip, "48213590", 18500)));
@@ -2747,17 +2747,17 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
 });
 
 await test("the receipt rebuilds the dog lines from the dogs metadata, with the price per dog it was paid at, adds them to the value, counts the child seats by type when the booking has dogs, and leaves them out when there are none", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "4500", infant_seats: "1", booster_seats: "2", dogs: "1 small 2000, 2 large 9000" };
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "6000", infant_seats: "1", booster_seats: "2", dogs: "1 small 2000, 2 large 9000" };
   const r = receipt(meta, ON);
-  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $15.00)", 4500], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(r.value, 15500 + 2500 + 4500 + 11000);
-  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 38825);
+  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.equal(r.value, 15500 + 2500 + 6000 + 11000);
+  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 40325);
   assert.deepEqual(pairs(receipt({ ...meta, dogs: "2 large 6000" }, ON).lines).slice(-2, -1), [["Large dog (2 x $30.00)", 6000]], "an old booking keeps the price per dog it was paid at");
   assert.deepEqual(pairs(receipt({ ...meta, dogs: "3 small 6000" }, ON).lines).slice(-2, -1), [["Small dog (3 x $20.00)", 6000]]);
   const none = { ...meta };
   delete none.dogs;
-  assert.deepEqual(pairs(receipt({ ...none, child_seats: "3" }, ON).lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $15.00)", 4500], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(receipt({ ...none, child_seats: "3" }, ON).value, 22500);
+  assert.deepEqual(pairs(receipt({ ...none, child_seats: "3" }, ON).lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.equal(receipt({ ...none, child_seats: "3" }, ON).value, 24000);
   assert.deepEqual(pairs(receipt({ ...none, dogs: "lots of dogs" }, ON).lines).filter(([l]) => /dog/i.test(l)), []);
 });
 
@@ -2881,7 +2881,7 @@ await test("child seat limits per class: the Executive Sedan and Electric Class 
     await isClass({ ...BASE, class: cls, passengers: "4", toddler_seats: "1" }, "seats");
   }
   for (const cls of ["suv", "premium"]) {
-    assert.equal((await priced({ ...BASE, class: cls, passengers: "6", toddler_seats: "2" })).total, AIRPORT_TOTALS[cls].jfk + 3000, `${cls}: 4 adults and 2 children`);
+    assert.equal((await priced({ ...BASE, class: cls, passengers: "6", toddler_seats: "2" })).total, AIRPORT_TOTALS[cls].jfk + 4000, `${cls}: 4 adults and 2 children`);
     assert.equal((await priced({ ...BASE, class: cls, passengers: "6", infant_seats: "1", toddler_seats: "1", booster_seats: "1" })).seatCount, 3, cls);
     assert.equal((await priced({ ...BASE, class: cls, passengers: "5", toddler_seats: "3" })).seatCount, 3, `${cls}: 2 adults and 3 child seats`);
     assert.equal((await priced({ ...BASE, class: cls, passengers: "3", toddler_seats: "2" })).seatCount, 2, `${cls}: 1 adult and 2 child seats`);

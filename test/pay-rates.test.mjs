@@ -311,7 +311,7 @@ test("meet and greet equals MEET_AND_GREET", () => {
 });
 
 test("child seats equal CHILD_SEAT_CENTS per seat, charged once per booking and also once on a round trip, and the add-on links the car seat page", () => {
-  assert.equal(CHILD_SEAT_CENTS, 1500);
+  assert.equal(CHILD_SEAT_CENTS, 2000);
   assert.deepEqual(cents(facts["Child seats"] || ""), [CHILD_SEAT_CENTS]);
   assert.equal(facts["Child seats"], `Child, infant and booster seats, $${CHILD_SEAT_CENTS / 100} per seat, charged once at booking, even on a round trip`);
   assert.doesNotMatch(facts["Child seats"], /\bfree\b|included/i);

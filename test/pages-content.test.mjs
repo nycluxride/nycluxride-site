@@ -797,7 +797,7 @@ check(`car-service-with-car-seat-nyc.html and faq.html: child seats are offered 
   assert.equal(ask[0], `When you book online, choose the seats you need and add each child's age, weight and height in the notes. The price is ${SEAT}, charged once, even on a round trip. Our seats are the Nuna RAVA, the Safety 1st Grow and Go and a backless booster.`);
   assert.doesNotMatch(norm(seat.querySelector("main").textContent), /step 3/i, "the seat counts show at step 3 for a priced trip and beside the request for a trip our dispatch team prices, so the page names no step");
   assert.ok(ask[1].endsWith("Tell us which seats you need, with each child's age, weight and height. If you've already booked, add your reference and travel date."), ask[1]);
-  assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Car Seats NYC, $15 per seat | NYC LUX RIDE", "Child, infant and booster seats on airport rides, trips and hourly bookings in NYC. $15 per seat, charged once, even on a round trip."]);
+  assert.deepEqual([seat.title, seat.querySelector('meta[name="description"]').getAttribute("content")], ["Car Service with Car Seats NYC, $20 per seat | NYC LUX RIDE", "Child, infant and booster seats on airport rides, trips and hourly bookings in NYC. $20 per seat, charged once, even on a round trip."]);
   const q = [...faq.querySelectorAll("main details")].find((d) => norm(d.querySelector("summary").textContent) === "Do your cars have car seats?");
   const tail = "See our car seat page for more.";
   assert.deepEqual([norm(q.querySelector(".acc__body").textContent).endsWith(tail), ldAnswer(faq, "Do your cars have car seats?").endsWith(tail)], [true, true]);

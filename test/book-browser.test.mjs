@@ -9162,6 +9162,7 @@ for (const width of [1440, 390]) {
       await priced(p);
       assert.equal(await p.getAttribute(FEWER, "aria-disabled"), "false");
       assert.deepEqual([await p.textContent("#bk-kids legend"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-kids-n"), await p.isVisible("#e-child_seats"), await p.isVisible("#bk-kids-h")], [`Child seats ${cash(CHILD_SEAT_CENTS)} each`, true, false, false, true]);
+      assert.deepEqual([CHILD_SEAT_CENTS, await p.textContent("#bk-kids-p")], [2000, "$20.00 each"], "the booking extras show the seat price of $20");
       assert.deepEqual(await p.$$eval("#bk-kids select", (s) => s.map((x) => [x.name, x.value, getComputedStyle(x).display])), [["toddler_seats", "0", "none"], ["infant_seats", "0", "none"], ["booster_seats", "0", "none"]]);
       assert.deepEqual(await steppers(p), [["bk-k-toddler-l", "Child seat, Forward or rear-facing", "0", "Fewer child seats", "true", "More child seats", "false"], ["bk-k-infant-l", "Infant seat, Rear-facing", "0", "Fewer infant seats", "true", "More infant seats", "false"], ["bk-k-booster-l", "Booster seat", "0", "Fewer booster seats", "true", "More booster seats", "false"]]);
       assert.deepEqual([await p.getByRole("group", { name: /^Child seat\s*,\s+Forward or rear-facing$/ }).count(), await p.getByRole("group", { name: /^Infant seat\s*,\s+Rear-facing$/ }).count(), await p.getByRole("group", { name: "Booster seat", exact: true }).count()], [1, 1, 1], "a screen reader hears a pause between each seat name and which way it faces");
@@ -9179,6 +9180,7 @@ for (const width of [1440, 390]) {
       await priced(p);
       assert.deepEqual(await p.evaluate(() => [...new Set(window.__said)]), [1], "only the count that changed is written, so the other live regions stay quiet");
       assert.deepEqual(await panel(p), { lines: [...FIRST_LINES, [SEAT(1), cash(CHILD_SEAT_CENTS)]], total: cash(FIRST_TOTAL + CHILD_SEAT_CENTS), notes: NOTES.included + POLICY.later.airport });
+      assert.deepEqual([(await panel(p)).lines.at(-1), (await panel(p)).total], [["Child seats (1 x $20.00)", "$20.00"], cash(FIRST_TOTAL + 2000)], "the priced quote adds $20 for one seat");
       assert.deepEqual(await cards(p), plus(JFK_CARDS, CHILD_SEAT_CENTS), "every card total includes the seat right away, since 1 child seat with 2 adults fits every car");
       assert.equal(await p.textContent("#bk-xb-v"), "1 child seat");
       await p.unroute("**/api/book");

@@ -132,7 +132,7 @@ check("index.html: the child seats card sits in the hero right after the trust s
   assert.deepEqual(items.map((li) => [use(li), ...[...li.querySelectorAll(":scope > p")].map((p) => norm(p.textContent))]), SEATS);
   assert.deepEqual([...seats.querySelectorAll(".seats__s")].map((p) => [p.parentElement === seats, p.innerHTML]), [[true, `<b>$${CHILD_SEAT_CENTS / 100}</b> per seat`]]);
   assert.equal(doc.querySelectorAll(".seats__note").length, 0, "the old seats note is still on the page");
-  assert.equal(fact("Child seats"), "Child, infant and booster seats, $15 per seat, charged once at booking, even on a round trip");
+  assert.equal(fact("Child seats"), "Child, infant and booster seats, $20 per seat, charged once at booking, even on a round trip");
   assert.doesNotMatch(seats.textContent, /free/i);
   assert.ok(answer("Do your cars have car seats?").includes(SEAT_NOTE), "the FAQ no longer says how to ask for a seat");
 });

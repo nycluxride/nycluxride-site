@@ -10,6 +10,7 @@ const STATIC = [
   "no-moovs",
   "swap-resilience",
   "pay-rates",
+  "seat-price",
   "book-pricing",
   "book-params",
   "phone",
