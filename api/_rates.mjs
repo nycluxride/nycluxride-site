@@ -77,6 +77,7 @@ export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
 export const NYC_TAX_PERCENT = TAX_AREAS[NYC_TAX_AREA].percent;
 export const BCF_PERCENT = "2.25";
 export const TIP_PERCENTS = [0, 10, 15, 20, 25];
+export const TIP_DEFAULT = 25;
 export const STRIPE_MAX_CENTS = 99999999;
 export const TIP_CUSTOM = { min: 100, max: STRIPE_MAX_CENTS };
 export const MAX_STOPS = 2;
@@ -117,7 +118,7 @@ export const NJTP_TOLLS = {
     "18W": { 13: 750, "13A": 750, 14: 571 },
   },
 };
-export const TOLL_TABLE_UNTIL = "2027-01-01T00:00:00-05:00";
+export const TOLL_TABLE_UNTIL = "2028-01-01T00:00:00-05:00";
 export const TLC_BASE_LICENSE = "";
 export const CONTACT = { phone: "+1 (646) 775-0556", tel: "tel:+16467750556", whatsapp: "https://wa.me/16467750556", email: "info@nycluxride.com" };
 export const SITE_ORIGIN = "https://www.nycluxride.com";

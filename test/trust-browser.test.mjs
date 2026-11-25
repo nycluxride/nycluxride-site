@@ -171,7 +171,7 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const p = await ctx.newPage();
-    const form = () => p.evaluate(() => [document.getElementById("bk-flight-status").textContent, [...document.querySelectorAll("#bk-incl > li")].filter((li) => !li.dataset.show || li.classList.contains("is-shown")).map((li) => li.textContent.replace(/\s+/g, " ").trim()), document.getElementById("bk-meet").parentNode.querySelector(".bk-mrow__t").textContent]);
+    const form = () => p.evaluate(() => [document.getElementById("bk-flight-status").textContent, [...document.querySelectorAll("#bk-incl > li")].filter((li) => !li.dataset.show || li.classList.contains("is-shown")).map((li) => li.textContent.replace(/\s+/g, " ").trim()), document.getElementById("bk-meet").parentNode.querySelector(".bk-mrow__t").textContent + ": " + document.getElementById("bk-meet-bc").textContent.trim()]);
     const pick = async (text, label, id) => {
       await p.click("#bk-from");
       await p.fill("#bk-from", text);
@@ -190,8 +190,8 @@ for (const [engine, type] of [["chromium", chromium], ["webkit", webkit], ["fire
     await pick("million air", "Million Air", "hpn-million");
     const fbo = await form();
     await check(`${engine} /locations/teterboro-airport: a Teterboro or FBO pickup asks for private flight details as a note, leaves out the airline waiting and flight tracking lines and meets in the FBO lobby, and an airline pickup brings them back`, () => {
-      assert.deepEqual(teb, [PRIVATE, NOT_AIRLINE, "In the FBO lobby with a name sign"]);
-      assert.deepEqual(jfk, [MON, ALL, "Inside the terminal with a name sign"]);
+      assert.deepEqual(teb, [PRIVATE, NOT_AIRLINE, "Inside pickup: Your chauffeur waits in the FBO lobby with a name sign."]);
+      assert.deepEqual(jfk, [MON, ALL, "Inside pickup: Your chauffeur waits inside near baggage claim with a name sign."]);
       assert.deepEqual(fbo.slice(0, 2), [PRIVATE, NOT_AIRLINE]);
     });
     await ctx.close();

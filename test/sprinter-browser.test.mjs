@@ -99,9 +99,20 @@ async function pax(page, n) {
   }
   throw new Error(`the stepper did not reach ${n}`);
 }
+async function ride(page) {
+  const [tip, meet] = await page.evaluate(() => [!document.getElementById("bk-tip").disabled && !document.getElementById("bk-t-0").checked, document.getElementById("bk-meet-f").checkVisibility() && !document.getElementById("bk-meet-f").disabled && document.getElementById("bk-meet").checked]);
+  if (tip) await page.click('label[for="bk-t-0"]');
+  if (meet) await page.check("#bk-meet-no");
+  if (tip || meet) await page.waitForFunction(() => !document.getElementById("price-total").getAttribute("aria-busy") && !document.getElementById("bk-wait").textContent.startsWith("Finding"));
+}
+async function priceShown(page) {
+  await page.waitForFunction(() => !document.getElementById("price").hidden && !document.getElementById("bk-tip").disabled && !document.getElementById("price-total").getAttribute("aria-busy"));
+  await ride(page);
+}
 async function view(page) {
   await page.click("#bk-view");
   await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && !document.getElementById("bk-wait").textContent.startsWith("Finding") && !document.querySelector(".bk-card__price .bk-sk") && /\d/.test(document.getElementById("bk-p-suv").textContent));
+  await ride(page);
 }
 const HOURLY_URL = `/book?trip-type=hour&pickup=${encodeURIComponent("277 Bedford Ave, Brooklyn, NY 11211")}&hours=3&date=${DATE}&time=12:40`;
 const ONE_URL = `/book?pickup=JFK&dropoff=${encodeURIComponent("350 5th Ave, New York, NY 10118")}&date=${DATE}&time=12:40`;
@@ -126,7 +137,7 @@ await check("S1 by the hour the hours start at 3 for the other cars, each Sprint
   assert.deepEqual(await panel(page), { lines: [["Fare, 4 hours", cash(fare)], ["Taxes and fees", cash(fees)]], total: cash(fare + fees) });
   await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
   assert.deepEqual(await vans(page), SPRINTERS.map((key) => cash(total(key, 4))));
-  assert.deepEqual(await scopes(page), SPRINTERS.map(() => "total for 4 hours"));
+  assert.deepEqual(await scopes(page), SPRINTERS.map(() => "ride price for 4 hours"));
   assert.deepEqual([await picked(page), await page.inputValue("#bk-sprinter")], [["sprinter", "sprinter-executive"], "sprinter-executive"]);
   assert.deepEqual(await choice(page), ["Executive Sprinter", "Luxury Sprinter"]);
   assert.equal(await page.$('[name="event"], #bk-event-f, #e-event'), null);
@@ -171,7 +182,7 @@ await check("S3 the Sprinter cards work from the keyboard and read well to a scr
   assert.deepEqual([await page.evaluate(() => document.activeElement.id), await picked(page)], ["bk-c-sprinter-executive", ["sprinter", "sprinter-executive"]]);
   await totalIs(page, total("sprinter-executive", 4));
   for (const key of SPRINTERS) {
-    const radio = page.getByRole("radio", { name: new RegExp(`^${VEHICLES[key].name} ${cash(total(key, 4)).replace(/[$.]/g, "\\$&")} ?total for 4 hours$`) });
+    const radio = page.getByRole("radio", { name: new RegExp(`^${VEHICLES[key].name} ${cash(total(key, 4)).replace(/[$.]/g, "\\$&")} ?ride price for 4 hours$`) });
     assert.equal(await radio.count(), 1, key);
     const described = await page.$eval(`#bk-c-${key}`, (r) => r.getAttribute("aria-describedby").split(" ").map((id) => document.getElementById(id).textContent.replace(/\s+/g, " ").trim()).join(" | "));
     assert.equal(described, `Luxury Sprinter | ${VEHICLES[key].seats}Up to ${VEHICLES[key].seats} passengers | 10 large, 2 small10 large and 2 small bags`, key);
@@ -227,7 +238,7 @@ await check("S5 back on step 1 the hours start at 4 while a Sprinter is chosen, 
   await view(page);
   await totalIs(page, total("sprinter-limo", 5));
   await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
-  assert.deepEqual([await vans(page), await scopes(page)], [SPRINTERS.map((k) => cash(total(k, 5))), SPRINTERS.map(() => "total for 5 hours")]);
+  assert.deepEqual([await vans(page), await scopes(page)], [SPRINTERS.map((k) => cash(total(k, 5))), SPRINTERS.map(() => "ride price for 5 hours")]);
   await page.click('label[for="bk-c-premium"]');
   await page.waitForFunction(() => !document.getElementById("price-total").getAttribute("aria-busy") && /Cadillac/.test(document.getElementById("bk-choice").textContent));
   assert.deepEqual(await hourOptions(page), ["3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]);
@@ -258,7 +269,7 @@ await check("S6 a Presidential Sprinter card by the hour pays online with no que
 await check("S7 one way every Sprinter card shows its own JFK total, the Limo and White Luxury Limo too, each card prices the trip when picked, and a Sprinter chosen by the hour stays chosen when the trip turns one way", async () => {
   const p = await open(ONE_URL);
   await view(p);
-  assert.deepEqual([await vans(p), await scopes(p)], [SPRINTERS.map((key) => cash(AIRPORT_TOTALS[key].jfk)), SPRINTERS.map(() => "total")]);
+  assert.deepEqual([await vans(p), await scopes(p)], [SPRINTERS.map((key) => cash(AIRPORT_TOTALS[key].jfk)), SPRINTERS.map(() => "ride price")]);
   await p.click('label[for="bk-c-sprinter-executive"]');
   await totalIs(p, AIRPORT_TOTALS["sprinter-executive"].jfk);
   assert.deepEqual(await shown(p), [false, false]);
@@ -297,6 +308,7 @@ await check("S14 the White Luxury Limo Sprinter to LaGuardia has no price yet: i
   assert.deepEqual([await p.isVisible("#q-mail"), await p.isVisible("#q-wa"), await p.isVisible("#bk-next")], [true, true, false]);
   assert.match(await waText(p, "#q-wa"), /\nVehicle: White Luxury Limo Sprinter(\n|$)/);
   await p.click('label[for="bk-c-sprinter-limo"]');
+  await priceShown(p);
   await totalIs(p, AIRPORT_TOTALS["sprinter-limo"].lga);
   assert.deepEqual([await p.isVisible("#q-sprinter-price"), await p.isVisible("#price"), await p.isVisible("#bk-next")], [false, true, true]);
   assert.deepEqual(p.errors, []);
@@ -577,6 +589,7 @@ for (const width of [390, 1440]) {
     assert.equal(await p.getByRole("radio", { name: "Limo Sprinter Book 3 hours ahead", exact: true }).count(), 1);
     assert.deepEqual(await p.$$eval(".bk-card.is-small picture", (x) => x.map((e) => getComputedStyle(e).opacity)), ["0.6", "0.6", "0.6", "0.6", "0.6"], "the five Sprinter photos dim like a card that is too small");
     await p.click('label[for="bk-c-suv"]');
+    await priceShown(p);
     await totalIs(p, AIRPORT_TOTALS.suv.jfk);
     const suv = await notice(p);
     assert.deepEqual([suv.blocks, suv.shown.slice(0, 2), suv.cards.slice(5)], [[], [true, true], OFF]);
@@ -805,6 +818,7 @@ await check("S27 at 320 and 390 the bar under the cards keeps Email to reserve w
     assert.deepEqual(await bar(), [true, "Book a Sprinter 3 hours ahead", "Email to reserve", true, true, true, true, true, 0, 0], String(width));
     assert.match(decodeURIComponent(await p.getAttribute("#bk-bar-mail", "href")), /Limo Sprinter/, "the email carries the trip with its Sprinter");
     await p.click('label[for="bk-c-suv"]');
+    await priceShown(p);
     await totalIs(p, AIRPORT_TOTALS.suv.jfk);
     assert.deepEqual([await p.isHidden("#bk-bar-mail"), await p.evaluate(() => document.getElementById("bk-bar").classList.contains("is-q"))], [true, false]);
     await p.click('label[for="bk-c-sprinter-limo"]');

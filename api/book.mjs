@@ -55,10 +55,12 @@ function rideBody(trip, size, draw) {
   return { ride: { kind: "ok", ...leg(legs.find((item) => !item.back)), ...(back && { back: leg(back) }), ...(map ? { map } : { attribution: "Google Maps" }) } };
 }
 
+const rideOnly = (trip) => ({ ...trip, tip: 0, tip_amount: "", meet: false });
+
 function classList(trip, tripReason, now) {
   return Object.keys(CLASSES).map((cls) => {
     const reason = tripReason || noticeReason(trip, cls, now) || classReason(trip, cls);
-    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason ? null : classTotal(trip, cls), reason };
+    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason ? null : classTotal(rideOnly(trip), cls), reason };
   });
 }
 
@@ -69,7 +71,7 @@ function vehicleList(trip, now) {
     .map((key) => {
       const priced = { ...trip, class: VEHICLES[key].cls, vehicle: key };
       const late = noticeReason(priced, priced.class, now);
-      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) ? null : priceTrip(priced).total, ...(late && { reason: late }) };
+      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) ? null : priceTrip(rideOnly(priced)).total, ...(late && { reason: late }) };
     });
 }
 
@@ -204,7 +206,7 @@ async function handlePost(request) {
   const invalid = (code) => reply(422, { kind: "invalid", code, field: ERRORS[code].field, text: ERRORS[code].text }, `/book#e-${code}`);
   const fields = parseFields(type, text);
   if (!fields) return invalid("form");
-  const input = readInput(asJson ? fields : { ...fields, action: "pay" });
+  const input = readInput(asJson ? fields : { ...fields, action: "pay", ...(fields.action === "options" && { meet: "" }) });
   const ref = requestRef({ ...input, action: "options" });
   const settings = readSettings(process.env);
   if (previewDemo()) settings.paymentsEnabled = true;

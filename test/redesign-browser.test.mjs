@@ -546,7 +546,7 @@ const heroBoxes = (p) =>
       hero: box(".hero"),
       photo: box(".hero__photo"),
       book: box(".hero__book"),
-      form: box(".hero__book > form#book-form:only-child"),
+      form: box(".hero > ul.hero__promise + .hero__book > form#book-form:only-child"),
       bar: box("#bk-search"),
       help: box("#bk-help"),
       view: box("#bk-view"),
@@ -570,7 +570,7 @@ await wide.goto(`${base}/`, { waitUntil: "load" });
 await wide.evaluate(() => document.fonts.ready);
 const w1 = await heroBoxes(wide);
 check("/: at 1440x900 the hero photo spans the viewport width and the hero height under a transparent header that shows Book a car, since Book your ride starts below the first screen", () => {
-  assert.ok(w1.form, "no form#book-form as the only child of .hero__book");
+  assert.ok(w1.form, "no form#book-form alone in .hero__book right after the two promises");
   assert.ok(Math.abs(w1.photo.left) <= 0.5 && Math.abs(w1.photo.width - w1.vw) <= 0.5, `photo ${w1.photo.left} to ${w1.photo.right}, viewport ${w1.vw}`);
   assert.ok(Math.abs(w1.photo.top - w1.hero.top) <= 0.5 && Math.abs(w1.photo.height - w1.hero.height) <= 0.5, "the photo does not cover the hero");
   assert.equal(w1.hdrBg, TRANSPARENT);

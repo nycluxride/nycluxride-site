@@ -610,16 +610,16 @@ await test("tamper: the fallback total rides in the signed route token from /api
   assert.equal(sent.length, 0);
 });
 
-await test("the toll table ends on January 1, 2027 New York time: a table toll reached before then is priced, a table toll reached on or after it logs route-tolls stale and keeps today's behavior, so a pickup at 11:20 PM on December 31 is priced and one at 11:30 PM that reaches the bridge after midnight is not", async () => {
+await test("the toll table ends on January 1, 2028 New York time: a table toll reached before then is priced, a table toll reached on or after it logs route-tolls stale and keeps today's behavior, so a pickup at 11:20 PM on December 31 is priced and one at 11:30 PM that reaches the bridge after midnight is not", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
-  assert.equal(TOLL_TABLE_UNTIL, "2027-01-01T00:00:00-05:00");
-  assert.equal(Date.parse(TOLL_TABLE_UNTIL), nycToUtc("2027-01-01", "00:00").getTime());
+  assert.equal(TOLL_TABLE_UNTIL, "2028-01-01T00:00:00-05:00");
+  assert.equal(Date.parse(TOLL_TABLE_UNTIL), nycToUtc("2028-01-01", "00:00").getTime());
   const cases = [
-    [["2026-12-31", "14:00"], 571 + 1479 + 342, []],
-    [["2026-12-31", "23:20"], 571 + 1479 + 342, []],
-    [["2026-12-31", "23:30"], null, ["route-tolls stale"]],
-    [["2026-12-31", "23:50"], null, ["route-tolls stale"]],
-    [["2027-01-04", "14:00"], null, ["route-tolls stale"]],
+    [["2027-12-31", "14:00"], 571 + 1479 + 342, []],
+    [["2027-12-31", "23:20"], 571 + 1479 + 342, []],
+    [["2027-12-31", "23:30"], null, ["route-tolls stale"]],
+    [["2027-12-31", "23:50"], null, ["route-tolls stale"]],
+    [["2028-01-04", "14:00"], null, ["route-tolls stale"]],
   ];
   for (const [[date, time], tolls, lines] of cases) {
     const sent = googleAnswers();
@@ -938,7 +938,7 @@ await test("hourly is unchanged: 4 hours from JFK T4 or from 500 Communipaw Ave 
   assert.equal(sent.length, 0);
 });
 
-await test("Google's own drive time sets the drop-off: the owner's line with a Google duration of 85 min pays the peak for a 2:40 PM pickup that arrives at 4:05 PM and the off-peak rate for 2:30 PM, and a drop-off on or after January 1, 2027 adds nothing and logs route-tolls return stale", async () => {
+await test("Google's own drive time sets the drop-off: the owner's line with a Google duration of 85 min pays the peak for a 2:40 PM pickup that arrives at 4:05 PM and the off-peak rate for 2:30 PM, and a drop-off on or after January 1, 2028 adds nothing and logs route-tolls return stale", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
   const T4 = { address: T4_ADDRESS };
   const CPW = { placeId: "mock-communipaw" };
@@ -947,7 +947,7 @@ await test("Google's own drive time sets the drop-off: the owner's line with a G
   assert.equal((await computeRoute([T4, CPW], nycToUtc("2026-12-01", "14:40"), null)).tolls, 1041 + PEAK);
   assert.equal((await computeRoute([T4, CPW], nycToUtc("2026-12-01", "14:30"), null)).tolls, 1041 + OFF_PEAK);
   googleRoute(ownerAnswer({ polyline }));
-  for (const [date, time, tolls, lines] of [["2026-12-31", "22:30", 1041 + OFF_PEAK, []], ["2026-12-31", "22:40", 1041, ["route-tolls return stale"]], ["2027-01-04", "17:00", 1041, ["route-tolls return stale"]]]) {
+  for (const [date, time, tolls, lines] of [["2027-12-31", "22:30", 1041 + OFF_PEAK, []], ["2027-12-31", "22:40", 1041, ["route-tolls return stale"]], ["2028-01-04", "17:00", 1041, ["route-tolls return stale"]]]) {
     const out = await logged(() => computeRoute([T4, CPW], nycToUtc(date, time), null));
     assert.deepEqual([out.value.tolls, out.lines], [tolls, lines], `${date} ${time}`);
   }
@@ -1022,7 +1022,7 @@ await test("the Lincoln and Holland tunnels into New Jersey are free parts of th
   assert.ok(cuts[0] < tube[0] && cuts[1] > tube[1], JSON.stringify({ tube, cuts }));
 });
 
-await test("the Lincoln Tunnel into New Jersey, where Google gives tolls with no price: the fallback asks Google again with a waypoint before and after the tunnel, the tunnel part is $0, Google prices the rest, and the return crossing is added, $14.79 for a 2:19 PM drop-off and $16.79 at 6:19 PM, with or without a toll on Google's tunnel part, Google's price on that part when it gives one, and today's behavior when another part has no price, the split route is longer, or the drop-off is in 2027", async () => {
+await test("the Lincoln Tunnel into New Jersey, where Google gives tolls with no price: the fallback asks Google again with a waypoint before and after the tunnel, the tunnel part is $0, Google prices the rest, and the return crossing is added, $14.79 for a 2:19 PM drop-off and $16.79 at 6:19 PM, with or without a toll on Google's tunnel part, Google's price on that part when it gives one, and today's behavior when another part has no price, the split route is longer, or the drop-off is in 2028", async () => {
   process.env.GOOGLE_MAPS_SERVER_KEY = "toll-test-key";
   const ends = [{ address: MANHATTAN }, { placeId: "mock-clinton" }];
   const at2 = nycToUtc("2026-12-01", "14:00");
@@ -1048,14 +1048,14 @@ await test("the Lincoln Tunnel into New Jersey, where Google gives tolls with no
     assert.deepEqual([failed.value.tolls, failed.lines], [null, [line]], line);
   }
   lincolnAnswers({ legs: LINCOLN_SPLIT });
-  const late = await logged(() => computeRoute(ends, nycToUtc("2027-01-05", "14:00"), null));
+  const late = await logged(() => computeRoute(ends, nycToUtc("2028-01-05", "14:00"), null));
   assert.deepEqual([late.value.tolls, late.lines], [null, ["route-tolls stale"]]);
   sent = lincolnAnswers({ legs: LINCOLN_SPLIT, first: { travelAdvisory: { tollInfo: { estimatedPrice: [money("0", 0)] } } } });
   assert.deepEqual([(await computeRoute(ends, at2, null)).tolls, sent.length], [OFF_PEAK, 1]);
   delete process.env.GOOGLE_MAPS_SERVER_KEY;
 });
 
-await test("bookings into New Jersey over the Lincoln Tunnel get the Tolls line: 350 5th Ave to 1332 Clinton St, Hoboken is $0 plus the return crossing, $14.79 at 2:00 PM and $16.79 at 6:00 PM, 500 8th Ave to 1 Hackensack Ave, Weehawken $14.79, round trips pay Google's $20.79 into New York and the return crossing on the ride into New Jersey, and through Stripe, the metadata and the receipt; a drop-off in 2027 keeps no Tolls line and tolls after the ride", async () => {
+await test("bookings into New Jersey over the Lincoln Tunnel get the Tolls line: 350 5th Ave to 1332 Clinton St, Hoboken is $0 plus the return crossing, $14.79 at 2:00 PM and $16.79 at 6:00 PM, 500 8th Ave to 1 Hackensack Ave, Weehawken $14.79, round trips pay Google's $20.79 into New York and the return crossing on the ride into New Jersey, and through Stripe, the metadata and the receipt; a drop-off in 2028 keeps no Tolls line and tolls after the ride", async () => {
   mock();
   const base = { trip_type: "one", from_text: MANHATTAN, to_text: HOB_LABEL, to_ticket: signed("mock-clinton", HOB_LABEL), date: "2026-12-01", time: "14:00", passengers: "2", class: "suv", action: "pay", ...ME };
   const { trip, price } = await priced(base, R_NOW);
@@ -1071,7 +1071,7 @@ await test("bookings into New Jersey over the Lincoln Tunnel get the Tolls line:
   assert.deepEqual([round.trip.legs.map((item) => item.ride), round.price.tolls, round.price.estimate], [[{ tenths: 38, minutes: 19, tolls: OFF_PEAK }, { tenths: 39, minutes: 24, tolls: 2079 }], OFF_PEAK + 2079, OFF_PEAK + 2079]);
   const home = await priced({ ...base, from_text: HOB_LABEL, from_ticket: signed("mock-clinton", HOB_LABEL), to_text: MANHATTAN, to_ticket: undefined, return: "1", return_date: "2026-12-01", return_time: "18:00" }, R_NOW);
   assert.deepEqual([home.trip.legs.map((item) => item.ride.tolls), home.price.tolls], [[2079, PEAK], 2079 + PEAK]);
-  const late = await logged(() => priced({ ...base, date: "2027-01-05" }, R_NOW));
+  const late = await logged(() => priced({ ...base, date: "2028-01-05" }, new Date("2027-11-24T15:00:00.000Z")));
   assert.deepEqual([late.value.trip.legs[0].ride, late.value.price.tolls, late.value.price.estimate, tollsIn(late.value.trip), shownLines(late.value.price.lines).map(({ label }) => label)], [{ tenths: 38, minutes: 19 }, 0, null, false, ["Fare", "Taxes and fees"]]);
   assert.ok(late.lines.includes("route-tolls stale"), JSON.stringify(late.lines));
 });

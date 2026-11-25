@@ -10,7 +10,7 @@ import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters } from "../api/_mail.mjs";
 import { POST, GET } from "../api/book.mjs";
 import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY, SPRINTER_BUSY, SPRINTER_SWAP } from "../api/_copy.mjs";
-import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES, SPRINTER_NOTICE_HOURS, VEHICLES, CLASSES, WAIT_CENTS_PER_MINUTE } from "../api/_rates.mjs";
+import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, TIP_DEFAULT, MEET_AND_GREET, percentCents, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES, SPRINTER_NOTICE_HOURS, VEHICLES, CLASSES, WAIT_CENTS_PER_MINUTE } from "../api/_rates.mjs";
 import { ROUTE, signTicket, signRoute, routeKey, placeProof } from "../api/_ticket.mjs";
 import { POST as placesPost } from "../api/places.mjs";
 import { localById } from "../api/_places.mjs";
@@ -863,6 +863,18 @@ await test("handler: JSON Accept gets 200 pay with the URL, no JSON Accept gets 
   assert.equal(calls.length, 4);
 });
 
+await test("handler: a form post from an airport pickup charges the Inside pickup it was sent with, while a form post from Book your ride (action options, a script that never ran) never adds it, since that rider never saw the pickup choice", async () => {
+  setEnv(LIVE);
+  const airport = { ...PICKUP_SOON, rider: "me", meet: "1", tip: "" };
+  const names = (form) => { const out = []; for (let i = 0; form.has(`line_items[${i}][quantity]`); i++) out.push(form.get(`line_items[${i}][price_data][product_data][name]`)); return out; };
+  calls = [];
+  assertRedirect(await formPost({ ...airport, action: "pay" }), CHECKOUT_URL);
+  assertRedirect(await formPost({ ...airport, action: "options" }), CHECKOUT_URL);
+  assertRedirect(await formPost({ ...airport, action: "options", name: "", sign: "" }), CHECKOUT_URL);
+  assert.deepEqual(calls.map((c) => [names(formOf(c)).includes("Meet and greet"), formOf(c).get("metadata[meet]")]), [[true, "1"], [false, "0"], [false, "0"]]);
+  assert.equal((await readJson(await post({ ...airport, action: "options" }), 200)).selected.meet, true, "the booking form's own options request keeps it");
+});
+
 await test("handler: every redirect of 13.1.8 for a form post", async () => {
   setEnv(LIVE);
   assertRedirect(await formPost(STRIPE_JFK), CHECKOUT_URL);
@@ -956,8 +968,8 @@ await test("handler: options and quote price the selected class, tip and meet an
   assert.deepEqual(body.selected, { class: "suv", vehicle: "", tip: 15, tip_amount: 0, meet: true });
   assert.deepEqual(body.price.lines.slice(3), [{ label: "Meet and greet", cents: 2500 }, { label: "Gratuity for your chauffeur (15%)", cents: 2325 }]);
   assert.equal(body.price.total_cents, 23325);
-  assert.deepEqual(body.classes.map((item) => item.total_cents), [23325, 27298, 37512, 21623, 22758, 53402]);
-  assert.equal(body.classes[0].total_cents, body.price.total_cents, "the selected row shows the total of the panel and the bar");
+  assert.deepEqual(body.classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 18000, 45000]);
+  assert.equal(body.classes[0].total_cents, body.price.total_cents - 2500 - 2325, "the cards show the ride without the gratuity and the meet and greet, the panel and the bar add them");
   assert.deepEqual((await readJson(await post({ ...fields, meet: "", tip: "" }), 200)).classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 18000, 45000]);
   assert.deepEqual(await readJson(await post({ ...fields, class: "limo" }), 422), { kind: "invalid", code: "class", field: "class", text: ERRORS.class.text });
   const options = await readJson(await post({ ...fields, class: "limo", action: "options" }), 200);
@@ -970,7 +982,34 @@ await test("handler: options and quote price the selected class, tip and meet an
   assert.equal(calls.length, 0);
 });
 
-await test("handler: a gratuity the rider types adds the same fixed amount to every class, and options and quote answers carry tip_custom and selected.tip_amount", async () => {
+await test("handler: the booking form's default at a JFK pickup, 25% and Inside pickup, opens Stripe with the meet and greet and 25% gratuity lines, None and Curbside take both out, the metadata keys stay the same and the class cards stay at the ride price", async () => {
+  setEnv(LIVE);
+  const base = { ...PICKUP_SOON, tip: String(TIP_DEFAULT), meet: "1", action: "pay" };
+  const fare = AIRPORT_FARES.suv.jfk;
+  const tip = percentCents(fare, String(TIP_DEFAULT));
+  const lines = (form) => { const out = []; for (let i = 0; form.has(`line_items[${i}][quantity]`); i++) out.push([form.get(`line_items[${i}][price_data][product_data][name]`), Number(form.get(`line_items[${i}][price_data][unit_amount]`))]); return out; };
+  const keys = (form) => [...form.keys()].filter((k) => k.startsWith("metadata[")).sort();
+  calls = [];
+  assert.equal((await readJson(await post(base), 200)).kind, "pay");
+  const full = formOf(calls[0]);
+  assert.deepEqual(lines(full).slice(-2), [["Meet and greet", MEET_AND_GREET], [`Gratuity for your chauffeur (${TIP_DEFAULT}%)`, tip]]);
+  assert.deepEqual(["tip_percent", "tip_cents", "meet", "meet_cents"].map((k) => full.get(`metadata[${k}]`)), [String(TIP_DEFAULT), String(tip), "1", String(MEET_AND_GREET)]);
+  assert.equal(lines(full).reduce((a, [, c]) => a + c, 0), AIRPORT_TOTALS.suv.jfk + MEET_AND_GREET + tip);
+  calls = [];
+  assert.equal((await readJson(await post({ ...base, tip: "0", meet: "" }), 200)).kind, "pay");
+  const bare = formOf(calls[0]);
+  assert.ok(!lines(bare).some(([name]) => /^(Meet and greet|Gratuity)/.test(name)), JSON.stringify(lines(bare)));
+  assert.equal(lines(bare).reduce((a, [, c]) => a + c, 0), AIRPORT_TOTALS.suv.jfk);
+  assert.deepEqual(keys(full), [...keys(bare), "metadata[sign_name]"].sort(), "no new metadata key, the sign name rides with the meet and greet as before");
+  assert.ok(keys(full).length <= 50);
+  for (const [t, m] of [[String(TIP_DEFAULT), "1"], ["0", ""]]) {
+    const options = await readJson(await post({ ...base, tip: t, meet: m, action: "options" }), 200);
+    assert.deepEqual(options.classes.map((c) => c.total_cents), [18500, 22000, 31000, 17000, 18000, 45000], `${t} ${m}`);
+    assert.equal(options.price.total_cents, AIRPORT_TOTALS.suv.jfk + (m ? MEET_AND_GREET + tip : 0), `${t} ${m}`);
+  }
+});
+
+await test("handler: a gratuity the rider types adds a fixed amount to the total and never to the class cards, and options and quote answers carry tip_custom and selected.tip_amount", async () => {
   setEnv(LIVE);
   const fields = { ...PICKUP_SOON, tip: "custom", tip_amount: "40", action: "quote" };
   const body = await slotted(async () => readJson(await post(fields), 200));
@@ -979,15 +1018,15 @@ await test("handler: a gratuity the rider types adds the same fixed amount to ev
   assert.deepEqual(body.selected, { class: "suv", vehicle: "", tip: "custom", tip_amount: 40, meet: true });
   assert.deepEqual(body.price.lines.slice(3), [{ label: "Meet and greet", cents: 2500 }, { label: "Gratuity for your chauffeur", cents: 4000 }]);
   assert.equal(body.price.total_cents, 25000);
-  assert.deepEqual(body.classes.map((item) => item.total_cents), [25000, 28500, 37500, 23500, 24500, 51500]);
+  assert.deepEqual(body.classes.map((item) => item.total_cents), [18500, 22000, 31000, 17000, 18000, 45000]);
   assert.ok(decodeURIComponent(body.whatsapp).endsWith("Meet and greet: Yes\nGratuity: $40.00\nTotal shown: $250.00"), decodeURIComponent(body.whatsapp));
   assert.deepEqual((await readJson(await post({ ...fields, tip_amount: "040", action: "options" }), 200)).selected, body.selected);
   const hourly = await readJson(await post({ ...trip(HOURLY), class: "suv", vehicle: "suv-denali", hours: "3", tip: "custom", tip_amount: "40", action: "options" }), 200);
   assert.deepEqual(hourly.selected, { class: "suv", vehicle: "suv-denali", tip: "custom", tip_amount: 40, meet: false });
-  assert.deepEqual(hourly.vehicles.map((item) => item.total_cents), [35670, 37338, 37338, null, null, null, null, null]);
-  assert.deepEqual(hourly.classes.map((item) => item.total_cents), [37338, 39005, 62340, 32337, 34004, null]);
+  assert.deepEqual(hourly.vehicles.map((item) => item.total_cents), [31670, 33338, 33338, null, null, null, null, null]);
+  assert.deepEqual(hourly.classes.map((item) => item.total_cents), [33338, 35005, 58340, 28337, 30004, null]);
   const seats = await slotted(async () => readJson(await post({ ...fields, passengers: "7", action: "options" }), 200));
-  assert.deepEqual([seats.price, seats.reason, seats.selected.tip, seats.selected.tip_amount, seats.classes.at(-1).total_cents], [null, "seats", "custom", 40, 51500]);
+  assert.deepEqual([seats.price, seats.reason, seats.selected.tip, seats.selected.tip_amount, seats.classes.at(-1).total_cents], [null, "seats", "custom", 40, 45000]);
   const quote = await slotted(async () => readJson(await post({ ...fields, from_text: "350 5th Ave", action: "options" }), 200));
   assert.deepEqual([quote.kind, quote.reason, quote.tip_custom, quote.tips], ["quote", "unplaced", { min_cents: 100, max_cents: 99999999 }, TIP_PERCENTS]);
   assert.equal(calls.length, 0);
@@ -1406,7 +1445,7 @@ await test("handler: by the hour from Newark Liberty, Teterboro with meet and gr
     const options = await readJson(await post({ ...fields, action: "options" }), 200);
     assert.deepEqual([options.kind, options.reason, options.pay, options.service, options.meet, options.meet_cents, options.price.total_cents], ["options", "", true, "hourly", meet, meet ? 2500 : null, total], name);
     assert.deepEqual(options.price.lines, [{ label: "Fare, 4 hours", cents: 38000 }, { label: FEES, cents: tax + 855 }, ...(meetCents ? [{ label: "Meet and greet", cents: 2500 }] : [])], name);
-    assert.equal(options.classes.find((c) => c.class === "suv").total_cents, total, name);
+    assert.equal(options.classes.find((c) => c.class === "suv").total_cents, total - meetCents, name);
     calls = [];
     const paid = await readJson(await post({ ...fields, action: "pay" }), 200);
     assert.deepEqual([paid.kind, paid.url, calls.length], ["pay", CHECKOUT_URL, 1], name);

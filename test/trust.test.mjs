@@ -112,7 +112,7 @@ for (const [file, keys] of Object.entries(PAGES)) {
     if (file === "index.html") {
       const hero = doc.querySelector("main > section.hero");
       assert.equal(trust.parentElement, hero);
-      assert.ok(trust.previousElementSibling.matches("div.hero__book") && trust.previousElementSibling.firstElementChild === form);
+      assert.ok(trust.previousElementSibling.matches("div.hero__book") && trust.previousElementSibling.lastElementChild === form && trust.previousElementSibling.children.length === 1 && trust.previousElementSibling.previousElementSibling.matches("ul.hero__promise"));
       assert.ok(trust.nextElementSibling.matches("section.seats"));
     } else if (file === "book.html") {
       assert.ok(trust.parentElement.matches("main > section.bk-page > .frame"));
@@ -212,7 +212,8 @@ check("book.css: the section shows with the search step only, like the form's tr
   assert.ok(rule(rules, ".hero>.trust").includes("grid-row:7"));
   assert.ok(rule(parse(block(booking, "@media (scripting:none){.hero>.trust")), ".hero>.trust").includes("grid-row:9"));
   const pages = parse(block(LUX, "@layer pages{"));
-  assert.ok(rule(pages, ".home :is(.seats,.pets)").includes("grid-row:8") && rule(pages, ".home .pets").includes("grid-row:9"));
+  assert.ok(rule(pages, ".home :is(.seats,.pets)").includes("grid-row:9") && rule(pages, ".home .pets").includes("grid-row:10") && rule(pages, ".home .hero>.trust").includes("grid-row:8") && rule(pages, ".home .hero__book").includes("grid-row:7"));
+  assert.ok(rule(parse(block(LUX, "@media (scripting:none){.home .seats")), ".home .hero>.trust").includes("grid-row:10"));
   assert.ok(LUX.includes("@media (scripting:none){.hero__book{grid-row:8;"));
 });
 

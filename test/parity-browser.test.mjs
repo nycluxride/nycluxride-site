@@ -25,10 +25,10 @@ const INK = "rgb(15, 19, 25)";
 const ring = (color, px) => `${color} 0px 0px 0px ${px}px inset`;
 
 const ONE_WAY = [
-  [320, 640, 68, [152, 156, 128, 132, 112, 132, 132, 132, 132, 156]],
-  [375, 812, 92, [108, 132, 128, 108, 88, 132, 132, 132, 108, 132]],
-  [390, 844, 92, [88, 112, 108, 108, 88, 88, 112, 112, 88, 112]],
-  [430, 932, 92, [88, 88, 108, 88, 88, 88, 88, 88, 88, 112]],
+  [320, 640, 68, [152, 156, 128, 152, 132, 132, 132, 132, 132, 156]],
+  [375, 812, 92, [108, 132, 128, 128, 108, 132, 132, 132, 108, 132]],
+  [390, 844, 92, [108, 132, 128, 128, 108, 108, 132, 132, 108, 132]],
+  [430, 932, 92, [108, 108, 128, 108, 108, 108, 108, 108, 108, 132]],
   [768, 1024, 124, [88, 88, 88, 88, 88, 88, 88, 88, 88, 88]],
   [1024, 768, 124, [78, 78, 78, 78, 78, 78, 78, 78, 78, 78]],
   [1280, 800, 124, [78, 78, 78, 78, 78, 78, 78, 78, 78, 78]],
@@ -254,7 +254,7 @@ for (const [engine, type] of ENGINES) {
   const browser = await type.launch();
   for (const [width, height] of [[390, 844], [1440, 900]]) {
     const ctx = await context(browser, { viewport: { width, height } });
-    await check(`P2 ${engine} at ${width}: the class rows and the Sprinter rows are white cards with radius 16 and the card shadow, a 3 px gold ring and the check badge on the chosen card, a 1 px line on the others, the photo on a light grey tile with radius 12 ${width < 600 ? "80 px tall, 4 px in from the left and centred in the row" : "set 4 px inside"}, and on step 3 the Where we meet rows have radius 16 with a 2 px gold edge on the chosen one`, async () => {
+    await check(`P2 ${engine} at ${width}: the class rows and the Sprinter rows are white cards with radius 16 and the card shadow, a 3 px gold ring and the check badge on the chosen card, a 1 px line on the others, the photo on a light grey tile with radius 12 ${width < 600 ? "80 px tall, 4 px in from the left and centred in the row" : "set 4 px inside"}, and on step 1 the Where we meet rows have radius 16 with a 2 px gold edge on Inside pickup, chosen by default`, async () => {
       const p = await open(ctx, "/book");
       await options(p);
       await p.mouse.move(0, 0);
@@ -269,13 +269,12 @@ for (const [engine, type] of ENGINES) {
       await p.mouse.move(0, 0);
       await p.waitForTimeout(100);
       cardLook(await look(p), "sprinter-limo", width < 600);
+      const m = await meet(p);
+      assert.ok(m.length >= 2 && m.filter((x) => x.on).length === 1 && m[0].on, JSON.stringify(m));
+      for (const x of m) assert.deepEqual([x.radius, x.ring], ["16px 16px 16px 16px", ring(x.on ? GOLD : LINE, x.on ? 2 : 1)], JSON.stringify(x));
       await p.click("#bk-next");
       await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
-      await p.mouse.move(0, 0);
-      await p.waitForTimeout(100);
-      const m = await meet(p);
-      assert.ok(m.length >= 2 && m.filter((x) => x.on).length === 1, JSON.stringify(m));
-      for (const x of m) assert.deepEqual([x.radius, x.ring], ["16px 16px 16px 16px", ring(x.on ? GOLD : LINE, x.on ? 2 : 1)], JSON.stringify(x));
+      assert.deepEqual(await meet(p), [], "the pickup rows stay on step 1");
       assert.deepEqual(p.errors, []);
       await p.close();
     });

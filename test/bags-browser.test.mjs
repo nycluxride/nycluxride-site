@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const { CLASSES, MAX_BAGS, AIRPORT_TOTALS } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const { CLASSES, MAX_BAGS, AIRPORT_TOTALS, AIRPORT_FARES, MEET_AND_GREET, TIP_DEFAULT, percentCents } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const START = AIRPORT_TOTALS.suv.jfk + MEET_AND_GREET + percentCents(AIRPORT_FARES.suv.jfk, String(TIP_DEFAULT));
 const { ERRORS } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET"];
 const DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + 3 * 864e5));
@@ -244,7 +245,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await priced(page);
     await bags(page, 4, 0);
     assert.equal(await noteShown(page), true);
-    assert.equal((await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), cash(AIRPORT_TOTALS.suv.jfk));
+    assert.equal((await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), cash(START), "the JFK total with the Inside pickup and the 25% gratuity it opens on");
     assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$180.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
     assert.equal(await page.isDisabled("#bk-next"), false);
     await bags(page, MAX_BAGS, 0);
@@ -381,7 +382,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     const rows = await page.$$eval("#cf-rows > div", (o) => o.map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent]));
     const car = rows.findIndex(([t]) => t === "Car");
     assert.deepEqual(rows[car + 1], ["Bags", "4 large, 1 medium, 2 small"], JSON.stringify(rows));
-    assert.equal(await page.textContent("#cf-total"), cash(AIRPORT_TOTALS.suv.jfk));
+    assert.equal(await page.textContent("#cf-total"), cash(START));
     const stored = await page.evaluate(() => [JSON.parse(sessionStorage.getItem("nlr-book")).fields, JSON.parse(sessionStorage.getItem("nlr-cf")).b.fields]);
     for (const f of stored) assert.deepEqual([f.large_bags, f.medium_bags, f.small_bags], ["4", "1", "2"]);
     await page.reload({ waitUntil: "load" });

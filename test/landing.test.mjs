@@ -266,7 +266,8 @@ check("index.html: under the H1 the two lines read Professional, Luxury, Reliabl
     ["hero__tags hero__tags--svc", "list", [["LI", "Airport Transfers"], ["LI", "Hourly Service"], ["LI", "Corporate Travel"]]],
   ]);
   assert.equal(h1.nextElementSibling, lists[0], "the first line does not follow the H1");
-  assert.equal(lists[1].nextElementSibling, hero.querySelector(":scope > div.hero__book"), "the booking card does not follow the second line");
+  assert.equal(lists[1].nextElementSibling, hero.querySelector(":scope > ul.hero__promise"), "the two promises do not follow the second line");
+  assert.equal(lists[1].nextElementSibling.nextElementSibling, hero.querySelector(":scope > div.hero__book"), "the booking card does not follow the two promises");
   assert.equal(hero.querySelectorAll(".hero__lede, .eyebrow").length, 0, "the hero still has a lede or an eyebrow");
 });
 
@@ -285,7 +286,7 @@ const block = (src, head) => {
 };
 const layer = (name) => block(css, `@layer ${name}{`);
 
-check(`assets/${cssFile}: the pets card shares the child seats card rules, the white card with the gold metallic edge, the gold rings, the gold italic word, the ring, sheen and star only with motion allowed outside forced colors, the hover sparkle, a Canvas card and a CanvasText paw ring in forced colors, and rows 8 and 9 after the trust section with scripting, rows 6 and 7 before the form without`, () => {
+check(`assets/${cssFile}: the pets card shares the child seats card rules, the white card with the gold metallic edge, the gold rings, the gold italic word, the ring, sheen and star only with motion allowed outside forced colors, the hover sparkle, a Canvas card and a CanvasText paw ring in forced colors, and rows 9 and 10 after the trust section with scripting, rows 6 and 7 before the form without`, () => {
   const pages = layer("pages");
   const comp = layer("components");
   const has = (list, sel, ...want) => {
@@ -299,8 +300,8 @@ check(`assets/${cssFile}: the pets card shares the child seats card rules, the w
     return parse(out);
   };
   has(parse(comp), ".hero>:is(.seats,.pets)", "justify-self:stretch", "border:1px solid var(--gold-300)", "background:var(--white)");
-  has(base, ".home :is(.seats,.pets)", "grid-row:8", "display:grid", "margin-block-start:16px", "padding:20px", "border-radius:var(--radius-lg)");
-  has(base, ".home .pets", "grid-row:9");
+  has(base, ".home :is(.seats,.pets)", "grid-row:9", "display:grid", "margin-block-start:16px", "padding:20px", "border-radius:var(--radius-lg)");
+  has(base, ".home .pets", "grid-row:10");
   has(base, ".home .pets__list", "grid-template-columns:repeat(2,minmax(0,1fr))");
   has(base, ".home :is(.seats__art,.pets__art)", "position:relative", "inline-size:56px", "border:1px solid var(--gold-300)", "border-radius:50%", "background:var(--gold-50)");
   has(base, ".home :is(.seats__list,.pets__list) .icon", "font-size:31px", "color:var(--gold-700)", "stroke-width:1.25");
