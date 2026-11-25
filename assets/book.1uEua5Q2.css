@@ -289,11 +289,11 @@ main:has(>.bk-page){display:flex;flex-direction:column;min-height:calc(100svh - 
 html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk[data-step$=s]{padding:0;border-radius:0;background:none;box-shadow:none}
 .bk-sum{display:flex;flex-wrap:wrap;gap:4px 16px;min-width:0}
-.bk-chip{display:inline-block;max-width:100%;min-height:24px;padding:2px 0 2px 24px;text-indent:-24px;text-align:start;font:var(--t4);color:var(--ink-2);white-space:normal;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.bk-chip{position:relative;z-index:1;display:inline-block;max-width:100%;min-height:24px;padding:2px 0 2px 24px;text-indent:-24px;text-align:start;font:var(--t4);color:var(--ink-2);white-space:normal;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 @media (hover:hover){.bk-chip:hover{color:var(--ink)}}
 .bk-chip .icon{margin:0 4px;vertical-align:-3px;color:var(--gold-700)}
 .bk-chip>.icon:first-of-type{margin:0 8px 0 0}
-#bk-sum>#bk-edit{margin-inline-start:auto}
+.bk-sumx{display:flex;flex-wrap:wrap;gap:4px 16px;margin-inline-start:auto}
 .bk-stepno{display:block;margin-bottom:8px;font:var(--t5);letter-spacing:.15px;color:var(--muted)}
 .bk:has(.bk-q:is(.is-on,:target)) .bk-stepno{visibility:hidden}
 .bk-opts{container:opts/inline-size;grid-template-columns:minmax(0,1fr);gap:16px}

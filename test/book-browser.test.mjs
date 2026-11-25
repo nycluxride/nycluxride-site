@@ -628,7 +628,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
       lines: [["Fare", "..."], ["Taxes and fees", "..."], ["Tolls", "..."]],
       hints: ["The same in every class."],
       total: "...",
-      sum: `Change JFK Terminal 4 to 350 5th Ave, New YorkChange ${shortDate(DATE)}, 12:40 PMEdit trip`,
+      sum: `Change JFK Terminal 4 to 350 5th Ave, New YorkChange ${shortDate(DATE)}, 12:40 PMEdit tripAdd stopAdd return trip`,
       search: "contents",
     });
     assert.deepEqual(await page.evaluate(() => [...document.getElementById("bk-search").children].filter((e) => getComputedStyle(e).display !== "none").map((e) => e.id)), ["bk-status"], "only the status line of step 1 stays in the page in step 2");
@@ -10117,6 +10117,113 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await p.close();
   });
   await ctx.close();
+}
+const SUMX = (p) => p.evaluate(() => ["bk-edit", "bk-sstop", "bk-sret"].map((id) => {
+  const e = document.getElementById(id), r = e.getBoundingClientRect(), a = getComputedStyle(e, "::after"), v = !!e.getClientRects().length;
+  return { id, v, in: e.closest("#bk-sum") ? "sum" : "", tag: e.tagName, cls: e.className, text: e.textContent, top: Math.round(r.top), h: v ? Math.round(r.height - (parseFloat(a.top) || 0) - (parseFloat(a.bottom) || 0)) : 0 };
+}));
+for (const [name, b] of ENGINES) {
+  for (const width of [390, 1440]) {
+    const touch = width < 1024;
+    const ctx = await engineContext(b, P, { viewport: { width, height: touch ? 844 : 900 }, reducedMotion: "reduce", ...(touch && { hasTouch: true, isMobile: name !== "firefox" }) });
+    await check(`B237 ${name} at ${width}: on the vehicle step of a one way trip Add stop and Add return trip sit beside Edit trip in the trip line, as link buttons that do not move`, async () => {
+      for (const path of ["/", "/book", "/locations/jfk-airport", "/locations/laguardia-airport", "/locations/newark-airport", "/locations/teterboro-airport"]) {
+        const p = await open(ctx, P, path);
+        await stepTwo(p);
+        assert.equal(new URL(p.url()).pathname, "/book", path);
+        const s = await SUMX(p);
+        assert.deepEqual(s.map((x) => [x.id, x.v, x.in, x.tag, x.cls, x.text]), [["bk-edit", true, "sum", "BUTTON", "lnk-btn bk-js-only is-shown", "Edit trip"], ["bk-sstop", true, "sum", "BUTTON", "lnk-btn", "Add stop"], ["bk-sret", true, "sum", "BUTTON", "lnk-btn", "Add return trip"]], path);
+        assert.equal(new Set(s.map((x) => x.top)).size, 1, `${path}: the three links share one row`);
+        if (touch) assert.ok(s.every((x) => x.h >= 44), `${path}: touch targets ${s.map((x) => x.h)}`);
+        assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll("#bk-sum>.bk-chip")].flatMap((c) => { const r = c.getBoundingClientRect(), o = []; for (let y = r.bottom - 8; y < r.bottom; y++) for (let x = r.left + 2; x < r.right - 2; x += 4) { const e = document.elementFromPoint(x, y); e && e.closest(".bk-chip") != c && o.push(e.id || e.className); } return o; })), [], `${path}: a tap on the bottom of the route or date button opens that button, not a link`);
+        assert.deepEqual([await p.getByRole("button", { name: "Add stop", exact: true }).count(), await p.isVisible("#bk-addstop"), await p.isVisible("#bk-addret")], [1, false, false], path);
+        const at = () => p.evaluate(() => ["bk-sstop", "bk-sret", "bk-opt-h"].map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top + scrollY)));
+        const a = await at();
+        await p.waitForTimeout(800);
+        assert.deepEqual(await at(), a, `${path}: the links and the heading stay put`);
+        assert.deepEqual(p.errors, [], path);
+        await p.close();
+      }
+    });
+    await check(`B237 ${name} at ${width}: Add stop on the vehicle step reopens the trip form with the new stop field focused, and the keyboard works the same`, async () => {
+      const p = await open(ctx, P, "/book");
+      await stepTwo(p);
+      await p.click("#bk-sstop");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && document.activeElement.id === "bk-stop1");
+      assert.deepEqual([await p.isVisible("#bk-stop1"), await p.isVisible("#bk-stop2"), await p.isVisible("#bk-addstop")], [true, false, true]);
+      await place(p, "stop1", "277 Bedford Ave, Brooklyn, NY 11211");
+      await p.click("#bk-view");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.match(await p.textContent("#bk-sum"), /Terminal 4 to 277 Bedford Ave, Brooklyn to 350 5th Ave/);
+      assert.deepEqual([await p.isVisible("#bk-sstop"), await p.isVisible("#bk-sret")], [true, true], "one stop still leaves room for a second");
+      await p.focus("#bk-sstop");
+      await p.keyboard.press("Enter");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && document.activeElement.id === "bk-stop2");
+      assert.deepEqual([await p.isVisible("#bk-stop2"), await p.isVisible("#bk-addstop")], [true, false]);
+      await place(p, "stop2", "350 5th Ave, New York, NY 10118");
+      await place(p, "to", "277 Bedford Ave, Brooklyn, NY 11211");
+      await p.click("#bk-view");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.deepEqual([await p.isVisible("#bk-edit"), await p.isVisible("#bk-sstop"), await p.isVisible("#bk-sret")], [true, false, true], "two stops hide Add stop, as in the trip form");
+      assert.deepEqual(p.errors, []);
+      await p.close();
+    });
+    await check(`B237 ${name} at ${width}: Add return trip on the vehicle step reopens the trip form with the return date focused, then the trip line shows the return and the link hides`, async () => {
+      const p = await open(ctx, P, "/book");
+      await stepTwo(p);
+      await p.focus("#bk-sret");
+      await p.keyboard.press(name === "webkit" ? "Enter" : "Space");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && document.activeElement.id === "bk-rdate-btn");
+      assert.deepEqual([await p.isVisible("#bk-ret-f"), await p.isVisible("#bk-addret"), await p.isChecked("#bk-ret"), await p.isVisible("#bk-cal")], [true, false, true, false], "the return fields open like Add return trip, the calendar stays shut");
+      await pickDate(p, "#bk-rdate-btn", RDATE);
+      await setTime(p, "18:00", "#bk-rtime");
+      await p.click("#bk-view");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.match(await p.textContent("#bk-sum"), new RegExp(`Return: ${shortDate(RDATE)}, 6:00 PM`));
+      assert.deepEqual([await p.isVisible("#bk-edit"), await p.isVisible("#bk-sstop"), await p.isVisible("#bk-sret")], [true, true, false]);
+      assert.deepEqual(p.errors, []);
+      await p.close();
+    });
+    await check(`B237 ${name} at ${width}: Back after Add stop or Add return trip with nothing typed brings the vehicles back with the same price, no new price request`, async () => {
+      const p = await open(ctx, P, "/book");
+      await stepTwo(p);
+      await priced(p);
+      const price = await p.textContent("#price-total"), sum = await p.textContent("#bk-sum");
+      let posts = 0;
+      p.on("request", (r) => r.method() === "POST" && new URL(r.url()).pathname.startsWith("/api/") && posts++);
+      for (const [link, focus] of [["#bk-sstop", "bk-stop1"], ["#bk-sret", "bk-rdate-btn"], ["#bk-sstop", "bk-stop1"]]) {
+        await p.click(link);
+        await p.waitForFunction((f) => document.getElementById("book-form").dataset.step === "search" && document.activeElement.id === f, focus);
+        await p.goBack();
+        await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && location.hash === "#options");
+        await priced(p);
+        assert.deepEqual([await p.textContent("#price-total"), await p.textContent("#bk-sum"), await p.isVisible("#bk-sstop"), await p.isVisible("#bk-sret"), await p.isChecked("#bk-ret"), await p.evaluate(() => document.getElementById("bk-stop1").value), posts], [price, sum, true, true, false, "", 0], link);
+      }
+      await p.click("#bk-sstop");
+      await p.waitForFunction(() => document.activeElement.id === "bk-stop1");
+      await place(p, "stop1", "277 Bedford Ave, Brooklyn, NY 11211");
+      await p.goBack();
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.match(await p.textContent("#bk-sum"), /Terminal 4 to 277 Bedford Ave, Brooklyn to 350 5th Ave/, "a stop that was filled in is kept");
+      assert.deepEqual(p.errors, []);
+      await p.close();
+    });
+    await check(`B237 ${name} at ${width}: by the hour the vehicle step keeps only Edit trip`, async () => {
+      const p = await open(ctx, P, "/book");
+      await stepTwo(p, { hour: true, from: ["350 5th Ave, New York, NY 10118"] });
+      assert.deepEqual((await SUMX(p)).map((x) => x.v), [true, false, false]);
+      await p.click("#bk-edit");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+      await p.click('label[for="bk-one"]');
+      await place(p, "to", "jfk t4", "John F. Kennedy (JFK), Terminal 4");
+      await p.click("#bk-view");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      assert.deepEqual((await SUMX(p)).map((x) => x.v), [true, true, true], "switching to one way brings both links back");
+      assert.deepEqual(p.errors, []);
+      await p.close();
+    });
+    await ctx.close();
+  }
 }
 for (const [name, b] of ENGINES.slice(1)) await b.close();
 
