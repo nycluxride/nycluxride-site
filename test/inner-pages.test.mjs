@@ -49,7 +49,7 @@ function read(file) {
 }
 
 function visibleFaq(document) {
-  return [...document.querySelectorAll("main details")].map((d) => {
+  return [...document.querySelectorAll("main details")].filter((d) => !d.closest("#book-form")).map((d) => {
     const body = d.cloneNode(true);
     const q = norm(body.querySelector("summary").textContent);
     body.querySelector("summary").remove();

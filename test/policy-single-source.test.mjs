@@ -138,10 +138,11 @@ check("schedule.html carries POLICY.cancel and POLICY.howTo as the value of its 
 });
 
 for (const f of FULL) {
-  check(`${f}: before payment the form links the cancellation, no-show and waiting terms at /rates#policies in the consent line by the pay button and under the price, #bk-next3 by the pay button ends with the full cancellation policy and how to cancel, and the form names no phone number`, () => {
+  check(`${f}: before payment the form links the cancellation, no-show and waiting terms at /rates#policies in the consent line by the pay button and under the price, #bk-terms by the pay button opens with the full cancellation policy and how to cancel, and the form names no phone number`, () => {
     const d = doc(f);
-    const last = d.getElementById("bk-next3").lastElementChild;
-    assert.deepEqual([last.tagName, last.children.length, nt(last.textContent)], ["LI", 0, `${POLICY.cancel} ${POLICY.howTo}`]);
+    const terms = d.getElementById("bk-terms"), first = terms.querySelector(":scope > p");
+    assert.deepEqual([terms.tagName, terms.parentElement.id, terms.previousElementSibling.id, nt(terms.querySelector(":scope > summary").textContent)], ["DETAILS", "bk-go", "bk-consent", "Cancellation and terms"]);
+    assert.deepEqual([first.children.length, nt(first.textContent)], [0, `${POLICY.cancel} ${POLICY.howTo}`]);
     const policy = d.getElementById("bk-policy");
     assert.ok(nt(policy.textContent).startsWith(POLICY.cancelShort + " "), nt(policy.textContent));
     assert.deepEqual([policy.querySelector("a").getAttribute("href"), nt(policy.querySelector("a").textContent)], ["/rates#policies", `${POLICY.link} (opens in a new tab)`]);
@@ -155,8 +156,10 @@ for (const f of FULL) {
 }
 
 for (const f of FULL) {
-  check(`${f}: #bk-next3 beside the pay button names every cancellation charge of CANCEL_TIERS, so a booking within 24 hours sees its charge before paying`, () => {
-    const text = nt(doc(f).getElementById("bk-next3").textContent);
+  check(`${f}: #bk-terms beside the pay button names every cancellation charge of CANCEL_TIERS and opens by itself within ${CANCEL_TIERS[0].hours} hours of pickup, so a booking within 24 hours sees its charge before paying`, () => {
+    const text = nt(doc(f).getElementById("bk-terms").textContent);
+    const js = readFileSync(join(ROOT, "assets", readdirSync(join(ROOT, "assets")).find((n) => /^pay\..+\.js$/.test(n))), "utf8");
+    assert.ok(CANCEL_TIERS[0].hours * 36e5 === 864e5 && js.includes('XY=()=>ny(Date.now()+AO+864e5+59999)>ED.value+" "+ET.value&&($("bk-terms").open=!0)') && js.includes('"car"));wk();XY();'), "the terms open on step 2 when the pickup is under the first tier");
     for (const { percent } of CANCEL_TIERS.filter((t) => t.percent > 0 && t.percent < 100)) assert.ok(text.includes(`${percent}%`), `${percent}% missing`);
     for (const { hours } of CANCEL_TIERS.filter((t) => t.hours > 0)) assert.ok(text.includes(`${hours} hours`), `${hours} hours missing`);
     assert.ok(text.includes("the full price"), text);

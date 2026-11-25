@@ -633,7 +633,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     });
     assert.deepEqual(await page.evaluate(() => [...document.getElementById("bk-search").children].filter((e) => getComputedStyle(e).display !== "none").map((e) => e.id)), ["bk-status"], "only the status line of step 1 stays in the page in step 2");
     await page.waitForFunction(() => document.getElementById("bk-wait").textContent === "Finding prices\u2026");
-    assert.deepEqual(await page.evaluate(() => [location.hash, [...document.querySelectorAll("#bk-sum .bk-chip")].length, document.getElementById("bk-opt-h").textContent, document.getElementById("bk-bar-go").disabled, document.getElementById("bk-choice").textContent]), ["#options", 2, "Step 2 of 4 Choose your vehicle", false, "Business SUVChevrolet Suburban or similar"]);
+    assert.deepEqual(await page.evaluate(() => [location.hash, [...document.querySelectorAll("#bk-sum .bk-chip")].length, document.getElementById("bk-opt-h").textContent, document.getElementById("bk-bar-go").disabled, document.getElementById("bk-choice").textContent]), ["#options", 2, "Step 1 of 2 Choose your vehicle", false, "Business SUVChevrolet Suburban or similar"]);
     await priced(page);
     await page.unroute("**/api/book");
   });
@@ -652,7 +652,8 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await page.$$eval("#bk-tip-opts input", (l) => l.map((x) => x.value)), ["0", "custom", ...TIP_PERCENTS.filter(Boolean).sort((a, b) => b - a).map(String)]);
     assert.equal(await page.isChecked("#bk-t-0"), true);
     assert.deepEqual([await page.isVisible("#bk-bar-go"), await page.isEnabled("#bk-bar-go"), await page.isVisible("#bk-next"), await page.isVisible("#bk-submit"), await page.isVisible("#bk-tip"), await page.isVisible("#bk-meet-f")], [true, true, true, false, false, false], "step 2 shows Book and pay online in the bar and under the rows, meet and greet waits for step 3");
-    assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-tot").innerText.replace(/\s+/g, " "), ...["bk-next", "q-mail", "q-wa"].map((i) => [document.getElementById(i).className, document.getElementById(i).textContent.trim()])]), [`Total ${cash(TOTAL)}`, ["btn bk-js-only is-shown", "Book and pay online"], ["btn btn--ghost", "Email to reserve"], ["btn btn--ghost", "WhatsApp to reserve"]]);
+    assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-tot").innerText.replace(/\s+/g, " "), ...["bk-next", "q-mail", "q-wa"].map((i) => [document.getElementById(i).className, document.getElementById(i).textContent.trim()])]), [`Total ${cash(TOTAL)}`, ["btn bk-js-only is-shown", "Continue"], ["btn btn--ghost", "Email to reserve"], ["btn btn--ghost", "WhatsApp to reserve"]]);
+    assert.deepEqual([await page.isVisible("#bk-tot"), (await page.textContent("#bk-bar-go")).trim(), await page.evaluate(() => document.getElementById("bk-side").contains(document.getElementById("bk-go")))], [false, "Continue", true], "step 1 says Continue in the bar and in the summary card, the total lives in the card");
     assert.equal(await page.textContent("#bk-bar-total"), `${cash(TOTAL)} total`);
     assert.equal(await page.isVisible("#quote"), false);
     assert.deepEqual([await page.isChecked("#bk-meet-no"), await page.isChecked("#bk-meet"), await page.textContent("#bk-meet-p"), await page.textContent("#bk-meet-f .bk-mrow__p")], [true, false, cash(MEET_AND_GREET).replace(/^/, "+"), "Included"]);
@@ -662,7 +663,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   await check("B7 Book and pay online opens step 3, a 15% tip adds its own line there and meet and greet, beside the gratuity, adds its fee", async () => {
     const tip = percentCents(FARE, "15");
     await next(page);
-    assert.deepEqual(await page.evaluate(() => [location.hash, document.activeElement.id, document.activeElement.textContent, getComputedStyle(document.getElementById("bk-sum")).display]), ["#details", "bk-det-h", "Step 3 of 4 Your details", "none"], "the step count is part of the focused heading, the trip line waits in Check your trip");
+    assert.deepEqual(await page.evaluate(() => [location.hash, document.activeElement.id, document.activeElement.textContent, getComputedStyle(document.getElementById("bk-sum")).display]), ["#details", "bk-det-h", "Step 2 of 2 Details and payment", "none"], "the step count is part of the focused heading, the trip line waits in Your trip");
     assert.deepEqual([await page.isVisible("#bk-tip"), await page.isVisible("#bk-submit"), await page.isVisible("#bk-consent"), await page.isVisible("#bk-cards"), await page.isVisible("#bk-bar-go"), (await page.textContent("#bk-bar-go")).trim()], [true, true, true, false, false, "Book and pay online"], "below 1024 the details step has no bar over the form, the pay button follows the total (owner request 4)");
     assert.deepEqual([await page.getByRole("radio", { name: "Other amount" }).count(), await page.isVisible("#bk-tipamt")], [1, false], "Other is read as Other amount, its field waits until it is chosen");
     await page.click('label[for="bk-t-15"]');
@@ -1031,7 +1032,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(await page.isVisible("#price"), true);
     assert.equal(await page.$eval("#price-total", (x) => (x.firstChild || {}).textContent || ""), cash(TOTAL));
     assert.deepEqual([await page.isVisible("#bk-bar-go"), await page.isVisible("#bk-next"), await page.isVisible("#bk-submit"), await page.getAttribute("#book-form", "data-step")], [false, false, false, "options"]);
-    assert.deepEqual([await page.isVisible("#bk-tot"), await page.getAttribute("#q-mail", "class"), await page.getAttribute("#q-wa", "class"), await page.isVisible("#bk-bar-mail")], [true, "btn", "btn btn--ghost", true]);
+    assert.deepEqual([await page.isVisible("#bk-tot"), await page.getAttribute("#q-mail", "class"), await page.getAttribute("#q-wa", "class"), await page.isVisible("#bk-bar-mail")], [false, "btn", "btn btn--ghost", true], "the total shows once, in the summary card");
     assert.equal((await page.textContent("#q-paused h3")).trim(), HEADINGS.phone);
     const wa = await waText(page, "#q-wa");
     assert.match(wa, /Reference: [1-9]\d{7}\n/);
@@ -1397,7 +1398,7 @@ for (const path of ["/", "/book", "/locations/laguardia-airport", "/locations/ma
 
 {
   const ctx = await context(P, { viewport: { width: 1280, height: 900 } });
-  await check("B19 the tab order reaches Book your ride, in step 2 the Child seats and dogs row and, once it is open, Fewer and More of the three child seat counts and the two dog counts right after the bags, the cards and Book and pay online, in step 3 every detail control, the gratuity, meet and greet, Book and pay online, Email to reserve and WhatsApp to reserve, each with a visible focus ring", async () => {
+  await check("B19 the tab order reaches Book your ride, in step 1 the Bags, Child seats and Dogs rows, the cards and Continue, in step 2 Edit trip in Your trip, every detail control, the gratuity, meet and greet, Book and pay online, Email to reserve and WhatsApp to reserve, each with a visible focus ring", async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await p.focus("#bk-time");
@@ -1412,42 +1413,30 @@ for (const path of ["/", "/book", "/locations/laguardia-airport", "/locations/ma
     assert.ok(style !== "none" && width >= 2, `${style} ${width}`);
     await p.keyboard.press("Enter");
     await priced(p);
-    const kids = ["child", "infant", "booster"].flatMap((t) => [`Fewer ${t} seats`, `More ${t} seats`]);
-    const dogs = ["small", "large"].flatMap((t) => [`Fewer ${t} dogs`, `More ${t} dogs`]);
     const seen = [];
-    for (let i = 0; i < 60 && !seen.includes("bk-next"); i++) {
+    for (let i = 0; i < 40 && !seen.includes("bk-next"); i++) {
       await p.keyboard.press("Tab");
-      const id = await p.evaluate(() => document.activeElement.id || document.activeElement.getAttribute("aria-label") || "");
-      seen.push(id);
-      if (id === "bk-xb") {
-        const [sx, wx] = await ring("#bk-xb");
-        assert.ok(sx !== "none" && wx >= 2, `bk-xb: ${sx} ${wx}`);
-        await p.keyboard.press("Enter");
-        assert.deepEqual([await p.getAttribute("#bk-xb", "aria-expanded"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets")], ["true", true, true], "Enter opens the seats and dogs in place");
-      }
-      if (kids.includes(id) || dogs.includes(id)) {
-        const [sk, wk] = await ring(`.bk-xtra [aria-label="${id}"]`);
-        assert.ok(sk !== "none" && wk >= 2, `${id}: ${sk} ${wk}`);
-      }
+      seen.push(await p.evaluate(() => document.activeElement.id));
     }
-    const closed = await p.evaluate(() => innerWidth < 1024 || innerHeight < 1150);
-    assert.equal(seen.includes("bk-xb"), closed, "a phone or a window under 1150 px tall has the Child seats and dogs row");
-    const step2 = [...(closed ? ["bk-xb"] : []), ...kids, ...dogs, "bk-c-suv", "bk-next"];
-    assert.deepEqual(step2.map((id) => seen.indexOf(id) >= 0), step2.map(() => true), seen.join(" "));
-    assert.deepEqual(step2.map((id) => seen.indexOf(id)), [...step2.map((id) => seen.indexOf(id))].sort((a, b) => a - b), seen.join(" "));
+    assert.ok(seen.includes("bk-c-suv") && seen.includes("bk-next"), seen.join(" "));
+    assert.deepEqual(["bk-xr-bags-b", "bk-xr-kids-b", "bk-xr-pets-b", "bk-c-suv", "bk-next"].map((id) => seen.indexOf(id)).every((v, i, a) => v >= 0 && (!i || v > a[i - 1])), true, seen.join(" "));
+    await p.focus("#bk-xr-kids-b");
+    const [s1, w1] = await ring("#bk-xr-kids-b");
+    assert.ok(s1 !== "none" && w1 >= 2, `the Child seats row draws its ring: ${s1} ${w1}`);
+    await p.focus("#bk-next");
     const [s2, w2] = await ring("#bk-next");
     assert.ok(s2 !== "none" && w2 >= 2, `${s2} ${w2}`);
     await p.keyboard.press("Enter");
     assert.equal(await p.evaluate(() => document.activeElement.id), "bk-det-h");
-    const want = ["bk-r-other", "bk-name", "bk-email", "bk-phone-cc", "bk-phone", "bk-reach-phone", "bk-notes-add", "bk-t-0", "bk-meet-no", "bk-check-edit", "bk-submit", "q-mail", "q-wa"];
+    const kids = [];
+    const want = ["bk-check-edit", "bk-r-other", "bk-name", "bk-email", "bk-phone-cc", "bk-phone", "bk-reach-phone", "bk-notes-add", "bk-t-0", "bk-meet-no", "bk-submit", "q-mail", "q-wa"];
     const order = [];
     for (let i = 0; i < 46 && !order.includes("q-wa"); i++) {
       await p.keyboard.press("Tab");
       const id = await p.evaluate(() => document.activeElement.id || document.activeElement.getAttribute("aria-label") || "");
       order.push(id);
-      assert.ok(!kids.includes(id) && !dogs.includes(id), `step 3 has no seat or dog count: ${id}`);
       if (want.includes(id)) {
-        const at = `#${id}`;
+        const at = kids.includes(id) ? `#bk-kids [aria-label="${id}"]` : `#${id}`;
         const [st, wd] = await ring(id === "bk-meet-no" ? 'label[for="bk-meet-no"]' : id === "bk-phone-cc" ? "#bk-phone-f .bk-cc" : at);
         const under = await p.evaluate((x) => getComputedStyle(document.querySelector(x).closest(".bk-row") || document.querySelector(x)).boxShadow, at);
         if (id === "bk-phone-cc") assert.ok(st !== "none" && wd >= 2, `the country select draws its ring on its face: ${st} ${wd}`);
@@ -1462,8 +1451,8 @@ for (const path of ["/", "/book", "/locations/laguardia-airport", "/locations/ma
 }
 
 {
-  const ctx = await context(P, { viewport: { width: 1440, height: 900 } });
-  await check("B19 with the pills showing at 1440, Shift+Tab from Book and pay online back to the class rows leaves the checked row fully below the pills bar", async () => {
+  const ctx = await context(P, { viewport: { width: 1440, height: 800 } });
+  await check("B19 with the pills showing at 1440 by 800, Shift+Tab from Book and pay online back to the class rows leaves the checked row fully below the pills bar", async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -1499,7 +1488,6 @@ for (const path of ["/", "/book", "/locations/laguardia-airport", "/locations/ma
     });
     assert.ok(b[0] === "solid" && b[1] >= 2 && b[3] === "solid" && b[4] >= 1 && b[2] !== b[5], JSON.stringify(b));
     assert.deepEqual(await p.$$eval("#bk-sum .bk-chip", (c) => c.map((x) => getComputedStyle(x).textDecorationLine)), ["underline", "underline"], "the trip chips keep an underline as their button cue");
-    assert.deepEqual(await p.$eval("#bk-xb", (x) => { const c = getComputedStyle(x); return [c.borderTopStyle, parseFloat(c.borderTopWidth) >= 1]; }), ["solid", true], "the Child seats and dogs row keeps a border as its button cue");
     await next(p);
     const t = await p.evaluate(() => {
       const c = (s) => getComputedStyle(document.querySelector(s));
@@ -1731,8 +1719,8 @@ for (const [path, width] of [["/", 1440], ["/locations/manhattan", 390]]) {
 }
 
 {
-  const ctx = await context(P, { viewport: { width: 1440, height: 900 } });
-  await check("B26 at 1440 the sticky pills appear after the cards scroll above the header, a pill click selects its class and reprices", async () => {
+  const ctx = await context(P, { viewport: { width: 1440, height: 800 } });
+  await check("B26 at 1440 by 800, where the page scrolls the cards above the header, the sticky pills appear, a pill click selects its class and reprices", async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -1748,7 +1736,7 @@ for (const [path, width] of [["/", 1440], ["/locations/manhattan", 390]]) {
     await p.click(".bk-pill[data-c=sedan]");
     assert.equal(await p.isChecked("#bk-c-sedan"), true);
     await priced(p);
-    assert.deepEqual([await p.textContent("#bk-choice"), await p.evaluate(() => document.querySelector(".bk-pill.is-on").dataset.c), (await p.textContent("#bk-next")).trim(), await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent)], ["Executive SedanMercedes-Benz E-Class or similar", "sedan", "Book and pay online", JFK_CARDS[3]]);
+    assert.deepEqual([await p.textContent("#bk-choice"), await p.evaluate(() => document.querySelector(".bk-pill.is-on").dataset.c), (await p.textContent("#bk-next")).trim(), await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent)], ["Executive SedanMercedes-Benz E-Class or similar", "sedan", "Continue", JFK_CARDS[3]]);
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForFunction(() => !document.getElementById("bk-pills").classList.contains("is-on"));
     await p.close();
@@ -1798,14 +1786,14 @@ for (const width of [1024, 1100, 1200, 1279]) {
 }
 {
   const ctx = await context(P, { viewport: { width: 390, height: 844 } });
-  await check("B26 at 390 the bottom bar shows the class and the total, its Book and pay online opens step 3, and the site action bar is display none on /book in every step", async () => {
+  await check("B26 at 390 the bottom bar shows the class and the total, its Continue opens step 2, and the site action bar is display none on /book in every step", async () => {
     const p = await open(ctx, P, "/book");
     const bar = () => p.evaluate(() => getComputedStyle(document.querySelector("nav.actionbar")).display);
     assert.equal(await bar(), "none", "no call or WhatsApp bar on /book step 1");
     await trip(p);
     await view(p);
     await priced(p);
-    assert.deepEqual([await p.isVisible("#bk-bar"), await p.textContent("#bk-bar-name"), await p.textContent("#bk-bar-total"), await p.isVisible("#bk-next"), (await p.textContent("#bk-bar-go")).trim(), await p.getAttribute("#bk-bar-go", "aria-label"), await p.getAttribute("#bk-bar-go", "aria-describedby")], [true, "Business SUV", `${cash(TOTAL)} total`, true, "Book and pay online", null, "bk-nopay"]);
+    assert.deepEqual([await p.isVisible("#bk-bar"), await p.textContent("#bk-bar-name"), await p.textContent("#bk-bar-total"), await p.isVisible("#bk-next"), (await p.textContent("#bk-bar-go")).trim(), await p.getAttribute("#bk-bar-go", "aria-label"), await p.getAttribute("#bk-bar-go", "aria-describedby")], [true, "Business SUV", `${cash(TOTAL)} total`, true, "Continue", null, "bk-nopay"]);
     assert.ok(await p.evaluate(() => parseFloat(getComputedStyle(document.getElementById("bk-bar")).minHeight) >= 68), "the bar is at least 68 px tall");
     assert.equal(await bar(), "none");
     const r = await p.evaluate(() => { const b = document.getElementById("bk-bar").getBoundingClientRect(); return [Math.round(b.bottom), Math.round(b.left), Math.round(b.right - document.documentElement.getBoundingClientRect().width)]; });
@@ -2061,7 +2049,7 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
 
 for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900]]) {
   const ctx = await context(P, { viewport: { width, height } });
-  await check(`B29 at ${width} by ${height}, /book#options restored for the reference trip: the closed Child seats and dogs row right under the bags, then the five class rows, from Business SUV to Electric Class, and their prices are inside the first screen, the Sprinter rows follow in the same column with their prices, nothing scrolls sideways and Book and pay online is in view, under the rows or at the foot of the summary card`, async () => {
+  await check(`B29 at ${width} by ${height}, /book#options restored for the reference trip: the passengers and luggage card and the first four class rows with their prices are inside the first screen under it, every other row follows in the same column with its price, nothing scrolls sideways and Continue is in view in the summary card`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -2071,9 +2059,8 @@ for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900]]) {
     await p.evaluate(() => scrollTo(0, 0));
     const r = await p.evaluate((keys) => keys.map((c) => { const b = document.getElementById(`bk-p-${c}`).getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom), b.width > 0 ? (document.querySelector(`#bk-p-${c} .bk-fig`) || {}).textContent : ""]; }), CARD_KEYS);
     assert.ok(r.every(([t], i) => !i || t > r[i - 1][0]), `ten rows in one column: ${JSON.stringify(r)}`);
-    assert.ok(r.slice(0, 5).every(([, b]) => b <= height), `every class price but the Sprinter inside the first screen: ${JSON.stringify(r)}`);
-    const row = await p.evaluate(() => { const x = document.getElementById("bk-xb").getBoundingClientRect(), g = document.getElementById("bk-bags").getBoundingClientRect(), c = document.getElementById("bk-cards").getBoundingClientRect(); return [Math.round(x.height), x.top >= g.bottom, x.bottom <= c.top, document.getElementById("bk-xb").getAttribute("aria-expanded"), getComputedStyle(document.getElementById("bk-xtra")).display]; });
-    assert.deepEqual(row, [44, true, true, "false", "none"], "a window under 1150 px tall keeps the seats and dogs behind one closed row between the bags and the cars");
+    assert.ok(r.slice(0, 4).every(([, b]) => b <= height), `the first four class prices inside the first screen: ${JSON.stringify(r)}`);
+    assert.ok(await p.evaluate(() => { const c = document.getElementById("bk-party").getBoundingClientRect(), x = document.getElementById("bk-xr-pets-b").getBoundingClientRect(); return c.top > 0 && x.bottom <= c.bottom && c.bottom <= document.getElementById("bk-cards").getBoundingClientRect().top; }), "the Bags, Child seats and Dogs rows sit above the first car");
     assert.deepEqual(r.map((x) => x[2]), JFK_CARDS);
     const fit = await p.evaluate((h) => { const c = document.getElementById("bk-cards"), go = ["bk-next", "bk-bar-go"].map((i) => document.getElementById(i).getBoundingClientRect()).find((n) => n.height && n.top > 0 && n.bottom <= h); return [document.documentElement.scrollWidth - document.documentElement.clientWidth, c.scrollWidth - c.clientWidth, go ? Math.round(go.top) : -1, go ? Math.round(go.bottom) : -1]; }, height);
     assert.ok(fit[0] <= 0 && fit[1] === 0, `nothing scrolls sideways (the stable scrollbar gutter leaves scrollWidth under clientWidth): ${JSON.stringify(fit)}`);
@@ -2151,8 +2138,8 @@ const sideBoxes = (p) =>
 
 for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768], [1440, 900]]) {
   const ctx = await context(G, { viewport: { width, height } });
-  const short = height <= 786;
-  await check(`B35 at ${width} by ${height} ${short ? "a window under 787 px tall shows no route map and asks for none, and the route note carries the Google Maps credit" : "the route map is the first card of the right column, as wide as the summary card and above the price, with a 1 px line edge and no shadow, a sized request of at most 640 px and an image shown whole that still fits after a resize"}, the total in view above Book and pay online, the route list carries the drive time and the note the miles and minutes, a return trip routes and lists both legs in one request, Book and pay online stays in view on steps 2 and 3 under the rows or at the foot of the summary card, after a cancelled payment and with meet and greet`, async () => {
+  const short = height <= 819;
+  await check(`B35 at ${width} by ${height} ${short ? "a window under 820 px tall shows no route map and asks for none, and the route note carries the Google Maps credit" : "the route map is the first card of the right column, as wide as the summary card and above the price, with a 1 px line edge and no shadow, a sized request of at most 640 px and an image shown whole that still fits after a resize"}, the total in view above Book and pay online, the route list carries the drive time and the note the miles and minutes, a return trip routes and lists both legs in one request, Book and pay online stays in view on steps 2 and 3 under the rows or at the foot of the summary card, after a cancelled payment and with meet and greet`, async () => {
     const p = await open(ctx, G, "/book");
     const bodies = [];
     p.on("request", (r) => r.url().endsWith("/api/route") && bodies.push(JSON.parse(r.postData())));
@@ -2587,10 +2574,10 @@ const inclGrid = (p) =>
     return [lis.length, new Set(lis.map((li) => Math.round(li.getBoundingClientRect().top))).size, new Set(lis.map((li) => Math.round(li.getBoundingClientRect().left))).size, Math.max(...lis.map(lines)), Math.round(document.getElementById("bk-incl").getBoundingClientRect().height)];
   });
 
-for (const [width, height] of [[1440, 900], [390, 844]]) {
+for (const [width, height] of [[1440, 800], [390, 844]]) {
   const ctx = await context(P, { viewport: { width, height } });
   const wide = width >= 600;
-  await check(`B37 at ${width} every icon of the included grids sits centred above its own caption, on /book step 2 and in the homepage strip, the five /book tiles, with no child seat tile now that seats are charged, stand ${wide ? "three" : "two"} to a row with none past three lines in at most ${wide ? 140 : 240} px, and none shows over the ${wide ? "header or the sticky pills bar" : "sticky header"}`, async () => {
+  await check(`B37 at ${width} on /book step 1 every icon of the quiet included row sits just left of its caption and centred on it, the five items, with no child seat item now that seats are charged, take ${wide ? "two centred lines" : "one line each"} with none past one line in at most ${wide ? 56 : 140} px, none shows over the ${wide ? "header or the sticky pills bar" : "sticky header"}, and in the homepage strip every icon sits centred above its caption`, async () => {
     const lone = (p, sel) =>
       p.evaluate((sel) =>
         [...document.querySelectorAll(sel)].filter((li) => li.getBoundingClientRect().height).map((li) => {
@@ -2601,14 +2588,14 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     await trip(p);
     await view(p);
     await priced(p);
-    const book = await lone(p, ".incl > li");
+    const book = await p.evaluate(() => [...document.querySelectorAll(".incl > li")].filter((li) => li.getBoundingClientRect().height).map((li) => { const i = li.querySelector("svg.icon").getBoundingClientRect(), t = li.querySelector(":scope > span"), r = t.getBoundingClientRect(); return [t.textContent.trim().length > 0, i.right <= r.left && r.left - i.right <= 12, Math.abs(i.top + i.height / 2 - (r.top + r.height / 2)) <= 2]; }));
     assert.equal(book.length, 5);
     assert.deepEqual(book, Array(5).fill([true, true, true]));
     assert.deepEqual(await p.$$eval(".incl > li", (l) => l.filter((x) => /seat/i.test(x.textContent)).length), 0);
     const [, rows, cols, most, tall] = await inclGrid(p);
-    assert.deepEqual([rows, cols], wide ? [2, 3] : [3, 2], wide ? "the five tiles of an airport pickup take two rows, three and two" : "on a phone the five tiles take three rows, two, two and one");
-    assert.ok(most <= 3, `a tile runs to ${most} lines`);
-    assert.ok(tall <= (wide ? 140 : 240), `the list is ${tall}px tall`);
+    assert.deepEqual([rows, cols], wide ? [2, 5] : [5, 1], wide ? "the five items of an airport pickup wrap once on a centred row" : "on a phone the five items stand one to a line");
+    assert.ok(most <= 1, `an item runs to ${most} lines`);
+    assert.ok(tall <= (wide ? 56 : 140), `the list is ${tall}px tall`);
     await p.evaluate(() => scrollTo(0, document.getElementById("bk-incl").getBoundingClientRect().top + scrollY - 44));
     if (wide) await p.waitForFunction(() => document.getElementById("bk-pills").classList.contains("is-on"));
     const [under, shows] = await p.evaluate(() => {
@@ -2628,22 +2615,22 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     assert.ok(home.every((x) => x.every(Boolean)), JSON.stringify(home));
     await h.close();
   });
-  await check(`B37 at ${width} a pickup away from the airport hides the two airport tiles and the other three stand ${wide ? "in one row" : "two to a row"} in at most ${wide ? 86 : 168} px, and with JavaScript off all five show ${wide ? "three" : "two"} to a row in at most ${wide ? 160 : 256} px, none past three lines`, async () => {
+  await check(`B37 at ${width} a pickup away from the airport hides the two airport items and the other three stand ${wide ? "in one row" : "one to a line"} in at most ${wide ? 24 : 84} px, and with JavaScript off all five show in at most ${wide ? 80 : 160} px, none past ${wide ? "one line" : "two lines"}`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p, { from: ["350 5th Ave, New York, NY 10118"], to: ["jfk t4", "John F. Kennedy (JFK), Terminal 4"] });
     await view(p);
     await priced(p);
     const city = await inclGrid(p);
-    assert.deepEqual(city.slice(0, 3), wide ? [3, 1, 3] : [3, 2, 2]);
-    assert.ok(city[3] <= 3, `a tile runs to ${city[3]} lines`);
-    assert.ok(city[4] <= (wide ? 86 : 168), `the list is ${city[4]}px tall`);
+    assert.deepEqual(city.slice(0, 3), wide ? [3, 1, 3] : [3, 3, 1]);
+    assert.ok(city[3] <= 1, `an item runs to ${city[3]} lines`);
+    assert.ok(city[4] <= (wide ? 24 : 84), `the list is ${city[4]}px tall`);
     await p.close();
     const off = await context(P, { viewport: { width, height }, javaScriptEnabled: false });
     const q = await open(off, P, "/book");
     const all = await inclGrid(q);
-    assert.deepEqual(all.slice(0, 3), wide ? [5, 2, 3] : [5, 3, 2]);
-    assert.ok(all[3] <= 3, `a tile runs to ${all[3]} lines`);
-    assert.ok(all[4] <= (wide ? 160 : 256), `the list is ${all[4]}px tall`);
+    assert.deepEqual(all.slice(0, 3), wide ? [5, 2, 5] : [5, 5, 1]);
+    assert.ok(all[3] <= (wide ? 1 : 2), `an item runs to ${all[3]} lines`);
+    assert.ok(all[4] <= (wide ? 80 : 160), `the list is ${all[4]}px tall`);
     await off.close();
   });
   await ctx.close();
@@ -2980,7 +2967,7 @@ for (const width of [1440, 390]) {
     const [v, s] = await cls(p);
     assert.equal(v, 0, s.join(" | "));
     assert.deepEqual([await p.textContent("#bk-route-n"), await p.isVisible("#bk-drive")], [DRIVE_N, false]);
-    assert.deepEqual([(await p.textContent("#bk-next")).trim(), await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent)], ["Book and pay online", cash(TOTAL)]);
+    assert.deepEqual([(await p.textContent("#bk-next")).trim(), await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent)], ["Continue", cash(TOTAL)]);
     if (width === 390) assert.deepEqual([await p.textContent("#bk-bar-total"), await p.getAttribute("#bk-bar-go", "aria-label")], [`${cash(TOTAL)} total`, null]);
     await next(p);
     await p.route("**/api/book", async (r) => { await new Promise((z) => setTimeout(z, 600)); await r.continue().catch(() => {}); });
@@ -2997,7 +2984,7 @@ for (const width of [1440, 390]) {
 
 {
   const ctx = await context(P, { viewport: { width: 1440, height: 900 } });
-  await check("B48 step 3: the check rows with Change and Edit trip, When opens the calendar on the trip date, Car returns to the checked row, Trip updated in view and only when the total moved, the email and phone helpers change nothing without a press, the sign card follows the name, Check your trip follows Where we meet with no seat or dog counts on step 3, Add a note opens the notes", async () => {
+  await check("B48 step 2: Your trip on top with Edit trip and Change on Passengers and Car, When without Change, Car returns to the checked row, Trip updated in view and only when the total moved, the email and phone helpers change nothing without a press, the sign card follows the name, no seat or dog counts on step 2, Add a note opens the notes", async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -3005,16 +2992,16 @@ for (const width of [1440, 390]) {
     await next(p);
     await p.check("#bk-meet");
     await priced(p);
-    const rows = () => p.$$eval("#bk-check-rows > div", (d) => d.map((x) => [x.querySelector("dt").textContent, x.querySelector("dd").textContent, x.querySelector("button").textContent]));
-    assert.deepEqual(await rows(), [["When", `${new Date(`${DATE}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, 12:40 PM, New York time`, "Change date and time"], ["Passengers", "1", "Change passengers"], ["Car", "Business SUVChevrolet Suburban or similar", "Change car"]]);
+    const rows = () => p.$$eval("#bk-check-rows > div", (d) => d.map((x) => [x.querySelector("dt").textContent, x.querySelector("dd").textContent, (x.querySelector("button") || {}).textContent || ""]));
+    assert.deepEqual(await rows(), [["When", `${new Date(`${DATE}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, 12:40 PM, New York time`, ""], ["Passengers", "1", "Change passengers"], ["Car", "Business SUVChevrolet Suburban or similar", "Change car"]]);
+    assert.equal(await p.$("#bk-check-rows button[data-c=\"when\"]"), null, "Edit trip covers the date and time");
     assert.deepEqual(await p.$$eval("#bk-check-route li", (l) => l.map((x) => x.textContent)), ["12:40 PMJFK Terminal 4", "350 5th Ave, New York, NY 10118"]);
-    assert.ok(await p.evaluate(() => { const c = document.getElementById("bk-check"), r = c.getBoundingClientRect(); return c.previousElementSibling.id === "bk-sign-f" && c.nextElementSibling.id === "bk-tot" && r.top >= document.getElementById("bk-meet-f").getBoundingClientRect().bottom && r.bottom <= document.getElementById("bk-tot").getBoundingClientRect().top; }), "Check your trip comes right after Where we meet, right above the total");
-    assert.deepEqual([await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets"), await p.isVisible("#bk-xb")], [false, false, false], "the seats and dogs stay on step 2");
+    assert.ok(await p.evaluate(() => { const c = document.getElementById("bk-check"), r = c.getBoundingClientRect(); return c.previousElementSibling.id === "bk-det-h" && c.nextElementSibling.id === "bk-errs" && r.top >= document.getElementById("bk-det-h").getBoundingClientRect().bottom && r.bottom <= document.getElementById("bk-name-f").getBoundingClientRect().top; }), "Your trip opens step 2, under its heading and above the details");
+    assert.deepEqual([await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets"), await p.isVisible("#bk-xr-kids-b")], [false, false, false], "the seats and dogs stay on step 1");
     assert.deepEqual([await p.isVisible("#bk-sum"), await p.textContent("#bk-check-edit")], [false, "Edit trip"]);
-    await p.click('#bk-check-rows button[data-c="when"]');
-    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
-    assert.equal(await p.evaluate(() => document.activeElement.dataset.day), DATE, "When opens the calendar on the trip date");
-    await p.keyboard.press("Escape");
+    await p.click("#bk-check-edit");
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search");
+    assert.equal(await p.evaluate(() => document.activeElement.id), "bk-from", "Edit trip opens the trip with focus on the pickup");
     await p.keyboard.press("Escape");
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
     assert.deepEqual([await p.evaluate(() => document.activeElement.id), await p.$("#bk-upd")], ["bk-check-h", null], "back with an unchanged trip, no Trip updated notice");
@@ -3292,7 +3279,7 @@ for (const motion of ["no-preference", "reduce"]) {
 
 for (const [width, height] of [[1280, 720], [1366, 768], [1440, 900], [1920, 1080]]) {
   const ctx = await context(P, { viewport: { width, height } });
-  await check(`B54 at ${width} by ${height} Book and pay online is fully in view with no scrolling in step 3 of the reference trip with meet and greet and a 15% gratuity, at the foot of the summary card until the one under the total shows, and the flow reads gratuity, meet and greet, total, then the three ways to finish`, async () => {
+  await check(`B54 at ${width} by ${height} Book and pay online is fully in view in the summary card with no scrolling in step 2 of the reference trip with meet and greet and a 15% gratuity, with no bar repeating it${height >= 900 ? ", the card fits without scrolling inside itself" : ""}, and the flow reads gratuity, meet and greet, then the total, the pay button, Email and WhatsApp, the consent and the terms`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -3304,10 +3291,13 @@ for (const [width, height] of [[1280, 720], [1366, 768], [1440, 900], [1920, 108
     await priced(p);
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(200);
-    const r = await p.evaluate(() => { const s = document.getElementById("bk-submit").getBoundingClientRect(), h = document.querySelector(".site-header").getBoundingClientRect(), b = s.top >= h.bottom && s.bottom <= innerHeight ? s : document.getElementById("bk-bar-go").getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom), Math.round(h.bottom), innerHeight, scrollY, document.getElementById("bk-bar-go").textContent.trim()]; });
-    assert.ok(r[0] >= r[2] && r[1] <= r[3] && r[4] === 0 && r[5] === "Book and pay online", JSON.stringify(r));
-    const order = await p.evaluate(() => ["bk-tip", "bk-meet-f", "bk-tot", "bk-submit", "q-mail", "q-wa", "bk-consent", "bk-under"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
-    assert.ok(order.every((y, i) => !i || y > order[i - 1]), `gratuity, meet and greet, total, Book and pay online, Email to reserve, WhatsApp to reserve, then the consent and the line under the button: ${order}`);
+    const r = await p.evaluate(() => { const b = document.getElementById("bk-submit").getBoundingClientRect(), h = document.querySelector(".site-header").getBoundingClientRect(), s = document.getElementById("bk-side"); return [Math.round(b.top), Math.round(b.bottom), Math.round(h.bottom), innerHeight, scrollY, s.scrollTop, getComputedStyle(document.getElementById("bk-bar")).display, s.scrollHeight - s.clientHeight]; });
+    assert.ok(r[0] >= r[2] && r[1] <= r[3] && r[4] === 0 && r[5] === 0 && r[6] === "none", JSON.stringify(r));
+    if (height >= 900) assert.ok(r[7] <= 0, `the summary card fits the window: ${JSON.stringify(r)}`);
+    const order = await p.evaluate(() => ["price-total", "bk-submit", "q-mail", "bk-consent", "bk-terms"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
+    assert.ok(order.every((y, i) => !i || y > order[i - 1]), `the total, Book and pay online, Email and WhatsApp, then the consent and the terms: ${order}`);
+    const left = await p.evaluate(() => ["bk-tip", "bk-meet-f"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
+    assert.ok(left[0] < left[1], `gratuity, then meet and greet: ${left}`);
     await p.close();
   });
   await ctx.close();
@@ -3315,17 +3305,20 @@ for (const [width, height] of [[1280, 720], [1366, 768], [1440, 900], [1920, 108
 
 for (const width of [390, 1440]) {
   const ctx = await context(P, { viewport: { width, height: width === 390 ? 844 : 900 } });
-  await check(`B55 at ${width} the owner order (owner changes 2 and 3): on the vehicle step the rows, the total, Book and pay online, Email to reserve and WhatsApp to reserve, then the information, First Class shows the S-Class, ${width === 390 ? "the bar keeps Book and pay online" : "the summary card foot holds Book and pay online only while the one under the total is out of view"}, and on the payment step the gratuity, meet and greet, the total and the three buttons, with the typed details in both messages`, async () => {
+  await check(`B55 at ${width} the owner order (owner changes 2 and 3): on the vehicle step the rows, the total, Continue, Email and WhatsApp side by side, then the information, First Class shows the S-Class, ${width === 390 ? "the bar keeps Continue" : "the summary card beside the rows holds Continue at every scroll with no bar"}, and on the payment step the gratuity, meet and greet, the total and the three buttons, with the typed details in both messages`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
     await priced(p);
     const tops = (ids) => p.evaluate((ids) => ids.map((i) => { const e = document.getElementById(i); return e && e.getClientRects().length ? Math.round(e.getBoundingClientRect().top) : null; }), ids);
-    const s2 = await tops(["bk-c-sprinter-white-limo", "bk-tot", "bk-next", "q-mail", "q-wa", "bk-nopay", "bk-incl-h"]);
+    const s2 = await tops(width === 390 ? ["bk-c-sprinter-white-limo", "price-total", "bk-next", "q-mail", "bk-incl"] : ["price-total", "bk-next", "q-mail", "bk-policy"]);
     assert.ok(s2.every((y, i) => y !== null && (!i || y > s2[i - 1])), `step 2 order ${s2}`);
+    assert.deepEqual(await tops(["q-mail", "q-wa"]).then(([a, b]) => a === b), true, "Email and WhatsApp sit side by side");
+    if (width === 1440) assert.ok((await tops(["bk-c-sprinter-white-limo", "bk-incl"])).every((y, i, a) => y !== null && (!i || y > a[i - 1])), "the information follows the rows");
     assert.equal(await p.isVisible("#bk-meet-f"), false, "meet and greet is not on the vehicle step");
-    const gap = await p.evaluate(() => Math.round(document.getElementById("bk-tot").getBoundingClientRect().top - document.querySelector('label[for="bk-c-sprinter-white-limo"]').getBoundingClientRect().bottom));
-    assert.ok(gap > 0 && gap <= 32, `nothing sits between the rows and the total, ${gap} px`);
+    const gap = await p.evaluate(() => Math.round(document.getElementById("bk-side").getBoundingClientRect().top - document.querySelector('label[for="bk-c-sprinter-white-limo"]').getBoundingClientRect().bottom));
+    if (width === 390) assert.ok(gap > 0 && gap <= 32, `nothing sits between the rows and the summary card with the total, ${gap} px`);
+    else assert.ok(await p.evaluate(() => document.getElementById("bk-side").getBoundingClientRect().left > document.getElementById("bk-cards").getBoundingClientRect().right), "the summary card with the total sits beside the rows");
     await p.waitForFunction(() => { const i = document.querySelector('label[for="bk-c-first"] img'); return i.complete && i.naturalWidth > 0; });
     const img = await p.$eval('label[for="bk-c-first"] img', (i) => [i.currentSrc.split("/").pop(), i.alt]);
     assert.match(img[0], /^mercedes-s-class-card-(300|400)\.(avif|webp)$/);
@@ -3333,15 +3326,15 @@ for (const width of [390, 1440]) {
     if (width === 1440) {
       await p.evaluate(() => scrollTo(0, 0));
       await p.waitForTimeout(200);
-      await p.evaluate(() => scrollTo(0, document.getElementById("bk-next").getBoundingClientRect().bottom + scrollY - document.querySelector(".site-header").offsetHeight + 8));
-      await p.waitForFunction(() => getComputedStyle(document.getElementById("bk-bar")).display === "flex");
-      assert.ok(await p.evaluate(() => document.getElementById("bk-side").contains(document.getElementById("bk-bar"))), "the card foot shows while the button under the total is out of view");
-      await p.evaluate(() => document.getElementById("bk-next").scrollIntoView({ block: "center" }));
-      await p.waitForFunction(() => getComputedStyle(document.getElementById("bk-bar")).display === "none");
+      for (const y of [0, 600, -1]) {
+        await p.evaluate((y) => scrollTo(0, y < 0 ? document.getElementById("bk-cards").getBoundingClientRect().bottom + scrollY - innerHeight + 24 : y), y);
+        await p.waitForTimeout(200);
+        assert.deepEqual(await p.evaluate(() => { const n = document.getElementById("bk-next").getBoundingClientRect(); return [getComputedStyle(document.getElementById("bk-bar")).display, n.top >= document.querySelector(".site-header").getBoundingClientRect().bottom && n.bottom <= innerHeight]; }), ["none", true], `at scroll ${y} the sticky summary card keeps Continue in view and no bar repeats it`);
+      }
     } else {
       await p.evaluate(() => scrollTo(0, 0));
       await p.waitForTimeout(300);
-      assert.deepEqual([await p.isVisible("#bk-bar-go"), (await p.textContent("#bk-bar-go")).trim()], [true, "Book and pay online"]);
+      assert.deepEqual([await p.isVisible("#bk-bar-go"), (await p.textContent("#bk-bar-go")).trim()], [true, "Continue"]);
       await p.evaluate(() => document.getElementById("bk-next").scrollIntoView({ block: "center" }));
       await p.waitForTimeout(300);
       assert.equal(await p.isVisible("#bk-bar-go"), false, "the phone bar steps aside while the button under the total is in view, so one gold button shows");
@@ -3355,8 +3348,9 @@ for (const width of [390, 1440]) {
     await p.fill("#bk-name", "Ana Lopez");
     await p.fill("#bk-email", "ana@example.org");
     await p.fill("#bk-phone", "+1 212 555 0100");
-    const s3 = await tops(["bk-tip", "bk-meet-f", "bk-tot", "bk-submit", "q-mail", "q-wa", "bk-consent", "bk-under", "bk-next3"]);
+    const s3 = await tops(width === 390 ? ["bk-tip", "bk-meet-f", "price-total", "bk-submit", "q-mail", "bk-consent", "bk-terms"] : ["price-total", "bk-submit", "q-mail", "bk-consent", "bk-terms"]);
     assert.ok(s3.every((y, i) => y !== null && (!i || y > s3[i - 1])), `step 3 order ${s3}`);
+    if (width === 1440) assert.ok((await tops(["bk-tip", "bk-meet-f"])).every((y, i, a) => y !== null && (!i || y > a[i - 1])), "the gratuity, then meet and greet");
     const mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1]), wa = await waText(p, "#q-wa");
     assert.equal(mail, wa, "the email and the WhatsApp message carry the same text");
     assert.match(wa, /^Hi NYC LUX RIDE, I would like to book this trip\.\nReference: [1-9]\d{7}\n[\s\S]*Meet and greet: Yes\nTotal shown: \$210\.00\nName: Ana Lopez\nEmail: ana@example\.org\nMobile: \+1 212 555 0100\nContact: Phone\nName for the sign: Ana Lopez$/);
@@ -3436,12 +3430,12 @@ for (const path of ["/book", "/booking-confirmed"]) {
       await p.evaluate(() => scrollTo(0, 500));
       await p.waitForTimeout(200);
       const r = await p.evaluate(() => [Math.round(document.querySelector(".site-header").getBoundingClientRect().top), [...document.querySelectorAll('.site-header a[href^="tel:"], .site-header a[href^="https://wa.me/"]')].filter((a) => a.getClientRects().length && !a.closest(".nav-panel")).length, document.querySelector("#bk-opt-h .bk-stepno").textContent, document.getElementById("bk-edit").matches("button:not([disabled])") && !!document.getElementById("bk-edit").getClientRects().length]);
-      assert.deepEqual(r, [0, 0, "Step 2 of 4", true], `${vp.width} step 2`);
+      assert.deepEqual(r, [0, 0, "Step 1 of 2", true], `${vp.width} step 2`);
       await next(p);
       await p.evaluate(() => scrollTo(0, 500));
       await p.waitForTimeout(200);
       const s = await p.evaluate(() => [Math.round(document.querySelector(".site-header").getBoundingClientRect().top), document.querySelector("#bk-det-h .bk-stepno").textContent, ["bk-back", "bk-check-edit"].map((i) => document.getElementById(i).matches("button:not([disabled])") && !!document.getElementById(i).getClientRects().length)]);
-      assert.deepEqual(s, [0, "Step 3 of 4", [true, true]], `${vp.width} step 3`);
+      assert.deepEqual(s, [0, "Step 2 of 2", [true, true]], `${vp.width} step 3`);
       await p.close();
     }
   });
@@ -3719,7 +3713,7 @@ for (const width of [390, 1440]) {
     await p.waitForFunction(() => document.getElementById("price-total").getAttribute("aria-busy") === "true");
     const ratios = await measure();
     assert.ok(ratios.length >= 1, "no busy total on screen");
-    if (width < 1024) assert.ok(ratios.some(([id]) => id.startsWith("bk-tot-v")) && !ratios.some(([id]) => id.startsWith("bk-bar-total")), JSON.stringify(ratios));
+    if (width < 1024) assert.ok(ratios.some(([id]) => id.startsWith("price-total")) && !ratios.some(([id]) => id.startsWith("bk-bar-total") || id.startsWith("bk-tot-v")), JSON.stringify(ratios));
     for (const [id, r] of [...two, ...ratios]) assert.ok(r >= 4.5, `${id} ${r}:1`);
     await p.unroute("**/api/book");
     await p.close();
@@ -4508,7 +4502,7 @@ const FRAMES = () => {
     const f = document.getElementById("book-form"), g = (i) => document.getElementById(i);
     if (f && f.dataset.step !== "search") {
       const s = g("bk-side"), bar = g("bk-bar");
-      window.__fr.push({ t: Math.round(performance.now()), side: hi(s), pay: hi(s.querySelector(".bk-pay")), bar: hi(bar), act: hi(g("bk-act")), more: Math.round(g("bk-more").getBoundingClientRect().top + scrollY), q: bar.classList.contains("is-q"), off: bar.classList.contains("is-off"), xo: document.querySelectorAll(".bk-xo").length, keys: ["bk-side", "bk-act"].flatMap((i) => g(i).getAnimations()).map((a) => a.effect.getKeyframes().map((k) => k.height || "").join(">")).filter((v) => v.length > 1).join(), choice: op(g("bk-choice")), barop: op(bar), line: vis(g("bk-bar-q")) ? op(g("bk-bar-q")) : -1, qbody: vis(g("q-body")), tot: vis(g("bk-tot")) });
+      window.__fr.push({ t: Math.round(performance.now()), side: hi(s), pay: hi(s.querySelector(".bk-pay")), bar: hi(bar), act: hi(g("bk-act")), more: Math.round(g("bk-more").getBoundingClientRect().top + scrollY), q: bar.classList.contains("is-q"), off: bar.classList.contains("is-off"), xo: document.querySelectorAll(".bk-xo").length, keys: ["bk-side", "bk-act"].flatMap((i) => g(i).getAnimations()).map((a) => a.effect.getKeyframes().map((k) => k.height || "").join(">")).filter((v) => v.length > 1).join(), choice: op(g("bk-choice")), barop: op(bar), line: vis(g("bk-bar-q")) ? op(g("bk-bar-q")) : -1, qbody: vis(g("q-body")), tot: vis(g("price")) });
     }
     requestAnimationFrame(tick);
   };
@@ -4602,7 +4596,7 @@ for (const [name, b] of ENGINES) {
     assert.deepEqual(p.errors, []);
     await ctx.close();
   });
-  await check(`B87 ${name}: scrolling Book and pay online into view hides the copy of the button in the summary card while the card height moves over several frames, and scrolling back brings it back the same way`, async () => {
+  await check(`B87 ${name}: at 1440 by 700 scrolling down to the last car and back keeps one Continue in the sticky summary card, with no bar copy of the button and no change of the card height in any frame`, async () => {
     const ctx = await engineContext(b, P, { viewport: { width: 1440, height: 700 }, reducedMotion: "no-preference" });
     await ctx.addInitScript(FRAMES);
     const p = await open(ctx, P, "/rates");
@@ -4610,14 +4604,13 @@ for (const [name, b] of ENGINES) {
     await p.goto(`${P.base}/book#options`, { waitUntil: "load" });
     await p.waitForFunction(() => /\d/.test(document.getElementById("price-total").textContent) && !document.querySelector("#price-total .bk-sk"));
     await p.waitForTimeout(500);
-    for (const [to, off] of [["center", true], ["top", false]]) {
+    for (const to of ["bottom", "top"]) {
       await p.evaluate(() => (window.__fr = []));
-      await p.evaluate((t) => (t === "top" ? scrollTo(0, 0) : document.getElementById("bk-next").scrollIntoView({ block: "center" })), to);
+      await p.evaluate((t) => scrollTo(0, t === "top" ? 0 : document.getElementById("bk-cards").getBoundingClientRect().bottom + scrollY - innerHeight + 24), to);
       await frames(p, null, 500);
       const fr = await p.evaluate(() => window.__fr);
-      const a = fr[0].side, z = fr.at(-1).side;
-      assert.ok(fr.at(-1).off === off && Math.abs(a - z) > 30, `${to}: the card button ${off ? "hides" : "shows"}: ${a} to ${z}`);
-      assert.ok(fr.filter((x) => x.side > Math.min(a, z) + 2 && x.side < Math.max(a, z) - 2).length >= 3, `${to}: the card height moves over several frames: ${fr.map((x) => x.side).join()}`);
+      assert.ok(fr.length >= 5 && fr.every((x) => x.bar === 0 && x.side === fr[0].side), `${to}: no bar and a steady card: ${[...new Set(fr.map((x) => x.side + "/" + x.bar))].join()}`);
+      assert.ok(await p.evaluate(() => { const n = document.getElementById("bk-next").getBoundingClientRect(); return n.height > 0 && n.top >= document.querySelector(".site-header").getBoundingClientRect().bottom && n.bottom <= innerHeight; }), `${to}: Continue stays in view`);
     }
     assert.deepEqual(p.errors, []);
     await ctx.close();
@@ -5093,6 +5086,7 @@ const posts = (p) => { const a = []; p.on("request", (r) => r.url().endsWith("/a
 const dollars = (c) => "$" + (c / 100).toLocaleString("en-US");
 const TIP_HINT = `Minimum ${dollars(TIP_CUSTOM.min)}.`;
 const TIP_ERROR = `Type an amount from ${dollars(TIP_CUSTOM.min)} to ${dollars(Math.floor(TIP_CUSTOM.max / 100) * 100)}, or choose None.`;
+const OVER_MAX = "This takes the total over $999,999.99. Type a smaller amount, or choose None.";
 const WA_HELLO = "Hi NYC LUX RIDE, I'd like to book a ride.";
 const chipText = (p) => p.$$eval("#bk-tip-opts label", (l) => l.map((x) => [...x.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("")));
 const lastGratuity = (p) => panel(p).then((x) => x.lines.filter(([l]) => /^Gratuity/.test(l)));
@@ -5230,6 +5224,11 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await p.click(await payBtn(p));
     await p.waitForFunction(() => document.getElementById("e-tip_amount").classList.contains("is-on"));
     assert.deepEqual([new URL(p.url()).pathname, await p.evaluate(() => document.getElementById("book-form").dataset.step), await p.getAttribute("#bk-tipamt", "aria-invalid")], ["/book", "details", "true"], "a total over Stripe's maximum for one payment stops at the gratuity amount and never pays");
+    assert.deepEqual([await p.isVisible("#e-tip_amount"), await p.textContent("#e-tip_amount")], [true, OVER_MAX], "the message says the total is too large, not that the amount is out of range");
+    assert.ok((await p.textContent("#bk-status")).includes(OVER_MAX), "and the status line says the same");
+    await p.fill("#bk-tipamt", "4o");
+    await p.click("#bk-name");
+    await p.waitForFunction((t) => document.getElementById("e-tip_amount").textContent === t && document.getElementById("e-tip_amount").classList.contains("is-on"), TIP_ERROR);
     await p.fill("#bk-tipamt", "40");
     await p.waitForFunction(() => !document.getElementById("e-tip_amount").classList.contains("is-on"));
     await p.waitForFunction((t) => (document.getElementById("price-total").firstChild || {}).textContent === t, cash(TOTAL + 4000));
@@ -5461,14 +5460,14 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(await p.evaluate(() => window.__cls) - before, 0, "no layout shift from the move on step 2");
     await next(p);
     await priced(p);
-    const when = '#bk-check-rows button[data-c="when"]';
+    const when = "#bk-check-edit";
     await p.focus(when);
     const b3 = await p.evaluate(() => window.__cls);
     await p.clock.fastForward("10:00");
     await p.waitForFunction(() => document.getElementById("bk-time").value === "12:50");
     await p.waitForTimeout(300);
-    const s3 = await p.evaluate(() => [document.querySelector("#bk-check-rows dd").textContent, document.querySelector("#bk-check-route li").textContent, document.activeElement.dataset.c]);
-    assert.deepEqual(s3, [`${new Date(`${D}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, 12:50 PM, New York time`, "12:50 PMJFK Terminal 4", "when"], "the When row and the route move in place, focus stays on Change date and time");
+    const s3 = await p.evaluate(() => [document.querySelector("#bk-check-rows dd").textContent, document.querySelector("#bk-check-route li").textContent, document.activeElement.id]);
+    assert.deepEqual(s3, [`${new Date(`${D}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, 12:50 PM, New York time`, "12:50 PMJFK Terminal 4", "bk-check-edit"], "the When row and the route move in place, focus stays on Edit trip");
     assert.equal(await p.evaluate(() => window.__cls) - b3, 0, "no layout shift from the move on step 3");
     await priced(p);
     await details(p);
@@ -5739,7 +5738,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 for (const [width, height] of [[390, 844], [768, 1024]]) {
   const ctx = await context(P, { viewport: { width, height } });
-  await check(`B112 at ${width}, the details step has no bottom bar (owner request 4): not at load, not while typing the name, email, mobile or notes, not at the top or the foot of the page, not with a short notice or paused hold, the step ends with the total, Book and pay online, Email to reserve and WhatsApp to reserve, and on the vehicle step the bar steps aside while the hourly Vehicle select has focus`, async () => {
+  await check(`B112 at ${width}, the details step has no bottom bar (owner request 4): not at load, not while typing the name, email, mobile or notes, not at the top or the foot of the page, not with a short notice or paused hold, the step ends with the summary card holding the total, Book and pay online, then Email and WhatsApp side by side, and on the vehicle step the bar steps aside while the hourly Vehicle select has focus`, async () => {
     const p = await open(ctx, P, "/book");
     const none = async (why) => assert.equal(await p.evaluate(() => getComputedStyle(document.getElementById("bk-bar")).display), "none", why);
     await trip(p);
@@ -5758,8 +5757,9 @@ for (const [width, height] of [[390, 844], [768, 1024]]) {
     await p.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await p.waitForTimeout(150);
     await none("at the foot");
-    const order = await p.evaluate(() => ["bk-tot", "bk-submit", "q-mail", "q-wa"].map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top)));
-    assert.ok(order.every((y, i) => !i || y > order[i - 1]), `total, pay, email, WhatsApp in that order: ${order}`);
+    const order = await p.evaluate(() => ["bk-meet-f", "price-total", "bk-submit", "q-mail"].map((id) => Math.round(document.getElementById(id).getBoundingClientRect().top)));
+    assert.ok(order.every((y, i) => !i || y > order[i - 1]), `meet, total, pay, email in that order: ${order}`);
+    assert.ok(await p.evaluate(() => document.getElementById("q-mail").getBoundingClientRect().top === document.getElementById("q-wa").getBoundingClientRect().top), "Email and WhatsApp side by side");
     await p.close();
     for (const [server, reason, t] of [[P, "short-notice", inWindow()], [Q, "paused", { date: DATE, time: "12:40" }]]) {
       const qc = server === P ? ctx : await context(Q, { viewport: { width, height } });
@@ -5809,7 +5809,7 @@ for (const [width, height] of [[390, 844], [768, 1024]]) {
 }
 for (const width of [1440, 390]) {
   const ctx = await context(P, { viewport: { width, height: width > 1000 ? 900 : 844 } });
-  await check(`B113 at ${width}, when Book and pay online fails the price stays on screen and the bar says Payment didn't open beside Email to reserve, never Prices didn't load${width > 1000 ? "" : ", also after Back to vehicles"}`, async () => {
+  await check(`B113 at ${width}, when Book and pay online fails the price stays on screen and ${width > 1000 ? "the summary card says Payment didn't open above Email to reserve" : "the bar says Payment didn't open beside Email to reserve"}, never Prices didn't load${width > 1000 ? "" : ", also after Back to vehicles"}`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -5825,7 +5825,8 @@ for (const width of [1440, 390]) {
       await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
     }
     await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
-    await p.waitForFunction(() => [document.getElementById("bk-bar"), document.getElementById("bk-bar-mail")].every((e) => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden"));
+    await p.waitForFunction((w) => [document.getElementById("bk-bar"), document.getElementById(w ? "bk-bar-q" : "bk-bar-mail")].every((e) => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden"), width > 1000);
+    if (width > 1000) assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-side").contains(document.getElementById("bk-bar-q")), getComputedStyle(document.getElementById("bk-bar-mail")).display, document.getElementById("q-mail").className, document.getElementById("bk-bar-q").getBoundingClientRect().bottom <= document.getElementById("q-mail").getBoundingClientRect().top]), [true, "none", "btn", true], "the reason sits in the card above the gold Email to reserve, with no second email button");
     assert.deepEqual(await p.evaluate(() => [document.getElementById("bk-bar-q").textContent, document.getElementById("price").hidden, (document.getElementById("price-total").firstChild || {}).textContent]), ["Payment didn't open", false, cash(TOTAL)]);
     assert.deepEqual(p.errors, []);
     await p.close();
@@ -5975,7 +5976,7 @@ for (const [name, b] of ENGINES) {
 
 for (const width of [390, 1440]) {
   const ctx = await context(P, { viewport: { width, height: width < 1024 ? 844 : 900 } });
-  await check(`B120 at ${width} the clean steps: step 2 opens with the trip line as text on the heading's edge and Edit trip, then the step count and a one-line heading, step 3 reads Back to vehicles, the step count, the details with one hint, the gratuity, Where we meet, Check your trip, the total, the three ways to finish and the fine print in that order with the car named once, a second visit shows Check your trip on screen, and the rider checkbox keeps the stored rider`, async () => {
+  await check(`B120 at ${width} the clean steps: step 2 opens with the trip line as text on the heading's edge and Edit trip, then the step count and a one-line heading, step 2 reads Back to vehicles, the step count, Your trip, the details with one hint, the gratuity and Where we meet, and the summary card the total, the pay button, Email and WhatsApp, the consent and the terms in that order, a second visit shows Your trip on screen, and the rider checkbox keeps the stored rider`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await view(p);
@@ -5985,7 +5986,7 @@ for (const width of [390, 1440]) {
     const s2 = await tops(["bk-sum", "bk-opt-h", "bk-pax-f", "bk-cards"]);
     assert.ok(inOrder(s2), `step 2 ${s2}`);
     assert.deepEqual(await p.$$eval("#bk-sum .bk-chip", (c) => c.map((x) => [getComputedStyle(x).borderTopStyle, getComputedStyle(x).backgroundColor])), [["none", "rgba(0, 0, 0, 0)"], ["none", "rgba(0, 0, 0, 0)"]], "the trip line is text, not boxes");
-    assert.deepEqual([await p.getByRole("heading", { name: "Step 2 of 4 Choose your vehicle" }).count(), await p.isVisible("#bk-edit"), await p.$("#bk-steps")], [1, true, null]);
+    assert.deepEqual([await p.getByRole("heading", { name: "Step 1 of 2 Choose your vehicle" }).count(), await p.isVisible("#bk-edit"), await p.$("#bk-steps")], [1, true, null]);
     assert.ok(await p.evaluate(() => Math.abs(document.querySelector("#bk-sum .bk-chip > .icon").getBoundingClientRect().left - document.getElementById("bk-opt-h").getBoundingClientRect().left) < 1), "the trip line starts on the heading's edge");
     const lines = () => p.evaluate(() => { const r = document.createRange(); r.selectNodeContents(document.getElementById("bk-opt-h").lastChild); return r.getClientRects().length; });
     for (const w of width < 1024 ? [width] : [1024, 1060, width]) {
@@ -5993,13 +5994,15 @@ for (const width of [390, 1440]) {
       assert.equal(await lines(), 1, `Choose your vehicle stays on one line at ${w}`);
     }
     await next(p);
-    const ids = ["bk-back", "bk-det-h", "bk-who", "bk-name-f", "bk-email-f", "bk-phone-f", "bk-reach", "bk-dflight-f", "bk-notes-add", "bk-tip", "bk-meet-f", "bk-check", "bk-tot", "bk-submit", "q-mail", "q-wa", "bk-consent", "bk-under", "bk-next3"];
-    const s3 = await tops(ids);
-    assert.ok(inOrder(s3), `step 3 ${JSON.stringify(ids.map((id, i) => [id, s3[i]]))}`);
+    const left = ["bk-back", "bk-det-h", "bk-check", "bk-who", "bk-name-f", "bk-email-f", "bk-phone-f", "bk-reach", "bk-dflight-f", "bk-notes-add", "bk-tip", "bk-meet-f"], card = ["price-total", "bk-submit", "q-mail", "bk-consent", "bk-terms"];
+    for (const ids of width < 1024 ? [[...left, ...card]] : [left, card]) {
+      const s3 = await tops(ids);
+      assert.ok(inOrder(s3), `step 3 ${JSON.stringify(ids.map((id, i) => [id, s3[i]]))}`);
+    }
     assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll("#bk-det .field__hint:not(.bk-e)")].filter((h) => h.getClientRects().length).map((h) => h.id)), ["bk-phone-h"], "one hint in the details");
-    assert.deepEqual([await p.isVisible("#bk-sum"), await p.isVisible("#bk-edit"), await p.getByRole("heading", { name: "Step 3 of 4 Your details" }).count(), await p.getByRole("checkbox", { name: "Someone else is riding" }).isChecked()], [false, false, 1, false]);
-    assert.equal(await p.isVisible("#bk-choice"), width >= 1024, "on phones the car is named once, in Check your trip");
-    assert.ok(width >= 1024 || (await p.evaluate(() => { const c = document.querySelector("#bk-side .bk-pay"); return Math.abs(document.getElementById("bk-result").getBoundingClientRect().top - c.getBoundingClientRect().top - parseFloat(getComputedStyle(c).paddingTop)) < 1; })), "on phones the price card opens with Your price at its padding");
+    assert.deepEqual([await p.isVisible("#bk-sum"), await p.isVisible("#bk-edit"), await p.getByRole("heading", { name: "Step 2 of 2 Details and payment" }).count(), await p.getByRole("checkbox", { name: "Someone else is riding" }).isChecked()], [false, false, 1, false]);
+    assert.equal(await p.isVisible("#bk-choice"), true, "the summary card names the car above the price");
+    assert.ok(width >= 1024 || (await p.evaluate(() => { const c = document.querySelector("#bk-side .bk-pay"), h = document.getElementById("bk-choice"); return Math.abs(h.getBoundingClientRect().top - c.getBoundingClientRect().top - parseFloat(getComputedStyle(c).paddingTop)) < 1 && getComputedStyle(h, "::before").content.startsWith('"Review and pay"'); })), "on phones the summary card opens with Review and pay and the car at its padding");
     await p.click('#bk-check-rows button[data-c="car"]');
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
     await p.click('label[for="bk-c-premium"]');
@@ -6017,7 +6020,7 @@ for (const width of [390, 1440]) {
     assert.deepEqual(p.errors, []);
     await p.close();
   });
-  await check(`B120 at ${width} a round trip: Check your trip shows When, Return, Passengers and Car, and Change return date and time opens the return calendar on the return day`, async () => {
+  await check(`B120 at ${width} a round trip: Your trip shows When without Change, Return, Passengers and Car, and Change return date and time opens the return calendar on the return day`, async () => {
     const p = await open(ctx, P, "/book");
     await trip(p);
     await p.click("#bk-addret");
@@ -6026,7 +6029,7 @@ for (const width of [390, 1440]) {
     await view(p);
     await priced(p);
     await next(p);
-    assert.deepEqual(await p.$$eval("#bk-check-rows > div", (d) => d.map((x) => [x.querySelector("dt").textContent, x.querySelector("button").textContent])), [["When", "Change date and time"], ["Return", "Change return date and time"], ["Passengers", "Change passengers"], ["Car", "Change car"]]);
+    assert.deepEqual(await p.$$eval("#bk-check-rows > div", (d) => d.map((x) => [x.querySelector("dt").textContent, (x.querySelector("button") || {}).textContent || ""])), [["When", ""], ["Return", "Change return date and time"], ["Passengers", "Change passengers"], ["Car", "Change car"]]);
     assert.match(await p.textContent("#bk-check-rows > div:nth-child(2) dd"), /, 6:00 PM, New York time$/);
     await p.click('#bk-check-rows button[data-c="rd"]');
     await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
@@ -6874,7 +6877,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await panel(p), { lines: [["Fare", cash(suv.fare)], [L_FEES, cash(suv.tax + suv.bcf)]], total: cash(total("suv")), notes: POLICY.later.outside });
     assert.deepEqual([w.route.length, w.options.length, w.ride.minutes, w.ride.miles], [0, 1, 45, 25], "the options answer that priced the trip carries its route");
     assert.equal(await p.textContent("#bk-route-n"), "25.0 miles, about 45 min by car. Google Maps");
-    assert.deepEqual(await p.evaluate(() => { const b = document.getElementById("bk-next"); return [getComputedStyle(b).display !== "none", b.getClientRects().length > 0, b.textContent, b.getAttribute("aria-disabled"), document.getElementById("bk-bar-go").textContent, document.getElementById("price").hidden]; }), [true, true, "Book and pay online", null, "Book and pay online", false]);
+    assert.deepEqual(await p.evaluate(() => { const b = document.getElementById("bk-next"); return [getComputedStyle(b).display !== "none", b.getClientRects().length > 0, b.textContent, b.getAttribute("aria-disabled"), document.getElementById("bk-bar-go").textContent, document.getElementById("price").hidden]; }), [true, true, "Continue", null, "Continue", false]);
     let [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));
     await p.click('label[for="bk-c-sprinter-executive"]');
@@ -9109,7 +9112,7 @@ for (const width of [1440, 390]) {
 
 {
   const { CHILD_SEAT_CENTS } = await api("_rates.mjs");
-  const { ERRORS, CHILD_LIMITS } = await api("_copy.mjs");
+  const { ERRORS } = await api("_copy.mjs");
   const SEAT = (n) => `Child seats (${n} x ${cash(CHILD_SEAT_CENTS)})`;
   const rowsNow = (p) => p.evaluate(() => [...document.querySelectorAll("#price-lines tr:not(.bk-hint)")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]));
   const plus = (list, cents) => list.map((c) => cash(Math.round(Number(c.replace(/[$,]/g, "")) * 100) + cents));
@@ -9118,58 +9121,54 @@ for (const width of [1440, 390]) {
   const MORE = (type) => `#bk-kids [aria-label="More ${NAMED[type]} seats"]`;
   const FEWER_SEAT = (type) => `#bk-kids [aria-label="Fewer ${NAMED[type]} seats"]`;
   const seats = async (p, type, n) => {
+    const shut = !(await p.evaluate(() => document.getElementById("bk-xr-kids-d").open));
+    if (shut) await p.click("#bk-xr-kids-b");
     for (let i = 0; i < 13; i++) {
       const v = +(await p.inputValue(`#bk-k-${type}`));
-      if (v === n) return;
+      if (v === n) break;
       await p.click(v < n ? MORE(type) : FEWER_SEAT(type));
     }
-    throw new Error(`the ${type} stepper did not reach ${n}`);
+    if (+(await p.inputValue(`#bk-k-${type}`)) !== n) throw new Error(`the ${type} stepper did not reach ${n}`);
+    if (shut) await p.click("#bk-xr-kids-d .bk-xr__done");
   };
   const steppers = (p) => p.$$eval("#bk-kids .bk-stepper", (list) => list.map((x) => [x.getAttribute("aria-labelledby"), document.getElementById(x.getAttribute("aria-labelledby")).textContent, x.querySelector("output").textContent, x.firstChild.getAttribute("aria-label"), x.firstChild.getAttribute("aria-disabled"), x.lastChild.getAttribute("aria-label"), x.lastChild.getAttribute("aria-disabled")]));
-  for (const [width, height] of [[390, 844], [1440, 900], [1920, 1200]]) {
+  for (const [width, height] of [[390, 844], [1440, 900]]) {
     const ctx = await context(P, { viewport: { width, height } });
     const FIRST_FARE = AIRPORT_FARES.first.jfk;
     const FIRST_TOTAL = AIRPORT_TOTALS.first.jfk;
     const FIRST_TAX = percentCents(FIRST_FARE, NYC_TAX_PERCENT);
     const FIRST_BCF = percentCents(FIRST_FARE, BCF_PERCENT);
     const FIRST_LINES = [["Fare", cash(FIRST_FARE)], [L_FEES, cash(FIRST_TAX + FIRST_BCF)], [L_TOLLS, cash(FIRST_TOTAL - FIRST_FARE - FIRST_TAX - FIRST_BCF)]];
-    const THREE_KIDS = ["Needs an adult", "Needs an adult", ...plus(JFK_CARDS.slice(2, 3), 3 * CHILD_SEAT_CENTS), "Fits 1 child seat", "Fits 1 child seat", ...plus(JFK_CARDS.slice(5), 3 * CHILD_SEAT_CENTS)];
-    await check(`B193 at ${width} child seats on a one way airport trip in First Class: the seat counts sit on step 2 right after the passengers and bags and before the cars, behind the closed Child seats and dogs row on a phone or a window under 1150 px tall, which opens in place and names what is chosen, inline on a wide and tall screen, lined up with the bag counts, with the price per seat from the answer, each count has the stepper of the passenger count, a press on More takes the pending seat line into its row at once, the cards, the panel and the total add the seats once, as the counts change the Business SUV and Business Premium SUV cards turn off with Needs an adult and the Executive Sedan and Electric Class cards with Fits 1 child seat, the WhatsApp and email messages list each type, at one seat per passenger More is off and a press on it shows the seat message without moving focus or changing a count, the next press clears it, more seats than passengers from the server keep Book and pay online from moving on until fixed, Fewer passengers stops at the seat count, step 3 shows no seat counts but keeps the seat line, CLS 0 from more than 500 ms after the last typing through the seat message, and the confirmation keeps the seat row from the skeleton to the receipt`, async () => {
+    await check(`B193 at ${width} child seats on a one way airport trip: the Child seats row of step 1 sits between Bags and Dogs above the cars and reads None, its ${width < 1024 ? "bottom sheet" : "popover"} holds the seat counts with the price per seat from the answer, each count has the stepper of the passenger count, a press on More takes the pending seat line into its row at once, the panel, the total and the sheet's own total add the seats once, the row reads the counts, the WhatsApp and email messages list each type, at one seat per passenger More is off and a press on it shows the seat message without moving focus or changing a count, the next press clears it, more seats than passengers from the server keep Continue from moving on until fixed, the cards include the seats and Fewer passengers stops at the seat count, step 2 shows no seat counts, CLS 0 from more than 500 ms after the last typing through the seat message, and the confirmation keeps the seat row from the skeleton to the receipt`, async () => {
       const p = await open(ctx, P, "/book");
       await trip(p);
       await view(p);
       await priced(p);
-      const phone = width < 600, closed = width < 1024 || height < 1150;
-      const box = (sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY), left: Math.round(r.left), right: Math.round(r.right) }; });
-      assert.deepEqual([await p.isVisible("#bk-xb"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets"), await cards(p)], [closed, !closed, !closed, JFK_CARDS], closed ? "a phone or a window under 1150 px tall shows one closed row" : "a wide and tall screen shows the counts inline");
-      if (closed) {
-        assert.ok((await box("#bk-cards")).top - (await box("#bk-bags")).bottom <= 96, "the closed row keeps the cars right under the bags");
-        assert.deepEqual([await p.getAttribute("#bk-xb", "aria-expanded"), await p.getAttribute("#bk-xb", "aria-controls"), (await p.textContent("#bk-xb")).trim(), await p.getByRole("button", { name: "Child seats and dogs None" }).count()], ["false", "bk-xtra", "Child seats and dogsNone", 1]);
-        await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
-        await p.click("#bk-xb");
-        assert.deepEqual([await p.getAttribute("#bk-xb", "aria-expanded"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets"), await p.evaluate(() => document.activeElement.id)], ["true", true, true, "bk-xb"], "the row opens in place and keeps focus");
-        await settle(p, 300);
-        assert.equal((await cls(p))[0], 0, "opening the row is a pressed change, not a layout shift");
-      }
-      const [bags, kids, pets, deck] = [await box("#bk-bags"), await box("#bk-kids"), await box("#bk-pets"), await box("#bk-cards")];
-      assert.ok(bags.bottom <= kids.top && kids.top <= pets.top && Math.max(kids.bottom, pets.bottom) <= deck.top, `passengers and bags, then the seats and the dogs, then the cars: ${JSON.stringify({ bags, kids, pets, deck })}`);
-      const [bagStep, seatStep] = [await box("#bk-bags .bk-stepper"), await box("#bk-kids .bk-stepper")];
-      assert.equal(phone ? seatStep.right : seatStep.left, phone ? bagStep.right : bagStep.left, phone ? "the seat steppers line up at the right with the bag steppers" : "the first seat stepper lines up under the first bag stepper");
-      closed || assert.ok(deck.top - bags.bottom <= 320 && deck.top + 100 <= height, `the cars stay in the first screen under the inline counts: ${deck.top - bags.bottom}`);
+      assert.deepEqual([await p.isVisible("#bk-kids"), await p.isVisible("#bk-xr-kids-b"), await p.textContent("#bk-xr-kids-v"), await cards(p)], [false, true, "None", JFK_CARDS], "the seats wait behind their row, the cards keep their prices");
+      const at = await p.evaluate(() => ["bk-pax-f", "bk-xr-bags-b", "bk-xr-kids-b", "bk-xr-pets-b", "bk-cards"].map((i) => { const r = document.getElementById(i).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.left)]; }));
+      if (width < 1024) assert.ok(at.every(([y], i) => !i || y > at[i - 1][0]), `step 1 order ${JSON.stringify(at)}`);
+      else assert.ok(at[1][0] > at[0][0] && at[1][0] === at[2][0] && at[2][0] === at[3][0] && at[1][1] < at[2][1] && at[2][1] < at[3][1] && at[4][0] > at[3][0], `Bags, Child seats and Dogs side by side under the passengers, above the cars: ${JSON.stringify(at)}`);
       await pax(p, 3);
       await priced(p);
       await p.click('label[for="bk-c-first"]');
       await priced(p);
       assert.equal(await p.getAttribute(FEWER, "aria-disabled"), "false");
-      assert.deepEqual([await p.textContent("#bk-kids legend"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-kids-n"), await p.isVisible("#e-child_seats"), await p.isVisible("#bk-kids-h")], [`Child seats ${cash(CHILD_SEAT_CENTS)} each`, true, false, false, true]);
+      await next(p);
+      await details(p);
+      await priced(p);
+      assert.deepEqual([await p.isVisible("#bk-kids"), await p.isVisible("#bk-xr-kids-b")], [false, false], "step 2 shows no seat counts");
+      await p.click("#bk-back");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+      await priced(p);
+      await p.click("#bk-xr-kids-b");
+      await p.waitForFunction(() => document.getElementById("bk-xr-kids-d").open);
+      assert.deepEqual([await p.textContent("#bk-kids legend"), await p.isVisible("#bk-kids"), await p.isVisible("#bk-kids-n"), await p.isVisible("#e-child_seats"), await p.isVisible("#bk-kids-h"), await p.getAttribute("#bk-xr-kids-b", "aria-expanded"), await p.evaluate(() => document.getElementById("bk-xr-kids-d").matches(":modal"))], [`Child seats ${cash(CHILD_SEAT_CENTS)} each`, true, false, false, true, "true", width < 1024]);
       assert.deepEqual([CHILD_SEAT_CENTS, await p.textContent("#bk-kids-p")], [2000, "$20.00 each"], "the booking extras show the seat price of $20");
       assert.deepEqual(await p.$$eval("#bk-kids select", (s) => s.map((x) => [x.name, x.value, getComputedStyle(x).display])), [["toddler_seats", "0", "none"], ["infant_seats", "0", "none"], ["booster_seats", "0", "none"]]);
       assert.deepEqual(await steppers(p), [["bk-k-toddler-l", "Child seat, Forward or rear-facing", "0", "Fewer child seats", "true", "More child seats", "false"], ["bk-k-infant-l", "Infant seat, Rear-facing", "0", "Fewer infant seats", "true", "More infant seats", "false"], ["bk-k-booster-l", "Booster seat", "0", "Fewer booster seats", "true", "More booster seats", "false"]]);
-      assert.deepEqual([await p.getByRole("group", { name: /^Child seat\s*,\s+Forward or rear-facing$/ }).count(), await p.getByRole("group", { name: /^Infant seat\s*,\s+Rear-facing$/ }).count(), await p.getByRole("group", { name: "Booster seat", exact: true }).count()], [1, 1, 1], "a screen reader hears a pause between each seat name and which way it faces");
-      assert.deepEqual([await p.getAttribute("#bk-pax-f .bk-stepper", "aria-labelledby"), await p.getAttribute("#bk-pax-f .bk-stepper", "aria-describedby"), await p.$$eval("#bk-kids .bk-stepper", (l) => l.map((x) => [x.getAttribute("role"), x.getAttribute("aria-describedby")]))], ["bk-pax-l bk-pax-h", null, [["group", "bk-kids-h bk-kids-l"], ["group", "bk-kids-h bk-kids-l"], ["group", "bk-kids-h bk-kids-l"]]], "each seat count group is named by its label and described by the seat hint and the seat limits, as its select was");
-      assert.deepEqual([await p.isVisible("#bk-kids-l"), (await p.textContent("#bk-kids-l")).trim()], [true, `${CHILD_LIMITS.sedan} ${CHILD_LIMITS.suv}`], "the seat limits are stated on step 2 where the seats are chosen");
-      const [kh, kl] = [await box("#bk-kids-h"), await box("#bk-kids-l")];
-      assert.ok(kh.bottom <= kl.top || kl.bottom <= kh.top || kh.right <= kl.left || kl.right <= kh.left, `the seat hint and the seat limits never overlap: ${JSON.stringify({ kh, kl })}`);
+      assert.deepEqual([await p.getByRole("group", { name: /^Child seat\s*,\s+Forward or rear-facing$/ }).count(), await p.getByRole("group", { name: /^Infant seat\s*,\s+Rear-facing$/ }).count(), await p.getByRole("group", { name: "Booster seat", exact: true }).count(), await p.getByRole("dialog", { name: `Child seats ${cash(CHILD_SEAT_CENTS)} each` }).count()], [1, 1, 1, 1], "a screen reader hears a pause between each seat name and which way it faces, and the sheet is named by its title");
+      assert.deepEqual([await p.getAttribute("#bk-pax-f .bk-stepper", "aria-labelledby"), await p.getAttribute("#bk-pax-f .bk-stepper", "aria-describedby"), await p.$$eval("#bk-kids .bk-stepper", (l) => l.map((x) => [x.getAttribute("role"), x.getAttribute("aria-describedby")]))], ["bk-pax-l bk-pax-h", null, [["group", "bk-kids-h bk-kids-l"], ["group", "bk-kids-h bk-kids-l"], ["group", "bk-kids-h bk-kids-l"]]], "each seat count group is named by its label and described by the seat hint, as its select was");
+      assert.deepEqual([await p.textContent("#bk-xr-kids-d .bk-xr__car"), await p.textContent("#bk-xr-kids-d .bk-xr__sum")], ["First Class", cash(FIRST_TOTAL)], "the sheet shows the car and its live total");
       assert.deepEqual((await panel(p)).lines, FIRST_LINES);
       await settle(p, 700);
       await p.route("**/api/book", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
@@ -9180,22 +9179,17 @@ for (const width of [1440, 390]) {
       await priced(p);
       assert.deepEqual(await p.evaluate(() => [...new Set(window.__said)]), [1], "only the count that changed is written, so the other live regions stay quiet");
       assert.deepEqual(await panel(p), { lines: [...FIRST_LINES, [SEAT(1), cash(CHILD_SEAT_CENTS)]], total: cash(FIRST_TOTAL + CHILD_SEAT_CENTS), notes: NOTES.included + POLICY.later.airport });
+      await p.waitForFunction((t) => document.querySelector("#bk-xr-kids-d .bk-xr__sum").textContent === t, cash(FIRST_TOTAL + CHILD_SEAT_CENTS));
       assert.deepEqual([(await panel(p)).lines.at(-1), (await panel(p)).total], [["Child seats (1 x $20.00)", "$20.00"], cash(FIRST_TOTAL + 2000)], "the priced quote adds $20 for one seat");
-      assert.deepEqual(await cards(p), plus(JFK_CARDS, CHILD_SEAT_CENTS), "every card total includes the seat right away, since 1 child seat with 2 adults fits every car");
-      assert.equal(await p.textContent("#bk-xb-v"), "1 child seat");
       await p.unroute("**/api/book");
-      await seats(p, "booster", 1);
-      await priced(p);
-      await settle(p, 400);
-      assert.deepEqual([await cards(p), await p.textContent("#bk-xb-v")], [[...plus(JFK_CARDS.slice(0, 3), 2 * CHILD_SEAT_CENTS), "Fits 1 child seat", "Fits 1 child seat", ...plus(JFK_CARDS.slice(5), 2 * CHILD_SEAT_CENTS)], "2 child seats"], "2 child seats with 1 adult still fit the SUVs, and the Executive Sedan and Electric Class turn off live");
       await seats(p, "booster", 2);
       await priced(p);
       await settle(p, 700);
       assert.deepEqual((await panel(p)).lines.at(-1), [SEAT(3), cash(3 * CHILD_SEAT_CENTS)]);
       assert.equal(await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent), cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS));
-      assert.deepEqual([await cards(p), await p.textContent("#bk-xb-v")], [THREE_KIDS, "3 child seats"], "every card that takes 3 children with no adult includes the seats, and the others say why they are off");
+      assert.equal(await p.textContent("#bk-xr-kids-v"), "1 infant, 2 booster", "the row reads the counts");
       const wa = await waText(p, "#q-wa"), mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1] || "");
-      for (const t of [wa, mail]) assert.ok(t.includes(`\nPassengers: 3\nVehicle: First Class\nInfant seats: 1\nBooster seats: 2\nTotal shown: ${cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS)}`), t);
+      for (const t of [wa, mail]) assert.ok(t.endsWith(`\nPassengers: 3\nVehicle: First Class\nInfant seats: 1\nBooster seats: 2\nTotal shown: ${cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS)}`), t);
       assert.deepEqual((await steppers(p)).map((x) => [x[2], x[4], x[6]]), [["0", "true", "true"], ["1", "false", "true"], ["2", "false", "true"]], "every More is off at one seat per passenger");
       await p.click(MORE("toddler"), { force: true });
       await p.waitForSelector("#e-child_seats", { state: "visible" });
@@ -9212,29 +9206,24 @@ for (const width of [1440, 390]) {
       await p.evaluate(() => { const s = document.getElementById("bk-k-toddler"); s.value = "1"; s.dispatchEvent(new Event("change", { bubbles: true })); });
       await p.waitForSelector("#e-child_seats", { state: "visible" });
       assert.deepEqual([await p.textContent("#e-child_seats"), await p.getAttribute("#bk-kids", "aria-invalid"), await p.getAttribute("#bk-kids", "aria-describedby")], [ERRORS.child_seats.text, "true", "e-child_seats"], "the server keeps the limit");
+      await p.click("#bk-xr-kids-d .bk-xr__done");
+      assert.equal(await p.evaluate(() => document.getElementById("bk-xr-kids-d").open), false);
       await p.click("#bk-next");
       await settle(p, 600);
-      assert.deepEqual([new URL(p.url()).pathname, await p.isVisible("#e-child_seats"), await p.getAttribute("#bk-next", "aria-busy"), await p.evaluate(() => document.getElementById("book-form").dataset.step)], ["/book", true, null, "options"], "Book and pay online shows the seat message again and never moves on");
+      assert.deepEqual([new URL(p.url()).pathname, await p.isVisible("#e-child_seats"), await p.evaluate(() => document.getElementById("bk-xr-kids-d").open), await p.evaluate(() => document.getElementById("book-form").dataset.step)], ["/book", true, true, "options"], "Continue opens the seats again with the seat message and never moves on");
       await p.click(FEWER_SEAT("toddler"));
       await priced(p);
       await p.waitForSelector("#e-child_seats", { state: "hidden" });
+      assert.deepEqual([await p.getAttribute("#bk-kids", "aria-invalid"), (await panel(p)).total], [null, cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS)]);
+      await p.click("#bk-xr-kids-d .bk-xr__done");
       await settle(p, 400);
-      assert.deepEqual([await p.getAttribute("#bk-kids", "aria-invalid"), (await panel(p)).total, await cards(p), await p.evaluate(() => document.getElementById("book-form").dataset.step), await p.isVisible("#bk-kids")], [null, cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS), THREE_KIDS, "options", true], "fixing the count does not move on by itself, the seats stay on step 2 and every card that takes 3 children with no adult includes them");
+      assert.deepEqual(await cards(p), ["Needs an adult", "Needs an adult", ...plus(JFK_CARDS.slice(2, 3), 3 * CHILD_SEAT_CENTS), "Fits 1 child seat", "Fits 1 child seat", ...plus(JFK_CARDS.slice(5), 3 * CHILD_SEAT_CENTS)], "every card that takes 3 children with no adult includes the seats, and the others say why they are off");
       await p.click(FEWER, { force: true });
       await settle(p, 300);
       assert.deepEqual([await p.getAttribute(FEWER, "aria-disabled"), await p.inputValue("#bk-pax"), await p.textContent("#bk-pax-f output")], ["true", "3", "3 passengers"], "children count as passengers, so the count cannot drop below the seats");
-      if (closed) {
-        await p.click("#bk-xb");
-        assert.deepEqual([await p.getAttribute("#bk-xb", "aria-expanded"), await p.isVisible("#bk-kids"), await p.textContent("#bk-xb-v"), await p.inputValue("#bk-k-booster")], ["false", false, "3 child seats", "2"], "the closed row keeps the counts and names them");
-      }
       await next(p);
-      await details(p);
       await priced(p);
-      assert.deepEqual([await p.isVisible("#bk-kids"), await p.isVisible("#bk-pets"), await p.isVisible("#bk-xb"), await p.inputValue("#bk-k-infant"), await p.inputValue("#bk-k-booster"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => x[2])], [false, false, false, "1", "2", [SEAT(3), cash(3 * CHILD_SEAT_CENTS)], ["0", "1", "2"]], "step 3 asks no seat counts and keeps the seat line");
-      const tops = await p.evaluate(() => ["bk-tip", "bk-meet-f", "bk-check", "bk-tot", "bk-submit"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
-      assert.ok(tops.every((y, i) => !i || y > tops[i - 1]), `step 3 order with the seats on step 2 ${tops}`);
-      const wa3 = await waText(p, "#q-wa");
-      assert.ok(wa3.includes(`\nPassengers: 3\nVehicle: First Class\nInfant seats: 1\nBooster seats: 2\nTotal shown: ${cash(FIRST_TOTAL + 3 * CHILD_SEAT_CENTS)}\nName: ${ME.name}\n`), wa3);
+      assert.deepEqual([await p.inputValue("#bk-k-infant"), await p.inputValue("#bk-k-booster"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => x[2]), await p.isVisible("#bk-kids")], ["1", "2", [SEAT(3), cash(3 * CHILD_SEAT_CENTS)], ["0", "1", "2"], false]);
       await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
       await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
       await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
@@ -9252,7 +9241,7 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(P, { viewport: { width: 390, height: 844 } });
-    await check("B194 at 390 child seats are charged once on a round trip and once on an hourly booking with the most seats its car takes, chosen on step 2, and a restored step 3 keeps its seat counts and their line, with the closed row naming them on step 2", async () => {
+    await check("B194 at 390 child seats are charged once on a round trip and once on an hourly booking with the most seats its car takes, and a restored step 1 keeps its seat counts, their line and the Child seats row", async () => {
       const p = await open(ctx, P, "/book");
       await trip(p);
       await p.click("#bk-addret");
@@ -9262,34 +9251,22 @@ for (const width of [1440, 390]) {
       await priced(p);
       await pax(p, 3);
       await priced(p);
-      await p.click("#bk-xb");
       await seats(p, "toddler", 2);
-      await priced(p);
-      await next(p);
-      await details(p);
       await priced(p);
       await settle(p, 400);
       assert.deepEqual(await panel(p), { lines: [["Fare", cash(2 * FARE)], [L_FEES, cash(2 * TAX + 2 * BCF)], [L_TOLLS, cash(2 * TOLLS)], [SEAT(2), cash(2 * CHILD_SEAT_CENTS)]], total: cash(2 * TOTAL + 2 * CHILD_SEAT_CENTS), notes: NOTES.included + POLICY.later.airport });
       assert.equal(await p.$eval("#price-total", (td) => td.previousElementSibling.textContent), "Total, both rides");
       await settle(p, 400);
       await p.reload({ waitUntil: "load" });
-      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
-      await priced(p);
-      await settle(p, 400);
-      assert.deepEqual([await p.inputValue("#bk-k-toddler"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => [x[2], x[6]])], ["2", [SEAT(2), cash(2 * CHILD_SEAT_CENTS)], [["2", "false"], ["0", "false"], ["0", "false"]]], "a restored step 3 keeps the counts on the steppers of step 2, with More on while 1 adult rides with the 2 children");
-      await p.click("#bk-back");
       await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
       await priced(p);
-      assert.deepEqual([await p.getAttribute("#bk-xb", "aria-expanded"), await p.textContent("#bk-xb-v"), await p.isVisible("#bk-kids")], ["false", "2 child seats", false], "back on step 2 after a reload the closed row names the restored seats");
+      await settle(p, 400);
+      assert.deepEqual([await p.inputValue("#bk-k-toddler"), (await panel(p)).lines.at(-1), (await steppers(p)).map((x) => [x[2], x[6]]), await p.textContent("#bk-xr-kids-v"), await p.isVisible("#bk-xr-kids-b")], ["2", [SEAT(2), cash(2 * CHILD_SEAT_CENTS)], [["2", "false"], ["0", "false"], ["0", "false"]], "2 child seats", true], "a restored step 1 shows the counts on the steppers and on the Child seats row, with More on while 1 adult rides with the 2 children");
       const q = await open(ctx, P, "/book");
       await hourlyTrip(q);
       await pax(q, 6);
       await priced(q);
-      await q.click("#bk-xb");
       for (const [type, n] of [["infant", 1], ["toddler", 1], ["booster", 1]]) await seats(q, type, n);
-      await priced(q);
-      await next(q);
-      await details(q);
       await priced(q);
       await settle(q, 400);
       const fare = VEHICLES["suv-suburban"].hourly * 3;
@@ -9302,39 +9279,9 @@ for (const width of [1440, 390]) {
     await ctx.close();
   }
   {
-    const ctx = await context(P, { viewport: { width: 390, height: 844 } });
-    await check("B216 at 390 a seat or dogs answer from the server on step 3 goes back to step 2, opens the Child seats and dogs row with its message and puts focus on the first count of that kind, and a fixed count pays", async () => {
-      const p = await open(ctx, P, "/book");
-      await trip(p);
-      await view(p);
-      await priced(p);
-      await next(p);
-      await details(p);
-      await priced(p);
-      assert.equal(await p.getAttribute("#bk-xb", "aria-expanded"), "false");
-      for (const [sel, value, code, focus] of [["#bk-k-toddler", "2", "child_seats", "Fewer child seats"], ["#bk-d-small", "4", "dogs", "Fewer small dogs"]]) {
-        await p.evaluate(([q, v]) => { const s = document.querySelector(q); if (![...s.options].some((o) => o.value === v)) s.add(new Option(v, v)); s.value = v; }, [sel, value]);
-        await p.click(await payBtn(p));
-        await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
-        await p.waitForSelector(`#e-${code}`, { state: "visible" });
-        await settle(p, 600);
-        assert.deepEqual([new URL(p.url()).pathname, await p.getAttribute("#bk-xb", "aria-expanded"), await p.getAttribute(code === "dogs" ? "#bk-pets" : "#bk-kids", "aria-invalid"), await p.evaluate(() => document.activeElement.getAttribute("aria-label")), await p.textContent(`#e-${code}`)], ["/book", "true", "true", focus, ERRORS[code].text], `${code} goes back to its count on step 2`);
-        await p.evaluate(([q]) => { const s = document.querySelector(q); s.value = "0"; [...s.options].filter((o) => +o.value > 3 && q.includes("-d-")).forEach((o) => o.remove()); s.dispatchEvent(new Event("change", { bubbles: true })); }, [sel]);
-        await priced(p);
-        await p.waitForSelector(`#e-${code}`, { state: "hidden" });
-        await next(p);
-        await priced(p);
-      }
-      await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
-      assert.deepEqual([p.errors, p.failed], [[], []]);
-      await p.close();
-    });
-    await ctx.close();
-  }
-  {
     const ctx = await context(P, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
     const { REASONS: REASONS_COPY } = await api("_copy.mjs");
-    await check("B195 without javascript the booking form asks the child, infant and booster seat counts after the passengers and bags with the hint and a link to the price, more seats than passengers lands on the seat message, and a booking with seats pays the seat line once with the total", async () => {
+    await check("B195 without javascript the booking form asks the child, infant and booster seat counts with the hint and a link to the price, more seats than passengers lands on the seat message, and a booking with seats pays the seat line once with the total", async () => {
       const p = await open(ctx, P, "/book");
       const fill = async (pax, seats) => {
         await p.fill("#bk-from", "John F. Kennedy (JFK)");
@@ -9346,9 +9293,6 @@ for (const width of [1440, 390]) {
         await details(p);
       };
       assert.deepEqual([await p.isVisible("#bk-kids"), (await p.textContent("#bk-kids legend")).trim(), await p.isVisible("#bk-kids-h"), await p.isVisible("#bk-kids-n"), await p.getAttribute("#bk-kids-n a", "href"), await p.isVisible("#e-child_seats")], [true, "Child seats", true, true, "/rates#add-ons", false]);
-      const tops = await p.evaluate(() => ["bk-pax", "bk-bags", "bk-kids", "bk-pets", "bk-cards", "bk-det"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
-      assert.ok(tops.every((y, i) => !i || y > tops[i - 1]), `without javascript the seats and pets come right after the passengers and bags, before the cars and the details: ${tops}`);
-      assert.equal(await p.isVisible("#bk-xb"), false, "without javascript the counts are always open, with no row to press");
       await fill("2", { infant: "2", booster: "1" });
       await Promise.all([p.waitForURL(/\/book#e-child_seats$/), p.click("#bk-submit")]);
       assert.deepEqual([await p.isVisible("#e-child_seats"), await p.textContent("#e-child_seats")], [true, ERRORS.child_seats.text]);
@@ -9383,7 +9327,7 @@ for (const width of [1440, 390]) {
       },
     };
     for (const [what, pick] of [["an hourly booking typed outside New York City and not picked", "outside-hourly"], ["a trip outside the United States", "outside-us"]]) {
-      await check(`B196 at ${width} ${what} that our dispatch team prices asks the child, infant and booster seat counts on step 2 right after the passengers and bags, above the request text and the notes, and both the WhatsApp and the email text list each chosen type, with CLS 0`, async () => {
+      await check(`B196 at ${width} ${what} that our dispatch team prices asks the child, infant and booster seat counts on the Child seats row of step 1, above the cars and the request text and its notes, and both the WhatsApp and the email text list each chosen type, with CLS 0`, async () => {
         const p = await open(ctx, G, "/book");
         await ends[pick](p);
         await pickDate(p, "#bk-date-btn", DATE);
@@ -9395,10 +9339,9 @@ for (const width of [1440, 390]) {
         await settle(p, 300);
         await p.waitForSelector(`#q-${pick}`, { state: "visible" });
         await settle(p, 600);
-        if (width < 1024 || height < 1150) await p.click("#bk-xb");
-        assert.deepEqual([await p.getAttribute("#book-form", "data-step"), await p.isVisible("#bk-kids"), await p.evaluate(() => document.getElementById("bk-kids").parentElement.id), await p.evaluate(() => document.getElementById("bk-kids").nextElementSibling.id), await p.evaluate(() => document.getElementById("bk-pets").nextElementSibling), await p.evaluate(() => document.getElementById("bk-xtra").previousElementSibling.previousElementSibling.id)], ["options", true, "bk-xtra", "bk-pets", null, "bk-bags"]);
-        const ys = await p.evaluate((q) => ["#bk-bags", "#bk-kids", `#q-${q} p`, "#bk-qnotes", "#q-mail"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().top)), pick);
-        assert.ok(ys.every((y, i) => !i || y > ys[i - 1]), `bags, seats, request text, notes, Email to reserve ${ys}`);
+        assert.deepEqual([await p.getAttribute("#book-form", "data-step"), await p.isVisible("#bk-xr-kids-b"), await p.isVisible("#bk-xr-pets-b"), await p.evaluate(() => document.getElementById("bk-kids").parentElement.id), await p.evaluate(() => document.getElementById("bk-pets").parentElement.id)], ["options", true, true, "bk-xr-kids-d", "bk-xr-pets-d"]);
+        const ys = await p.evaluate((q) => ["#bk-xr-kids-b", "#bk-cards", `#q-${q} p`, "#bk-qnotes"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().top)), pick);
+        assert.ok(ys.every((y, i) => !i || y > ys[i - 1]), `seats row, cars, request text, notes ${ys}`);
         assert.equal(await p.textContent("#bk-qnotes-h"), "For example each child's age, weight and height, your dog's size or large luggage.");
         await settle(p, 700);
         await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
@@ -9419,15 +9362,13 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(Q, { viewport: { width: 390, height: 844 } });
-    await check("B196 at 390 with payments paused the prices show with the paused request on step 2, the seat counts show in it, and the WhatsApp and email texts list the seats with a total that includes them", async () => {
+    await check("B196 at 390 with payments paused the prices show with the paused request on step 1, the seat counts sit behind the Child seats row, and the WhatsApp and email texts list the seats with a total that includes them", async () => {
       const p = await open(ctx, Q, "/book");
       await trip(p);
       await view(p);
       await p.waitForSelector("#q-paused", { state: "visible" });
       await settle(p, 600);
-      assert.deepEqual([await p.isVisible("#bk-xb"), await p.isVisible("#bk-kids")], [true, false]);
-      await p.click("#bk-xb");
-      assert.deepEqual([await p.isVisible("#bk-kids"), await p.evaluate(() => document.getElementById("bk-kids").parentElement.id), await p.isVisible("#bk-next")], [true, "bk-xtra", false]);
+      assert.deepEqual([await p.isVisible("#bk-xr-kids-b"), await p.evaluate(() => document.getElementById("bk-kids").parentElement.id), await p.isVisible("#bk-next")], [true, "bk-xr-kids-d", false]);
       await pax(p, 3);
       await settle(p, 600);
       await seats(p, "toddler", 1);
@@ -9449,8 +9390,8 @@ for (const width of [1440, 390]) {
       await trip(p);
       await view(p);
       await priced(p);
-      await p.click("#bk-xb");
-      assert.equal(await p.isVisible("#bk-kids"), true, "the seat counts open in place on step 2");
+      await next(p);
+      await priced(p);
       const look = await p.$$eval("#bk-kids .bk-stepper button", (b) => b.map((x) => { const c = getComputedStyle(x); return [x.getAttribute("aria-disabled"), c.borderTopStyle, c.borderTopWidth, c.color, c.borderTopColor]; }));
       const system = await p.evaluate(() => ["CanvasText", "GrayText"].map((k) => { const e = document.createElement("i"); e.style.color = k; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; }));
       assert.notEqual(system[0], system[1]);
@@ -9495,43 +9436,41 @@ for (const width of [1440, 390]) {
   const rowsNow = (p) => p.evaluate(() => [...document.querySelectorAll("#price-lines tr:not(.bk-hint)")].map((tr) => [tr.cells[0].textContent, tr.cells[1].textContent]));
   const plus = (list, cents) => list.map((c) => cash(Math.round(Number(c.replace(/[$,]/g, "")) * 100) + cents));
   const dogs = async (p, size, n) => {
+    const shut = !(await p.evaluate(() => document.getElementById("bk-xr-pets-d").open));
+    if (shut) await p.click("#bk-xr-pets-b");
     for (let i = 0; i < 5; i++) {
       const v = +(await p.inputValue(`#bk-d-${size}`));
-      if (v === n) return;
+      if (v === n) break;
       await p.click(v < n ? MORE_DOG(size) : FEWER_DOG(size));
     }
-    throw new Error(`the ${size} dog stepper did not reach ${n}`);
+    if (+(await p.inputValue(`#bk-d-${size}`)) !== n) throw new Error(`the ${size} dog stepper did not reach ${n}`);
+    if (shut) await p.click("#bk-xr-pets-d .bk-xr__done");
   };
   const dogSteppers = (p) => p.$$eval("#bk-pets .bk-stepper", (list) => list.map((x) => [x.getAttribute("aria-labelledby"), document.getElementById(x.getAttribute("aria-labelledby")).textContent, x.querySelector("output").textContent, x.firstChild.getAttribute("aria-label"), x.firstChild.getAttribute("aria-disabled"), x.lastChild.getAttribute("aria-label"), x.lastChild.getAttribute("aria-disabled")]));
-  const LEGEND = `Pets ${cash(SMALL_DOG_CENTS)} small, ${cash(LARGE_DOG_CENTS)} large`;
-  const HINT = "Each dog is charged once, even on a round trip. Service animals ride free. Tell us about your dog in the notes.";
+  const LEGEND = `Dogs ${cash(SMALL_DOG_CENTS)} small, ${cash(LARGE_DOG_CENTS)} large`;
+  const HINT = "Charged once per trip. Service animals ride free.";
   for (const [width, height] of [[390, 844], [1440, 900]]) {
     const ctx = await context(P, { viewport: { width, height } });
-    await check(`B211 at ${width} pets on a one way airport trip: the dog counts sit on step 2 right after the child seats and before the cars, behind the Child seats and dogs row on a phone, with both prices from the answer in a one line legend, each count has a stepper of 44 px buttons named by its label and described by the pets hint, the keyboard reaches and presses them, a press on More takes the pending dog line into its row at once, the panel, the total, the cards and the messages add each dog once at once, step 3 asks no dog counts, More is off at 3 and a press on it shows the dogs message without moving focus or changing a count, the next change clears it, CLS 0 from more than 500 ms after the last typing through the dogs message, and the confirmation keeps both dog rows from the skeleton to the receipt`, async () => {
+    await check(`B211 at ${width} dogs on a one way airport trip: the Dogs row of step 1 closes the passengers and luggage card above the cars, its ${width < 1024 ? "bottom sheet" : "popover"} holds the dog counts with both prices from the answer in a one line legend, each count has a stepper of ${width < 1024 ? 44 : 40} px buttons named by its label and described by the dogs hint, the keyboard reaches and presses them, a press on More takes the pending dog line into its row at once, the panel, the total, the cards and the messages add each dog once, More is off at 3 and a press on it shows the dogs message without moving focus or changing a count, the next change clears it, CLS 0 from more than 500 ms after the last typing through the dogs message, and the confirmation keeps both dog rows from the skeleton to the receipt`, async () => {
       const p = await open(ctx, P, "/book");
       await trip(p);
       await view(p);
       await priced(p);
-      const closed = width < 1024 || height < 1150;
-      assert.equal(await p.isVisible("#bk-pets"), !closed, "a phone or a window under 1150 px tall keeps the pets behind the closed row");
-      if (closed) {
-        await p.click("#bk-xb");
-        assert.equal(await p.getAttribute("#bk-xb", "aria-expanded"), "true");
-      }
+      assert.deepEqual([await p.isVisible("#bk-pets"), await p.isVisible("#bk-xr-pets-b"), await p.textContent("#bk-xr-pets-v")], [false, true, "None"], "the dogs wait behind their row on step 1");
+      await p.click("#bk-xr-pets-b");
+      await p.waitForFunction(() => document.getElementById("bk-xr-pets-d").open);
       assert.deepEqual([await p.textContent("#bk-pets legend"), await p.isVisible("#bk-pets"), await p.isVisible("#bk-pets-n"), await p.isVisible("#e-dogs"), await p.isVisible("#bk-pets-h"), await p.textContent("#bk-pets-h")], [LEGEND, true, false, false, true, HINT]);
-      const [kidsLegend, petsLegend] = await p.evaluate(() => ["#bk-kids legend", "#bk-pets legend"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().height)));
-      assert.equal(petsLegend, kidsLegend, "the legend with both prices stays on one line, like the child seat legend");
+      const petsLegend = await p.evaluate(() => { const r = document.createRange(); r.selectNodeContents(document.querySelector("#bk-pets legend")); const y = [...r.getClientRects()].filter((x) => x.width).map((x) => x.top + x.height / 2); return y.length > 0 && Math.max(...y) - Math.min(...y) <= 8; });
+      assert.equal(petsLegend, true, "the legend with both prices stays on one line");
       assert.deepEqual(await p.$$eval("#bk-pets select", (s) => s.map((x) => [x.name, x.value, getComputedStyle(x).display])), [["small_dogs", "0", "none"], ["large_dogs", "0", "none"]]);
       assert.deepEqual(await dogSteppers(p), [["bk-d-small-l", "Small dog", "0", "Fewer small dogs", "true", "More small dogs", "false"], ["bk-d-large-l", "Large dog", "0", "Fewer large dogs", "true", "More large dogs", "false"]]);
       assert.deepEqual(await p.$$eval("#bk-pets .bk-stepper", (l) => l.map((x) => [x.getAttribute("role"), x.getAttribute("aria-describedby"), x.querySelector("output").getAttribute("aria-live")])), [["group", "bk-pets-h", "polite"], ["group", "bk-pets-h", "polite"]], "each dog count group is named by its label and described by the pets hint, as its select was");
       const sizes = await p.$$eval("#bk-pets .bk-stepper button", (b) => b.map((x) => { const r = x.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-      assert.ok(sizes.length === 4 && sizes.every(([w, h]) => w >= 44 && h >= 44), JSON.stringify(sizes));
-      const tops = await p.evaluate(() => ["bk-pax-f", "bk-bags", "bk-kids", "bk-pets", "bk-cards", "bk-tot"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top)));
-      assert.ok(tops.every((y, i) => !i || y > tops[i - 1]), `step 2 order ${tops}`);
+      assert.ok(sizes.length === 4 && sizes.every(([w, h]) => w >= (width < 1024 ? 44 : 40) && h >= (width < 1024 ? 44 : 40)), JSON.stringify(sizes));
       assert.equal(await p.evaluate(() => document.getElementById("bk-pets").getBoundingClientRect().right <= document.documentElement.clientWidth), true);
-      await p.focus('#bk-kids [aria-label="More booster seats"]');
+      assert.equal(await p.evaluate(() => document.activeElement.id), "bk-xr-pets-d", "the sheet takes focus when it opens");
       await p.keyboard.press("Tab");
-      assert.equal(await p.evaluate(() => document.activeElement.getAttribute("aria-label")), "Fewer small dogs", "Tab goes from the child seats to the pets");
+      assert.equal(await p.evaluate(() => document.activeElement.getAttribute("aria-label")), "Fewer small dogs", "Tab goes from the sheet to its first count");
       await p.keyboard.press("Tab");
       assert.equal(await p.evaluate(() => document.activeElement.getAttribute("aria-label")), "More small dogs");
       await settle(p, 700);
@@ -9543,7 +9482,7 @@ for (const width of [1440, 390]) {
       assert.equal(await p.inputValue("#bk-d-small"), "1");
       await priced(p);
       assert.deepEqual(await p.evaluate(() => [...new Set(window.__said)]), [0], "only the count that changed is written, so the other live region stays quiet");
-      assert.deepEqual([(await panel(p)).lines, (await panel(p)).total, await cards(p), await p.textContent("#bk-xb-v")], [[...AIRPORT_LINES, [DOG("small", 1), cash(SMALL_DOG_CENTS)]], cash(TOTAL + SMALL_DOG_CENTS), plus(JFK_CARDS, SMALL_DOG_CENTS), "1 dog"], "the panel and every card add the dog right away");
+      assert.deepEqual(await panel(p), { lines: [...AIRPORT_LINES, [DOG("small", 1), cash(SMALL_DOG_CENTS)]], total: cash(TOTAL + SMALL_DOG_CENTS), notes: NOTES.included + POLICY.later.airport });
       await p.unroute("**/api/book");
       await dogs(p, "large", 2);
       await priced(p);
@@ -9551,7 +9490,8 @@ for (const width of [1440, 390]) {
       assert.deepEqual((await panel(p)).lines.slice(-2), [[DOG("small", 1), cash(SMALL_DOG_CENTS)], [DOG("large", 2), cash(2 * LARGE_DOG_CENTS)]]);
       assert.equal(await p.$eval("#bk-tot-v", (x) => x.firstChild.textContent), cash(TOTAL + SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS));
       const wa = await waText(p, "#q-wa"), mail = decodeURIComponent((await p.getAttribute("#q-mail", "href")).split("&body=")[1] || "");
-      for (const t of [wa, mail]) assert.ok(t.includes(`\nVehicle: Business SUV\nSmall dogs: 1\nLarge dogs: 2\nTotal shown: ${cash(TOTAL + SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS)}`), t);
+      for (const t of [wa, mail]) assert.ok(t.endsWith(`\nVehicle: Business SUV\nSmall dogs: 1\nLarge dogs: 2\nTotal shown: ${cash(TOTAL + SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS)}`), t);
+      assert.equal(await p.textContent("#bk-xr-pets-v"), "1 small, 2 large", "the row reads the counts");
       await dogs(p, "large", 3);
       await priced(p);
       assert.deepEqual((await dogSteppers(p)).map((x) => [x[2], x[4], x[6]]), [["1", "false", "false"], ["3", "false", "true"]], "More is off at 3 dogs of a size");
@@ -9572,14 +9512,13 @@ for (const width of [1440, 390]) {
       await p.evaluate(() => { const s = document.getElementById("bk-d-small"); s.value = "1"; s.lastElementChild.remove(); s.dispatchEvent(new Event("change", { bubbles: true })); });
       await priced(p);
       await p.waitForSelector("#e-dogs", { state: "hidden" });
+      await p.click("#bk-xr-pets-d .bk-xr__done");
       await settle(p, 400);
-      assert.deepEqual([await cards(p), await p.textContent("#bk-xb-v")], [plus(JFK_CARDS, SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS), "3 dogs"], "every card total includes the dogs");
+      assert.deepEqual(await cards(p), plus(JFK_CARDS, SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS), "every card total includes the dogs");
       await next(p);
       await details(p);
       await priced(p);
-      assert.deepEqual([await p.isVisible("#bk-pets"), await p.isVisible("#bk-kids"), (await panel(p)).lines.slice(-2)], [false, false, [[DOG("small", 1), cash(SMALL_DOG_CENTS)], [DOG("large", 2), cash(2 * LARGE_DOG_CENTS)]]], "step 3 asks no dog counts and keeps the dog lines");
-      const wa3 = await waText(p, "#q-wa");
-      assert.ok(wa3.includes(`\nSmall dogs: 1\nLarge dogs: 2\nTotal shown: ${cash(TOTAL + SMALL_DOG_CENTS + 2 * LARGE_DOG_CENTS)}\nName: ${ME.name}\n`), wa3);
+      assert.equal(await p.isVisible("#bk-pets"), false, "step 2 shows no dog counts");
       await p.route("**/api/book?session_id=*", async (route) => { await new Promise((r) => setTimeout(r, 900)); await route.continue().catch(() => {}); });
       await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
       await Promise.all([p.waitForURL(/\/booking-confirmed/), p.click(await payBtn(p))]);
@@ -9597,7 +9536,7 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(P, { viewport: { width: 390, height: 844 } });
-    await check("B212 at 390 pets are charged once on a round trip and once on an hourly booking, chosen on step 2 with child seats beside them, and a restored step 3 keeps the dog counts and their lines", async () => {
+    await check("B212 at 390 dogs are charged once on a round trip and once on an hourly booking, with child seats beside them, and a restored step 1 keeps the dog counts, their lines and the Dogs row", async () => {
       const p = await open(ctx, P, "/book");
       await trip(p);
       await p.click("#bk-addret");
@@ -9605,34 +9544,27 @@ for (const width of [1440, 390]) {
       await setTime(p, "18:00", "#bk-rtime");
       await view(p);
       await priced(p);
-      await p.click("#bk-xb");
       await dogs(p, "small", 2);
       await priced(p);
       await dogs(p, "large", 1);
-      await priced(p);
-      await next(p);
-      await details(p);
       await priced(p);
       await settle(p, 400);
       assert.deepEqual(await panel(p), { lines: [["Fare", cash(2 * FARE)], [L_FEES, cash(2 * TAX + 2 * BCF)], [L_TOLLS, cash(2 * TOLLS)], [DOG("small", 2), cash(2 * SMALL_DOG_CENTS)], [DOG("large", 1), cash(LARGE_DOG_CENTS)]], total: cash(2 * TOTAL + 2 * SMALL_DOG_CENTS + LARGE_DOG_CENTS), notes: NOTES.included + POLICY.later.airport });
       await settle(p, 400);
       await p.reload({ waitUntil: "load" });
-      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
+      await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
       await priced(p);
       await settle(p, 400);
-      assert.deepEqual([await p.inputValue("#bk-d-small"), await p.inputValue("#bk-d-large"), (await panel(p)).lines.slice(-2), (await dogSteppers(p)).map((x) => [x[2], x[4], x[6]])], ["2", "1", [[DOG("small", 2), cash(2 * SMALL_DOG_CENTS)], [DOG("large", 1), cash(LARGE_DOG_CENTS)]], [["2", "false", "false"], ["1", "false", "false"]]], "a restored step 3 keeps the counts on the steppers of step 2");
+      assert.deepEqual([await p.inputValue("#bk-d-small"), await p.inputValue("#bk-d-large"), (await panel(p)).lines.slice(-2), (await dogSteppers(p)).map((x) => [x[2], x[4], x[6]]), await p.textContent("#bk-xr-pets-v")], ["2", "1", [[DOG("small", 2), cash(2 * SMALL_DOG_CENTS)], [DOG("large", 1), cash(LARGE_DOG_CENTS)]], [["2", "false", "false"], ["1", "false", "false"]], "2 small, 1 large"], "a restored step 1 shows the counts on the steppers and on the Dogs row");
       const q = await open(ctx, P, "/book");
       await hourlyTrip(q);
       await pax(q, 2);
       await priced(q);
-      await q.click("#bk-xb");
+      await q.click("#bk-xr-kids-b");
       await q.click('#bk-kids [aria-label="More child seats"]');
+      await q.click("#bk-xr-kids-d .bk-xr__done");
       await priced(q);
       await dogs(q, "large", 2);
-      await priced(q);
-      assert.equal(await q.textContent("#bk-xb-v"), "1 child seat, 2 dogs");
-      await next(q);
-      await details(q);
       await priced(q);
       await settle(q, 400);
       const fare = VEHICLES["suv-suburban"].hourly * 3;
@@ -9646,11 +9578,10 @@ for (const width of [1440, 390]) {
   }
   {
     const ctx = await context(P, { viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
-    await check("B213 without javascript the booking form asks the small and large dog counts, 0 to 3, after the child seats and before the cars, with the hint and a link to the price, a dogs answer from the server lands on its message, and a booking with dogs pays each dog line once with the total", async () => {
+    await check("B213 without javascript the booking form asks the small and large dog counts, 0 to 3, with the hint and a link to the price, a dogs answer from the server lands on its message, and a booking with dogs pays each dog line once with the total", async () => {
       const p = await open(ctx, P, "/book");
-      assert.deepEqual([await p.isVisible("#bk-pets"), (await p.textContent("#bk-pets legend")).trim(), await p.isVisible("#bk-pets-h"), await p.isVisible("#bk-pets-n"), await p.getAttribute("#bk-pets-n a", "href"), await p.isVisible("#e-dogs"), await p.$$eval("#bk-pets select", (s) => s.map((x) => [x.name, [...x.options].map((o) => o.value).join(" "), x.value]))], [true, "Pets", true, true, "/rates#add-ons", false, [["small_dogs", "0 1 2 3", "0"], ["large_dogs", "0 1 2 3", "0"]]]);
+      assert.deepEqual([await p.isVisible("#bk-pets"), (await p.textContent("#bk-pets legend")).trim(), await p.isVisible("#bk-pets-h"), await p.isVisible("#bk-pets-n"), await p.getAttribute("#bk-pets-n a", "href"), await p.isVisible("#e-dogs"), await p.$$eval("#bk-pets select", (s) => s.map((x) => [x.name, [...x.options].map((o) => o.value).join(" "), x.value]))], [true, "Dogs", true, true, "/rates#add-ons", false, [["small_dogs", "0 1 2 3", "0"], ["large_dogs", "0 1 2 3", "0"]]]);
       assert.deepEqual([await p.textContent("label[for=bk-d-small]"), await p.textContent("label[for=bk-d-large]")], ["Small dog", "Large dog"]);
-      assert.ok(await p.evaluate(() => { const y = (i) => document.getElementById(i).getBoundingClientRect(); return y("bk-kids").bottom <= y("bk-pets").top && y("bk-pets").bottom <= y("bk-cards").top && y("bk-bags").bottom <= y("bk-kids").top; }), "without javascript the dogs follow the child seats, after the bags and before the cars");
       await p.goto(`${P.base}/book#e-dogs`, { waitUntil: "load" });
       assert.deepEqual([await p.isVisible("#e-dogs"), await p.textContent("#e-dogs")], [true, ERRORS.dogs.text]);
       await p.goto(`${P.base}/book`, { waitUntil: "load" });
@@ -9670,7 +9601,7 @@ for (const width of [1440, 390]) {
   }
   for (const [width, height] of [[390, 844], [1440, 900]]) {
     const ctx = await context(G, { viewport: { width, height } });
-    await check(`B214 at ${width} a trip outside the United States that our dispatch team prices asks the dog counts on step 2 after the child seats, above the request text and the notes, and both the WhatsApp and the email text list each chosen size, with CLS 0`, async () => {
+    await check(`B214 at ${width} a trip outside the United States that our dispatch team prices asks the dog counts on the Dogs row of step 1, after the child seats and above the cars, the request text and its notes, and both the WhatsApp and the email text list each chosen size, with CLS 0`, async () => {
       const p = await open(ctx, G, "/book");
       for (const [end, text] of [["from", "806 6th Street, Secaucus, NJ"], ["to", "Niagara Falls, ON L2E 6T2"]]) {
         await type(p, end, text);
@@ -9683,10 +9614,9 @@ for (const width of [1440, 390]) {
       await settle(p, 600);
       await p.waitForSelector("#q-outside-us", { state: "visible" });
       await settle(p, 600);
-      if (width < 1024 || height < 1150) await p.click("#bk-xb");
-      assert.deepEqual([await p.getAttribute("#book-form", "data-step"), await p.isVisible("#bk-pets"), await p.evaluate(() => [document.getElementById("bk-pets").parentElement.id, document.getElementById("bk-pets").previousElementSibling.id, document.getElementById("bk-pets").nextElementSibling]), await p.textContent("#bk-pets legend")], ["options", true, ["bk-xtra", "bk-kids", null], LEGEND]);
-      const ys = await p.evaluate(() => ["#bk-bags", "#bk-kids", "#bk-pets", "#q-outside-us p", "#bk-qnotes", "#q-mail"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().top)));
-      assert.ok(ys.every((y, i) => !i || y > ys[i - 1]), `bags, seats, pets, request text, notes, Email to reserve ${ys}`);
+      assert.deepEqual([await p.getAttribute("#book-form", "data-step"), await p.isVisible("#bk-xr-pets-b"), await p.evaluate(() => [document.getElementById("bk-pets").parentElement.id, document.getElementById("bk-xr-pets").previousElementSibling.id]), await p.textContent("#bk-pets legend")], ["options", true, ["bk-xr-pets-d", "bk-xr-kids"], LEGEND]);
+      const ys = await p.evaluate(() => ["#bk-xr-pets-b", "#bk-cards", "#q-outside-us p", "#bk-qnotes"].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().top)));
+      assert.ok(ys.every((y, i) => !i || y > ys[i - 1]), `dogs row, cars, request text, notes ${ys}`);
       await settle(p, 700);
       await p.evaluate(() => ((window.__cls = 0), (window.__shifts = [])));
       await dogs(p, "small", 2);
@@ -9709,7 +9639,8 @@ for (const width of [1440, 390]) {
       await trip(p);
       await view(p);
       await priced(p);
-      await p.click("#bk-xb");
+      await next(p);
+      await priced(p);
       const look = await p.$$eval("#bk-pets .bk-stepper button", (b) => b.map((x) => { const c = getComputedStyle(x); return [x.getAttribute("aria-disabled"), c.borderTopStyle, c.borderTopWidth, c.color, c.borderTopColor]; }));
       const system = await p.evaluate(() => ["CanvasText", "GrayText"].map((k) => { const e = document.createElement("i"); e.style.color = k; document.body.append(e); const c = getComputedStyle(e).color; e.remove(); return c; }));
       assert.deepEqual(look.map((x) => x[0]), ["true", "false", "true", "false"], "Fewer is off at 0 and More can be pressed");
@@ -9873,7 +9804,7 @@ for (const width of [1440, 390]) {
   const ownRow = (cls) => [cls, true, false, true, true];
   for (const [width, height] of [[320, 700], [390, 844], [1440, 900]]) {
     const ctx = await context(P, { viewport: { width, height } });
-    await check(`B225 at ${width} the child seat limits per class: the Executive Sedan and Electric Class take 1 child seat, a Business SUV or Business Premium SUV needs an adult and takes up to 3, or 2 with only 1 adult, a card over its limit turns off with a short reason, the chosen one shows its request block with Email and WhatsApp and Show cars that fit, and the limits are stated on step 2 where the seats are chosen, with every change on step 2`, async () => {
+    await check(`B225 at ${width} the child seat limits per class: the Executive Sedan and Electric Class take 1 child seat, a Business SUV or Business Premium SUV needs an adult and takes up to 3, or 2 with only 1 adult, a card over its limit turns off with a short reason, the chosen one shows its request block with Email and WhatsApp and Show cars that fit, and the short limits are stated in the seats sheet, the full rules in the request block`, async () => {
       const p = await open(ctx, P, "/book");
       await trip(p);
       await view(p);
@@ -9881,8 +9812,8 @@ for (const width of [1440, 390]) {
       await pax(p, 2);
       await p.click('label[for="bk-c-sedan"]');
       await priced(p);
-      await p.click("#bk-xb");
-      assert.deepEqual([await p.isVisible("#bk-kids-l"), (await p.textContent("#bk-kids-l")).trim()], [true, `${CHILD_LIMITS.sedan} ${CHILD_LIMITS.suv}`], "the limits sit with the seat counts on step 2");
+      await p.click("#bk-xr-kids-b");
+      assert.deepEqual([await p.isVisible("#bk-kids-l"), (await p.textContent("#bk-kids-l")).trim()], [true, "An Executive Sedan or Electric Class takes 1 child seat, an SUV up to 3."]);
       await p.click(more("infant"));
       await priced(p);
       assert.equal((await panel(p)).total, cash(AIRPORT_TOTALS.sedan.jfk + CHILD_SEAT_CENTS), "an Executive Sedan takes 1 child seat");
@@ -9890,7 +9821,9 @@ for (const width of [1440, 390]) {
       await p.waitForSelector("#q-child-seats", { state: "visible" });
       let s = await state(p);
       assert.deepEqual([s.blocks, s.shown, s.fix, s.bar, s.wide], [block("child-seats"), [false, true, true, true], "Show cars that fit", "Too many child seats for this car", 0]);
-      assert.equal(await p.evaluate(() => document.getElementById("book-form").dataset.step), "options", "the seat change and its request block stay on step 2");
+      assert.equal(await p.textContent("#bk-xr-kids-d .bk-xr__sum"), "Too many child seats for this car", "the open sheet says why the car is off");
+      assert.ok(REASONS["child-seats"].text.includes(CHILD_LIMITS.sedan.replace(/ child seat\.$/, "").replace(/^An /, "An ")) || REASONS["child-seats"].text.includes("takes 1, an SUV up to 3"), "the request block states the full limits");
+      await p.click("#bk-xr-kids-d .bk-xr__done");
       await settledCards(p);
       s = await state(p);
       assert.deepEqual(s.cards, [["suv", true, "Needs an adult"], ["premium", true, "Needs an adult"], at("first", 2 * CHILD_SEAT_CENTS), ["sedan", true, "Fits 1 child seat"], ["electric", true, "Fits 1 child seat"], ...vans(2 * CHILD_SEAT_CENTS)], "2 passengers with 2 child seats");
@@ -9906,11 +9839,12 @@ for (const width of [1440, 390]) {
       assert.deepEqual([(await state(p)).picked, (await panel(p)).total], ["suv", cash(AIRPORT_TOTALS.suv.jfk + 2 * CHILD_SEAT_CENTS)], "Show cars that fit picks the first car that takes the seats");
       await pax(p, 4);
       await priced(p);
+      await p.click("#bk-xr-kids-b");
       await p.click(more("toddler"));
       await p.waitForSelector("#q-one-adult", { state: "visible" });
       s = await state(p);
       assert.deepEqual([s.blocks, s.shown, s.bar], [block("one-adult"), [false, true, true, true], "Too many child seats for 1 adult"]);
-      assert.equal(await p.evaluate(() => document.getElementById("book-form").dataset.step), "options");
+      await p.click("#bk-xr-kids-d .bk-xr__done");
       await settledCards(p);
       s = await state(p);
       assert.deepEqual(s.cards, [["suv", true, "Fits 2 with 1 adult"], ["premium", true, "Fits 2 with 1 adult"], ["first", true, "Seats 3"], ["sedan", true, "Seats 3"], ["electric", true, "Seats 3"], ...vans(3 * CHILD_SEAT_CENTS)], "1 adult and 3 children");
@@ -9931,6 +9865,259 @@ for (const width of [1440, 390]) {
   }
 }
 
+{
+  const { CHILD_SEAT_CENTS, SMALL_DOG_CENTS } = await api("_rates.mjs");
+  const ctx = await context(P, { viewport: { width: 390, height: 844 } });
+  await check("B227 at 390 on step 1 the Child seats row sits above the first car inside the first screen, its bottom sheet opens over a backdrop with the counts, the car and the live total and Done, Escape and a tap on the backdrop close it with focus back on the row, a seat with 1 passenger shows and speaks This car needs an adult in the sheet, and a seat shows on the row at once", async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await p.evaluate(() => scrollTo(0, 0));
+    await p.waitForTimeout(200);
+    const r = await p.evaluate(() => { const k = document.getElementById("bk-xr-kids-b").getBoundingClientRect(), c = document.querySelector(".bk-card").getBoundingClientRect(); return [Math.round(k.top), Math.round(k.bottom), Math.round(c.top), innerHeight, document.getElementById("bk-xr-kids-b").textContent.trim()]; });
+    assert.ok(r[0] > 0 && r[1] <= r[2] && r[1] <= r[3], `the row above the first car on the first screen: ${JSON.stringify(r)}`);
+    assert.equal(r[4], "Child seats, None");
+    await p.click("#bk-xr-kids-b");
+    await p.waitForFunction(() => document.getElementById("bk-xr-kids-d").open);
+    const d = await p.evaluate(() => { const e = document.getElementById("bk-xr-kids-d"), b = e.getBoundingClientRect(); return [e.matches(":modal"), Math.round(b.left), Math.round(b.right), Math.round(b.bottom), innerWidth, innerHeight, getComputedStyle(e, "::backdrop").backgroundColor, document.activeElement.id, document.getElementById("bk-xr-kids-b").getAttribute("aria-expanded"), e.querySelector(".bk-xr__car").textContent, e.querySelector(".bk-xr__sum").textContent]; });
+    assert.deepEqual(d, [true, 0, 390, 844, 390, 844, "rgba(15, 19, 25, 0.45)", "bk-xr-kids-d", "true", "Business SUV", cash(TOTAL)], "a modal sheet at the foot of the window with the car and its total");
+    await p.keyboard.press("Escape");
+    await p.waitForFunction(() => !document.getElementById("bk-xr-kids-d").open);
+    assert.deepEqual([await p.evaluate(() => document.activeElement.id), await p.getAttribute("#bk-xr-kids-b", "aria-expanded")], ["bk-xr-kids-b", "false"], "Escape closes it and focus returns to the row");
+    await p.click("#bk-xr-kids-b");
+    await p.waitForFunction(() => document.getElementById("bk-xr-kids-d").open);
+    await p.click('#bk-kids [aria-label="More child seats"]');
+    await p.waitForFunction(() => document.querySelector("#bk-xr-kids-d .bk-xr__sum").textContent === "This car needs an adult");
+    assert.deepEqual(await p.evaluate(() => { const t = document.querySelector("#bk-xr-kids-d .bk-xr__tot"); return [t.getAttribute("aria-live"), t.checkVisibility(), t.textContent]; }), ["polite", true, "Business SUVThis car needs an adult"], "a seat with 1 passenger shows and speaks the request reason in the open sheet");
+    await p.click('#bk-kids [aria-label="Fewer child seats"]');
+    await p.waitForFunction((t) => document.querySelector("#bk-xr-kids-d .bk-xr__sum").textContent === t, cash(TOTAL));
+    await p.keyboard.press("Escape");
+    await p.waitForFunction(() => !document.getElementById("bk-xr-kids-d").open);
+    await pax(p, 2);
+    await priced(p);
+    await p.click("#bk-xr-kids-b");
+    await p.waitForFunction(() => document.getElementById("bk-xr-kids-d").open);
+    await p.click('#bk-kids [aria-label="More child seats"]');
+    assert.equal(await p.textContent("#bk-xr-kids-v"), "1 child seat", "the row reads the seat at once");
+    await p.waitForFunction((t) => document.querySelector("#bk-xr-kids-d .bk-xr__sum").textContent === t, cash(TOTAL + CHILD_SEAT_CENTS));
+    await p.mouse.click(195, 20);
+    await p.waitForFunction(() => !document.getElementById("bk-xr-kids-d").open);
+    assert.equal(await p.evaluate(() => document.activeElement.id), "bk-xr-kids-b", "a tap on the backdrop closes it");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B228 a trip restored with seats, a dog and bags, and a reload of it, show each count on its row of step 1 and in the price, so nothing chosen hides behind a closed row", async () => {
+    const p = await open(ctx, P, "/rates");
+    await p.evaluate((s) => sessionStorage.setItem("nlr-book", JSON.stringify(s)), { v: 1, fields: { ...JFK_TRIP, passengers: "2", toddler_seats: "1", small_dogs: "1", large_bags: "2" }, stops: 0, return: false, step: "options" });
+    await p.goto(`${P.base}/book#options`, { waitUntil: "load" });
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await priced(p);
+    assert.deepEqual(await p.evaluate(() => ["bags", "kids", "pets"].map((k) => document.getElementById(`bk-xr-${k}-v`).textContent)), ["2 large bags", "1 child seat", "1 small dog"]);
+    assert.equal((await panel(p)).total, cash(TOTAL + CHILD_SEAT_CENTS + SMALL_DOG_CENTS));
+    await p.reload({ waitUntil: "load" });
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await priced(p);
+    assert.deepEqual(await p.evaluate(() => ["bags", "kids", "pets"].map((k) => [document.getElementById(`bk-xr-${k}-v`).textContent, document.getElementById(`bk-xr-${k}-b`).classList.contains("is-set")])), [["2 large bags", true], ["1 child seat", true], ["1 small dog", true]], "a restored step 1 shows every count on its row");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await check("B229 at 390 the fixed bar shows Continue while the one in the summary card is out of view and steps aside while it is in view, now that the pay block sits in the summary card", async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await p.evaluate(() => scrollTo(0, 0));
+    await p.waitForFunction(() => !document.getElementById("bk-bar").classList.contains("is-off"));
+    assert.deepEqual([await p.isVisible("#bk-bar-go"), (await p.textContent("#bk-bar-go")).trim(), await p.evaluate(() => document.getElementById("bk-side").contains(document.getElementById("bk-next")))], [true, "Continue", true]);
+    await p.evaluate(() => document.getElementById("bk-next").scrollIntoView({ block: "center" }));
+    await p.waitForFunction(() => document.getElementById("bk-bar").classList.contains("is-off"));
+    assert.equal(await p.isVisible("#bk-bar-go"), false);
+    await p.evaluate(() => scrollTo(0, 0));
+    await p.waitForFunction(() => !document.getElementById("bk-bar").classList.contains("is-off"));
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+{
+  const ctx = await context(P, { viewport: { width: 1440, height: 900 } });
+  const gold = (p) => p.evaluate(() => ["bk-next", "bk-submit", "bk-bar-go", "q-mail"].filter((i) => { const e = document.getElementById(i); return e.checkVisibility() && getComputedStyle(e).backgroundColor === getComputedStyle(document.getElementById("bk-next").checkVisibility() ? document.getElementById("bk-next") : document.getElementById("bk-submit")).backgroundColor; }));
+  await check("B230 at 1440 the Bags, Child seats and Dogs rows show their values in the first screen with no tap, one click opens a popover under its row with the steppers, its total and Done, a click outside, Tab out of it or Escape closes it, one popover opens at a time, and each step shows exactly one gold action button with the bar hidden", async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await p.evaluate(() => scrollTo(0, 0));
+    assert.deepEqual(await p.evaluate(() => ["bags", "kids", "pets"].map((k) => { const b = document.getElementById(`bk-xr-${k}-b`).getBoundingClientRect(); return [b.top > 0 && b.bottom <= innerHeight, document.getElementById(`bk-xr-${k}-v`).textContent]; })), [[true, "None"], [true, "None"], [true, "None"]]);
+    assert.deepEqual([await gold(p), await p.evaluate(() => getComputedStyle(document.getElementById("bk-bar")).display)], [["bk-next"], "none"], "one gold Continue on step 1, no bar");
+    await p.click("#bk-xr-kids-b");
+    const pop = await p.evaluate(() => { const e = document.getElementById("bk-xr-kids-d"), b = e.getBoundingClientRect(), r = document.getElementById("bk-xr-kids-b").getBoundingClientRect(); return [e.open, e.matches(":modal"), Math.round(b.top - r.bottom), Math.round(b.left - r.left), b.right <= innerWidth, b.bottom <= innerHeight, e.querySelector(".bk-xr__sum").textContent, [...e.querySelectorAll(".bk-stepper button")].every((x) => x.checkVisibility())]; });
+    assert.deepEqual(pop, [true, false, 8, 0, true, true, cash(TOTAL), true], "a popover 8 px under its row with the steppers and the total");
+    await p.mouse.click(1200, 860);
+    await p.waitForFunction(() => !document.getElementById("bk-xr-kids-d").open);
+    assert.equal(await p.getAttribute("#bk-xr-kids-b", "aria-expanded"), "false", "a click outside closes it");
+    await p.click("#bk-xr-kids-b");
+    await p.click("#bk-xr-pets-b");
+    assert.deepEqual(await p.evaluate(() => ["kids", "pets"].map((k) => document.getElementById(`bk-xr-${k}-d`).open)), [false, true], "one popover at a time");
+    const right = await p.evaluate(() => { const b = document.getElementById("bk-xr-pets-d").getBoundingClientRect(), r = document.getElementById("bk-xr-pets-b").getBoundingClientRect(); return Math.round(r.right - b.right); });
+    assert.equal(right, 0, "the Dogs popover lines up with the right edge of its row");
+    await p.keyboard.press("Escape");
+    await p.waitForFunction(() => !document.getElementById("bk-xr-pets-d").open);
+    assert.equal(await p.evaluate(() => document.activeElement.id), "bk-xr-pets-b", "Escape closes it and focus returns to the row");
+    await p.click("#bk-xr-bags-b");
+    await p.focus("#bk-next");
+    await p.waitForFunction(() => !document.getElementById("bk-xr-bags-d").open);
+    assert.equal(await p.getAttribute("#bk-xr-bags-b", "aria-expanded"), "false", "moving focus out of the popover closes it");
+    await next(p);
+    await priced(p);
+    assert.deepEqual([await gold(p), await p.evaluate(() => getComputedStyle(document.getElementById("bk-bar")).display)], [["bk-submit"], "none"], "one gold Book and pay online on step 2, no bar");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [width, height] of [[1440, 900], [390, 844]]) {
+  const ctx = await context(P, { viewport: { width, height }, forcedColors: "active" });
+  await check(`B230 forced colors at ${width}: ${width >= 1024 ? "the three rows show a button outline, the open one a thicker Highlight outline, and the open popover" : "the open bottom sheet"} has its own edge, since forced colors drop shadows`, async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    const edge = (id) => p.evaluate((i) => { const s = getComputedStyle(document.getElementById(i)); return [s.borderTopWidth, s.borderTopStyle]; }, id);
+    if (width >= 1024) assert.deepEqual(await Promise.all(["bags", "kids", "pets"].map((k) => edge(`bk-xr-${k}-b`))), Array(3).fill(["1px", "solid"]), "each closed row has an outline");
+    await p.click("#bk-xr-kids-b");
+    await p.waitForFunction(() => document.getElementById("bk-xr-kids-d").open);
+    const d = await edge("bk-xr-kids-d");
+    assert.ok(parseFloat(d[0]) > 0 && d[1] === "solid", `the open ${width >= 1024 ? "popover" : "sheet"} has an edge: ${d}`);
+    if (width >= 1024) assert.deepEqual([await edge("bk-xr-kids-b"), await edge("bk-xr-bags-b")], [["2px", "solid"], ["1px", "solid"]], "the open row is marked");
+    else assert.deepEqual(await p.evaluate(() => { const s = getComputedStyle(document.getElementById("bk-xr-kids-d")); return [s.borderBottomWidth, s.borderLeftWidth]; }), ["0px", "0px"], "the sheet has only a top edge");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [label, days, time] of [["under 24 hours", 0, null], ["3 days", 3, "12:40"]]) {
+  const ctx = await context(P, { viewport: { width: 390, height: 844 } });
+  await check(`B231 a pickup ${label} away: on step 2 Cancellation and terms ${days ? "stays closed until pressed" : "opens by itself"}, with every cancellation charge and how to change inside`, async () => {
+    const later = days ? { date: nyDate(days), time } : (() => { const d = new Date(Date.now() + 6 * 36e5); const p2 = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d).map((x) => [x.type, x.value])); return { date: `${p2.year}-${p2.month}-${p2.day}`, time: `${p2.hour}:${String(Math.floor(+p2.minute / 10) * 10).padStart(2, "0")}` }; })();
+    const p = await open(ctx, P, "/rates");
+    await p.evaluate((s) => sessionStorage.setItem("nlr-book", JSON.stringify(s)), { v: 1, fields: { ...JFK_TRIP, date: later.date, time: later.time }, stops: 0, return: false, step: "options" });
+    await p.goto(`${P.base}/book#options`, { waitUntil: "load" });
+    await priced(p);
+    await next(p);
+    await priced(p);
+    const open1 = await p.evaluate(() => document.getElementById("bk-terms").open);
+    assert.equal(open1, !days, `open: ${open1}`);
+    const text = (await p.textContent("#bk-terms")).replace(/\s+/g, " ");
+    for (const w of ["25%", "50%", "the full price", "24 hours", "To change or cancel"]) assert.ok(text.includes(w), w);
+    if (days) {
+      await p.click("#bk-terms > summary");
+      assert.equal(await p.evaluate(() => document.getElementById("bk-terms").open), true);
+    }
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+{
+  const ctx = await context(P, { viewport: { width: 390, height: 844 } });
+  await check("B232 a seat count the server turns down while paying from step 2 takes the rider back to step 1 with the Child seats sheet open on its message and focus on its first count, and the trip never pays", async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    await p.evaluate(() => { const s = document.getElementById("bk-k-toddler"); s.value = "2"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && document.getElementById("bk-xr-kids-d").open, null, { timeout: 8000 });
+    assert.deepEqual([await p.isVisible("#e-child_seats"), await p.evaluate(() => document.activeElement.getAttribute("aria-label")), new URL(p.url()).pathname], [true, "Fewer child seats", "/book"]);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [width, height] of [[320, 640], [360, 740]]) {
+  const ctx = await context(P, { viewport: { width, height } });
+  await check(`B233 at ${width} Email and WhatsApp ${width < 360 ? "stack at full width" : "sit side by side"}, each one line and 44 px tall on step 1 and step 2, and each included item reads as one sentence from the left${width < 360 ? ", the long one wrapping once" : " on one line"}`, async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    const alt = () => p.evaluate(() => { const w = document.getElementById("q-wa").getBoundingClientRect(), m = document.getElementById("q-mail").getBoundingClientRect(); return [Math.round(w.height), Math.round(m.height), w.top === m.top, Math.round(w.width) === Math.round(m.width)]; });
+    assert.deepEqual(await alt(), [44, 44, width >= 360, true], "step 1");
+    const incl = await p.evaluate(() => [...document.querySelectorAll("#bk-incl > li")].filter((l) => l.offsetHeight).map((l) => [l.offsetHeight, Math.round(l.querySelector("svg").getBoundingClientRect().left - l.getBoundingClientRect().left)]));
+    assert.deepEqual(incl, (width < 360 ? [20, 40, 20, 20, 20] : [20, 20, 20, 20, 20]).map((h) => [h, 0]), `each item starts with its icon at the left: ${JSON.stringify(incl)}`);
+    if (width < 360) {
+      const wrap = await p.evaluate(() => { const l = document.querySelectorAll("#bk-incl > li")[1], s = l.querySelector("small"); return [l.textContent, Math.round([...s.getClientRects()].at(-1).left - l.getBoundingClientRect().left)]; });
+      assert.deepEqual(wrap, ["15 minutes of free waiting at other pickups", 0], "the long item wraps back to the left edge");
+    }
+    await next(p);
+    await priced(p);
+    assert.deepEqual(await alt(), [44, 44, width >= 360, true], "step 2");
+    assert.equal(await overflow(p), 0);
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [width, height] of [[1024, 768], [1440, 900]]) {
+  const ctx = await context(P, { viewport: { width, height } });
+  await check(`B234 at ${width} the Bags, Child seats and Dogs boxes are the same height with each name on one line and nothing cut off, and Passengers and luggage stays on one line`, async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    const one = (e) => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
+    const r = await p.evaluate((f) => { const one = eval(f); return { rows: ["bags", "kids", "pets"].map((k) => { const b = document.getElementById(`bk-xr-${k}-b`); return [b.offsetHeight, one(b.querySelector(".bk-xr__t")), b.scrollWidth <= b.clientWidth]; }), head: one(document.querySelector(".bk-party__h")) }; }, one.toString());
+    assert.deepEqual(r, { rows: Array(3).fill([60, 1, true]), head: 1 }, JSON.stringify(r));
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [width, height] of [[1024, 768], [1440, 900]]) {
+  const ctx = await context(P, { viewport: { width, height }, javaScriptEnabled: false });
+  await check(`B235 at ${width} without JavaScript the pay block sits beside the details, below the name field, not at the top before the trip`, async () => {
+    const p = await open(ctx, P, "/book");
+    const r = await p.evaluate(() => ["bk-submit", "bk-name", "bk-from", "bk-side"].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().top + scrollY)));
+    assert.ok(r[0] > r[1] && r[1] > r[2], `Book and pay online after the name and the pickup: ${JSON.stringify(r)}`);
+    assert.ok(await p.evaluate(() => { const s = document.getElementById("bk-side").getBoundingClientRect(), d = document.getElementById("bk-det-h").getBoundingClientRect(); return s.left > d.right && s.bottom > d.top; }), "beside the details section");
+    await p.close();
+  });
+  await ctx.close();
+}
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context(P, { viewport: { width, height } });
+  await check(`B236 at ${width} a child seat count the server turns down on the pay press goes back to step 1 the way Change does, so the address reads #options, the Child seats ${width < 1024 ? "sheet" : "popover"} opens on its message with focus on its first count, and a reload stays on step 1`, async () => {
+    const p = await open(ctx, P, "/book");
+    await trip(p);
+    await view(p);
+    await priced(p);
+    await next(p);
+    await details(p);
+    await priced(p);
+    assert.equal(await p.evaluate(() => location.hash), "#details");
+    let pays = 0;
+    await p.route("**/api/book", (r) => (JSON.parse(r.request().postData() || "{}").action === "pay" && !pays++ ? r.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ kind: "invalid", code: "child_seats", field: "child_seats" }) }) : r.continue()));
+    await p.click(await payBtn(p));
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && document.getElementById("bk-xr-kids-d").open && location.hash === "#options", null, { timeout: 8000 });
+    await p.waitForFunction(() => document.activeElement && document.activeElement.getAttribute("aria-label") === "Fewer child seats");
+    assert.deepEqual([pays, await p.isVisible("#e-child_seats"), await p.getAttribute("#bk-xr-kids-b", "aria-expanded"), new URL(p.url()).pathname], [1, true, "true", "/book"]);
+    await p.keyboard.press("Escape");
+    await p.waitForFunction(() => !document.getElementById("bk-xr-kids-d").open);
+    assert.equal(await p.evaluate(() => location.hash), "#options", "closing the sheet keeps step 1 in the address");
+    await p.unroute("**/api/book");
+    await p.reload({ waitUntil: "load" });
+    await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await priced(p);
+    assert.deepEqual([await p.evaluate(() => [document.getElementById("book-form").dataset.step, location.hash])], [["options", "#options"]], "a reload stays on step 1");
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await ctx.close();
+}
 for (const [name, b] of ENGINES.slice(1)) await b.close();
 
 await browser.close();

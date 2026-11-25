@@ -102,7 +102,7 @@ export const POLICY = {
 };
 export const SEATS = {
   line: "Our seats are the Nuna RAVA, the Safety 1st Grow and Go and a backless booster.",
-  hint: "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.",
+  hint: "Charged once per trip. Add ages and the seat you'd like in the notes.",
   notes: "For example each child's age, weight and height, your dog's size or large luggage.",
   mail: "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.",
 };

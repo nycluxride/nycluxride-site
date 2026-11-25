@@ -174,7 +174,7 @@ for (const [engine, type] of ENGINES) {
   const browser = await type.launch();
   for (const [width, height, tile, heights] of ONE_WAY) {
     const ctx = await context(browser, { viewport: { width, height } });
-    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? (height < 1000 ? ", the closed Child seats and dogs row and every class price up to Electric Class is in the first screen" : ", every class price up to the Executive Sprinter is in the first screen under the closed Child seats and dogs row") : ""}, each class photo is the 960x1192 studio photo or, for the Executive Sedan, the 400x300 Mercedes-Benz E-Class photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
+    await check(`P1 ${engine} one way at ${width}x${height}: the photo tiles are ${tile} px wide${width < 600 ? ", 80 px tall, 4 px in from the card's left and centred in the row" : " and 4 px inside the card"}, the rows keep their heights ${heights.join(", ")}${width >= 600 ? ", every name and model line is one line" : ""}${FIRST_SCREEN.includes(width) ? `, under the passengers and luggage card ${width >= 1920 ? "every class price up to the Executive Sprinter" : "the first four class prices"} are in the first screen` : ""}, each class photo is the 960x1192 studio photo or, for the Executive Sedan, the 400x300 Mercedes-Benz E-Class photo, each Sprinter its own 400x300 photo or the Presidential's plain tile, and nothing scrolls sideways`, async () => {
       const p = await open(ctx, "/book");
       await options(p);
       const r = await rows(p);
@@ -184,7 +184,7 @@ for (const [engine, type] of ENGINES) {
       if (width < 600) assert.deepEqual(r.map((x) => [x.tile[1], x.top, x.bottom]), heights.map((h) => [80, (h - 80) / 2, (h - 80) / 2]), "80 px tiles centred in the row");
       else assert.deepEqual(r.map((x) => [x.tile[1], x.top, x.bottom]), heights.map((h) => [h - 8, 4, 4]), "tile heights and insets");
       if (width >= 600) assert.deepEqual(r.map((x) => [x.name, x.model]), Array(10).fill([1, 1]), "name and model lines");
-      if (FIRST_SCREEN.includes(width)) assert.ok(r.slice(0, height < 1000 ? 5 : 6).every((x) => x.price <= height) && r.every((x, i) => !i || x.price > r[i - 1].price), `price ends ${r.map((x) => Math.round(x.price))}`);
+      if (FIRST_SCREEN.includes(width)) assert.ok(r.slice(0, width >= 1920 ? 6 : 4).every((x) => x.price <= height) && r.every((x, i) => !i || x.price > r[i - 1].price), `price ends ${r.map((x) => Math.round(x.price))}`);
       assert.deepEqual(r.map((x) => x.src.replace(/-(300|400)\.(avif|webp)$/, "")), CARD_PHOTOS, r.map((x) => x.src).join(", "));
       assert.ok(r.every((x) => Math.abs(x.ratio - RATIO) / RATIO < 0.005), `natural ratios ${r.map((x) => x.ratio.toFixed(4))}`);
       assert.ok((await sideways(p)) <= 0, "the page scrolls sideways");

@@ -104,6 +104,7 @@ async function options(ctx, extra = {}) {
 }
 const counts = (page) => page.evaluate(() => ["large", "medium", "small"].map((k) => [document.getElementById(`bk-bags-${k}`).value, document.querySelector(`#bk-bags-${k}-l`).closest(".field").querySelector(".bk-stepper output").textContent]));
 async function bags(page, large, small, medium = 0) {
+  if (!(await page.evaluate(() => document.getElementById("bk-xr-bags-d").open))) await page.click("#bk-xr-bags-b");
   for (const [k, n] of [["large", large], ["medium", medium], ["small", small]]) {
     for (let i = 0; i < 30; i++) {
       const v = +(await page.inputValue(`#bk-bags-${k}`));
@@ -112,7 +113,10 @@ async function bags(page, large, small, medium = 0) {
     }
     assert.equal(+(await page.inputValue(`#bk-bags-${k}`)), n, `${k} suitcases stepper`);
   }
+  await page.click("#bk-xr-bags-d .bk-xr__done");
 }
+const openBags = (page) => page.click("#bk-xr-bags-b").then(() => page.waitForFunction(() => document.getElementById("bk-xr-bags-d").open));
+const doneBags = (page) => page.click("#bk-xr-bags-d .bk-xr__done");
 const SPRINTER_CARDS = ["sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
 const pick = (page, card) => page.click(`label[for="bk-c-${card}"]`);
 const noteShown = (page) => page.evaluate(() => { const n = document.getElementById("bk-bagfit"); return !n.hidden && n.offsetHeight > 0; });
@@ -124,20 +128,28 @@ async function waFor(page, part) {
   assert.ok(text.includes(part), `${part}\n${text}`);
   return text;
 }
-const layout = (page) =>
-  page.evaluate(() => {
+const layout = async (page) => {
+  const closed = await page.evaluate(() => { const b = (i) => { const r = document.getElementById(i).getBoundingClientRect(); return { t: Math.round(r.top), b: Math.round(r.bottom), l: Math.round(r.left), r: Math.round(r.right), h: Math.round(r.height) }; }; return { head: b("bk-opt-h"), hint: b("bk-pax-h"), row: b("bk-xr-bags-b"), kids: b("bk-xr-kids-b"), cards: b("bk-cards"), party: b("bk-party"), value: document.getElementById("bk-xr-bags-v").textContent }; });
+  await openBags(page);
+  await page.waitForTimeout(300);
+  const open = await page.evaluate(() => {
     const box = (e) => { const b = e.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) }; };
     const $ = (i) => box(document.getElementById(i));
-    return { head: $("bk-opt-h"), pax: $("bk-pax-f"), hint: $("bk-pax-h"), bags: $("bk-bags"), bagHint: $("bk-bags-h"), xb: $("bk-xb"), cards: $("bk-cards"), steppers: [...document.querySelectorAll("#bk-pax-f .bk-stepper, #bk-bags .bk-stepper")].map(box), fields: [...document.querySelectorAll("#bk-bags > .field")].map(box), labels: [...document.querySelectorAll("#bk-bags > .field > label")].map(box), buttons: [...document.querySelectorAll("#bk-bags .bk-stepper button")].map(box), align: getComputedStyle(document.getElementById("bk-bags-h")).textAlign, vw: innerWidth };
+    return { sheet: $("bk-xr-bags-d"), modal: document.getElementById("bk-xr-bags-d").matches(":modal"), bags: $("bk-bags"), bagHint: $("bk-bags-h"), steppers: [...document.querySelectorAll("#bk-bags .bk-stepper")].map(box), fields: [...document.querySelectorAll("#bk-bags > .field")].map(box), labels: [...document.querySelectorAll("#bk-bags > .field > label")].map(box), buttons: [...document.querySelectorAll("#bk-bags .bk-stepper button")].map(box), done: box(document.querySelector("#bk-xr-bags-d .bk-xr__done")), vw: innerWidth, vh: innerHeight, scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth };
   });
-function sideBySide(r) {
-  assert.equal(r.fields.length, 3);
-  assert.ok(r.fields.every((f) => f.t === r.fields[0].t), "the three sizes on one line");
-  assert.ok(r.labels.every((l, i) => l.b <= r.steppers[i + 1].t && Math.abs(l.l - r.steppers[i + 1].l) <= 1), `each size name sits above its stepper: ${JSON.stringify(r.labels)}`);
-  assert.ok(r.fields[0].r < r.fields[1].l && r.fields[1].r < r.fields[2].l && r.fields[2].r < Math.min(r.hint.l, r.bagHint.l), `the steppers stay clear of the hints: ${JSON.stringify(r)}`);
-  assert.ok(r.hint.t >= r.pax.b && Math.abs(r.hint.t - r.bags.t) <= 1 && r.bagHint.t >= r.hint.b && r.bagHint.b <= r.bags.b, `the hints stack beside the steppers: ${JSON.stringify(r)}`);
-  assert.ok(Math.abs(r.hint.r - r.pax.r) <= 1 && Math.abs(r.bagHint.r - r.pax.r) <= 1, JSON.stringify(r));
-  assert.ok(r.xb.h === 44 && r.xb.t >= r.bags.b && r.xb.t - r.hint.b <= 44 && r.cards.t - r.xb.b <= 24, `the cars move down by at most one stepper row, then the closed Child seats and dogs row, under the hints: ${JSON.stringify(r)}`);
+  await doneBags(page);
+  return { ...closed, ...open };
+};
+function sheetRows(r, size) {
+  const beside = r.vw >= 1024 ? r.row.t === r.kids.t && r.row.r < r.kids.l : r.row.b <= r.kids.t;
+  assert.ok(r.head.b <= r.party.t && r.hint.b <= r.row.t && beside && r.party.b <= r.cards.t, `the Bags row sits under the Passengers hint, ${r.vw >= 1024 ? "beside" : "above"} Child seats, above the cars: ${JSON.stringify(r)}`);
+  assert.equal(r.value, "None");
+  assert.ok(r.fields[0].b <= r.fields[1].t && r.fields[1].b <= r.fields[2].t, "one row per size in the sheet");
+  assert.ok(r.steppers.every((x) => Math.abs(x.r - r.steppers[0].r) <= 1), `the three steppers line up at the right edge: ${JSON.stringify(r.steppers)}`);
+  assert.ok(r.labels.every((l, i) => Math.abs((l.t + l.b) / 2 - (r.steppers[i].t + r.steppers[i].b) / 2) <= 2 && l.r <= r.steppers[i].l), `each size name sits on the row of its stepper, clear of it: ${JSON.stringify(r.labels)}`);
+  assert.ok(r.buttons.every((b) => b.w === size && b.h === size && b.l >= 0 && b.r <= r.vw), JSON.stringify(r.buttons));
+  assert.ok(r.sheet.l >= 0 && r.sheet.r <= r.vw && r.sheet.b <= r.vh && r.done.b <= r.vh && r.bagHint.b <= r.done.t, `the sheet and its Done button are inside the window: ${JSON.stringify(r.sheet)}`);
+  assert.ok(r.scroll <= 0, "no horizontal scroll");
 }
 const STATED = Object.values(ROOM).filter((r) => r.length);
 const holds = ([l, s], large, small, medium = 0) => large <= l && large + medium + small <= l + s;
@@ -166,33 +178,29 @@ const noteState = (page) => page.evaluate(() => { const n = document.getElementB
 for (const [width, height] of [[390, 844], [1440, 900]]) {
   const ctx = await context({ width, height });
   let page;
-  await check(`BG1 ${width}: step 2 shows Large suitcase, Medium suitcase and Small suitcase or hand carry next to the passengers, each a stepper at 0 with Fewer off, named by its label with the hint that bags are free, no note, no horizontal scroll, and CLS 0 on load and on the way to step 2`, async () => {
+  await check(`BG1 ${width}: step 1 shows the Bags row reading None, and its ${width < 1024 ? "sheet" : "popover"} holds Large suitcase, Medium suitcase and Small suitcase or hand carry, each a stepper at 0 with Fewer off, named by its label with the hint that bags are free, no note, no horizontal scroll, and CLS 0 on load and on the way to step 1`, async () => {
     page = await options(ctx);
     await page.waitForTimeout(800);
     assert.deepEqual(await counts(page), [["0", "0"], ["0", "0"], ["0", "0"]]);
+    assert.deepEqual([await page.isVisible("#bk-xr-bags-b"), (await page.textContent("#bk-xr-bags-b")).trim(), await page.getAttribute("#bk-xr-bags-b", "aria-expanded"), await page.isVisible("#bk-bags")], [true, "Bags, None", "false", false]);
+    const [v0, s0] = await cls(page);
+    assert.equal(v0, 0, s0.join(" | "));
+    await openBags(page);
+    assert.equal(await page.getAttribute("#bk-xr-bags-b", "aria-expanded"), "true");
     const s = await page.evaluate(() => [...document.querySelectorAll("#bk-bags .bk-stepper")].map((x) => [document.getElementById(x.getAttribute("aria-labelledby")).textContent, x.getAttribute("aria-describedby"), x.getAttribute("role"), x.firstChild.getAttribute("aria-label"), x.firstChild.ariaDisabled, x.lastChild.getAttribute("aria-label"), x.lastChild.ariaDisabled]));
     assert.deepEqual(s, [["Large suitcase", "bk-bags-h", "group", "Fewer large suitcases", "true", "More large suitcases", "false"], ["Medium suitcase", "bk-bags-h", "group", "Fewer medium suitcases", "true", "More medium suitcases", "false"], ["Small suitcase or hand carry", "bk-bags-h", "group", "Fewer small suitcases", "true", "More small suitcases", "false"]]);
     assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-bags-large").offsetParent, document.getElementById("bk-bags-medium").offsetParent, document.getElementById("bk-bags-small").offsetParent, document.getElementById("bk-bags-h").textContent, document.getElementById("bk-bags-h").offsetHeight > 0]), [null, null, null, "Bags are free.", true]);
     assert.equal(await noteShown(page), false);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
-    const [value, shifts] = await cls(page);
-    assert.equal(value, 0, shifts.join(" | "));
+    await doneBags(page);
+    assert.deepEqual([await page.getAttribute("#bk-xr-bags-b", "aria-expanded"), await page.evaluate(() => document.activeElement.id)], ["false", "bk-xr-bags-b"], "Done closes it and focus returns to the row");
     assert.deepEqual(page.errors, []);
   });
-  await check(`BG2 ${width}: ${width < 1024 ? "the bag rows sit between the Passengers hint and the cars, each full width with its stepper at the right edge like the passengers" : "the three bag steppers sit on one line under the heading, each under its size name, beside the Passengers hint, with the bags hint under it at the right edge of the passengers, so the cars move down by at most one stepper row below the hints and then the closed Child seats and dogs row"}, and every stepper button is 44 px and inside the viewport`, async () => {
+  await check(`BG2 ${width}: the Bags row sits between the Passengers hint and the Child seats row, above the cars, and ${width < 1024 ? "opens a bottom sheet across the window" : "opens a popover under the row, beside the cars, with no backdrop"} where each size name sits on the row of its stepper, the steppers line up at the right edge and every stepper button is ${width < 1024 ? 44 : 40} px and inside the viewport`, async () => {
     const r = await layout(page);
-    assert.ok(r.bags.b <= r.cards.t && r.head.b <= r.bags.t, JSON.stringify(r));
-    assert.ok(r.buttons.every((b) => b.w === 44 && b.h === 44 && b.l >= 0 && b.r <= r.vw), JSON.stringify(r.buttons));
-    const [pax, large, medium, small] = r.steppers;
-    if (width < 1024) {
-      assert.ok(r.hint.b <= r.bags.t, "under the Passengers hint");
-      assert.ok(r.fields[0].b <= r.fields[1].t && r.fields[1].b <= r.fields[2].t, "one row per size");
-      assert.ok([large, medium, small].every((x) => Math.abs(x.r - pax.r) <= 1), JSON.stringify(r.steppers));
-      assert.ok(r.labels.every((l, i) => Math.abs((l.t + l.b) / 2 - (r.steppers[i + 1].t + r.steppers[i + 1].b) / 2) <= 2), `each size name is on the row of its stepper: ${JSON.stringify(r.labels)}`);
-    } else {
-      sideBySide(r);
-      assert.equal(r.align, "end");
-    }
+    sheetRows(r, width < 1024 ? 44 : 40);
+    if (width < 1024) assert.ok(r.modal && r.sheet.l === 0 && r.sheet.r === r.vw && r.sheet.b === r.vh, `a modal sheet at the foot of the window: ${JSON.stringify(r.sheet)}`);
+    else assert.ok(!r.modal && Math.abs(r.sheet.l - r.row.l) <= 1 && r.sheet.t >= r.row.b && r.sheet.t - r.row.b <= 12, `a popover right under the Bags row: ${JSON.stringify([r.sheet, r.row])}`);
   });
   await check(`BG3 ${width}: the over-capacity note per class, at the stated luggage no note, one large bag more or one bag more in all shows it, small and medium bags may take large bag room, all three sizes count toward the total, the Executive Sedan and the Electric Class, which state no luggage, are checked against the smallest stated luggage, each Sprinter card holds the Luxury Sprinter luggage, the note says so when no car holds the bags, it follows a change of car, it is spoken once in the status line and its words leave the status line when it hides`, async () => {
     let asked = 0;
@@ -240,6 +248,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$180.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
     assert.equal(await page.isDisabled("#bk-next"), false);
     await bags(page, MAX_BAGS, 0);
+    await openBags(page);
     assert.equal(await page.getAttribute('[aria-label="More large suitcases"]', "aria-disabled"), "true");
     const ink = () => page.$$eval("#bk-bags .bk-stepper output", (o) => o.map((x) => getComputedStyle(x).color));
     const calm = await ink();
@@ -249,7 +258,10 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await page.evaluate(() => [document.getElementById("e-bags").classList.contains("is-on"), document.getElementById("e-bags").textContent, document.getElementById("bk-bags").getAttribute("aria-invalid")]), [true, ERRORS.bags.text, "true"]);
     await page.click('[aria-label="Fewer large suitcases"]');
     assert.deepEqual(await page.evaluate(() => [document.getElementById("e-bags").classList.contains("is-on"), document.getElementById("bk-bags").getAttribute("aria-invalid")]), [false, null]);
+    await doneBags(page);
+    assert.equal((await page.textContent("#bk-xr-bags-v")), `${MAX_BAGS - 1} large bags`, "the row reads the counts");
     await bags(page, 4, 2);
+    assert.equal((await page.textContent("#bk-xr-bags-v")), "4 large, 2 small");
   });
   await check(`BG13 ${width}: with 3 large bags every clicked car card stays under the pointer, the note shows right after a newly chosen card that is too small, a larger car hides it but keeps its space, and the next bag change lets that space go`, async () => {
     await pick(page, "suv");
@@ -272,7 +284,9 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal((await noteState(page)).shown, true);
     await pickStill(page, "sedan");
     await pickStill(page, "suv");
+    await openBags(page);
     await page.click('[aria-label="Fewer large suitcases"]');
+    await doneBags(page);
     await noteIs(page, { shown: false, keep: false, h: 0 });
     assert.deepEqual(page.errors, []);
   });
@@ -302,6 +316,23 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(await page.textContent("#bk-bagfit"), NOTE);
     assert.deepEqual(page.errors, []);
   });
+  await check(`BG17 ${width}: after Done with bags too many for the car and a change of car, the note shows under the cars, and a reopened Bags ${width < 1024 ? "sheet" : "popover"} takes it back inside, in view, while a bag is added, then Done puts it after the chosen car`, async () => {
+    await bags(page, ROOM.suv[0] + 1, 0);
+    await pickStill(page, "first");
+    assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-xr-bags-d").contains(document.getElementById("bk-bagfit")), document.getElementById("bk-bagfit").offsetHeight > 0]), [false, true], "with the sheet closed the note shows under the cars");
+    const inSheet = () => page.evaluate(() => { const n = document.getElementById("bk-bagfit"), d = document.getElementById("bk-xr-bags-d"), r = n.getBoundingClientRect(), b = d.getBoundingClientRect(); return [d.open, d.contains(n), !n.hidden && n.offsetHeight > 0, r.top >= b.top && r.bottom <= b.bottom && r.bottom <= innerHeight, n.parentNode.firstElementChild === n && n.parentNode.className]; });
+    await openBags(page);
+    assert.deepEqual(await inSheet(), [true, true, true, true, "bk-xr__f bk-js-only"], "the note is back in the reopened sheet, in view above its total and Done");
+    await page.click('[aria-label="More large suitcases"]');
+    await page.waitForFunction((n) => document.getElementById("bk-bags-large").value === String(n), ROOM.suv[0] + 2);
+    assert.deepEqual(await inSheet(), [true, true, true, true, "bk-xr__f bk-js-only"], "a bag added in the sheet keeps the note in view inside it");
+    assert.equal(await page.textContent("#bk-bagfit"), NOTE);
+    await doneBags(page);
+    await noteIs(page, { shown: true, after: "bk-c-first" });
+    await pickStill(page, "suv");
+    await bags(page, 4, 2);
+    assert.deepEqual(page.errors, []);
+  });
   await check(`BG5 ${width}: the WhatsApp message carries one line per bag size right after Passengers with no server call, and the server's message after a passenger change says the same`, async () => {
     const before = ctx.api.length;
     await bags(page, 4, 2, 1);
@@ -319,7 +350,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await bags(page, 4, 2, 3);
     await waFor(page, "\nPassengers: 2\nLarge suitcase: 4\nMedium suitcase: 3\nSmall suitcase or hand carry: 2\n");
   });
-  await check(`BG6 ${width}: Check your trip has a Bags row after Passengers with its Change button, which goes back to step 2 with focus on the large suitcases, and no Bags row without bags`, async () => {
+  await check(`BG6 ${width}: Your trip has a Bags row after Passengers with its Change button, which goes back to step 1 and opens the bags ${width < 1024 ? "sheet" : "popover"} with focus on the large suitcases, and no Bags row without bags`, async () => {
     await bags(page, 4, 2, 1);
     await page.click("#bk-next");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
@@ -329,6 +360,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await page.click('#bk-check-rows button[data-c="bags"]');
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
     await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute("aria-label") === "Fewer large suitcases");
+    assert.deepEqual([await page.evaluate(() => document.getElementById("bk-xr-bags-d").open), await page.getAttribute("#bk-xr-bags-b", "aria-expanded")], [true, "true"]);
     await bags(page, 0, 0);
     await page.click("#bk-next");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
@@ -366,18 +398,13 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
 
 for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
   const ctx = await context({ width, height });
-  await check(`BG12 ${width} by ${height}: ${width < 1280 ? "on a narrow desktop the bag rows stack under the passengers hint, steppers at the right edge of the passengers, clear of the cars" : "the bag steppers sit beside the passengers hints, the closed Child seats and dogs row follows, every class price up to Electric Class stays inside the first screen and the Sprinter prices follow below"}, with CLS 0 and no horizontal scroll`, async () => {
+  await check(`BG12 ${width} by ${height}: the Bags row sits in the passengers and luggage card above the cars and its popover keeps each size name on its stepper row with the steppers lined up, ${width >= 1280 ? "the first four class prices stay inside the first screen and " : ""}the other prices follow below, with CLS 0 and no horizontal scroll`, async () => {
     const page = await options(ctx);
     await page.evaluate(() => scrollTo(0, 0));
     const r = await layout(page);
-    assert.ok(r.bags.b <= r.cards.t && r.head.b <= r.bags.t, JSON.stringify(r));
-    if (width < 1280) {
-      assert.ok(r.hint.b <= r.bags.t && r.fields[0].b <= r.fields[1].t && r.fields[1].b <= r.fields[2].t && [1, 2, 3].every((i) => Math.abs(r.steppers[i].r - r.steppers[0].r) <= 1), JSON.stringify(r));
-    } else {
-      sideBySide(r);
-      const prices = await page.$$eval(".bk-card__price", (o) => o.map((x) => Math.round(x.getBoundingClientRect().bottom)));
-      assert.ok(prices.length === 10 && prices.slice(0, 5).every((b) => b <= height) && prices.every((b, i) => !i || b > prices[i - 1]), JSON.stringify(prices));
-    }
+    sheetRows(r, 40);
+    const prices = await page.$$eval(".bk-card__price", (o) => o.map((x) => Math.round(x.getBoundingClientRect().bottom)));
+    assert.ok(prices.length === 10 && (width < 1280 || prices.slice(0, 4).every((b) => b <= height)) && prices.every((b, i) => !i || b > prices[i - 1]), JSON.stringify(prices));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 0, true);
     const [value, shifts] = await cls(page);
     assert.equal(value, 0, shifts.join(" | "));
@@ -388,15 +415,10 @@ for (const [width, height] of [[1024, 768], [1280, 800], [1366, 768]]) {
 
 for (const [width, height] of [[320, 640], [360, 740]]) {
   const ctx = await context({ width, height });
-  await check(`BG16 ${width} by ${height}: on a small phone each size name sits on the row of its stepper, wrapping onto two lines if it must, and the three bag steppers line up at the right edge of the Passengers row, with no horizontal scroll`, async () => {
+  await check(`BG16 ${width} by ${height}: on a small phone the bags sheet keeps each size name on the row of its stepper, wrapping onto two lines if it must, the three bag steppers line up at the right edge with 44 px buttons and Done stays in the window, with no horizontal scroll`, async () => {
     const page = await options(ctx);
     const r = await layout(page);
-    const [, large, medium, small] = r.steppers;
-    assert.ok(r.bags.b <= r.cards.t && r.hint.b <= r.bags.t && r.fields[0].b <= r.fields[1].t && r.fields[1].b <= r.fields[2].t, JSON.stringify(r));
-    assert.ok([large, medium, small].every((x) => Math.abs(x.r - r.pax.r) <= 1), JSON.stringify(r.steppers));
-    assert.ok(r.labels.every((l, i) => Math.abs((l.t + l.b) / 2 - (r.steppers[i + 1].t + r.steppers[i + 1].b) / 2) <= 2), `each size name is on the row of its stepper: ${JSON.stringify(r.labels)}`);
-    assert.ok(r.labels.every((l, i) => l.r <= r.steppers[i + 1].l), `each size name stays clear of its stepper: ${JSON.stringify(r.labels)}`);
-    assert.ok(r.buttons.every((b) => b.w === 44 && b.h === 44 && b.l >= 0 && b.r <= r.vw), JSON.stringify(r.buttons));
+    sheetRows(r, 44);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
     assert.deepEqual(page.errors, []);
   });
@@ -405,14 +427,32 @@ for (const [width, height] of [[320, 640], [360, 740]]) {
 
 for (const [width, height] of [[600, 900], [768, 1024], [1023, 800]]) {
   const ctx = await context({ width, height });
-  await check(`BG15 ${width} by ${height}: the bag rows are as wide as the Passengers row, so the three bag steppers line up with the passengers stepper, each size name on its stepper row, clear of the cars, with no horizontal scroll`, async () => {
+  await check(`BG15 ${width} by ${height}: on a tablet the bags sheet is centred and at most 560 px wide, the three bag steppers line up at the right edge, each size name on one stepper row, clear of the cars, with no horizontal scroll`, async () => {
     const page = await options(ctx);
     const r = await layout(page);
-    assert.ok(r.bags.b <= r.cards.t && r.hint.b <= r.bags.t && r.fields[0].b <= r.fields[1].t && r.fields[1].b <= r.fields[2].t, JSON.stringify(r));
-    assert.ok([1, 2, 3].every((i) => Math.abs(r.steppers[i].r - r.steppers[0].r) <= 1), JSON.stringify(r.steppers));
-    assert.ok(r.fields.every((f) => f.h <= 48), `each size name stays on its stepper row: ${JSON.stringify(r.fields)}`);
+    sheetRows(r, 44);
+    assert.ok(r.modal && r.fields.every((f) => f.h <= 52), `each size name stays on its stepper row: ${JSON.stringify(r.fields)}`);
+    assert.ok(r.sheet.w === Math.min(560, width) && Math.abs(r.sheet.l - (width - r.sheet.w) / 2) <= 1, `a centred sheet up to 560 px wide: ${JSON.stringify(r.sheet)}`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
     assert.deepEqual(page.errors, []);
+  });
+  await ctx.close();
+}
+
+for (const [width, height] of [[844, 390], [667, 375]]) {
+  const ctx = await context({ width, height });
+  await check(`BG18 ${width} by ${height}: on a phone turned sideways the bags sheet with the over-capacity note keeps the note, the car, its total and Done inside the window, the note just above the total`, async () => {
+    const page = await options(ctx);
+    await openBags(page);
+    for (let i = 0; i <= ROOM.suv[0]; i++) await page.click('[aria-label="More large suitcases"]');
+    await page.waitForFunction(() => !document.getElementById("bk-bagfit").hidden);
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(() => { const d = document.getElementById("bk-xr-bags-d"), b = (e) => { const q = e.getBoundingClientRect(); return [Math.round(q.top), Math.round(q.bottom)]; }; return { vh: innerHeight, sheet: b(d), note: b(document.getElementById("bk-bagfit")), tot: b(d.querySelector(".bk-xr__tot")), done: b(d.querySelector(".bk-xr__done")) }; });
+    assert.ok(r.note[0] >= r.sheet[0] && r.note[1] <= r.tot[0] && r.tot[1] <= r.vh && r.done[1] <= r.vh, JSON.stringify(r));
+    assert.equal(await page.textContent("#bk-bagfit"), NOTE);
+    await doneBags(page);
+    assert.deepEqual(page.errors, []);
+    await page.close();
   });
   await ctx.close();
 }

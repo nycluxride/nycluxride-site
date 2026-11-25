@@ -516,8 +516,8 @@ for (const width of [390, 1440]) {
   });
 }
 
-await check("S18 at 1440 the Luxury Sprinter pill names the Sprinter its price belongs to: the Executive Sprinter at first, then the White Luxury Limo Sprinter at its own total after the rider picks it and goes back to the Business SUV, and the pill picks that Sprinter", async () => {
-  const p = await open(ONE_URL, { width: 1440, height: 900 });
+await check("S18 at 1440 by 800, where the page scrolls the cards above the header, the Luxury Sprinter pill names the Sprinter its price belongs to: the Executive Sprinter at first, then the White Luxury Limo Sprinter at its own total after the rider picks it and goes back to the Business SUV, and the pill picks that Sprinter", async () => {
+  const p = await open(ONE_URL, { width: 1440, height: 800 });
   await view(p);
   await totalIs(p, AIRPORT_TOTALS.suv.jfk);
   const pill = () => p.$eval(".bk-pill[data-c=sprinter]", (b) => [b.firstElementChild.textContent, b.lastElementChild.textContent]);

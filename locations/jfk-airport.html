@@ -11,8 +11,8 @@
 <meta name="theme-color" content="#FBF8F2">
 <link rel="preload" href="/assets/fonts/geist-latin.UHM4kO1b.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/assets/fonts/castoro-latin.Ph7vz0VB.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/assets/fonts/archivo-wordmark.QzNMtliG.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/lux.Y8PLmT1I.css">
-<link rel="stylesheet" href="/assets/book.Uo6epskA.css">
-<script defer src="/assets/lux.jW6K1ZaT.js"></script><script defer src="/assets/pay.Xr7arlGv.js"></script><script defer src="/assets/gtag.js"></script><script defer src="/assets/tracking.js"></script>
+<link rel="stylesheet" href="/assets/book.adP6II0u.css">
+<script defer src="/assets/lux.bjqKlyp1.js"></script><script defer src="/assets/pay.xMOlnN3L.js"></script><script defer src="/assets/gtag.js"></script><script defer src="/assets/tracking.js"></script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NYC LUX RIDE">
 <meta property="og:title" content="JFK Chauffeur and Car Service, Flat Rate | NYC LUX RIDE">
@@ -193,10 +193,14 @@
 <div class="bk-sum" id="bk-sum" data-show="side"></div>
 <button class="lnk-btn bk-js-only" id="bk-edit" type="button" data-show="side">Edit trip</button>
 <section class="bk-opts" id="bk-opts" data-show="options" aria-labelledby="bk-opt-h">
-<h2 id="bk-opt-h" tabindex="-1"><span class="bk-stepno">Step 2 of 4</span> Choose your vehicle</h2>
+<h2 id="bk-opt-h" tabindex="-1"><span class="bk-stepno">Step 1 of 2</span> Choose your vehicle</h2>
+<div class="bk-party" id="bk-party">
+<h3 class="bk-party__h">Passengers and luggage</h3>
 <div class="field" id="bk-pax-f"><label for="bk-pax">Passengers</label><select id="bk-pax" name="passengers" aria-describedby="bk-pax-h"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select><p class="bk-e field__hint" id="e-passengers">Choose the number of passengers.</p></div>
 <p class="field__hint" id="bk-pax-h">Count children and infants as passengers.</p>
-<fieldset class="bk-kids bk-bags" id="bk-bags" name="bags"><legend class="sr-only">Bags</legend>
+<div class="bk-xr" id="bk-xr-bags"><button class="bk-xr__row bk-js-only" id="bk-xr-bags-b" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="bk-xr-bags-d"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-case"></use></svg><span class="bk-xr__t">Bags</span><span class="sr-only">, </span><span class="bk-xr__v" id="bk-xr-bags-v">None</span><svg class="icon bk-xr__c" aria-hidden="true" focusable="false"><use href="#i-chevron"></use></svg></button>
+<dialog class="bk-xr__d" id="bk-xr-bags-d" aria-labelledby="bk-xr-bags-h">
+<fieldset class="bk-kids bk-bags" id="bk-bags" name="bags"><legend id="bk-xr-bags-h">Bags</legend>
 <div class="field"><label for="bk-bags-large">Large suitcase</label><select id="bk-bags-large" name="large_bags" aria-describedby="bk-bags-h"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
 <div class="field"><label for="bk-bags-medium">Medium suitcase</label><select id="bk-bags-medium" name="medium_bags" aria-describedby="bk-bags-h"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
 <div class="field"><label for="bk-bags-small">Small suitcase or hand carry</label><select id="bk-bags-small" name="small_bags" aria-describedby="bk-bags-h"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
@@ -204,24 +208,32 @@
 <p class="bk-e field__hint" id="e-bags">Choose up to 14 suitcases of each size. For more bags, tell us in the notes.</p>
 <p class="bk-mrow__x bk-js-only" id="bk-bagfit" hidden>Your bags may not fit in this car. Choose a larger car or tell us in the notes.</p>
 </fieldset>
-<button class="bk-xrow bk-js-only" id="bk-xb" type="button" aria-expanded="false" aria-controls="bk-xtra"><span>Child seats and dogs</span><span class="bk-xrow__v" id="bk-xb-v">None</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chevron"></use></svg></button>
-<div class="bk-xtra" id="bk-xtra">
-<fieldset class="bk-kids" id="bk-kids" name="child_seats"><legend>Child seats <span class="bk-scope" id="bk-kids-p"></span></legend>
+<div class="bk-xr__f bk-js-only"><p class="bk-xr__tot" aria-live="polite"><span class="bk-xr__car"></span><b class="bk-xr__sum"></b></p><button class="btn bk-xr__done" type="button">Done</button></div>
+</dialog></div>
+<div class="bk-xr" id="bk-xr-kids"><button class="bk-xr__row bk-js-only" id="bk-xr-kids-b" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="bk-xr-kids-d"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-seat-toddler"></use></svg><span class="bk-xr__t">Child seats</span><span class="sr-only">, </span><span class="bk-xr__v" id="bk-xr-kids-v">None</span><svg class="icon bk-xr__c" aria-hidden="true" focusable="false"><use href="#i-chevron"></use></svg></button>
+<dialog class="bk-xr__d" id="bk-xr-kids-d" aria-labelledby="bk-xr-kids-h">
+<fieldset class="bk-kids" id="bk-kids" name="child_seats"><legend id="bk-xr-kids-h">Child seats <span class="bk-scope" id="bk-kids-p"></span></legend>
 <div class="field"><label for="bk-k-toddler">Child seat<span class="sr-only">,</span> <span class="bk-sub">Forward or rear-facing</span></label><select id="bk-k-toddler" name="toddler_seats" aria-describedby="bk-kids-h bk-kids-l"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
 <div class="field"><label for="bk-k-infant">Infant seat<span class="sr-only">,</span> <span class="bk-sub">Rear-facing</span></label><select id="bk-k-infant" name="infant_seats" aria-describedby="bk-kids-h bk-kids-l"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
 <div class="field"><label for="bk-k-booster">Booster seat</label><select id="bk-k-booster" name="booster_seats" aria-describedby="bk-kids-h bk-kids-l"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div>
-<p class="field__hint" id="bk-kids-h">Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.</p>
-<p class="field__hint" id="bk-kids-l">An Executive Sedan or Electric Class car takes 1 child seat. A Business SUV or Business Premium SUV takes up to 3 child seats, or 2 with only 1 adult, and needs at least 1 adult.</p>
+<p class="field__hint" id="bk-kids-h">Charged once per trip. Add ages and the seat you'd like in the notes.</p>
+<p class="field__hint" id="bk-kids-l">An Executive Sedan or Electric Class takes 1 child seat, an SUV up to 3.</p>
 <p class="bk-nj" id="bk-kids-n"><a class="lnk" href="/rates#add-ons" target="_blank" rel="noopener">See the child seat price<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span></a></p>
 <p class="bk-e field__hint" id="e-child_seats">Choose at most one child seat per passenger. Children count as passengers.</p>
 </fieldset>
-<fieldset class="bk-kids bk-pets" id="bk-pets" name="dogs"><legend>Pets <span class="bk-scope" id="bk-pets-p"></span></legend>
+<div class="bk-xr__f bk-js-only"><p class="bk-xr__tot" aria-live="polite"><span class="bk-xr__car"></span><b class="bk-xr__sum"></b></p><button class="btn bk-xr__done" type="button">Done</button></div>
+</dialog></div>
+<div class="bk-xr" id="bk-xr-pets"><button class="bk-xr__row bk-js-only" id="bk-xr-pets-b" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="bk-xr-pets-d"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-paw"></use></svg><span class="bk-xr__t">Dogs</span><span class="sr-only">, </span><span class="bk-xr__v" id="bk-xr-pets-v">None</span><svg class="icon bk-xr__c" aria-hidden="true" focusable="false"><use href="#i-chevron"></use></svg></button>
+<dialog class="bk-xr__d" id="bk-xr-pets-d" aria-labelledby="bk-xr-pets-h">
+<fieldset class="bk-kids bk-pets" id="bk-pets" name="dogs"><legend id="bk-xr-pets-h">Dogs <span class="bk-scope" id="bk-pets-p"></span></legend>
 <div class="field"><label for="bk-d-small">Small dog</label><select id="bk-d-small" name="small_dogs" aria-describedby="bk-pets-h"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
 <div class="field"><label for="bk-d-large">Large dog</label><select id="bk-d-large" name="large_dogs" aria-describedby="bk-pets-h"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-<p class="field__hint" id="bk-pets-h">Each dog is charged once, even on a round trip. Service animals ride free. Tell us about your dog in the notes.</p>
+<p class="field__hint" id="bk-pets-h">Charged once per trip. Service animals ride free.</p>
 <p class="bk-nj" id="bk-pets-n"><a class="lnk" href="/rates#add-ons" target="_blank" rel="noopener">See the pet price<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span></a></p>
 <p class="bk-e field__hint" id="e-dogs">Choose up to 3 small dogs and up to 3 large dogs.</p>
 </fieldset>
+<div class="bk-xr__f bk-js-only"><p class="bk-xr__tot" aria-live="polite"><span class="bk-xr__car"></span><b class="bk-xr__sum"></b></p><button class="btn bk-xr__done" type="button">Done</button></div>
+</dialog></div>
 </div>
 <fieldset class="bk-cards" id="bk-cards"><legend>Vehicle class</legend>
 <label class="bk-card" for="bk-c-suv" data-seats="6" data-kids="3" data-adults="1" data-kids1="2" data-large="3" data-small="3"><input type="radio" id="bk-c-suv" name="class" value="suv" checked aria-labelledby="bk-n-suv bk-p-suv" aria-describedby="bk-m-suv bk-s-suv bk-b-suv"><picture><source type="image/avif" srcset="/fleet/chevrolet-suburban-card-300.avif 300w, /fleet/chevrolet-suburban-card-400.avif 400w" sizes="(min-width: 600px) 128px, 96px"><source type="image/webp" srcset="/fleet/chevrolet-suburban-card-300.webp 300w, /fleet/chevrolet-suburban-card-400.webp 400w" sizes="(min-width: 600px) 128px, 96px"><img src="/fleet/chevrolet-suburban-card-300.webp" width="960" height="1192" alt="Black Chevrolet Suburban in a white studio" loading="lazy" decoding="async"></picture><span class="bk-card__name" id="bk-n-suv">Business SUV</span><span class="bk-card__model" id="bk-m-suv">Chevrolet Suburban or similar</span><span class="bk-card__cap" id="bk-s-suv"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span aria-hidden="true">6</span><span class="sr-only">Up to 6 passengers</span></span><span class="bk-card__bags" id="bk-b-suv"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-case"></use></svg><span aria-hidden="true"><span class="nowrap">3 large,</span> <span class="nowrap">3 small</span></span><span class="sr-only">3 large and 3 small bags</span></span><span class="bk-card__price" id="bk-p-suv"></span><svg class="icon bk-card__check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg></label>
@@ -245,7 +257,8 @@
 </section>
 <section class="bk-det" id="bk-det" data-show="details" aria-labelledby="bk-det-h">
 <button class="bk-link bk-js-only" id="bk-back" type="button"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Back to vehicles</button>
-<h2 id="bk-det-h" tabindex="-1"><span class="bk-stepno">Step 3 of 4</span> Your details</h2>
+<h2 id="bk-det-h" tabindex="-1"><span class="bk-stepno">Step 2 of 2</span> Details and payment</h2>
+<section class="bk-trip bk-js-only" id="bk-check" data-show="details" aria-labelledby="bk-check-h"><h3 id="bk-check-h">Your trip</h3><button class="lnk-btn" id="bk-check-edit" type="button" data-c="trip">Edit trip</button><ol class="bk-trip__route" id="bk-check-route"></ol><dl class="bk-trip__rows" id="bk-check-rows"></dl></section>
 <div class="bk-errs" id="bk-errs" hidden></div>
 <div class="field bk-who" id="bk-who"><input type="checkbox" id="bk-r-other" name="rider" value="other"><label for="bk-r-other">Someone else is riding</label></div>
 <p class="bk-e field__hint" id="e-rider">Choose who is riding.</p>
@@ -270,7 +283,6 @@
 <p class="bk-mrow__x" id="bk-meet-t57" hidden>For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.</p>
 </fieldset>
 <div class="field" id="bk-sign-f" data-show="meet"><p class="bk-nj" id="bk-meet-n"><a class="lnk" href="/rates#add-ons" target="_blank" rel="noopener">See the meet and greet price<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span></a></p><label for="bk-sign">Name for the sign <span class="bk-nojs">(meet and greet)</span></label><input id="bk-sign" name="sign" placeholder="" type="text" maxlength="45" autocapitalize="words" enterkeyhint="next" aria-describedby="bk-sign-h"><p class="field__hint" id="bk-sign-h">Your chauffeur holds a sign with this name inside the terminal.</p><div class="bk-signcard bk-js-only" id="bk-signcard" aria-hidden="true"><span id="bk-signname"></span></div><p class="field__hint bk-nj" id="bk-sign-n">Add a name here or in Your full name.</p></div>
-<section class="bk-trip bk-js-only" id="bk-check" data-show="details" aria-labelledby="bk-check-h"><h3 id="bk-check-h">Check your trip</h3><button class="lnk-btn" id="bk-check-edit" type="button" data-c="trip">Edit trip</button><ol class="bk-trip__route" id="bk-check-route"></ol><dl class="bk-trip__rows" id="bk-check-rows"></dl></section>
 <p class="bk-tot bk-js-only" id="bk-tot"><span id="bk-tot-l">Total</span> <b id="bk-tot-v"></b></p>
 <section class="bk-quote" id="quote" data-nosnippet aria-label="Booking request">
 <div class="bk-q" id="q-unplaced"><h3>Get a price for this trip</h3><p>Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.</p><button class="bk-link bk-js-only" id="q-edit" type="button">Edit trip</button></div><div class="bk-q" id="q-county"><h3>Get a price for this trip</h3><p>We'll send you a price for trips from this address.</p></div>
@@ -304,25 +316,8 @@
 <button class="btn btn--sm btn--ghost bk-js-only" id="q-fix" type="button" hidden></button>
 <div class="field bk-js-only" id="bk-qnotes-f" data-show="options"><label for="bk-qnotes">Notes for your chauffeur (optional)</label><textarea id="bk-qnotes" placeholder="" maxlength="500" rows="3" enterkeyhint="done" aria-describedby="bk-qnotes-h"></textarea><p class="field__hint" id="bk-qnotes-h">For example each child's age, weight and height, your dog's size or large luggage.</p></div>
 </section>
-<div class="bk-go" id="bk-go">
-<button class="btn bk-js-only" id="bk-next" type="button" data-show="options" aria-describedby="bk-nopay">Book and pay online</button>
-<button class="btn" id="bk-submit" type="submit" name="action" value="pay" data-show="details" aria-describedby="bk-consent"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg>Book and pay online</button>
-<a class="btn btn--ghost" id="q-mail" href="mailto:info@nycluxride.com"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg>Email to reserve</a>
-<a class="btn btn--ghost" id="q-wa" href="https://wa.me/16467750556" target="_blank" rel="noopener"><svg class="icon icon--fill" aria-hidden="true" focusable="false"><use href="#i-whatsapp"></use></svg>WhatsApp to reserve</a>
-<p class="bk-nopay" id="bk-nopay" data-show="options">Next you add your details. Then you pay on a Stripe payment page.</p>
-<p class="bk-consent" id="bk-consent" data-show="details">On the Stripe payment page you accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span></a> and the <a href="/rates#policies" target="_blank" rel="noopener">cancellation, no-show and waiting <span class="nowrap">terms<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a>.</p>
-<p class="bk-under" id="bk-under" data-show="details"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"></use></svg>Stripe handles your card. We never see the full card number.</p>
-<div class="notice bk-js-only" id="q-sent" role="status" hidden></div>
-<p class="bk-e field__hint" id="e-form"><span>We couldn't read that request. Email the trip to <a href="mailto:info@nycluxride.com">info@nycluxride.com</a> or send it on <a href="https://wa.me/16467750556" target="_blank" rel="noopener">WhatsApp</a>.</span></p>
-</div>
 <ol class="next" id="q-body" role="list"><li><b>Send us the trip</b><span><span class="bk-js-only">By email or WhatsApp, with everything you entered.</span><span class="bk-nojs">By email or WhatsApp. Put the pickup, drop-off, date, time and any child seats or pets in the message.</span></span></li><li><b>We reply with the fare and a payment link</b><span>We answer 24 hours a day, every day.</span></li><li><b>Pay when you're ready</b><span>Nothing is booked until you pay.</span></li></ol>
 </div>
-<section class="bk-more" id="bk-more" data-show="options" aria-labelledby="bk-incl-h">
-<div class="bk-arrive" id="bk-arrive" hidden></div>
-<h3 id="bk-incl-h">What is included</h3>
-<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plane-arrive"></use></svg><span>Free waiting</span> <small>after you land</small></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-clock"></use></svg><span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"></use></svg><span>Live flight tracking</span></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wifi"></use></svg><span>Free Wi-Fi</span> <small>in every class</small></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg><span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>
-</section>
-<ul class="bk-fine" id="bk-next3" data-show="details" role="list"><li>Stripe emails your receipt with your reference.</li><li>We confirm your car and chauffeur in writing before your ride.</li><li>Free cancellation up to 24 hours before pickup. Under 24 hours, the charge is 25% of the price. Under 12 hours, it's 50%. Under 2 hours, it's the full price. To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.</li></ul>
 <aside class="bk-side" id="bk-side" data-show="side" aria-label="Your booking">
 <figure class="bk-map" id="bk-map" hidden></figure>
 <div class="bk-pay">
@@ -339,11 +334,27 @@
 <p class="bk-mrow__x" id="price-busy" hidden>Due to high demand, if no Sprinter is free, we send two SUVs.</p>
 </section>
 </div>
-<p class="bk-policy" id="bk-policy" data-show="side">Free cancellation up to 24 hours before pickup. <a class="lnk" href="/rates#policies" target="_blank" rel="noopener">Cancellation, no-show and waiting <span class="nowrap">terms<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>
-<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Book and pay online</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>
+<div class="bk-go" id="bk-go">
+<button class="btn bk-js-only" id="bk-next" type="button" data-show="options" aria-describedby="bk-nopay">Continue</button>
+<button class="btn" id="bk-submit" type="submit" name="action" value="pay" data-show="details" aria-describedby="bk-consent"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg>Book and pay online</button>
+<p class="bk-alt__h">Or reserve without paying now</p>
+<div class="bk-alt"><a class="btn btn--ghost" id="q-mail" href="mailto:info@nycluxride.com"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg>Email<span class="sr-only"> to reserve</span></a><a class="btn btn--ghost" id="q-wa" href="https://wa.me/16467750556" target="_blank" rel="noopener"><svg class="icon icon--fill" aria-hidden="true" focusable="false"><use href="#i-whatsapp"></use></svg>WhatsApp<span class="sr-only"> to reserve</span></a></div>
+<p class="bk-nopay sr-only" id="bk-nopay" data-show="options">Next you add your details. Then you pay on a Stripe payment page.</p>
+<p class="bk-consent" id="bk-consent" data-show="details"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg>You pay on Stripe and accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span></a> and the <a href="/rates#policies" target="_blank" rel="noopener">cancellation, no-show and waiting <span class="nowrap">terms<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a>.</p>
+<details class="bk-terms" id="bk-terms" data-show="details"><summary>Cancellation and terms<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-chevron"></use></svg></summary><p>Free cancellation up to 24 hours before pickup. Under 24 hours, the charge is 25% of the price. Under 12 hours, it's 50%. Under 2 hours, it's the full price. To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.</p><p>Stripe emails your receipt with your reference. We confirm your car and chauffeur in writing before your ride.</p></details>
+<div class="notice bk-js-only" id="q-sent" role="status" hidden></div>
+<p class="bk-e field__hint" id="e-form"><span>We couldn't read that request. Email the trip to <a href="mailto:info@nycluxride.com">info@nycluxride.com</a> or send it on <a href="https://wa.me/16467750556" target="_blank" rel="noopener">WhatsApp</a>.</span></p>
+</div>
+<p class="bk-policy" id="bk-policy" data-show="options">Free cancellation up to 24 hours before pickup. <a class="lnk" href="/rates#policies" target="_blank" rel="noopener">Cancellation, no-show and waiting <span class="nowrap">terms<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>
+<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Continue</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>
 </div>
 </aside>
 <p class="bk-drive" id="bk-drive" hidden></p>
+<section class="bk-more" id="bk-more" data-show="options" aria-labelledby="bk-incl-h">
+<div class="bk-arrive" id="bk-arrive" hidden></div>
+<h3 class="sr-only" id="bk-incl-h">What is included</h3>
+<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plane-arrive"></use></svg><span>Free waiting</span> <small>after you land</small></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-clock"></use></svg><span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shield"></use></svg><span>Live flight tracking</span></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wifi"></use></svg><span>Free Wi-Fi</span> <small>in every class</small></li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg><span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>
+</section>
 <div class="bk-hp" aria-hidden="true"><label for="bk-hp">Leave this field empty</label><input id="bk-hp" name="nlr_hp" type="text" tabindex="-1" autocomplete="off"></div>
 <input type="hidden" id="bk-nonce" name="nonce">
 <datalist id="bk-places">

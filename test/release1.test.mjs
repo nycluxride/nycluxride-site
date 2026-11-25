@@ -157,8 +157,9 @@ check("parents tell us the seat they'd like, as the owner's sheet asks: the car 
   assert.equal(d.querySelector("#seats ~ ul").nextElementSibling.textContent, "When you book, choose an infant seat for a baby, a child seat for a young child or a booster seat for an older child. The infant seat faces the rear and the child seat faces forward or rear. Both are the Nuna RAVA or the Safety 1st Grow and Go. The booster seat is the backless booster. Tell us which seat you'd like. We check it suits each child's age, weight and height.");
   assert.ok(!main("car-service-with-car-seat-nyc.html").includes("We choose the right seat"));
   assert.equal(SEATS.mail, "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.");
-  assert.equal(SEATS.hint, "Each seat is charged once, even on a round trip. Add each child's age, weight and height and the seat you'd like in the notes.");
-  for (const f of ["locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) assert.equal(main(f).split("weight and height and the seat you'd like in the notes.").length, 3, f);
+  assert.equal(SEATS.hint, "Charged once per trip. Add ages and the seat you'd like in the notes.");
+  assert.ok(SEATS.notes.includes("age, weight and height"), "the notes placeholder still asks for each child's age, weight and height");
+  for (const f of ["locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) assert.deepEqual([main(f).split("weight and height and the seat you'd like in the notes.").length, main(f).includes(SEATS.hint)], [2, true], f);
   assert.deepEqual(files.filter((f) => /\bNova\b/.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /bring (your|their) own (car )?seat/i.test(main(f))), []);
   assert.deepEqual(files.filter((f) => /ride in their own seats/i.test(main(f))), []);

@@ -735,8 +735,8 @@ await check("M20 a late route answer never changes the priced trip: a new time w
 });
 
 for (const [w, h] of [[1440, 900], [1366, 768], [1280, 720], [1024, 768]]) {
-  const short = h <= 786;
-  await check(`M21 ${w}x${h}: ${short ? "a window under 787 px tall hides the side map on the vehicle step and the route note carries the Google Maps credit" : "the short side map on the vehicle step still frames the trip, zoom 10 or closer with both pins inside the map and apart"}`, async () => {
+  const short = h <= 819;
+  await check(`M21 ${w}x${h}: ${short ? "a window under 820 px tall hides the side map on the vehicle step and the route note carries the Google Maps credit" : "the short side map on the vehicle step still frames the trip, zoom 10 or closer with both pins inside the map and apart"}`, async () => {
     const ctx = await context(M, { viewport: { width: w, height: h } });
     const p = await open(ctx, M, "/book");
     await start(p);
