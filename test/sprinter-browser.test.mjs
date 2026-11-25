@@ -405,7 +405,7 @@ await check("S16 at 320 each Sprinter card shows the whole Sprinter name and, cl
   }
 });
 
-await check("S12 the Sprinter cards keep the step steady and light: every card has the same photo tile, the Presidential's plain panel included, no card moves while the prices load, the four Sprinter photos load lazily from their 300 or 400 files, and the step shifts no layout", async () => {
+await check("S12 the Sprinter cards keep the step steady and light: every card has the same photo tile, no card moves while the prices load, the five Sprinter studio photos load lazily from their 300 or 400 files, and the step shifts no layout", async () => {
   for (const width of [320, 390, 768, 1440]) {
     const p = await open(ONE_URL, { width, height: width < 1024 ? 844 : 900 });
     await p.evaluate(() => { window.__cls = 0; new PerformanceObserver((l) => l.getEntries().forEach((e) => e.hadRecentInput || (window.__cls += e.value))).observe({ type: "layout-shift", buffered: true }); });
@@ -417,12 +417,12 @@ await check("S12 the Sprinter cards keep the step steady and light: every card h
     const late = await box();
     assert.deepEqual(late, early, `${width}: the cards keep their size when the prices arrive`);
     assert.equal(new Set(late.map(([w, h]) => `${w}x${h}`)).size, 1, `${width}: ${JSON.stringify(late)}`);
-    assert.equal(await p.$eval(".bk-ph", (x) => getComputedStyle(x).backgroundColor), await p.$eval('label[for="bk-c-suv"] picture', (x) => getComputedStyle(x).backgroundColor));
+    assert.deepEqual([await p.locator(".bk-ph").count(), await p.$eval('label[for="bk-c-sprinter-presidential"] picture', (x) => getComputedStyle(x).backgroundColor)], [0, await p.$eval('label[for="bk-c-suv"] picture', (x) => getComputedStyle(x).backgroundColor)]);
     await p.evaluate(() => document.querySelector('label[for="bk-c-sprinter-white-limo"]').scrollIntoView({ block: "center", behavior: "instant" }));
     await p.waitForFunction(() => [...document.querySelectorAll("[data-v] ~ picture img")].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 });
     const files = await p.$$eval("[data-v] ~ picture img", (imgs) => imgs.map((i) => [i.loading, new URL(i.currentSrc).pathname.split("/").pop()]));
-    assert.deepEqual(files.map(([l]) => l), ["lazy", "lazy", "lazy", "lazy"]);
-    files.forEach(([, f], i) => assert.match(f, new RegExp(`^${["sprinter-executive-card", "sprinter-luxury-jet-card", "sprinter-limo-black-card", "sprinter-white-limo-card"][i]}-(300|400)\\.(avif|webp)$`), `${width} ${f}`));
+    assert.deepEqual(files.map(([l]) => l), ["lazy", "lazy", "lazy", "lazy", "lazy"]);
+    files.forEach(([, f], i) => assert.match(f, new RegExp(`^${["sprinter-executive-studio-card", "sprinter-luxury-jet-studio-card", "sprinter-presidential-studio-card", "sprinter-limo-black-studio-card", "sprinter-white-limo-studio-card"][i]}-(300|400)\\.(avif|webp)$`), `${width} ${f}`));
     assert.ok((await p.evaluate(() => window.__cls)) < 0.01, `${width}: layout shift ${await p.evaluate(() => window.__cls)}`);
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}`);
     assert.deepEqual(p.errors, []);
@@ -471,23 +471,20 @@ for (const width of [390, 1440]) {
     await p.context().close();
   });
 
-  await check(`S9 at ${width} the fleet page shows the five Sprinters with their seats and photos, the Presidential Sprinter with no photo yet, the gallery of the owner's photos loads lazily below the fold, and none of them is in the first screen`, async () => {
+  await check(`S9 at ${width} the fleet page shows the five Sprinters with their seats and studio photos, the gallery of the owner's photos loads lazily below the fold, and none of them is in the first screen`, async () => {
     const p = await open("/fleet", { width, height: 900 });
     const before = await p.$$eval("#luxury-sprinter img", (imgs) => imgs.map((i) => [i.getAttribute("loading"), i.getBoundingClientRect().top > innerHeight]));
-    assert.ok(before.length === 12 && before.every(([loading, below]) => loading === "lazy" && below), JSON.stringify(before));
+    assert.ok(before.length === 13 && before.every(([loading, below]) => loading === "lazy" && below), JSON.stringify(before));
     const lcp = await p.evaluate(() => new Promise((ok) => new PerformanceObserver((l) => ok(l.getEntries().at(-1).url || "")).observe({ type: "largest-contentful-paint", buffered: true })));
     assert.match(lcp, /page-fleet/);
     await p.locator("#luxury-sprinter").scrollIntoViewIfNeeded();
     const cardsIn = await p.$$eval("#luxury-sprinter .fleet-card", (c) => c.map((x) => [x.querySelector("h3").textContent, x.dataset.seats, x.querySelector(".fleet-card__specs li").textContent]));
     assert.deepEqual(cardsIn, SPRINTERS.map((key) => [VEHICLES[key].name, String(VEHICLES[key].seats), `Up to ${VEHICLES[key].seats} passengers`]));
-    const none = p.locator("#luxury-sprinter .fleet-card .plate__none");
-    assert.deepEqual([await none.count(), await none.isVisible(), (await none.textContent()).trim(), await none.getAttribute("aria-hidden")], [1, true, "", "true"]);
-    const panelBox = await p.$eval("#luxury-sprinter .fleet-card .plate__none", (n) => { const a = n.parentElement.getBoundingClientRect(); const b = n.getBoundingClientRect(); return [Math.round(a.width / a.height * 100) / 100, b.left >= a.left && b.right <= a.right + 0.5]; });
-    assert.deepEqual(panelBox, [1.5, true]);
+    assert.deepEqual([await p.locator("#luxury-sprinter .plate__none").count(), await p.locator("#luxury-sprinter .fleet-card").evaluateAll((c) => c.map((x) => x.querySelectorAll(".plate__img img").length))], [0, [1, 1, 1, 1, 1]]);
     for (const img of await p.$$("#luxury-sprinter img")) await img.scrollIntoViewIfNeeded();
     await p.waitForFunction(() => [...document.querySelectorAll("#luxury-sprinter img")].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 });
     const srcs = await p.$$eval("#luxury-sprinter img", (imgs) => imgs.map((i) => new URL(i.currentSrc).pathname.replace(/-\d+\.(avif|webp)$/, "")));
-    assert.deepEqual(srcs, ["/fleet/sprinter-executive-rear", "/fleet/sprinter-luxury-jet-door", "/fleet/sprinter-limo-black-seats", "/fleet/sprinter-limo-lounge", "/fleet/sprinter-shuttle-luggage", "/fleet/sprinter-shuttle-seats", "/fleet/sprinter-luxury-jet-front", "/fleet/sprinter-luxury-jet-render", "/fleet/sprinter-limo-black-lot", "/fleet/sprinter-limo-black-door", "/fleet/sprinter-limo-white", "/fleet/sprinter-limo-castle"]);
+    assert.deepEqual(srcs, ["/fleet/sprinter-executive-studio", "/fleet/sprinter-luxury-jet-studio", "/fleet/sprinter-presidential-studio", "/fleet/sprinter-limo-black-studio", "/fleet/sprinter-white-limo-studio", "/fleet/sprinter-shuttle-luggage", "/fleet/sprinter-shuttle-seats", "/fleet/sprinter-luxury-jet-front", "/fleet/sprinter-luxury-jet-render", "/fleet/sprinter-limo-black-lot", "/fleet/sprinter-limo-black-door", "/fleet/sprinter-limo-white", "/fleet/sprinter-limo-castle"]);
     assert.deepEqual(await p.$$eval(".fleet-photos figcaption", (f) => f.map((x) => x.textContent)), ["Executive Sprinter", "Executive Sprinter", "Luxury Jet Sprinter", "Luxury Jet Sprinter", "Limo Sprinter", "Limo Sprinter", "White Luxury Limo Sprinter", "White Luxury Limo Sprinter"]);
     assert.ok(await p.$$eval("#luxury-sprinter img", (imgs) => imgs.every((i) => i.alt.length > 20 && Math.abs(i.getBoundingClientRect().width / i.getBoundingClientRect().height - 1.5) < 0.02)), "every photo has alt text and shows at 3:2");
     await p.click('.fits label:has(input[value="14"])');
@@ -578,7 +575,7 @@ for (const width of [390, 1440]) {
     assert.deepEqual(s.cards, [...CLASS_KEYS.map((cls) => [cls, false, cash(AIRPORT_TOTALS[cls].jfk)]), ...OFF]);
     assert.deepEqual([await picked(p), s.blocks, s.shown, s.fix, s.bar, s.wide], [["sprinter", "sprinter-limo"], NOTICE_BLOCK, QUIET, "Change the date", "Book a Sprinter 3 hours ahead", 0]);
     assert.equal(await p.getByRole("radio", { name: "Limo Sprinter Book 3 hours ahead", exact: true }).count(), 1);
-    assert.deepEqual(await p.$$eval(".bk-card.is-small picture", (x) => x.map((e) => getComputedStyle(e).opacity)), ["0.6", "0.6", "0.6", "0.6"], "the four Sprinter photos dim like a card that is too small, the Presidential has a plain panel");
+    assert.deepEqual(await p.$$eval(".bk-card.is-small picture", (x) => x.map((e) => getComputedStyle(e).opacity)), ["0.6", "0.6", "0.6", "0.6", "0.6"], "the five Sprinter photos dim like a card that is too small");
     await p.click('label[for="bk-c-suv"]');
     await totalIs(p, AIRPORT_TOTALS.suv.jfk);
     const suv = await notice(p);

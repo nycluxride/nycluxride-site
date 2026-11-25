@@ -554,25 +554,28 @@ await test("every Sprinter Book link on the fleet, rates and limousine pages car
   assert.deepEqual(found, [...all("fleet.html", "one"), ...all("rates.html", "one"), ...all("rates.html", "hour"), "limousine-service-nyc.html White Luxury Limo Sprinter hour"]);
 });
 
-await test("each Sprinter photo shows the Sprinter its caption and alt name, as in PHOTOS.md after the owner's captions: the black van from the back, the forward seats and the luggage space are the Executive, the black van with the open side door, the garage front and the captain's chairs the Luxury Jet, the black van with purple lights and the black van in a lot the Limo and the white van the White Luxury Limo, the Presidential has no photo, the earlier Luxury Jet photos are gone and the older Jet photo is captioned only as a Luxury Sprinter", async () => {
+await test("each Sprinter photo shows the Sprinter its caption and alt name, as in PHOTOS.md after the owner's captions: every Sprinter, the Presidential included, has its studio photo on its booking and fleet card, the forward seats and the luggage space are the Executive, the garage front and the render the Luxury Jet, the black van with purple lights and the black van in a lot the Limo and the white van the White Luxury Limo, the earlier card photos and the earlier Luxury Jet photos are gone and the older Jet photo is captioned only as a Luxury Sprinter", async () => {
   const PHOTOS = {
     "sprinter-shuttle-seats": "Executive Sprinter",
     "sprinter-shuttle-side": "Executive Sprinter",
     "sprinter-shuttle-luggage": "Executive Sprinter",
-    "sprinter-executive-rear": "Executive Sprinter",
-    "sprinter-executive-card": "Executive Sprinter",
-    "sprinter-luxury-jet-door": "Luxury Jet Sprinter",
-    "sprinter-luxury-jet-card": "Luxury Jet Sprinter",
+    "sprinter-executive-studio": "Executive Sprinter",
+    "sprinter-executive-studio-card": "Executive Sprinter",
+    "sprinter-luxury-jet-studio": "Luxury Jet Sprinter",
+    "sprinter-luxury-jet-studio-card": "Luxury Jet Sprinter",
+    "sprinter-presidential-studio": "Presidential Sprinter",
+    "sprinter-presidential-studio-card": "Presidential Sprinter",
     "sprinter-luxury-jet-front": "Luxury Jet Sprinter",
     "sprinter-luxury-jet-render": "Luxury Jet Sprinter",
-    "sprinter-limo-black-seats": "Limo Sprinter",
-    "sprinter-limo-black-card": "Limo Sprinter",
+    "sprinter-limo-black-studio": "Limo Sprinter",
+    "sprinter-limo-black-studio-card": "Limo Sprinter",
     "sprinter-limo-black-door": "Limo Sprinter",
     "sprinter-limo-black-lot": "Limo Sprinter",
     "sprinter-limo-lounge": "White Luxury Limo Sprinter",
     "sprinter-limo-white": "White Luxury Limo Sprinter",
     "sprinter-limo-castle": "White Luxury Limo Sprinter",
-    "sprinter-white-limo-card": "White Luxury Limo Sprinter",
+    "sprinter-white-limo-studio": "White Luxury Limo Sprinter",
+    "sprinter-white-limo-studio-card": "White Luxury Limo Sprinter",
   };
   const seen = new Set();
   for (const file of pages()) {
@@ -598,7 +601,7 @@ await test("each Sprinter photo shows the Sprinter its caption and alt name, as 
   assert.deepEqual([...seen].sort(), Object.keys(PHOTOS).sort());
   const fleet = dom("fleet.html");
   const presidential = [...fleet.querySelectorAll("#luxury-sprinter article.fleet-card")].find((c) => flat(c.querySelector("h3").textContent) === "Presidential Sprinter");
-  assert.deepEqual([presidential.querySelector("img"), flat(presidential.querySelector(".plate__img").textContent), presidential.querySelector(".plate__none").getAttribute("aria-hidden")], [null, "", "true"]);
+  assert.deepEqual([presidential.querySelector("img").getAttribute("src"), presidential.querySelector("img").alt, fleet.querySelector(".plate__none")], ["/fleet/sprinter-presidential-studio-600.webp", "The black Presidential Sprinter with chrome wheels, in a white studio", null]);
   assert.doesNotMatch(fleet.querySelector("main").textContent, /No photo/);
   for (const [file, sel, slug, alt, cap] of [
     ["locations/brooklyn.html", "figure.svc__plate", "sprinter-jet", "Inside a Luxury Sprinter: two leather captain's chairs facing a screen", "Mercedes-Benz Sprinter"],
@@ -617,12 +620,13 @@ await test("each Sprinter photo shows the Sprinter its caption and alt name, as 
   assert.deepEqual([row.getAttribute("role"), row.getAttribute("aria-labelledby"), flat(row.querySelector("#h-sprinter-photos").textContent)], ["group", "h-sprinter-photos", "Photos of our Sprinters"]);
   assert.deepEqual([...row.querySelectorAll("figcaption b")].map((b) => flat(b.textContent)), ["Executive Sprinter", "Executive Sprinter", "Luxury Jet Sprinter", "Luxury Jet Sprinter", "Limo Sprinter", "Limo Sprinter", "White Luxury Limo Sprinter", "White Luxury Limo Sprinter"]);
   const frames = [...fleet.querySelectorAll("#luxury-sprinter img")].map((i) => i.getAttribute("src").replace(/^\/fleet\/|-\d+\.webp$/g, ""));
-  assert.deepEqual(frames.filter((f) => f.startsWith("sprinter-limo-black")), ["sprinter-limo-black-seats", "sprinter-limo-black-lot", "sprinter-limo-black-door"]);
-  assert.deepEqual([...fleet.querySelectorAll("#luxury-sprinter article.fleet-card")].map((c) => [flat(c.querySelector("h3").textContent), c.querySelector("img") ? c.querySelector("img").getAttribute("src") : ""]), [["Executive Sprinter", "/fleet/sprinter-executive-rear-450.webp"], ["Luxury Jet Sprinter", "/fleet/sprinter-luxury-jet-door-450.webp"], ["Presidential Sprinter", ""], ["Limo Sprinter", "/fleet/sprinter-limo-black-seats-450.webp"], ["White Luxury Limo Sprinter", "/fleet/sprinter-limo-lounge-450.webp"]]);
+  assert.deepEqual(frames.filter((f) => f.startsWith("sprinter-limo-black")), ["sprinter-limo-black-studio", "sprinter-limo-black-lot", "sprinter-limo-black-door"]);
+  assert.deepEqual([...fleet.querySelectorAll("#luxury-sprinter article.fleet-card")].map((c) => [flat(c.querySelector("h3").textContent), c.querySelector("img") ? c.querySelector("img").getAttribute("src") : ""]), [["Executive Sprinter", "/fleet/sprinter-executive-studio-600.webp"], ["Luxury Jet Sprinter", "/fleet/sprinter-luxury-jet-studio-600.webp"], ["Presidential Sprinter", "/fleet/sprinter-presidential-studio-600.webp"], ["Limo Sprinter", "/fleet/sprinter-limo-black-studio-600.webp"], ["White Luxury Limo Sprinter", "/fleet/sprinter-white-limo-studio-600.webp"]]);
   const book = dom("book.html");
-  assert.deepEqual(Object.keys(VEHICLES).filter((k) => VEHICLES[k].cls === "sprinter").map((k) => { const i = book.querySelector(`label[for="bk-c-${k}"] img`); return [k, i ? i.getAttribute("src").replace(/^\/fleet\/|-300\.webp$/g, "") : ""]; }), [["sprinter-executive", "sprinter-executive-card"], ["sprinter-luxury-jet", "sprinter-luxury-jet-card"], ["sprinter-presidential", ""], ["sprinter-limo", "sprinter-limo-black-card"], ["sprinter-white-limo", "sprinter-white-limo-card"]]);
+  assert.deepEqual(Object.keys(VEHICLES).filter((k) => VEHICLES[k].cls === "sprinter").map((k) => { const i = book.querySelector(`label[for="bk-c-${k}"] img`); return [k, i ? i.getAttribute("src").replace(/^\/fleet\/|-300\.webp$/g, "") : ""]; }), [["sprinter-executive", "sprinter-executive-studio-card"], ["sprinter-luxury-jet", "sprinter-luxury-jet-studio-card"], ["sprinter-presidential", "sprinter-presidential-studio-card"], ["sprinter-limo", "sprinter-limo-black-studio-card"], ["sprinter-white-limo", "sprinter-white-limo-studio-card"]]);
   const files = readdirSync(SITE_ROOT + "fleet");
   assert.deepEqual(files.filter((f) => /^sprinter-executive-(lounge|night|cabin)|^sprinter-luxury-jet-cab/.test(f)), [], "the earlier Luxury Jet photos and the unused cab photo are not deployed");
+  assert.deepEqual(files.filter((f) => /^(sprinter-executive-card|sprinter-luxury-jet-card|sprinter-limo-black-card|sprinter-white-limo-card|sprinter-executive-rear|sprinter-luxury-jet-door|sprinter-limo-black-seats)[-.]/.test(f)), [], "the card photos the studio photos replaced are not deployed");
   for (const slug of Object.keys(PHOTOS)) assert.ok(files.includes(`${slug}.webp`) && files.includes(`${slug}-300.avif`) && files.includes(`${slug}-400.webp`), slug);
   assert.equal(new Set(frames).size, frames.length);
 });

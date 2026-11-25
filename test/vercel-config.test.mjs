@@ -260,10 +260,10 @@ test("every api route answers no-store through the /api rule", () => {
   }
 });
 
-test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 22:00 UTC every day, and the owner update at 14:00 UTC, 9 AM in New York on November 25, and their routes exist", () => {
+test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 21:00 UTC every day, 4 PM in New York in winter and 5 PM in summer, and the owner update at 14:00 UTC, 9 AM in New York on November 25, and their routes exist", () => {
   assert.deepEqual(config.crons, [
     { path: "/api/seo-weekly", schedule: "0 13 * * 1" },
-    { path: "/api/ride-reminders", schedule: "0 22 * * *" },
+    { path: "/api/ride-reminders", schedule: "0 21 * * *" },
     { path: "/api/owner-update", schedule: "0 14 * * *" },
   ]);
   for (const route of ["seo-weekly.mjs", "ride-reminders.mjs", "owner-update.mjs"]) assert.ok(existsSync(join(ROOT, "api", route)), route);

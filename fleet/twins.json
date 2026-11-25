@@ -77,6 +77,12 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAACwCACdASpAACsAPsVWnkunpSKhtVgKAPAYiWUAxNtT2SKZGWwhW+pc4zZanYUJwD8XUFUSGzqJX478KLUwoZsMXggWU80E9t/ZorUX+gAA/vQpHaZ0m/yu5297N+8JosVytIirBjdfPD6Bzs8dWViQJ3jGgWDvGPW85uDyqIU/BOsOY41B2wARzZ0Ha2XymabglctRxP0k7wj93cPQTqto972De3qJ9fkRHSwmdNkCCV0nFcTCHmVppUbsuWg20gRl1vwyAAA="
   },
+  "mercedes-e-class-studio.webp": {
+    "sha256": "ec5482e1e96046edf60ff26782926d00b677626771a18f01f01930e01145c9e0",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRr4AAABXRUJQVlA4ILIAAACwCACdASpAACsAPtFapk2oJSOiMBgIAQAaCWkA0utT3Uf9+wnewsmDQFgBk4Vn7fYSL2/a0LuFeTcEmXFMrSHAHKZ0edvAoIwT1DlohCAA/v14gPiBk6w6nS/8yOyghaGGfQCnwjX/ot+0l1TabSqa0eF8jy+0UMELRJWCfmDsJe/GFMJ0aBd5uh/Wpuzk8MXmX22u4HHmyxwO9jN/lCXv9CaDTr0K0UBPj54b4lh6UgAA"
+  },
   "mercedes-e-class.webp": {
     "sha256": "d8c9f680a43a31529d4635462720d0697ced51ab272a5e0db410371bf5ed140f",
     "width": 64,
@@ -233,29 +239,17 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAACQCgCdASpAACsAPr1SokunJSOhsBgOqOAXiWUAx29T/H+DJPG7ifLX+hNcP2qYeHgDhM9dppnk5u7J7Xgnps6brtlUj4O+ds66GB2/+xy6ftStLQtUK4KfgcpkKWAA/vTR1KiwT7IJu0rhnvWnN+5MCy/CiJr+chsMRyssvrTbeBWletm39YRlDK5QfxnDuYNYXdVaEzCV6vmt6psPjjieXKA/QynuLMC8J8/HYC7vxvYii21jwmGRc82r8Ck51eHGE4dyMXSrmL9I0ApqrWAanij8JEd6UpkT7ltdQrmuYAAA"
   },
-  "sprinter-executive-card.webp": {
-    "sha256": "2dbb26f5f3accfce640687435ec6d243754ab4159a69b947c98acf520cc90117",
-    "width": 64,
-    "height": 48,
-    "src": "data:image/webp;base64,UklGRvQAAABXRUJQVlA4IOgAAADQCACdASpAADAAPsVOoEunpCMhtVgMAPAYiUypa1kfMpvhKGA5wW2yt4yBWmOc43X4AHj/vcIvIWizGyVpBmDhJbm34A6FnVY3TEYzn9MAAP7hgjKIcm6SeJGb/yIN9WIuqavjaprtB/kMJC2QKGD2r1z7GHra2mPjbwt78BU0kbhw5P5hP4EehhQtoIfRlwajGiWGdkgNfSQv9X5vLNJTPROBns5keSft1xPBGc0P/82CHovJipdBSECeTdFJ4fN2XEbhLe6Oq32T05BNb5yMZbjP/kfcAbKXa9N3foo+p63WDBwT4AAA"
-  },
-  "sprinter-executive-rear.webp": {
-    "sha256": "cac6a9d082715202f47c534905441961c250a32a96a2f4ceee8658a46f7c5964",
+  "sprinter-executive-studio.webp": {
+    "sha256": "5bc126cb3dc64a27d6beb43bb2fbf44c76bfe1bb297778cf075715dbc82552ea",
     "width": 64,
     "height": 43,
-    "src": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAACQCQCdASpAACsAPsFKoUunpCMhtVgN+PAYCUAZR+p7EjQg0MuwBQ7Jhyq4Aq+uKAgswBk2MeUNe8OcfpEYgH19e7D2tZ2crrqdZCiCtE9uzd6QjrfAAP5TIY35Qa3gAMSgQn90fkz5UvNDbalvg8Yp5IcwPIUmq3RxOXP83h6zWKceBtzXSm/+3BhkQwV7guAvMFsbAV23Cx/ftpEEFp3qCdt6DoF9ciunbTB+jCHt0wHrsUVt381FR6U0lu64apWejeVQ1zvANvVrg2KjNs9j6bxKVlV8JDXuGWMOVYS7gMAA"
+    "src": "data:image/webp;base64,UklGRt4AAABXRUJQVlA4INIAAAAwCgCdASpAACsAPsVQoUunpKMhsBgOqPAYiWcA0b9R1s4iP3Y2O0RxDbZeRTi0+q5umDbIxx2tZlFpKxE/Y+oRefPzvsSXLol/oV9WwEOU0kt61M4iB4aWCeAA/v4vLr0H3DX+BrCeXN/qkBNQcu9yCNoijtCrT5knHm6lIhBh9ICD2nemJQy9aGn4o8nhO+ICoVOBF3SFfTc6lxewOtMU1TosGr2YcdINCvda5EubQMQVHFOEwNcTK7rwT17lBo3zEoHZUTXT70asUsXiEgVPAAA="
   },
   "sprinter-jet.webp": {
     "sha256": "cd8a1f01685974b2ce164f593a8bd64b1f352e9b32187c6e4b2b080714a74410",
     "width": 64,
     "height": 34,
     "src": "data:image/webp;base64,UklGRsQAAABXRUJQVlA4ILgAAABwCACdASpAACIAPsVSoEunpKMhtVv4APAYiWUAx+QbHggsWRUqPPSJwFLg3NBKzmNc09w32Ask0O6cMTMqW1tK8AV3QTVC+cGIvPaAAP67CV+buwW3ambzzWr6gWvxcducTEvZJIvRX2/IjUcrymUKXc48Uo3tnPo/w7GijnlktIoP+N0g8SJL2ORVyCx981KQqWUvy8Cpgr1NRSH87M4cnNqH15mTymbYt8GuCh1hJ8SnF+RcgAAA"
-  },
-  "sprinter-limo-black-card.webp": {
-    "sha256": "964530185fbabe7332195912253faf2563f1198db86a7efed370ff7668d01707",
-    "width": 64,
-    "height": 48,
-    "src": "data:image/webp;base64,UklGRgQBAABXRUJQVlA4IPgAAACwCQCdASpAADAAPtFYpU0oJSOiMBK6qQAaCUAXG2jpvRdbb424YY9j//F94GFIGh4DdyOI/p6xP/L+0RoMFwKYUZoSC0zeH+iuuXaZPhA6sM48e9a7gAD++fWXtnEsKsV0TR/GbR1xnu0P+bNh07gfVSjv7FcbFZPgg8WMdkqaecdWepLiYOx1ksxLj8y6rV3as57tcLiSkjD01cMbSehLTUiFEOHCru4bmRHgu8pMcLDcDFUwWlTESaYmVoAp284/TjUekwI0xK/7ALFfKoPru88ySjAFTrJYTH6gNowX/biqt3QgUsj7Ypl+JX4coSq5mXIkRgOAAA=="
   },
   "sprinter-limo-black-door.webp": {
     "sha256": "644ef5794a0528359f8b64c6d73f79768fc41cfe00d8068b7db313d7212be7e9",
@@ -269,11 +263,11 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRsoAAABXRUJQVlA4IL4AAAAwCQCdASpAACsAPrVIm0unJKKhurs4AOAWiWcAzf9T2fnsqFjFeqtjlU9ragOZXmNYkqPmEIPxUtOwf8DjV3C3tUEGgEIkvB6h0HQdxU1h0kFsAP7er06L09kNYSa7IM84QymWSDLxADLeJWHZPiIXVzpmi9x/0hpFXkaEJsCAsLfT8mDyazWcRJmExoSTfOe/Hn+RNCgOc41LgVRYImshmSPlSyTpBHG6gNcpmeRmVc4fO5VyL83B2zYAAAAA"
   },
-  "sprinter-limo-black-seats.webp": {
-    "sha256": "628ccc927b1e730a2b078def4de934562b98ae44d51fa79fd6871e1563491b8f",
+  "sprinter-limo-black-studio.webp": {
+    "sha256": "8abe8730c88455bf997390da03c7b4707f620e5eb4d0c57aeea5b6a77874d3d6",
     "width": 64,
     "height": 43,
-    "src": "data:image/webp;base64,UklGRswAAABXRUJQVlA4IMAAAAAwCACdASpAACsAPr1MnUunJCKhurZoAOAXiWMAxq/ax+QA41Noe5gaHblusSwOqmDpA+L11DSZzv1+vSvAc3SLtRWeq6jOhy6zQAD++mEQX7aoj4gjDjq7xT//llFFl8WcgFDw1P7GRkPrDzK3ZdEppiShUi/fyDc3L618utkx4bUzvvu40+mmry8IFNYuYyvvrpf65xcoo1quIMvzudxLkcpTz7Jgtt6/JX3gRzxX1SaGFXt69V3jhU5YsyAAAAA="
+    "src": "data:image/webp;base64,UklGRtYAAABXRUJQVlA4IMoAAAAwCgCdASpAACsAPtFYo02oJKMiLVM8kQAaCWcA0FdSxi4AWsDlhYeHRt0Lfx+Pf80wsxioFuXhNG27+crWq9ZOcbZxc2svTOripf8MQ4z8HSHmSNtRs8WVOgAA/v0rEF4HWkbWXkuTMhWBwn7m8xxtuxOBkcj/lFWrzdyv1346bn/PUnlZOgvzIu5ebD4h9RjThyk4toe6ddjx6N73ug2xaQtu8M/sLQVTUW3RZsYIok4xWbAmr986b8tK2ZhHDjmmEknRcLzeEAAA"
   },
   "sprinter-limo-castle.webp": {
     "sha256": "e0cc2beafb866be42db2dbe970766b7e59d63f75414e571e1ea87a8ecb1e2add",
@@ -293,18 +287,6 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAABwCgCdASpAACsAPtFip08oJaOiKBqpyQAaCUAWJAEZNmHEEjA8PQk+NuGGHkIHpapHOP3FKP8wdqVJprutVUYkOmxVoufIsgHOTrFo4TC2KiAKKpG2mAxJDBZNAAD9TGE5NqNODxUEZTj4vSZd1qMC2UN6eSB2ZDCFCtM1KKY7eDw9FXk+WYMzfjxq0dKZmFPiNUYw+dZP9g6Fzq5fEnCzX+CnLRcYnIT3N8Nd/hTFqmidz8enibbYoM08AQSTB6lAfOd3W0xgcvYva2BkFT492uLhC9X3KVo2XnqvG3pvXHMMaFBnnkf+aJQMuHICW1pbBYnWXnuD3B0tDfNnP4X5vagZRT4V4O2hAAAA"
   },
-  "sprinter-luxury-jet-card.webp": {
-    "sha256": "88608c0e2eba3b161a5eaca4dfa72249b5e659009926bca30134d0f9ce3fe8c3",
-    "width": 64,
-    "height": 48,
-    "src": "data:image/webp;base64,UklGRt4AAABXRUJQVlA4INIAAADQCgCdASpAADAAPrVOnUunJKMhurmYAOAWiWcAygNT/H+GQih1U+glZ6XIHH80vxX9Y16Yx36k9urSJ1XQTMxx/nyU44YNKY9EAZgaPTnVdl+UV1AUPiEd68JI9szrwAD+7U+mL2fiHOsUsjO82EiTrlkVTLlSQJ/eL42eqdaZ8fVdE2vdw5MY5uv8cWaXg42SgdyJ3+94ROCz16Fbmg42ZJ6dUSdJlu/m2uTbHJFwuLZsYPAQ1HnlwiKGXJvWU1yFLP4Uhx0Q3ObI5otA4JwNgAA="
-  },
-  "sprinter-luxury-jet-door.webp": {
-    "sha256": "c9d4294ab1442fe846d0b75b476835a116184d3293fb701ef8e4cc24a64667b4",
-    "width": 64,
-    "height": 43,
-    "src": "data:image/webp;base64,UklGRuIAAABXRUJQVlA4INYAAADQCgCdASpAACsAPsFQnkunpSKht/qoAPAYCWUAyF9Sma8C5KcTu6NxmPEBjkXSbVOiTFU/tgeAw9nLzpK5oomd5mexJ3i21oEpaPjlpD/x8A6q7QKBYkk+yq6N5EewAAD+6nqiNc8pQheMilE9aQcNCIZBXpu3hEXaa5jme7EGQxQ5KsvcX8qG+dmAhIUWyLDHvTgBP5QSq6gxbKv5FgY6u+LovUrX3Ji42Fw3mwzUaoj+Zvhb7rXfgpEpZvc7Tuv7Vv5m63fYNw725C7YDwI0v8/oPvAA"
-  },
   "sprinter-luxury-jet-front.webp": {
     "sha256": "59a90e50715df06de253149b666e9e79809bab09c0411b034bb7155609f24026",
     "width": 64,
@@ -316,6 +298,18 @@
     "width": 64,
     "height": 43,
     "src": "data:image/webp;base64,UklGRuQAAABXRUJQVlA4INgAAABwCgCdASpAACsAPslSpEunpKOhrVZu2PAZCWUAyYtT2E7VydR/dXXbPGWnGegpIxDcTwaOUp4YuIj+udmJuUpgKdCHSwVi9KzKTS5qhZaSxtKuqMlkZHdu6SHrsAD+FlNtjsrUgbPv4V4x8gJnVDLgBcwmoSdGh+lFlZszYm1eHvIDlsgzy6Hy4y8ekvRqC5S/k1YcisLTOAq0gXWN/WaqM4a2nDmNW/l7ALwQlkwJugTN1e1jEd18BpuoJBj4ZIhhebuC2itpyN9f9wLYXxEm4864+S5iQAA="
+  },
+  "sprinter-luxury-jet-studio.webp": {
+    "sha256": "aa53f99c1244edaf8ae76d98a4d566fb2e26a3240e9783cb5f78fbaacdece7a2",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRtoAAABXRUJQVlA4IM4AAAAQCgCdASpAACsAPtFUokyoJKMiMBK+qQAaCWcA0b9R1s4gw/Av3QMgRUOrubKRveBNLrS5ST7N6sL//honQtPFQ4ywrRnQN8yxBpRzs+BaJhezv2/H/si5cgD+/bvjT2WcoBL72LWwg0Z64K/N1ImWVrIllroOJSF5MJ3SHdZFLAC+kizefzg7thwtlUSi4chs6OHsaAzshYSytC9+92OdkOkO92saxBskf2773P+18jzSe4+PCNXUug7ocG72wZI/pgPj5aGS0eLWRE5wAA=="
+  },
+  "sprinter-presidential-studio.webp": {
+    "sha256": "049dfa5570368a0e6b074c131d95df7c49193ec6947dfc035553af3972b75a33",
+    "width": 64,
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRtoAAABXRUJQVlA4IM4AAAAwCgCdASpAACsAPtFapkwoJSOiKrv8+QAaCWcA0utPzi38G1RdSPG3ktfa4epOntX8N55aAsphv5Zfvy/Nd0RbT5GzuFd1yV1TPTDsnD420TjM0s73Jx4mpsAA/v2740911QljO9NC8NorImgovJ7oeKNtZB48yAX3G4fUorfAAldns3CyOUyEk5+l+6ZuwWRLUaPNZtLnYAP7dsNV/6ZhSPt11HmL1cJt/QtD3mgU66qklkvBOB9cV+FvJmmMJfiHsLAZVYAvnjzN6QAAAA=="
   },
   "sprinter-shuttle-luggage.webp": {
     "sha256": "227f8cc6fa83499faf24340c703534f7f6c2c5faa1a457ece73bdd333376adf9",
@@ -335,10 +329,10 @@
     "height": 43,
     "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAACQCQCdASpAACsAPsVSokunpKMhsrSeYPAYiWMAyRNSxOkTz+QjILJ0X2aVU6cWynV/OBv2X6NwbR4ZWNHCOu9bsuVK3po/YmsnnVXTIoqH+aG+quwgAP3vWdOgXxbh7nNGXCmCmdNMfzy8ag/DzSPkJ8rBLudJZ6Rmvab13Q4EXq99pm+QcPVyYoTU4XOAOBPDz3y0uPM2QNN+93eSoyNLVXkx3Mxb0a5zP92p9Dj/IIoxo7e/sEbEsjT0trVivzQhON19Bo8f4+VNmpMwWer7CFNi+uXRriw0IfSmKKIuMRCRyQFy+WAj5XAAAA=="
   },
-  "sprinter-white-limo-card.webp": {
-    "sha256": "e58749c27f69840800062b16fa4e13099ee77820d2cdca5bf2575524456d6c6b",
+  "sprinter-white-limo-studio.webp": {
+    "sha256": "4e11c95016fed9f517ea6cc6e9e0485d86e2dbe5df46fad59b8cbe76fa192a05",
     "width": 64,
-    "height": 48,
-    "src": "data:image/webp;base64,UklGRhQBAABXRUJQVlA4IAgBAAAQCwCdASpAADAAPslOpEunpCOhsrSeYPAZCUAWI/q5LH1fD1RJDt/R9aWk2yjfUVs/98sHnrj8Nl2XGp16GGoKFsmEARDG8VRgvnZ0A4qzmePls7QerT3jX2DLvu7OdNaAAP5xYCYaO+DC9+/i4s2Hk51Pe7xxymfoGwKe7nVEYCiLtWVysYxP4IlVPtPROCKK7Jv4oxEwfg7IvmWWgP/QKLlzR4VB+ikLsz8GDpfP1udRTKakySEAeq6Yxo51AvNedgpiNOd375jCe+9P1vWKDiiUzERJXU0J0VlhNWgegdl1AiSxoLCcLba449iHTjskb5+TplMRzHFWlcRG9OcXh99vmjkUAAA="
+    "height": 43,
+    "src": "data:image/webp;base64,UklGRuAAAABXRUJQVlA4INQAAAAwCgCdASpAACsAPtFWok0oJKMiLVmbaQAaCWcA0jdQbd6JG8HcxTu+4tAM+2TU1Rlxg71b8HQDolu2PqR16vSfQnnF1LrHFEBpCSfuwjscJfbA25G6ylW0Z1AA/v148YkKW+JPs2Sl3dV7IBeXKxFx4qZwA86X5RZmZfVhLukINQAYjK+bZIB2DCSMH1nnpPDexrRXpSbywjjaYK058QKaAkzoqj/4wSfyvXF69Ymq/rtinQtpwqCpPuK1n5Py2ZT1B/v1i6Xe0kZOvn8r0UkOR+RAAA=="
   }
 }

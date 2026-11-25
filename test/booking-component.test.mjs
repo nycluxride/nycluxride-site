@@ -50,7 +50,7 @@ const PRIVATE_PAGES = ["locations/teterboro-airport.html", "private-jet-car-serv
 const MONITOR = "Set the pickup time to your scheduled landing time. We track your flight.";
 const MONITOR_TEB = "For a private flight, add the details as a note in the Details step.";
 const P1_TERMS = POLICY.cancelShort;
-const VAN_PHOTOS = { "sprinter-executive": ["sprinter-executive-card", "The black Executive Sprinter seen from the back"], "sprinter-luxury-jet": ["sprinter-luxury-jet-card", "The black Luxury Jet Sprinter with its side door open"], "sprinter-limo": ["sprinter-limo-black-card", "Inside the Limo Sprinter: black leather lounge seats with pink and blue lights"], "sprinter-white-limo": ["sprinter-white-limo-card", "The White Luxury Limo Sprinter in a parking lot"] };
+const VAN_PHOTOS = { "sprinter-executive": ["sprinter-executive-studio-card", "The black Executive Sprinter in a white studio"], "sprinter-luxury-jet": ["sprinter-luxury-jet-studio-card", "The black Luxury Jet Sprinter with its side door open, in a white studio"], "sprinter-presidential": ["sprinter-presidential-studio-card", "The black Presidential Sprinter with chrome wheels, in a white studio"], "sprinter-limo": ["sprinter-limo-black-studio-card", "The black Limo Sprinter with its side door open to purple lights, in a white studio"], "sprinter-white-limo": ["sprinter-white-limo-studio-card", "The White Luxury Limo Sprinter with its side door open, in a white studio"] };
 const MODELS = { suv: "Chevrolet Suburban or similar", premium: "Cadillac Escalade ESV", first: "Mercedes-Benz S-Class or BMW 7 Series", sedan: "Mercedes-Benz E-Class or similar", electric: "Cadillac Lyriq or similar", sprinter: "Five kinds of Sprinter" };
 
 const nt = (s) => s.replace(/\s+/g, " ").trim();
@@ -448,14 +448,14 @@ check("six class rows and six pills, in the order Business SUV, Business Premium
   assert.ok($("price-busy").matches("p.bk-mrow__x[hidden]") && nt($("price-busy").textContent) === SPRINTER_BUSY && $("price-busy").previousElementSibling === $("price-notes") && $("price-busy").parentElement === $("price"), "the price box has the two SUVs line after its notes");
   for (const h of HOSTS) assert.equal(parts[h].split(SPRINTER_BUSY).length - 1, 2, h);
   assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].slice(5, 10).map((c) => c.dataset.seats), VANS.map((v) => String(VEHICLES[v].seats)));
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/mercedes-e-class-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-card-300.webp", "/fleet/sprinter-luxury-jet-card-300.webp", "/fleet/sprinter-limo-black-card-300.webp", "/fleet/sprinter-white-limo-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/mercedes-e-class-studio-card-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-studio-card-300.webp", "/fleet/sprinter-luxury-jet-studio-card-300.webp", "/fleet/sprinter-presidential-studio-card-300.webp", "/fleet/sprinter-limo-black-studio-card-300.webp", "/fleet/sprinter-white-limo-studio-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
   const plain = form.querySelector('label[for="bk-c-sprinter-presidential"]');
-  assert.deepEqual([plain.querySelector("picture, img"), plain.children[1].outerHTML], [null, '<span class="bk-ph" aria-hidden="true"></span>']);
+  assert.deepEqual([plain.children[1].tagName, plain.querySelectorAll("picture > img").length, $("bk-cards").querySelector(".bk-ph")], ["PICTURE", 1, null], "the Presidential Sprinter has its studio photo and no card keeps the plain panel");
   const first = form.querySelector('label[for="bk-c-first"] picture > img');
   assert.deepEqual([first.getAttribute("width"), first.getAttribute("height")], ["960", "1192"]);
   assert.match(first.getAttribute("alt"), /^Black Mercedes-Benz S-Class /);
   const alts = ["Black Chevrolet Suburban in a white studio", "Black Cadillac Escalade ESV in a white studio", "Black Mercedes-Benz S-Class in a white studio", "Black Cadillac Lyriq in a white studio", "Black Mercedes-Benz Sprinter van in a white studio"];
-  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), [...alts.slice(0, 3).map((a) => ["960", "1192", a]), ["400", "300", "Mercedes-Benz E-Class"], ["960", "1192", alts[3]], ...Object.values(VAN_PHOTOS).map(([, a]) => ["400", "300", a]), ["960", "1192", alts[4]]]);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => [i.getAttribute("width"), i.getAttribute("height"), i.getAttribute("alt")]), [...alts.slice(0, 3).map((a) => ["960", "1192", a]), ["960", "1192", "Black Mercedes-Benz E-Class in a white studio"], ["960", "1192", alts[3]], ...Object.values(VAN_PHOTOS).map(([, a]) => ["960", "1192", a]), ["960", "1192", alts[4]]]);
   const sizes = "(min-width: 600px) 128px, 96px";
   assert.deepEqual([...$("bk-cards").querySelectorAll("picture")].map((p) => [...p.querySelectorAll("source")].map((s) => s.getAttribute("sizes"))), [...order, ...Object.keys(VAN_PHOTOS)].map(() => [sizes, sizes]));
 });
@@ -494,7 +494,7 @@ check("class rows follow CLASSES with photo, name, model line, seats and bags wi
   }
 });
 
-check("each Sprinter row follows VEHICLES like a class row: a Luxury Sprinter radio that names its Sprinter, the seats of that Sprinter, its 4-hour minimum, the class luggage with its spoken form, its own photo or a plain panel, an empty price and the check, shown only with JavaScript, while the Luxury Sprinter row and the picker under the rows book a Sprinter without JavaScript", () => {
+check("each Sprinter row follows VEHICLES like a class row: a Luxury Sprinter radio that names its Sprinter, the seats of that Sprinter, its 4-hour minimum, the class luggage with its spoken form, its own studio photo, an empty price and the check, shown only with JavaScript, while the Luxury Sprinter row and the picker under the rows book a Sprinter without JavaScript", () => {
   for (const v of VANS) {
     const card = form.querySelector(`label[for="bk-c-${v}"]`), radio = $(`bk-c-${v}`), seats = VEHICLES[v].seats;
     assert.ok(card.matches("label.bk-card.bk-js-only") && card.firstElementChild === radio && radio.matches(`input[type=radio][name=class][value="sprinter"][data-v="${v}"]`) && !radio.checked, v);
@@ -506,12 +506,11 @@ check("each Sprinter row follows VEHICLES like a class row: a Luxury Sprinter ra
     assert.deepEqual([nt(bags.querySelector('[aria-hidden="true"]:not(svg)').textContent), nt(bags.querySelector(".sr-only").textContent), [...bags.querySelectorAll('[aria-hidden="true"]:not(svg) > span.nowrap')].map((n) => n.textContent)], ["10 large, 2 small", "10 large and 2 small bags", ["10 large,", "2 small"]], v);
     assert.deepEqual([$(`bk-p-${v}`).matches("span.bk-card__price"), $(`bk-p-${v}`).textContent, !!card.querySelector('svg.bk-card__check use[href="#i-check"]')], [true, "", true], v);
     const img = card.querySelector("picture > img");
-    if (VAN_PHOTOS[v]) {
-      const [slug, alt] = VAN_PHOTOS[v];
-      assert.deepEqual([img.getAttribute("src"), img.getAttribute("width"), img.getAttribute("height"), img.getAttribute("alt"), img.getAttribute("loading"), img.getAttribute("decoding")], [`/fleet/${slug}-300.webp`, "400", "300", alt, "lazy", "async"], v);
-      assert.deepEqual([...card.querySelectorAll("picture source")].map((s) => [s.type, s.getAttribute("srcset")]), ["avif", "webp"].map((f) => [`image/${f}`, `/fleet/${slug}-300.${f} 300w, /fleet/${slug}-400.${f} 400w`]), v);
-      for (const w of [300, 400]) for (const f of ["avif", "webp"]) assert.ok(statSync(join(ROOT, "fleet", `${slug}-${w}.${f}`)).size > 0, `${slug}-${w}.${f}`);
-    } else assert.deepEqual([img, card.querySelectorAll(".bk-ph").length, card.querySelector(".bk-ph").getAttribute("aria-hidden"), card.querySelector(".bk-ph").textContent], [null, 1, "true", ""], v);
+    assert.ok(VAN_PHOTOS[v] && card.querySelectorAll(".bk-ph").length === 0, v);
+    const [slug, alt] = VAN_PHOTOS[v];
+    assert.deepEqual([img.getAttribute("src"), img.getAttribute("width"), img.getAttribute("height"), img.getAttribute("alt"), img.getAttribute("loading"), img.getAttribute("decoding")], [`/fleet/${slug}-300.webp`, "960", "1192", alt, "lazy", "async"], v);
+    assert.deepEqual([...card.querySelectorAll("picture source")].map((s) => [s.type, s.getAttribute("srcset")]), ["avif", "webp"].map((f) => [`image/${f}`, `/fleet/${slug}-300.${f} 300w, /fleet/${slug}-400.${f} 400w`]), v);
+    for (const w of [300, 400]) for (const f of ["avif", "webp"]) assert.ok(statSync(join(ROOT, "fleet", `${slug}-${w}.${f}`)).size > 0, `${slug}-${w}.${f}`);
   }
   const nojs = form.querySelector('label[for="bk-c-sprinter"]');
   assert.ok(!nojs.matches(".bk-js-only") && nojs.previousElementSibling === form.querySelector('label[for="bk-c-sprinter-white-limo"]') && nojs.nextElementSibling === $("e-class"), "the Luxury Sprinter row stays for a browser without JavaScript");

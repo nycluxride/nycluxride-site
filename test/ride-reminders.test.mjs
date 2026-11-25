@@ -11,14 +11,14 @@ import { readInput, resolveTrip, priceTrip, readSettings, fill } from "../api/_t
 import { metadataFor } from "../api/_stripe.mjs";
 import { MAIL, CALENDAR } from "../api/_copy.mjs";
 import { bookingEvents, bookingLetters, reminderLetter } from "../api/_mail.mjs";
-import { newYork, dueLegs, MARK } from "../api/_remind.mjs";
+import { newYork, dueLegs, MARK, SEND_HOURS } from "../api/_remind.mjs";
 import * as route from "../api/ride-reminders.mjs";
 
 const { GET } = route;
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const RealDate = Date;
-const RUN = "2026-11-21T22:30:00.000Z";
-const CATCH_UP = "2026-11-21T23:30:00.000Z";
+const RUN = "2026-11-21T21:30:00.000Z";
+const CATCH_UP = "2026-11-21T22:30:00.000Z";
 const TOMORROW = "2026-11-22";
 const BOOKED = new RealDate("2026-11-19T15:00:00.000Z");
 const CREATED = Math.floor(BOOKED.getTime() / 1000);
@@ -313,9 +313,11 @@ function checkLetter(letter) {
 const whereOf = (letter) => sectionOf(letter.text, MAIL.where.heading);
 const rowsOf = (letter) => sectionOf(letter.text, MAIL.trip);
 
-await test("one daily run at 22:00 UTC lands at 5 PM in New York in winter and 6 PM in summer, both send hours", () => {
-  assert.equal(newYork(new Date("2026-12-07T22:30:00Z")).hour, 17);
-  assert.equal(newYork(new Date("2026-07-07T22:30:00Z")).hour, 18);
+await test("one daily run at 21:00 UTC lands at 4 PM in New York in winter and 5 PM in summer, both send hours", () => {
+  assert.deepEqual(SEND_HOURS, [16, 17]);
+  assert.equal(newYork(new Date("2026-12-07T21:30:00Z")).hour, 16);
+  assert.equal(newYork(new Date("2026-07-07T21:30:00Z")).hour, 17);
+  assert.ok([new Date("2026-12-07T21:00:00Z"), new Date("2026-12-07T21:59:59Z"), new Date("2026-07-07T21:00:00Z"), new Date("2026-07-07T21:59:59Z")].every((d) => SEND_HOURS.includes(newYork(d).hour)), "anywhere inside the hour Vercel picks");
 });
 
 await test("the route answers GET only and nothing else is exported", () => {
@@ -359,12 +361,12 @@ await test("New York time: tomorrow is the next calendar day, across both clock 
   assert.deepEqual(newYork(new RealDate("2026-11-22T04:59:59Z")), { hour: 23, today: "2026-11-21", tomorrow: "2026-11-22" });
 });
 
-await test("the schedule: of the three daily crons at 21, 22 and 23 UTC, the 5 PM New York run sends and the 6 PM run catches up, in winter and in summer, anywhere inside the hour Vercel picks, and the third run does nothing", async () => {
+await test("the schedule: of the three daily crons at 20, 21 and 22 UTC, the 4 PM New York run sends and the 5 PM run catches up, in winter and in summer, anywhere inside the hour Vercel picks, and the third run does nothing", async () => {
   const seasons = [
-    ["2026-12-15", "2026-12-16", { "21": "off", "22": "send", "23": "catch-up" }],
-    ["2027-07-15", "2027-07-16", { "21": "send", "22": "catch-up", "23": "off" }],
-    ["2027-03-14", "2027-03-15", { "21": "send", "22": "catch-up", "23": "off" }],
-    ["2026-11-01", "2026-11-02", { "21": "off", "22": "send", "23": "catch-up" }],
+    ["2026-12-15", "2026-12-16", { "20": "off", "21": "send", "22": "catch-up" }],
+    ["2027-07-15", "2027-07-16", { "20": "send", "21": "catch-up", "22": "off" }],
+    ["2027-03-14", "2027-03-15", { "20": "send", "21": "catch-up", "22": "off" }],
+    ["2026-11-01", "2026-11-02", { "20": "off", "21": "send", "22": "catch-up" }],
   ];
   for (const [today, tomorrow, hours] of seasons) {
     for (const [hour, want] of Object.entries(hours)) {
@@ -381,7 +383,7 @@ await test("the schedule: of the three daily crons at 21, 22 and 23 UTC, the 5 P
         if (want === "off") {
           assert.equal(res.status, 204, label);
           assert.deepEqual([stripe.calls.length, smtp.messages.length], [0, 0], label);
-          assert.match(lines.at(-1), /^reminders-off hour (16|19)$/, label);
+          assert.match(lines.at(-1), /^reminders-off hour (15|18)$/, label);
         } else {
           assert.equal(res.status, 200, label);
           assert.equal(smtp.messages.length, 1, label);
@@ -391,7 +393,7 @@ await test("the schedule: of the three daily crons at 21, 22 and 23 UTC, the 5 P
           setEnv(liveEnv());
           paid(ADDRESS, { created, metadata: { date: tomorrow, time: "08:00" } });
           assert.equal((await run(`${today}T${hour}:${minute}.000Z`)).status, 200);
-          assert.equal(smtp.messages.length, 1, `${label}: the catch-up run sends when the 5 PM run was missed`);
+          assert.equal(smtp.messages.length, 1, `${label}: the catch-up run sends when the 4 PM run was missed`);
         }
       }
     }
@@ -453,7 +455,7 @@ await test("a round trip: the ride out is reminded the day before it, the return
   assert.deepEqual(Object.keys(marks(out)), ["a"]);
   assert.deepEqual(Object.keys(marks(home)), ["b"]);
   smtp.messages.length = 0;
-  await run("2026-11-24T22:30:00.000Z");
+  await run("2026-11-24T21:30:00.000Z");
   const [back] = sent();
   assert.equal(sent().length, 1);
   assert.equal(back.headers.get("subject"), "Your ride tomorrow, Wed Nov 25, 6:00 PM, NYC LUX RIDE booking 83558982");
@@ -462,7 +464,7 @@ await test("a round trip: the ride out is reminded the day before it, the return
   assert.deepEqual(Object.keys(marks(out)).sort(), ["a", "b"]);
   assert.ok(marks(out).a.sent && marks(out).b.sent);
   smtp.messages.length = 0;
-  await run("2026-11-24T23:30:00.000Z");
+  await run("2026-11-24T22:30:00.000Z");
   assert.equal(smtp.messages.length, 0);
 });
 
@@ -484,10 +486,10 @@ await test("a round trip out and back tomorrow gets one email with both pickups,
   assert.deepEqual(Object.keys(marks(hourly)), ["a"]);
 });
 
-await test("skips: test mode, a session that is not live, a booking made less than 12 hours before 5 PM New York time, and the run's one line counts them", async () => {
+await test("skips: test mode, a session that is not live, a booking made less than 12 hours before 4 PM New York time, and the run's one line counts them", async () => {
   setEnv(liveEnv());
   const run_s = RealDate.parse(RUN) / 1000;
-  const cutoff = RealDate.parse("2026-11-21T22:00:00.000Z") / 1000 - 43200;
+  const cutoff = RealDate.parse("2026-11-21T21:00:00.000Z") / 1000 - 43200;
   const skipped = [paid(JFK, { live: false }), paid(JFK, { created: cutoff + 1 })];
   const testKey = paid(JFK);
   stripe.sessions.get(testKey.id).livemode = false;
@@ -547,11 +549,11 @@ await test("with the calendar on but unreadable, a ride is never reminded on a g
   }
 });
 
-await test("exactly once: a second run, a duplicate of the same run and the 6 PM catch-up send nothing more, and the Message-ID is the same for a session and its legs", async () => {
+await test("exactly once: a second run, a duplicate of the same run and the 5 PM catch-up send nothing more, and the Message-ID is the same for a session and its legs", async () => {
   setEnv(liveEnv());
   const session = paid(MEET);
   await run();
-  await run("2026-11-21T22:31:00.000Z");
+  await run("2026-11-21T21:31:00.000Z");
   await run(CATCH_UP);
   assert.equal(smtp.messages.length, 1);
   const mark = marks(session);
@@ -582,8 +584,8 @@ await test("exactly once when two runs overlap: both read the ride as open, one 
 
 await test("a claim left by a run that stopped mid-send is never sent again, and neither is a ride whose email may have reached the mail server", async () => {
   setEnv(liveEnv());
-  const stale = paid(JFK, { metadata: { [MARK]: JSON.stringify({ a: { n: 1, at: "2026-11-21T22:05:00.000Z", id: "a1b2c3d4e5f6" } }) } });
-  const reached = paid(JFK, { metadata: { [MARK]: JSON.stringify({ a: { n: 1, at: "2026-11-21T22:05:00.000Z", reached: 1 } }) } });
+  const stale = paid(JFK, { metadata: { [MARK]: JSON.stringify({ a: { n: 1, at: "2026-11-21T21:05:00.000Z", id: "a1b2c3d4e5f6" } }) } });
+  const reached = paid(JFK, { metadata: { [MARK]: JSON.stringify({ a: { n: 1, at: "2026-11-21T21:05:00.000Z", reached: 1 } }) } });
   const odd = paid(JFK, { metadata: { [MARK]: "not json" } });
   await run(CATCH_UP);
   assert.equal(smtp.messages.length, 0);
@@ -695,7 +697,7 @@ await test("the metadata budget: the reminder adds exactly one key and clears a 
   assert.ok(stripe.calls.filter((c) => c.method === "POST").every((c) => [...new URLSearchParams(c.body).values()].every((value) => value.length <= 500)));
   assert.equal(MARK.length <= 40, true);
   assert.deepEqual(lines, ["reminders 2026-11-22 unmarked 1 sent 2"]);
-  const both = JSON.stringify({ a: { n: 3, at: "2026-11-21T22:30:00.000Z", sent: "2026-11-21T22:30:01.000Z" }, b: { n: 3, at: "2026-11-24T22:59:59.000Z", sent: "2026-11-24T22:59:59.999Z" } });
+  const both = JSON.stringify({ a: { n: 3, at: "2026-11-21T21:30:00.000Z", sent: "2026-11-21T21:30:01.000Z" }, b: { n: 3, at: "2026-11-24T21:59:59.000Z", sent: "2026-11-24T21:59:59.999Z" } });
   assert.ok(both.length < 200);
 });
 
@@ -823,11 +825,11 @@ await test("a pickup just after midnight says tonight, with the evening it falls
   assert.ok(monthEnd.text.includes("\nYour pickup is at 1:15 AM, after midnight on the night of Thu, Dec 31.\n"));
 });
 
-await test("the 12 hour cutoff is set from 5 PM, so the 5 PM run and the 6 PM catch-up agree: a booking made 11.5 hours before 5 PM is counted recent by both, and one made 12 hours before is reminded once", async () => {
+await test("the 12 hour cutoff is set from 4 PM, so the 4 PM run and the 5 PM catch-up agree: a booking made 11.5 hours before 4 PM is counted recent by both, and one made 12 hours before is reminded once", async () => {
   setEnv(liveEnv());
-  const five = RealDate.parse("2026-11-21T22:00:00.000Z") / 1000;
-  const late = paid(JFK, { created: five - 41400 });
-  const early = paid(EWR, { created: five - 43200 });
+  const four = RealDate.parse("2026-11-21T21:00:00.000Z") / 1000;
+  const late = paid(JFK, { created: four - 41400 });
+  const early = paid(EWR, { created: four - 43200 });
   await run();
   await run(CATCH_UP);
   assert.equal(smtp.messages.length, 1);
@@ -883,18 +885,18 @@ await test("an event Google has purged long after the owner deleted it answers 4
 
 await test("no customer data in the logs: each run writes one short line of counts, never a name, email, phone, address, flight, reference or session id", async () => {
   setEnv(liveEnv(GCAL));
-  const sessions = [paid(OTHER), paid(MEET), paid(ROUND), paid(ROUND_HOME, { metadata: { [MARK]: JSON.stringify({ b: { n: 1, at: "2026-11-21T22:00:00.000Z", id: "a1b2c3d4e5f6" } }) } })];
+  const sessions = [paid(OTHER), paid(MEET), paid(ROUND), paid(ROUND_HOME, { metadata: { [MARK]: JSON.stringify({ b: { n: 1, at: "2026-11-21T21:00:00.000Z", id: "a1b2c3d4e5f6" } }) } })];
   smtp.behavior.refuse = (mail) => (parse(mail.data).text.includes("Ben Ortiz") ? "451 4.3.0 Try later" : "");
   await run();
   await run(CATCH_UP);
-  await run("2026-11-21T21:30:00.000Z");
+  await run("2026-11-21T20:30:00.000Z");
   assert.equal(lines.length, 3);
   const needles = [REF, "Ana", "Lopez", "Ben", "Ortiz", "ana.lopez", "example.com", "212", "7946", "5th Ave", "Terminal", "DL 401", "UA 523", "Lopez Family", "cs_live", "pi_", OIDC.slice(0, 20), ACCESS_TOKEN, KEY, CRON, PASS];
   for (const line of lines) {
     assert.ok(line.length <= 120, line);
     for (const needle of needles) assert.ok(!line.includes(needle), `${needle} in ${line}`);
   }
-  assert.deepEqual(lines, ["reminders 2026-11-22 claimed 1 sent 2 reached 1", "reminders 2026-11-22 claimed 1 done 3", "reminders-off hour 16"]);
+  assert.deepEqual(lines, ["reminders 2026-11-22 claimed 1 sent 2 reached 1", "reminders 2026-11-22 claimed 1 done 3", "reminders-off hour 15"]);
   assert.equal(sessions.length, 4);
 });
 

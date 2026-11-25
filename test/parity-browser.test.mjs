@@ -12,8 +12,9 @@ const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/N
 const DATE = nyDate(5);
 const SLUGS = ["chevrolet-suburban", "cadillac-escalade", "mercedes-s-class", "cadillac-lyriq", "sprinter-limo"];
 const CARD_KEYS = ["suv", "premium", "first", "sedan", "electric", "sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"];
-const CARD_PHOTOS = [...SLUGS.slice(0, 3).map((s) => `${s}-card`), "mercedes-e-class", `${SLUGS[3]}-card`, "sprinter-executive-card", "sprinter-luxury-jet-card", "", "sprinter-limo-black-card", "sprinter-white-limo-card"];
-const VAN_RATIO = 400 / 300;
+const STUDIO = ["mercedes-e-class", "sprinter-executive", "sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo-black", "sprinter-white-limo"];
+const CARD_PHOTOS = [...SLUGS.slice(0, 3).map((s) => `${s}-card`), `${STUDIO[0]}-studio-card`, `${SLUGS[3]}-card`, ...STUDIO.slice(1).map((s) => `${s}-studio-card`)];
+const CARD_MASTERS = [...SLUGS.map((s) => `${s}-card`), ...STUDIO.map((s) => `${s}-studio-card`)];
 const RATIO = 960 / 1192;
 const GOLD = "rgb(168, 133, 28)";
 const LINE = "rgb(230, 223, 210)";
@@ -71,35 +72,38 @@ async function check(name, fn) {
 
 const MANIFEST = JSON.parse(readFileSync(join(ROOT, "fleet", "MANIFEST.json"), "utf8"));
 const FLEET = readdirSync(join(ROOT, "fleet"));
-for (const slug of SLUGS) {
+for (const slug of CARD_MASTERS) {
   await check(`P5 ${slug}: the card master is 960x1192, with 300 and 400 in AVIF and WebP, and no card file wider than the master`, () => {
-    const image = MANIFEST.images.find((i) => i.slug === `${slug}-card`);
-    assert.ok(image, `${slug}-card is not in fleet/MANIFEST.json`);
-    assert.deepEqual([image.master.path, image.master.width, image.master.height], [`fleet/${slug}-card.webp`, 960, 1192]);
+    const image = MANIFEST.images.find((i) => i.slug === slug);
+    assert.ok(image, `${slug} is not in fleet/MANIFEST.json`);
+    assert.deepEqual([image.master.path, image.master.width, image.master.height], [`fleet/${slug}.webp`, 960, 1192]);
     for (const width of [300, 400]) for (const format of ["avif", "webp"]) {
       const v = image.variants.find((x) => x.width === width && x.format === format);
-      assert.ok(v && FLEET.includes(`${slug}-card-${width}.${format}`), `${slug}-card-${width}.${format}`);
-      assert.ok(Math.abs(v.width / v.height - RATIO) / RATIO < 0.005, `${slug}-card-${width}.${format} is ${v.width}x${v.height}`);
+      assert.ok(v && FLEET.includes(`${slug}-${width}.${format}`), `${slug}-${width}.${format}`);
+      assert.ok(Math.abs(v.width / v.height - RATIO) / RATIO < 0.005, `${slug}-${width}.${format} is ${v.width}x${v.height}`);
     }
     assert.ok(image.variants.every((v) => v.width <= image.master.width), JSON.stringify(image.variants.map((v) => v.width)));
-    const files = FLEET.filter((f) => f.startsWith(`${slug}-card-`)).map((f) => Number(/^.+-card-(\d+)\.(avif|webp)$/.exec(f)?.[1]));
+    const files = FLEET.filter((f) => f.startsWith(`${slug}-`)).map((f) => Number(/^.+-card-(\d+)\.(avif|webp)$/.exec(f)?.[1]));
     assert.ok(files.length && files.every((w) => w > 0 && w <= image.master.width), `${slug}: ${files.join(", ")}`);
     assert.deepEqual(files.sort((a, b) => a - b), image.variants.map((v) => v.width).sort((a, b) => a - b), `${slug}: every card file on disk is a variant in the manifest`);
   });
 }
 
-for (const slug of CARD_PHOTOS.slice(5).filter(Boolean)) {
-  await check(`P5 ${slug}: the Sprinter card master is 400x300, with 300 and 400 in AVIF and WebP, and no card file wider than the master`, () => {
+for (const slug of STUDIO.map((s) => `${s}-studio`)) {
+  await check(`P5 ${slug}: the fleet card master is 1800x1200, with 300 to 1400 in AVIF and WebP and nothing wider`, () => {
     const image = MANIFEST.images.find((i) => i.slug === slug);
     assert.ok(image, `${slug} is not in fleet/MANIFEST.json`);
-    assert.deepEqual([image.master.path, image.master.width, image.master.height], [`fleet/${slug}.webp`, 400, 300]);
-    for (const width of [300, 400]) for (const format of ["avif", "webp"]) {
-      const v = image.variants.find((x) => x.width === width && x.format === format);
-      assert.ok(v && FLEET.includes(`${slug}-${width}.${format}`) && Math.abs(v.width / v.height - VAN_RATIO) / VAN_RATIO < 0.005, `${slug}-${width}.${format}`);
-    }
-    assert.deepEqual(FLEET.filter((f) => f.startsWith(`${slug}-`)).sort(), ["300.avif", "300.webp", "400.avif", "400.webp"].map((x) => `${slug}-${x}`));
+    assert.deepEqual([image.master.path, image.master.width, image.master.height], [`fleet/${slug}.webp`, 1800, 1200]);
+    assert.deepEqual(image.variants.map((v) => [v.format, v.width, v.height]).sort(), [300, 400, 600, 900, 1100, 1400].flatMap((w) => ["avif", "webp"].map((f) => [f, w, Math.round(w / 1.5)])).sort());
+    assert.deepEqual(FLEET.filter((f) => new RegExp(`^${slug}-\\d+\\.(avif|webp)$`).test(f)).sort(), image.variants.map((v) => v.path.slice(6)).sort());
   });
 }
+
+await check("P5 the earlier 400x300 Sprinter card photos and the Sprinter fleet card photos they replaced are gone from disk and from fleet/MANIFEST.json", () => {
+  const gone = ["sprinter-executive-card", "sprinter-luxury-jet-card", "sprinter-limo-black-card", "sprinter-white-limo-card", "sprinter-executive-rear", "sprinter-luxury-jet-door", "sprinter-limo-black-seats"];
+  assert.deepEqual(FLEET.filter((f) => gone.some((g) => f === `${g}.webp` || f.startsWith(`${g}-`))), []);
+  assert.deepEqual(MANIFEST.images.filter((i) => gone.includes(i.slug)).map((i) => i.slug), []);
+});
 
 const { child, base } = await serve();
 process.on("exit", () => child.kill());
@@ -182,7 +186,7 @@ for (const [engine, type] of ENGINES) {
       if (width >= 600) assert.deepEqual(r.map((x) => [x.name, x.model]), Array(10).fill([1, 1]), "name and model lines");
       if (FIRST_SCREEN.includes(width)) assert.ok(r.slice(0, height < 1000 ? 5 : 6).every((x) => x.price <= height) && r.every((x, i) => !i || x.price > r[i - 1].price), `price ends ${r.map((x) => Math.round(x.price))}`);
       assert.deepEqual(r.map((x) => x.src.replace(/-(300|400)\.(avif|webp)$/, "")), CARD_PHOTOS, r.map((x) => x.src).join(", "));
-      assert.ok(r.every((x, i) => (i < 5 && i !== 3 ? Math.abs(x.ratio - RATIO) / RATIO < 0.005 : CARD_PHOTOS[i] ? Math.abs(x.ratio - VAN_RATIO) / VAN_RATIO < 0.005 : x.ratio === 0)), `natural ratios ${r.map((x) => x.ratio.toFixed(4))}`);
+      assert.ok(r.every((x) => Math.abs(x.ratio - RATIO) / RATIO < 0.005), `natural ratios ${r.map((x) => x.ratio.toFixed(4))}`);
       assert.ok((await sideways(p)) <= 0, "the page scrolls sideways");
       assert.deepEqual(p.errors, []);
       await p.close();

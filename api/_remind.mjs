@@ -6,7 +6,7 @@ import { reminderLetter, bookingEvents } from "./_mail.mjs";
 import { buildMessage, smtpSend } from "./_smtp.mjs";
 import { readToken, readEvent } from "./_calendar.mjs";
 
-export const SEND_HOURS = [17, 18];
+export const SEND_HOURS = [16, 17];
 export const MARK = "reminded";
 const ZONE = "America/New_York";
 const SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{10,200}$/;
