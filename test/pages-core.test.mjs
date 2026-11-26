@@ -31,7 +31,7 @@ function check(name, fn) {
 }
 
 const CARDS = [
-  ["/services#airport-transfers", "Airport transfers", "One flat price to or from JFK, LaGuardia, Newark and Teterboro, from anywhere in New York City. Tolls, airport fees and taxes are included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
+  ["/services#airport-transfers", "Airport transfers", "One flat price to or from JFK, LaGuardia, Newark and Teterboro, from anywhere in New York City. Tolls, airport fees and the service fee are included.", "gmc-denali", 1448, 1086, "Black GMC Denali in a stone lobby"],
   ["/chauffeur-service-nyc", "Chauffeur service", "The same car and chauffeur for meetings, events, shopping or a day of stops, with a 3-hour minimum, or 4 hours in a Sprinter.", "bmw-7-series", 1607, 979, "Dark gray BMW 7 Series outside a stone building at night"],
   ["/limousine-service-nyc", "Limo service", "Five kinds of Sprinter for up to 14 passengers, with 10 large and 2 small bags.", "sprinter-jet", 1236, 650, "Inside a Luxury Sprinter: two leather captain's chairs facing a screen"],
   ["/services#corporate", "Corporate accounts", "Monthly billing and priority scheduling for your company.", "lincoln-navigator", 1536, 1024, "Black Lincoln Navigator in a showroom"],
@@ -55,7 +55,7 @@ const CARD_SIZES = (w, h) => {
 const ARROW = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>';
 const EXT = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg><span class="sr-only"> (opens in a new tab)</span>';
 const REVIEWS = `<p><a class="lnk" href="https://www.google.com/maps?cid=15477906940128800338" target="_blank" rel="noopener">Read the reviews on Google <span class="nowrap">Maps<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-external"></use></svg></span><span class="sr-only"> (opens in a new tab)</span></a></p>`;
-const TRUST = '<ul class="assure-row assure-row--page" role="list"><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Flat airport rates include tolls, airport fees and taxes</li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg>We answer 24 hours a day, every day</li></ul>';
+const TRUST = '<ul class="assure-row assure-row--page" role="list"><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Flat airport rates include tolls, airport fees and the service fee</li><li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-phone"></use></svg>We answer 24 hours a day, every day</li></ul>';
 const FITS = '<fieldset class="fits"><legend>Who is traveling?</legend><label><input type="radio" name="fits" value="0" checked="">All</label><label><input type="radio" name="fits" value="3">1 to 3</label><label><input type="radio" name="fits" value="6">4 to 6</label><label><input type="radio" name="fits" value="10">7 to 10</label><label><input type="radio" name="fits" value="14">11 to 14</label></fieldset>';
 const { POLICY } = await import(join(ROOT, "api", "_copy.mjs"));
 const P1 = `${POLICY.cancel} ${POLICY.howTo}`;

@@ -9,12 +9,14 @@ import {
   AIRPORT_FARES,
   AIRPORT_TOTALS,
   DISTANCE_RATES,
+  LONG_RATES,
+  SHORT_MILES,
+  LONG_MILES,
   DISTANCE_LIMITS,
   DISTANCE_SKIP_ZIPS,
   AIRPORT_STATES,
-  NYC_TAX_PERCENT,
   TAX_AREAS,
-  BCF_PERCENT,
+  FEE_PERCENT,
   TIP_PERCENTS,
   TIP_CUSTOM,
   percentCents,
@@ -271,12 +273,7 @@ function endsOf(trip) {
 
 const hourlyPlace = (start) => Boolean(start) && !["unknown", "abroad"].includes(start.zone) && (start.zone !== "outside" || Boolean(start.place));
 
-export function hourlyTax(trip) {
-  const start = endsOf(trip).from;
-  return hourlyPlace(start) ? legTax([start]) : null;
-}
-
-export const hourlyStart = (trip) => hourlyTax(trip) !== null;
+export const hourlyStart = (trip) => hourlyPlace(endsOf(trip).from);
 
 export function legTax(points) {
   const regions = points.map((end) => (end && end.region) || "");
@@ -483,7 +480,7 @@ function spatialReason(trip) {
   if (trip.trip_type === "hour") {
     if (trip.from === "unknown") return { reason: unplaced(trip.from_text), field: "from_text" };
     const start = endsOf(trip).from;
-    if (!hourlyPlace(start) || (exact(start) && !hourlyStart(trip))) return { reason: "outside-hourly", field: "" };
+    if (!hourlyPlace(start)) return { reason: "outside-hourly", field: "" };
     const hours = Number(trip.hours);
     if (hours < HOURS.min || hours > HOURS.max) return { reason: "hours-range", field: "" };
     return exact(start) ? null : { reason: "pickup-address", field: "" };
@@ -494,12 +491,11 @@ function spatialReason(trip) {
   if (!legs.length) return { reason: "unplaced", field: "from_text" };
   const stopped = Boolean(ends.stop1 || ends.stop2);
   const online = (item) => !item.reason || ROUTED.includes(item.reason) || (stopped && !item.back && item.reason === "airport-to-airport" && [item.from, item.to].every((zone) => AIRPORT_PLACES.includes(zone)));
-  const blind = ENDS.every((name) => exact(ends[name])) && legs.every(online) ? legs.find((item) => !item.salesTax) : null;
+  const blind = ENDS.every((name) => exact(ends[name])) && legs.every(online) ? ENDS.find((name) => ends[name] && !ends[name].region) : "";
   if (blind) {
-    const name = blind.back ? "to" : ENDS.find((end) => ends[end] && !ends[end].region) || "from";
-    const end = ends[name];
-    const reason = unplaced(end ? end.text : "");
-    return { reason: reason === "unplaced" && end && !end.place && typedZip(end.text) ? "county" : reason, field: `${name}_text` };
+    const end = ends[blind];
+    const reason = unplaced(end.text);
+    return { reason: reason === "unplaced" && !end.place && typedZip(end.text) ? "county" : reason, field: `${blind}_text` };
   }
   const unpriced = legs.find((item) => item.reason);
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
@@ -614,38 +610,27 @@ export function checkDetails(trip, required) {
   return null;
 }
 
-const flatPercent = (airport) => (AIRPORT_STATES[airport] === "NY" ? NYC_TAX_PERCENT : "0");
-const charged = (fare, percent) => fare + percentCents(fare, percent) + percentCents(fare, BCF_PERCENT);
+export const feeOf = (fare) => percentCents(fare, FEE_PERCENT);
 
-function fareWithin(cents, percent) {
-  let fare = Math.floor(cents / (1 + Number(percent) / 100 + Number(BCF_PERCENT) / 100));
-  while (charged(fare + 1, percent) <= cents) fare++;
-  while (fare > 0 && charged(fare, percent) > cents) fare--;
-  return fare;
-}
-
-export function priceLeg(key, airport, percent = flatPercent(airport)) {
-  const listed = AIRPORT_FARES[key][airport];
+export function priceLeg(key, airport) {
+  const fare = AIRPORT_FARES[key][airport];
   const total = AIRPORT_TOTALS[key][airport];
-  const base = flatPercent(airport);
-  const fare = percent === base ? listed : fareWithin(charged(listed, base), percent);
-  const tax = percentCents(fare, percent);
-  const bcf = percentCents(fare, BCF_PERCENT);
-  return { fare, tax, bcf, tolls: total - fare - tax - bcf, total };
+  const fee = feeOf(fare);
+  return { fare, fee, tolls: total - fare - fee, total };
 }
 
-const feeLines = (tax, bcf) => [...(tax ? [line(LABELS.tax, tax)] : []), line(LABELS.bcf, bcf)];
+const feeLines = (fee) => [line(LABELS.fee, fee)];
+const legacyLines = (tax, bcf) => [...(tax ? [line(LABELS.tax, tax)] : []), line(LABELS.bcf, bcf)];
 
-export function legLines(key, airport, percent) {
-  const { fare, tax, bcf, tolls, total } = priceLeg(key, airport, percent);
-  return { lines: [line(LABELS.fare, fare), ...feeLines(tax, bcf), line(LABELS.tolls, tolls)], total };
+export function legLines(key, airport) {
+  const { fare, fee, tolls, total } = priceLeg(key, airport);
+  return { lines: [line(LABELS.fare, fare), ...feeLines(fee), line(LABELS.tolls, tolls)], total };
 }
 
 export function hourlyLines(vehicle, hours) {
   const fare = VEHICLES[vehicle].hourly * Number(hours);
-  const tax = percentCents(fare, NYC_TAX_PERCENT);
-  const bcf = percentCents(fare, BCF_PERCENT);
-  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), ...feeLines(tax, bcf)], total: fare + tax + bcf };
+  const fee = feeOf(fare);
+  return { lines: [line(fill(LABELS.fareHours, { hours }), fare), ...feeLines(fee)], total: fare + fee };
 }
 
 export const RATE_KEYS = Object.keys(CLASSES).flatMap((cls) => (has(AIRPORT_TOTALS, cls) ? [cls] : Object.keys(VEHICLES).filter((key) => VEHICLES[key].cls === cls)));
@@ -659,29 +644,39 @@ for (const key of RATE_KEYS) {
 }
 if ([AIRPORT_FARES, AIRPORT_TOTALS].some((table) => Object.keys(table).some((key) => !RATE_KEYS.includes(key) || Object.keys(table[key]).some((airport) => !AIRPORT_PLACES.includes(airport))))) throw new Error("airport-config");
 
+const cardFare = (rate, tenths, minutes) => rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute;
+
 export function distanceFare(key, tenths, minutes) {
-  const rate = DISTANCE_RATES[key];
-  return Math.max(rate.minimum, rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute);
+  const short = (at) => cardFare(DISTANCE_RATES[key], at, minutes);
+  const long = (at) => cardFare(LONG_RATES[key], at, minutes);
+  const [from, to] = [SHORT_MILES * 10, LONG_MILES * 10];
+  const blend = (at) => Math.round(short(at) + ((long(at) - short(at)) * (at - from)) / (to - from));
+  let fare = short(Math.min(tenths, from));
+  for (let at = from + 1; at <= Math.min(tenths, to - 1); at++) fare = Math.max(fare, blend(at));
+  if (tenths >= to) fare = Math.max(fare, long(tenths));
+  return Math.max(DISTANCE_RATES[key].minimum, fare);
 }
 
 export function priceDistance(key, ride, ...airports) {
-  return priceRide(key, ride, airports, NYC_TAX_PERCENT);
+  return priceRide(key, ride, airports);
 }
 
-export function priceRide(key, ride, airports, percent) {
+export function priceRide(key, ride, airports = []) {
   const { tenths, minutes } = ride;
   const fare = Math.max(distanceFare(key, tenths, minutes), ...airports.filter((airport) => has(AIRPORT_FARES[key], airport)).map((airport) => AIRPORT_FARES[key][airport]));
-  const tax = percentCents(fare, percent);
-  const bcf = percentCents(fare, BCF_PERCENT);
+  const fee = feeOf(fare);
   const tolls = Number.isInteger(ride.tolls) ? ride.tolls : 0;
-  return { fare, tax, bcf, tolls, total: fare + tax + bcf + tolls };
+  return { fare, fee, tolls, total: fare + fee + tolls };
 }
 
+const cardOk = (rate, parts) => Boolean(rate) && parts.every((part) => Number.isInteger(rate[part]) && rate[part] >= 0);
 for (const key of RATE_KEYS) {
   const rate = has(DISTANCE_RATES, key) ? DISTANCE_RATES[key] : null;
-  const ok = rate && ["base", "mile", "minute", "minimum"].every((part) => Number.isInteger(rate[part]) && rate[part] >= 0) && rate.minimum > 0;
+  const ok = cardOk(rate, ["base", "mile", "minute", "minimum"]) && rate.minimum > 0 && cardOk(has(LONG_RATES, key) && LONG_RATES[key], ["base", "mile", "minute"]);
   if (!ok && (has(CLASSES, key) || key === CLASS_DEFAULT_VEHICLE[VEHICLES[key].cls] || rate)) throw new Error(`distance-config ${key}`);
 }
+if (Object.keys(LONG_RATES).some((key) => !has(DISTANCE_RATES, key)) || !(Number.isInteger(SHORT_MILES) && Number.isInteger(LONG_MILES) && SHORT_MILES > 0 && LONG_MILES > SHORT_MILES)) throw new Error("distance-config");
+if (!/^\d+(\.\d+)?$/.test(FEE_PERCENT)) throw new Error("fee-config");
 if (!Number.isInteger(STOP_FEE_CENTS) || STOP_FEE_CENTS <= 0) throw new Error("stop-config");
 if (Object.keys(DISTANCE_RATES).some((key) => !RATE_KEYS.includes(key)) || !(DISTANCE_LIMITS.miles > 0 && DISTANCE_LIMITS.minutes > 0) || !DISTANCE_SKIP_ZIPS.every((zip) => /^\d{5}$/.test(zip))) throw new Error("distance-config");
 
@@ -690,8 +685,7 @@ export function classTotal(trip, cls) {
   return priceTrip({ ...trip, class: cls, vehicle: trip.trip_type === "hour" || cls === "sprinter" ? vehicleFor(trip, cls) : "" }).total;
 }
 
-const legPercent = (item) => (item.salesTax ? item.salesTax.percent : undefined);
-const legPrice = (key, item) => (item.ride && !item.flat ? priceRide(key, item.ride, [item.from, ...(item.via || []), item.to], legPercent(item) || NYC_TAX_PERCENT) : priceLeg(key, item.airport, legPercent(item)));
+const legPrice = (key, item) => (item.ride && !item.flat ? priceRide(key, item.ride, [item.from, ...(item.via || []), item.to]) : priceLeg(key, item.airport));
 
 export function chargedLegs(trip, cls = trip.class) {
   const legs = trip.legs || legsOf(trip);
@@ -718,8 +712,7 @@ export function priceTrip(input, settings) {
   const legs = hourly ? [] : trip.legs.map((item) => legPrice(key, item));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
   const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
-  const tax = hourly ? percentCents(fare, (hourlyTax(trip) || { percent: NYC_TAX_PERCENT }).percent) : sum("tax");
-  const bcf = hourly ? percentCents(fare, BCF_PERCENT) : sum("bcf");
+  const fee = hourly ? feeOf(fare) : sum("fee");
   const tolls = hourly ? 0 : sum("tolls");
   const estimate = tollsIn(trip) ? trip.legs.reduce((total, item, i) => total + (item.flat ? 0 : legs[i].tolls), 0) : null;
   const meet = trip.meet ? MEET_AND_GREET : 0;
@@ -731,7 +724,7 @@ export function priceTrip(input, settings) {
   const stopCount = hourly ? 0 : trip.legs.reduce((sum, item) => sum + (item.feeStops || 0), 0);
   const stops = stopCount * STOP_FEE_CENTS;
   const tip = custom ? Number(trip.tip_amount) * 100 || 0 : tipPercent ? percentCents(fare, String(tipPercent)) : 0;
-  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), ...feeLines(tax, bcf)];
+  const lines = [line(hourly ? fill(LABELS.fareHours, { hours: trip.hours }) : LABELS.fare, fare), ...feeLines(fee)];
   if (plain || tolls) lines.push(line(LABELS.tolls, tolls));
   if (meet) lines.push(line(LABELS.meet, meet));
   if (stops) lines.push(line(stopLabel(stopCount, stops), stops));
@@ -741,8 +734,7 @@ export function priceTrip(input, settings) {
   return {
     legs,
     fare,
-    tax,
-    bcf,
+    fee,
     tolls,
     estimate,
     meet,
@@ -758,7 +750,7 @@ export function priceTrip(input, settings) {
     stopLabel: stops ? stopLabel(stopCount, stops) : "",
     tip,
     tipPercent,
-    total: fare + tax + bcf + tolls + stops + meet + seats + dogs + tip,
+    total: fare + fee + tolls + stops + meet + seats + dogs + tip,
     value: fare + stops + meet + seats + dogs,
     lines,
     notes: laterNotes(service, flatPart(trip), airportDistance(trip), estimate !== null),
@@ -964,7 +956,7 @@ export function receipt(metadata, settings, taxCents) {
     lines.push(line(tipLabel(20), cents("gratuity_cents")));
     if (tax) lines.push(line(LABELS.legacyTax, tax));
   } else if (known) {
-    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), ...feeLines(cents("tax_cents"), cents("bcf_cents")));
+    lines.push(line(hourly && INTEGER.test(data.hours || "") ? fill(LABELS.fareHours, { hours: data.hours }) : LABELS.fare, cents("fare_cents")), ...(has(data, "bcf_cents") ? legacyLines(cents("tax_cents"), cents("bcf_cents")) : feeLines(cents("tax_cents"))));
     if (cents("tolls_cents")) lines.push(line(LABELS.tolls, cents("tolls_cents")));
     if (cents("meet_cents")) lines.push(line(LABELS.meet, cents("meet_cents")));
     if (cents("stops_cents")) lines.push(line(stopLabel(["stop1_text", "stop2_text"].filter((key) => data[key]).length, cents("stops_cents")), cents("stops_cents")));

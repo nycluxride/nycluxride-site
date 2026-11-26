@@ -1,5 +1,3 @@
-import { TAX_AREAS, NYC_TAX_AREA } from "./_salestax.mjs";
-
 export { PUB_718, ZIP_SOURCE, TAX_AREAS, NYC_TAX_AREA, COUNTY_AREAS, CITY_AREAS, CITY_ZIPS, ZIP_AREAS } from "./_salestax.mjs";
 export const CLASSES = {
   suv: { name: "Business SUV", seats: 6, bags: "3 large plus 3 small bags" },
@@ -41,16 +39,16 @@ export const ADDRESS_PLACES = ["manhattan", "brooklyn", "queens", "bronx", "stat
 export const AIRPORT_PLACES = ["jfk", "lga", "ewr", "teb"];
 export const AIRPORT_STATES = { jfk: "NY", lga: "NY", ewr: "NJ", teb: "NJ" };
 export const AIRPORT_FARES = {
-  suv: { jfk: 15500, lga: 13701, ewr: 16846, teb: 16846 },
-  premium: { jfk: 18650, lga: 15950, ewr: 20269, teb: 20269 },
-  first: { jfk: 26749, lga: 21350, ewr: 29071, teb: 29071 },
-  sedan: { jfk: 14151, lga: 11901, ewr: 15379, teb: 15379 },
-  electric: { jfk: 15050, lga: 12801, ewr: 16357, teb: 16357 },
-  "sprinter-executive": { jfk: 39348, lga: 39348, ewr: 45208, teb: 45208 },
-  "sprinter-luxury-jet": { jfk: 50597, lga: 48346, ewr: 56944, teb: 56944 },
-  "sprinter-presidential": { jfk: 57346, lga: 55095, ewr: 64768, teb: 64768 },
-  "sprinter-limo": { jfk: 61844, lga: 59595, ewr: 69658, teb: 69658 },
-  "sprinter-white-limo": { jfk: 66344, ewr: 74548, teb: 74548 },
+  suv: { jfk: 15379, lga: 13593, ewr: 15379, teb: 15379 },
+  premium: { jfk: 18504, lga: 15825, ewr: 18504, teb: 18504 },
+  first: { jfk: 26539, lga: 21182, ewr: 26539, teb: 26539 },
+  sedan: { jfk: 14039, lga: 11807, ewr: 14039, teb: 14039 },
+  electric: { jfk: 14932, lga: 12700, ewr: 14932, teb: 14932 },
+  "sprinter-executive": { jfk: 39039, lga: 39039, ewr: 41271, teb: 41271 },
+  "sprinter-luxury-jet": { jfk: 50200, lga: 47968, ewr: 51986, teb: 51986 },
+  "sprinter-presidential": { jfk: 56896, lga: 54664, ewr: 59129, teb: 59129 },
+  "sprinter-limo": { jfk: 61361, lga: 59129, ewr: 63593, teb: 63593 },
+  "sprinter-white-limo": { jfk: 65825, ewr: 68057, teb: 68057 },
 };
 export const AIRPORT_TOTALS = {
   suv: { jfk: 18500, lga: 16500, ewr: 18500, teb: 18500 },
@@ -64,18 +62,27 @@ export const AIRPORT_TOTALS = {
   "sprinter-limo": { jfk: 70000, lga: 67500, ewr: 72500, teb: 72500 },
   "sprinter-white-limo": { jfk: 75000, ewr: 77500, teb: 77500 },
 };
+export const FEE_PERCENT = "12";
+export const SHORT_MILES = 50;
+export const LONG_MILES = 75;
 export const DISTANCE_RATES = {
-  suv: { base: 3500, mile: 400, minute: 65, minimum: 11000 },
-  premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
-  first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
-  sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
-  electric: { base: 2647, mile: 318, minute: 53, minimum: 9212 },
+  suv: { base: 8500, mile: 400, minute: 65, minimum: 8500 },
+  premium: { base: 9500, mile: 475, minute: 80, minimum: 9500 },
+  first: { base: 10500, mile: 525, minute: 90, minimum: 10500 },
+  sedan: { base: 7500, mile: 300, minute: 50, minimum: 7500 },
+  electric: { base: 7647, mile: 318, minute: 53, minimum: 7647 },
   "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 35000 },
+};
+export const LONG_RATES = {
+  suv: { base: 0, mile: 410, minute: 25 },
+  premium: { base: 0, mile: 470, minute: 30 },
+  first: { base: 0, mile: 585, minute: 35 },
+  sedan: { base: 0, mile: 370, minute: 20 },
+  electric: { base: 0, mile: 370, minute: 20 },
+  "sprinter-executive": { base: 7300, mile: 820, minute: 132 },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
-export const NYC_TAX_PERCENT = TAX_AREAS[NYC_TAX_AREA].percent;
-export const BCF_PERCENT = "2.25";
 export const TIP_PERCENTS = [0, 10, 15, 20, 25];
 export const TIP_DEFAULT = 25;
 export const STRIPE_MAX_CENTS = 99999999;

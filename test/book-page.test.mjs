@@ -297,17 +297,17 @@ check("the pickup that fills in by itself (owner request 2) is the first slot MI
   assert.doesNotMatch(SRC, /NLR-/);
 });
 
-check("the price box and the confirmation receipt (owner change 2) hold the Taxes and fees and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
-  assert.match(PAY, /\(PLN\|\|\["Fare","Taxes and fees"\]\.concat\(tl\(\)\?\["Tolls"\]:\[\]\)\)/);
+check("the price box and the confirmation receipt (owner change 2) hold the Service fee and Tolls labels in their skeletons, the same in every class hint on Tolls, and no sales tax, Black Car Fund, airport fees or workers' compensation line, and the notice copy says 90 minutes", () => {
+  assert.match(PAY, /\(PLN\|\|\["Fare","Service fee"\]\.concat\(tl\(\)\?\["Tolls"\]:\[\]\)\)/);
   assert.match(PAY, /nl\(\$\("price-notes"\)\.dataset\[ap\(\)\|\|sq\(\)&&tl\(\)\?"airport":tl\(\)\?"returnFlat":AP\(\)\?"waiting":one\(\)\?"distance":"hourly"\]/, "a trip whose stops take the stop fee has the notes of the same trip without the stops, a trip with an airport on its route priced over the whole route has the notes of an airport trip priced by distance, and while a trip priced by distance loads its note never says tolls come after the ride");
   assert.match(PAY, /ap=\(\)=>AP\(\)&&!ns&&!EN\.some\(k=>zv\(C\[k\]\)=="outside"\),sq=\(\)=>one\(\)&&ns&&\(za\("from"\)!=za\("to"\)\|\|!AP\(\)\),tl=\(\)=>ap\(\)\|\|one\(\)&&ns&&za\("to"\)!=za\("from"\)&&zv\(C\.to\)!="outside"&&zv\(C\.from\)!="outside"/, "before the first answer only a trip with no stop is an airport transfer at the flat rate, a trip with stops expects the stop fee when the trip without the stops is an airport transfer or runs between two addresses, with the tolls line when it is an airport transfer, and a trip between two airports or between two addresses by an airport stop expects its whole route");
   assert.doesNotMatch(PAY, /ou=\(\)=>|aw=a=>/, "no trip with stops keeps its airport transfers on every part");
   assert.match(PAY, /"stop-address":aq\("stop "\)/);
   assert.match(PAY, /x\[0\]=="Tolls"&&one\(\)&&!TF\?h\(" bk-hint--same","The same in every class\."\):""/);
   assert.match(PAY, /PNT=r\.price\.notes;TF=r\.price\.tolls_differ;/);
-  assert.match(DONE, /"Taxes and fees",\.\.\.!f\|\|y\?\["Tolls"\]:\[\]/);
-  assert.match(DONE, /y=o&&\(b\.ln\|\|\["Tolls"\]\)\.some\(l=>\/\^Tolls\/\.test\(l\)\)/, "a saved Taxes and fees line never counts as a tolls line");
-  for (const s of [SRC, DONE]) assert.doesNotMatch(s, /sales tax|Black Car Fund|airport fees|workers' compensation|next hour|an hour away/i);
+  assert.match(DONE, /"Service fee",\.\.\.!f\|\|y\?\["Tolls"\]:\[\]/);
+  assert.match(DONE, /y=o&&\(b\.ln\|\|\["Tolls"\]\)\.some\(l=>\/\^Tolls\/\.test\(l\)\)/, "a saved Service fee line never counts as a tolls line");
+  for (const s of [SRC, DONE]) assert.doesNotMatch(s, /sales tax|Black Car Fund|Taxes and fees|airport fees|workers' compensation|next hour|an hour away/i);
   assert.ok(PAY.includes('"short-notice":["Less than 90 minutes away","Change the time"]'));
   assert.equal(SPRINTER_NOTICE_HOURS * 36e5, 108e5);
   assert.equal(SPRINTER_BUSY_HOURS * 36e5, 864e5);
@@ -406,7 +406,7 @@ check("child seats: pay.js reprices on a change of any seat count, keys the pric
   assert.match(PAY, /if\(k=="invalid"\)return LD=CW=0,bz\(0\),iv\(r\);uk\(\$\("e-child_seats"\)\);/);
   assert.doesNotMatch(SRC, /15\.00|\$15|seat_cents[:=]\d/);
   assert.doesNotMatch(SRC, /20\.00|\$20|stop_cents[:=]\d/);
-  assert.match(DONE, /\.\.\.f&&f\.meet=="1"\?\["Meet and greet"\]:\[\],\.\.\.\(f&&b\.ln\|\|\[\]\)\.filter\(l=>\/\^\[CELS\]\/\.test\(l\)\),/, "the receipt skeleton keeps the Extra stop, child seat, Small dog and Large dog lines of the price box after meet and greet, in the order of the answer");
+  assert.match(DONE, /\.\.\.f&&f\.meet=="1"\?\["Meet and greet"\]:\[\],\.\.\.\(f&&b\.ln\|\|\[\]\)\.filter\(l=>\/\^\(\[CEL\]\|Sm\)\/\.test\(l\)\),/, "the receipt skeleton keeps the Extra stop, child seat, Small dog and Large dog lines of the price box after meet and greet, in the order of the answer");
   assert.doesNotMatch(DONE, /20\.00|\$20|2000/);
   assert.doesNotMatch(DONE, /15\.00|\$15|1500/);
 });

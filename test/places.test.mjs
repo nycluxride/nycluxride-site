@@ -725,14 +725,14 @@ await test("pick signs the region of an address outside New York City from Place
   assert.equal(calls.length, 0);
 });
 
-await test("pick signs the region of another airport too, so Westchester County Airport picked from the list prices by the hour at the Westchester rate, while JFK and Newark keep the region of their zone", async () => {
+await test("pick signs the region of another airport too, so Westchester County Airport picked from the list prices by the hour with the 12% service fee, while JFK and Newark keep the region of their zone", async () => {
   process.env.GOOGLE_MOCK = "true";
   const label = "Westchester County Airport, White Plains, NY";
   const res = await call(pick("mock-hpn", label));
   assert.deepEqual([res.body.kind, res.body.zone, res.body.airport], ["ok", "airport-other", true]);
   assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "mock-hpn", zone: "airport-other", expired: false, region: "5581" });
   const trip = await resolveTrip(readInput({ trip_type: "hour", from_text: label, from_ticket: res.body.ticket, date: "2026-10-14", time: "07:30", passengers: "2", hours: "3", class: "sedan", tip: "0" }), { now: Date.now() });
-  assert.deepEqual([checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), trip.ends.from.region, priceTrip(trip).tax], [{ kind: "price", reason: "", hold: "" }, "5581", 2136]);
+  assert.deepEqual([checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), trip.ends.from.region, priceTrip(trip).fee], [{ kind: "price", reason: "", hold: "" }, "5581", 3060]);
   const one = await resolveTrip(readInput({ trip_type: "one", from_text: label, from_ticket: res.body.ticket, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-10-14", time: "07:30", passengers: "2", class: "sedan", tip: "0" }), { now: Date.now() });
   assert.deepEqual(checkTrip(one, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "quote", reason: "airport-to-airport", field: "" });
   for (const zone of ["jfk", "ewr", "teb", "manhattan"]) assert.equal(verifyTicket(signTicket("ChIJairport", zone, label, NOW, 0, "NJ"), label, NOW).region, undefined, zone);
@@ -748,7 +748,7 @@ await test("pick of an address far from the city prices by the hour with its reg
     assert.deepEqual(verifyTicket(res.body.ticket, label, Date.now()), { id: "ChIJvalley", zone: "outside", expired: false, region: "3921" }, String(latitude));
     const trip = await resolveTrip(readInput({ trip_type: "hour", from_text: label, from_ticket: res.body.ticket, date: "2026-10-14", time: "07:30", passengers: "2", hours: "3", class: "sedan", tip: "0" }), { now: Date.now() });
     assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "price", reason: "", hold: "" }, String(latitude));
-    assert.deepEqual([priceTrip(trip).fare, priceTrip(trip).tax], [25500, 2136]);
+    assert.deepEqual([priceTrip(trip).fare, priceTrip(trip).fee], [25500, 3060]);
   }
   const id = `Ei${"x".repeat(298)}`;
   for (const [zone, region] of [["airport-other", "6511"], ["outside", "6511"], ["airport-other", "NJ"]]) {
@@ -1017,7 +1017,7 @@ await test("a Manhattan place labeled Hoboken, NJ never yields a ticket, and JFK
   assert.deepEqual(checkTrip(trip, NOW, readSettings({ PAYMENTS_ENABLED: "true" })), { kind: "price", reason: "", hold: "" });
   assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.reason, leg.ride]), [["jfk", "outside", "", { tenths: 168, minutes: 43 }]]);
   const price = priceTrip(trip);
-  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", AIRPORT_FARES.suv.jfk], ["Black Car Fund", 349]], 15849], "JFK to New Jersey is interstate, so no New York sales tax");
+  assert.deepEqual([price.service, price.lines.map(({ label, cents }) => [label, cents]), price.total], ["distance", [["Fare", 18015], ["Service fee", 2162]], 20177], "JFK to New Jersey is priced by distance with the same service fee");
 });
 
 await test("pick refuses a label whose own words contradict Place Details, and keeps genuine airport and FBO labels", async () => {

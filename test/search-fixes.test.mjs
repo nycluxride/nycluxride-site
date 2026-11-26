@@ -30,7 +30,7 @@ function check(name, fn) {
 const PAGES = {
   "limousine-service-nyc.html": ["Luxury Limo Service NYC for Prom and Groups | NYC LUX RIDE", "Luxury limo service in New York City for prom and group nights. Luxury Sprinters seat up to 14 and book by the hour, with a 4-hour minimum."],
   "chauffeur-service-nyc.html": ["Hourly Luxury Chauffeur Service NYC | NYC LUX RIDE", "Luxury chauffeur service in New York City by the hour, from 3 hours, with one car and chauffeur for every stop. Corporate accounts on monthly billing."],
-  "rates.html": ["Car Service Rates and Airport Cost from $145 | NYC LUX RIDE", "A car service to the airport costs from $145 to LaGuardia and $170 to JFK, Newark or Teterboro, with tolls and taxes included. Hourly from $85."],
+  "rates.html": ["Car Service Rates and Airport Cost from $145 | NYC LUX RIDE", "A car service to the airport costs from $145 to LaGuardia and $170 to JFK, Newark or Teterboro, tolls and fees included. Hourly from $85 plus a 12% fee."],
   "locations/soho.html": ["SoHo Car Service with a Chauffeur | NYC LUX RIDE", "SoHo car service from a corner on West Broadway, Sixth Avenue, Lafayette or Houston Street. One flat price to JFK, LaGuardia, Newark and Teterboro."],
   "car-service-with-car-seat-nyc.html": ["Car Service with Car Seats NYC, $20 per seat | NYC LUX RIDE", null],
   "blog/car-seats-nyc-car-service-parents-november-19.html": ["Car Seat Law in NYC Taxis and Car Services | NYC LUX RIDE", "What New York law says about car seats in taxis and car services, the right seat for each age, and how to book a car with child seats in NYC."],

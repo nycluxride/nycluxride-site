@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const { VEHICLES, AIRPORT_TOTALS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, SPRINTER_NOTICE_HOURS } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const { VEHICLES, AIRPORT_TOTALS, FEE_PERCENT, percentCents, SPRINTER_NOTICE_HOURS } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
 const { HEADINGS, REASONS, SPRINTER_BUSY } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET"];
 const SPRINTERS = Object.keys(VEHICLES).filter((key) => VEHICLES[key].cls === "sprinter");
@@ -14,7 +14,7 @@ const DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).
 const cash = (c) => "$" + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const parts = (key, hours) => {
   const fare = VEHICLES[key].hourly * hours;
-  return { fare, fees: percentCents(fare, NYC_TAX_PERCENT) + percentCents(fare, BCF_PERCENT) };
+  return { fare, fees: percentCents(fare, FEE_PERCENT) };
 };
 const total = (key, hours) => {
   const { fare, fees } = parts(key, hours);
@@ -134,7 +134,7 @@ await check("S1 by the hour the hours start at 3 for the other cars, each Sprint
   assert.deepEqual(await hourOptions(page), ["4", "5", "6", "7", "8", "9", "10", "11", "12"]);
   assert.deepEqual(await shown(page), [false, false]);
   const { fare, fees } = parts("sprinter-executive", 4);
-  assert.deepEqual(await panel(page), { lines: [["Fare, 4 hours", cash(fare)], ["Taxes and fees", cash(fees)]], total: cash(fare + fees) });
+  assert.deepEqual(await panel(page), { lines: [["Fare, 4 hours", cash(fare)], ["Service fee", cash(fees)]], total: cash(fare + fees) });
   await page.waitForFunction(() => !document.querySelector(".bk-card__price .bk-sk"));
   assert.deepEqual(await vans(page), SPRINTERS.map((key) => cash(total(key, 4))));
   assert.deepEqual(await scopes(page), SPRINTERS.map(() => "ride price for 4 hours"));
@@ -150,7 +150,7 @@ await check("S2 picking each Sprinter card by the hour checks that card only, sh
     await page.click(`label[for="bk-c-${key}"]`);
     await totalIs(page, total(key, 4));
     const { fare, fees } = parts(key, 4);
-    assert.deepEqual(await panel(page), { lines: [["Fare, 4 hours", cash(fare)], ["Taxes and fees", cash(fees)]], total: cash(fare + fees) }, key);
+    assert.deepEqual(await panel(page), { lines: [["Fare, 4 hours", cash(fare)], ["Service fee", cash(fees)]], total: cash(fare + fees) }, key);
     assert.equal(await page.textContent(`#bk-p-${key} .bk-fig`), cash(total(key, 4)), key);
     assert.deepEqual([await picked(page), await page.inputValue("#bk-sprinter"), await page.$$eval("[name=class]:checked", (r) => r.length)], [["sprinter", key], key, 1], key);
     assert.deepEqual(await choice(page), [VEHICLES[key].name, "Luxury Sprinter"], key);
@@ -279,7 +279,7 @@ await check("S7 one way every Sprinter card shows its own JFK total, the Limo an
     assert.equal(await p.textContent(`#bk-p-${key} .bk-fig`), cash(AIRPORT_TOTALS[key].jfk), key);
     assert.deepEqual(await choice(p), [VEHICLES[key].name, "Luxury Sprinter"]);
     assert.match(await waText(p), new RegExp(`\\nVehicle: ${VEHICLES[key].name}\\n`));
-    assert.deepEqual(await p.$$eval("#price-lines tr", (r) => r.filter((x) => x.cells[0].textContent === "Tolls" || x.classList.contains("bk-hint")).map((x) => x.textContent)), key === "sprinter-limo" ? ["Tolls$12.76"] : ["Tolls$12.75", "The same in every class."], key);
+    assert.deepEqual(await p.$$eval("#price-lines tr", (r) => r.filter((x) => x.cells[0].textContent === "Tolls" || x.classList.contains("bk-hint")).map((x) => x.textContent)), ["Tolls$12.76", "The same in every class."], key);
   }
   assert.equal(await p.inputValue("#bk-hours"), "3", "a one way trip leaves the hours alone");
   await p.click("#bk-edit");
@@ -464,7 +464,7 @@ for (const width of [390, 1440]) {
     assert.ok(await p.isVisible("#luxury-sprinter"));
     const rows = await p.$$eval("#luxury-sprinter tbody tr", (r) => r.map((tr) => [tr.querySelector("th").firstChild.textContent, ...[...tr.querySelectorAll("td")].map((td) => td.firstChild.textContent.trim())]));
     assert.deepEqual(rows, SPRINTERS.map((key) => [VEHICLES[key].name, String(VEHICLES[key].seats), `$${VEHICLES[key].hourly / 100}`, `$${((VEHICLES[key].hourly * 4) / 100).toLocaleString("en-US")}`]));
-    assert.match(await p.textContent("#sprinter-caption"), /4-hour minimum\. Book a Sprinter at least 3 hours ahead\. If no Sprinter is free, we send two SUVs\. Taxes and fees are added at booking\./);
+    assert.match(await p.textContent("#sprinter-caption"), /4-hour minimum\. Book a Sprinter at least 3 hours ahead\. If no Sprinter is free, we send two SUVs\. A 12% service fee is added at booking\./);
     await p.locator("#sprinter-airport").scrollIntoViewIfNeeded();
     assert.ok(await p.isVisible("#sprinter-airport"));
     const NAMES = { jfk: "JFK", ewr: "Newark", teb: "Teterboro", lga: "LaGuardia" };

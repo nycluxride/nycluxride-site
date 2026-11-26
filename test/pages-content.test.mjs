@@ -426,12 +426,12 @@ const HOUR = ["By the hour", "Any class, with a 3-hour minimum, or 4 hours in a 
 const CHILD = ["Child seats", `Child, infant and booster seats, ${SEAT}, charged at booking.`];
 const AHEAD = ["Booking ahead", "Online at least 90 minutes before pickup. Sooner by email or WhatsApp when a car is free."];
 const AHEAD_SPRINTER = [AHEAD[0], `${AHEAD[1]} Book a Sprinter at least 3 hours ahead. If no Sprinter is free, we send two SUVs.`];
-const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and taxes included.`];
+const PRICE = (area) => ["Airport price", `One total by class from any ${area}, with tolls, airport fees and the service fee included.`];
 const IN_AREA = { "midtown-manhattan": "in Midtown", manhattan: "in Manhattan", brooklyn: "in Brooklyn", queens: "in Queens", bronx: "in the Bronx", "staten-island": "on Staten Island", "financial-district": "in the Financial District", soho: "in SoHo", "upper-east-side": "on the Upper East Side", "upper-west-side": "on the Upper West Side", "long-island-city": "in Long Island City" };
 const RAILS = {};
 for (const [slug, area] of Object.entries(IN_AREA)) RAILS[`locations/${slug}.html`] = [PRICE(`address ${area}`), FREE, HOUR, CHILD, AHEAD];
 for (const [slug, at] of [["jfk-airport", "JFK"], ["laguardia-airport", "LaGuardia"], ["newark-airport", "Newark"]]) RAILS[`locations/${slug}.html`] = [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], PRICE("New York City address"), FREE, CHILD, AHEAD];
-RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees and any taxes included."];
+RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by class from any New York City address, with tolls, airport fees and the service fee included."];
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum, or 4 hours in a Sprinter."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 14 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "Book and pay online, with a 4-hour minimum."], ["No smoking", "In any of our vehicles."], AHEAD_SPRINTER];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
@@ -745,7 +745,7 @@ for (const [file, prefix, classes] of [["chauffeur-service-nyc.html", "/book?tri
     assert.equal(s.querySelector("fieldset.tpick, table"), null, "a terminal picker or table before each terminal has its own pickup point");
   });
   check("locations/newark-airport.html: the price answer says any taxes, never plain taxes, in the page and in its JSON-LD", () => {
-    const answer = "Yes, for our cars and SUVs. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. A Sprinter costs a little more to Newark. Tolls, airport fees and any taxes are included. See all rates.";
+    const answer = "Yes, for our cars and SUVs. JFK, Newark and Teterboro cost the same from anywhere in New York City, and LaGuardia costs less. A Sprinter costs a little more to Newark. Tolls, airport fees and the service fee are included. See all rates.";
     assert.ok([...document.querySelectorAll("main p")].some((p) => norm(p.textContent) === answer), "the FAQ answer");
     const graph = [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap((el) => JSON.parse(el.textContent)["@graph"] || []);
     const faq = graph.find((node) => node["@type"] === "FAQPage");
@@ -853,7 +853,7 @@ check("locations/staten-island.html and black-car-service-brooklyn.html: the tol
   assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.")), "the route paragraph");
   const toll = "Yes, both ways. Airport rides include tolls. On distance trips, tolls are added at booking, and on hourly trips they are charged after the ride. A round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
-  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, or 4 hours in a Sprinter, for days with several stops. See all rates.";
+  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and the service fee included. Other one-way trips are priced on the booking page by distance and time. We price hourly bookings by vehicle class, with a 3-hour minimum, or 4 hours in a Sprinter, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
 check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport rides to or from New York City and hourly bookings, and says other one-way trips are priced by distance and time at the pickup time, visible and in JSON-LD", () => {

@@ -157,17 +157,17 @@ await test("U2 here: a spot whose nearest Google record says 350 5th Ave, New Yo
   assert.equal(calls.length, 0);
 });
 
-await test("U2b here: a spot at 1332 Clinton Street in Hoboken gets its street address with a ticket and region that price 4 hours by the hour with no New York tax, and so does a spot in Boston", async () => {
+await test("U2b here: a spot at 1332 Clinton Street in Hoboken gets its street address with a ticket and region that price 4 hours by the hour with the 12% service fee, and so does a spot in Boston", async () => {
   mock();
   const r = await places({ action: "here", lat: 40.753, lng: -74.0343 });
   assert.deepEqual([r.body.kind, r.body.label, r.body.zone, r.body.area], ["ok", "1332 Clinton St, Hoboken, NJ 07030", "outside", "Outside New York City"]);
   assert.deepEqual(verifyTicket(r.body.ticket, r.body.label, Date.now()), { id: "mock-clinton", zone: "outside", region: "NJ", expired: false });
   const o = await book({ trip_type: "hour", from_text: r.body.label, from_ticket: r.body.ticket, date: DATE, time: "17:40", passengers: "5", hours: "4", class: "premium", tip: "0", action: "options" });
-  assert.deepEqual([o.body.kind, o.body.reason, o.body.price.total_cents, o.body.price.lines], ["options", "", 42945, [{ label: "Fare, 4 hours", cents: 42000 }, { label: "Taxes and fees", cents: 945 }]]);
+  assert.deepEqual([o.body.kind, o.body.reason, o.body.price.total_cents, o.body.price.lines], ["options", "", 47040, [{ label: "Fare, 4 hours", cents: 42000 }, { label: "Service fee", cents: 5040 }]]);
   const boston = await places({ action: "here", lat: 42.3601, lng: -71.0589 });
   assert.deepEqual([boston.body.kind, verifyTicket(boston.body.ticket, boston.body.label, Date.now()).region, verifyTicket(boston.body.ticket, boston.body.label, Date.now()).near], ["ok", "MA", undefined]);
   const b = await book({ trip_type: "hour", from_text: boston.body.label, from_ticket: boston.body.ticket, date: DATE, time: "17:40", passengers: "5", hours: "4", class: "premium", tip: "0", action: "options" });
-  assert.deepEqual([b.body.kind, b.body.reason, b.body.price.total_cents], ["options", "", 42945]);
+  assert.deepEqual([b.body.kind, b.body.reason, b.body.price.total_cents], ["options", "", 47040]);
 });
 
 await test("U3 classifyPlace reads Geocoding v4 results like Place Details: airports by ZIP and grounds, boroughs by county, outside otherwise", () => {

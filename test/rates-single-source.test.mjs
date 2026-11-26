@@ -151,7 +151,7 @@ for (const [file, p] of pages) {
 const rates = pages.get(RATES);
 if (rates) {
   check(`${RATES}: carries the published airport and hourly rates`, () => {
-    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$450", "$475", "$155.00", "$13.76", "$3.49", "$12.75", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
+    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$450", "$475", "$153.79", "$18.45", "$12.76", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
     assert.match(rates.title, /\$145(?!\d)/);
   });
   check(`${RATES}: the stop fee is STOP_FEE_CENTS / 100 from api/_rates.mjs, in the distance section and the Extra stops fact, and no other price per stop appears`, () => {
@@ -161,12 +161,11 @@ if (rates) {
     const found = [...rates.text.matchAll(/(?:stop adds\s+\$\s*(\d+(?:\.\d+)?)|\$\s*(\d+(?:\.\d+)?)\s+(?:per stop|on top of the price))/g)].map((m) => Number(m[1] || m[2]));
     assert.deepEqual([...new Set(found)], [STOP_FEE_CENTS / 100]);
   });
-  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total and the old First Class $125 an hour and $375 for three hours, apart from the Business Premium SUV distance minimum of api/_rates.mjs`, () => {
-    const minimum = [...rates.document.querySelectorAll("#distance-premium td span")].map((s) => s.textContent).find((t) => t.endsWith(" minimum"));
-    assert.equal(minimum, `$${DISTANCE_RATES.premium.minimum / 100} minimum`);
-    const text = rates.text.split(` ${minimum}`);
-    assert.equal(text.length, 2, "the distance minimum is the one $125 on the page");
-    const all = [rates.title, text.join(" "), ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
+  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total, the old First Class $125 an hour and $375 for three hours, and the old Business Premium SUV distance minimum of $125, now that its minimum is its $95 base`, () => {
+    const parts = [...rates.document.querySelectorAll("#distance-premium td span")].map((s) => s.textContent);
+    assert.deepEqual(parts.filter((t) => t.endsWith(" minimum")), []);
+    assert.ok(parts.includes(`$${DISTANCE_RATES.premium.base / 100} base`) && DISTANCE_RATES.premium.minimum === DISTANCE_RATES.premium.base);
+    const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
     assert.doesNotMatch(all, /\$\s*(?:130|125|375)(?!\d)|"price":"(?:130|125|375)"/);
   });
   check(`${RATES}: the add-ons carry the child seat price other pages quote, ${SEAT_PRICE}`, () => {

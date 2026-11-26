@@ -19,16 +19,16 @@ const REPORT = WORDS.report.map(([name, source, flags]) => [name, new RegExp(sou
 const ALLOW = new Set(WORDS.allow.map(squash));
 
 const A = [
-  "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and taxes included.",
+  "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and the service fee included.",
   "A gratuity for your chauffeur is optional and chosen when you book.",
   "After an airport transfer, only true extras are charged to the card saved at booking: waiting beyond the free window, extra stops and parking, each with an itemized receipt.",
-  "Hourly bookings are charged the hourly fare with NYC sales tax and the Black Car Fund at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
-  "Airport rides to or from New York City include tolls, airport fees and taxes, and the tip is up to you. On other trips, tolls and parking are charged after the ride.",
-  "Airport transfer prices for New York City addresses include tolls, airport fees and taxes, and the gratuity is optional.",
-  "Airport transfer prices for New York City addresses include tolls, airport fees and taxes. Hourly rates and rates by distance and time are before sales tax, the Black Car Fund, tolls and parking, and the gratuity is optional.",
+  "Hourly bookings are charged the hourly fare with the service fee at booking. Tolls and parking are charged after the ride to the card saved at booking, each with an itemized receipt.",
+  "Airport rides to or from New York City include tolls, airport fees and the service fee, and the tip is up to you. On other trips, tolls and parking are charged after the ride.",
+  "Airport transfer prices for New York City addresses include tolls, airport fees and the service fee, and the gratuity is optional.",
+  "Airport transfer prices for New York City addresses include tolls, airport fees and the service fee. Hourly rates and rates by distance and time are before the service fee, tolls and parking, and the gratuity is optional.",
   "Flat airport rates from NYC LUX RIDE include tolls and airport fees, so the route does not change the price.",
 ];
-const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and taxes included. Hourly bookings have a 3-hour minimum. There's no meter and no surge pricing.";
+const RATES_LEDE = "Airport transfers to or from anywhere in New York City are one flat price, with tolls, airport fees and the service fee included. Hourly bookings have a 3-hour minimum. There's no meter and no surge pricing.";
 const EXEMPT = [...A, COPY.POLICY.cancel, RATES_LEDE, ...Object.values(COPY.CHECKOUT)].sort((a, b) => b.length - a.length);
 const LEGAL = new Set(["privacy-policy.html", "terms-of-service.html"]);
 const MAP_CAPTION = "Lines mark destinations, not road routes.";
@@ -48,8 +48,8 @@ const FORMS_64 = new Set([
   "Online at least 90 minutes before pickup.",
   "Sooner by email or WhatsApp when a car is free.",
   "45 minutes after a domestic landing, 60 after an international landing, 15 at any other pickup.",
-  "One total by class from any New York City address, with tolls, airport fees and taxes included.",
-  "Flat airport rates include tolls, airport fees and taxes.",
+  "One total by class from any New York City address, with tolls, airport fees and the service fee included.",
+  "Flat airport rates include tolls, airport fees and the service fee.",
   "For now, car service pickups at Terminals 5 and 7 use a lot at the Howard Beach AirTrain station, a free AirTrain ride from the terminal.",
   "For now, JFK pickups at Terminals 5 and 7 are at the Howard Beach AirTrain station lot, a free AirTrain ride from your terminal.",
   "Book online at least 90 minutes before pickup.",

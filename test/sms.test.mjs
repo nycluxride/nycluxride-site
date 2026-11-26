@@ -301,7 +301,7 @@ await test("the text: the heading, the customer's name and phone, the pickup in 
 await test("the text names the pets right after the child seats, as the owner email does, and has no pets line without dogs", () => {
   setEnv();
   const dogs = paid(DOGS);
-  assert.equal(bookingText(dogs), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $403.25", "Reference 83558982"].join("\n"));
+  assert.equal(bookingText(dogs), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $403.07", "Reference 83558982"].join("\n"));
   assert.ok(ownerLetter(dogs).text.includes("\nPets: 1 small dog and 2 large dogs\n"));
   assert.equal(bookingText(paid(DOGS, { metadata: { dogs: "3 small 6000" } })).split("\n")[6], "Pets: 3 small dogs");
   for (const fix of [ONE_WAY, ROUND, HOURLY, SEATS]) assert.ok(!/Pets|dog/.test(bookingText(paid(fix))));
@@ -310,7 +310,7 @@ await test("the text names the pets right after the child seats, as the owner em
 await test("the text names the large, medium and small suitcases right after the car, before the child seats and pets, as the owner email shows them with the passengers, has no bags line without bags or for an old booking, and stays at most 320 characters with long addresses, a long name and every count", () => {
   setEnv();
   const bags = paid(DOGS, { metadata: { passengers: `${DOGS.metadata.passengers}, 14 large bags, 14 medium bags, 14 small bags` } });
-  assert.equal(bookingText(bags), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Bags: 14 large, 14 medium, 14 small", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $403.25", "Reference 83558982"].join("\n"));
+  assert.equal(bookingText(bags), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave", "Business SUV", "Bags: 14 large, 14 medium, 14 small", "Child seats: 1 infant seat and 2 booster seats", "Pets: 1 small dog and 2 large dogs", "Paid $403.07", "Reference 83558982"].join("\n"));
   assert.ok(ownerLetter(bags).text.includes("\nPassengers: 3\nBags: 14 large suitcases, 14 medium suitcases and 14 small suitcases or hand carry\n"));
   assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 1 small bag" } })).split("\n")[5], "Bags: 1 small");
   assert.equal(bookingText(paid(ONE_WAY, { metadata: { passengers: "2, 3 large bags, 1 small bag" } })).split("\n")[5], "Bags: 3 large, 1 small");

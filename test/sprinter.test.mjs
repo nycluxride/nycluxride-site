@@ -7,7 +7,7 @@ import { bookingLetters, bookingText, bookingEvents, reminderLetter } from "../a
 import { POST as bookPost, GET as bookGet } from "../api/book.mjs";
 import { routeKey, signRoute } from "../api/_ticket.mjs";
 import { ERRORS, REASONS, LABELS, MAIL, POLICY, HEADINGS, SPRINTER_AHEAD, SPRINTER_SWAP, SPRINTER_BUSY } from "../api/_copy.mjs";
-import { VEHICLES, RETIRED_VEHICLES, CLASSES, CLASS_DEFAULT_VEHICLE, AIRPORT_TOTALS, AIRPORT_FARES, DISTANCE_RATES, HOURS, PASSENGERS, NYC_TAX_PERCENT, BCF_PERCENT, percentCents, SPRINTER_NOTICE_HOURS, MIN_NOTICE_MINUTES } from "../api/_rates.mjs";
+import { VEHICLES, RETIRED_VEHICLES, CLASSES, CLASS_DEFAULT_VEHICLE, AIRPORT_TOTALS, AIRPORT_FARES, DISTANCE_RATES, HOURS, PASSENGERS, FEE_PERCENT, percentCents, SPRINTER_NOTICE_HOURS, MIN_NOTICE_MINUTES } from "../api/_rates.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
@@ -66,10 +66,9 @@ function built(trip, price) {
 const session = (metadata) => ({ id: "cs_test_sprinter000000000000000001", livemode: false, status: "complete", payment_status: "paid", amount_total: Number(metadata.total_cents), currency: "usd", client_reference_id: metadata.ref, customer_details: { email: ME.email, name: ME.name, phone: "+12125550100" }, metadata });
 const expected = (key, hours, tip = 0) => {
   const fare = VEHICLES[key].hourly * hours;
-  const tax = percentCents(fare, NYC_TAX_PERCENT);
-  const bcf = percentCents(fare, BCF_PERCENT);
+  const fee = percentCents(fare, FEE_PERCENT);
   const gratuity = tip ? percentCents(fare, String(tip)) : 0;
-  return { fare, tax, bcf, tip: gratuity, total: fare + tax + bcf + gratuity };
+  return { fare, fee, tip: gratuity, total: fare + fee + gratuity };
 };
 const nyDate = (days) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + days * 864e5));
 const post = (fields, { form = false } = {}) =>
@@ -103,37 +102,37 @@ await test("the owner's Sprinter fleet: Executive $175, Luxury Jet $215, Preside
   assert.ok(Object.keys(RETIRED_VEHICLES).every((key) => !(key in VEHICLES) && !(key in AIRPORT_TOTALS) && !(key in DISTANCE_RATES)));
 });
 
-await test("4 hours of each Sprinter: the fare, NYC sales tax, Black Car Fund and the total, written out", async () => {
+await test("4 hours of each Sprinter: the fare, the 12% service fee and the total, written out", async () => {
   const WANT = {
-    "sprinter-executive": [70000, 6213, 1575, 77788],
-    "sprinter-luxury-jet": [86000, 7633, 1935, 95568],
-    "sprinter-presidential": [98000, 8698, 2205, 108903],
-    "sprinter-limo": [106000, 9408, 2385, 117793],
-    "sprinter-white-limo": [110000, 9763, 2475, 122238],
+    "sprinter-executive": [70000, 8400, 78400],
+    "sprinter-luxury-jet": [86000, 10320, 96320],
+    "sprinter-presidential": [98000, 11760, 109760],
+    "sprinter-limo": [106000, 12720, 118720],
+    "sprinter-white-limo": [110000, 13200, 123200],
   };
   for (const key of SPRINTERS) {
     const { price } = await priced({ ...HOURLY, sprinter: key });
-    assert.deepEqual([price.fare, price.tax, price.bcf, price.total], WANT[key], key);
-    assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", WANT[key][0]], ["NYC sales tax", WANT[key][1]], ["Black Car Fund", WANT[key][2]]], key);
-    assert.deepEqual(pairs(shownLines(price.lines)), [["Fare, 4 hours", WANT[key][0]], ["Taxes and fees", WANT[key][1] + WANT[key][2]]], key);
+    assert.deepEqual([price.fare, price.fee, price.total], WANT[key], key);
+    assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", WANT[key][0]], ["Service fee", WANT[key][1]]], key);
+    assert.deepEqual(pairs(shownLines(price.lines)), [["Fare, 4 hours", WANT[key][0]], ["Service fee", WANT[key][1]]], key);
     assert.deepEqual([price.service, price.notes, price.tolls], ["hourly", [POLICY.later.hourly], 0], key);
   }
 });
 
-await test("every Sprinter for 4, 5 and 12 hours, with no gratuity, 20% and a typed $40: fare, taxes and fees and gratuity from api/_rates.mjs", async () => {
+await test("every Sprinter for 4, 5 and 12 hours, with no gratuity, 20% and a typed $40: fare, service fee and gratuity from api/_rates.mjs", async () => {
   for (const key of SPRINTERS) {
     for (const hours of [4, 5, 12]) {
       for (const [tip, extra] of [["", {}], ["20", {}], ["custom", { tip_amount: "40" }]]) {
         const { price } = await priced({ ...HOURLY, sprinter: key, hours: String(hours), tip, ...extra });
         const want = expected(key, hours, tip === "20" ? 20 : 0);
         const gratuity = tip === "custom" ? 4000 : want.tip;
-        assert.deepEqual([price.fare, price.tax, price.bcf, price.tip, price.total], [want.fare, want.tax, want.bcf, gratuity, want.fare + want.tax + want.bcf + gratuity], `${key} ${hours} ${tip}`);
+        assert.deepEqual([price.fare, price.fee, price.tip, price.total], [want.fare, want.fee, gratuity, want.fare + want.fee + gratuity], `${key} ${hours} ${tip}`);
         assert.equal(price.lines[0].label, `Fare, ${hours} hours`);
         if (tip) assert.deepEqual(pairs(price.lines).at(-1), [tip === "custom" ? LABELS.gratuityAmount : "Gratuity for your chauffeur (20%)", gratuity], key);
       }
     }
   }
-  assert.equal((await priced({ ...HOURLY, sprinter: "sprinter-white-limo", hours: "12", tip: "20" })).price.total, 330000 + 29288 + 7425 + 66000);
+  assert.equal((await priced({ ...HOURLY, sprinter: "sprinter-white-limo", hours: "12", tip: "20" })).price.total, 330000 + 39600 + 66000);
 });
 
 await test("the 4-hour minimum is the server's: 3 hours of any Sprinter is refused with its own message, 2 hours too, and 13 hours goes to dispatch like every class", async () => {
@@ -208,10 +207,10 @@ await test("trips priced by distance and time: the Executive Sprinter keeps toda
   assert.deepEqual(DISTANCE_RATES["sprinter-executive"], { base: 8000, mile: 900, minute: 145, minimum: 35000 });
   assert.equal(rateKey("sprinter", "sprinter-executive"), "sprinter-executive");
   const TRIPS = [
-    ["one way by distance", { ...AIRPORT, to_text: BROOKLYN, to_id: "" }, 38894],
-    ["one way by distance, round trip", { ...AIRPORT, to_text: BROOKLYN, to_id: "", ...BACK }, 77788],
+    ["one way by distance", { ...AIRPORT, to_text: BROOKLYN, to_id: "" }, 39200],
+    ["one way by distance, round trip", { ...AIRPORT, to_text: BROOKLYN, to_id: "", ...BACK }, 78400],
     ["a stop", { ...AIRPORT, from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "26 Ann St, New York, NY 10038", to_text: "55 Church St, New York, NY 10007", to_id: "" }, 47000],
-    ["New Jersey to JFK", { ...AIRPORT, from_text: "Secaucus, NJ 07094", to_text: "John F. Kennedy (JFK)", to_id: "jfk" }, 40233],
+    ["New Jersey to JFK", { ...AIRPORT, from_text: "Secaucus, NJ 07094", to_text: "John F. Kennedy (JFK)", to_id: "jfk" }, 43724],
     ["JFK to Connecticut", { ...AIRPORT, from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: "1 Greenwich Ave, Greenwich, CT 06830", to_id: "" }, null],
   ];
   for (const [name, fields, total] of TRIPS) {
@@ -227,10 +226,10 @@ await test("trips priced by distance and time: the Executive Sprinter keeps toda
     }
   }
   const ride = await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "", sprinter: "sprinter-executive" });
-  assert.deepEqual(pairs(ride.price.lines), [["Fare", 35000], ["NYC sales tax", 3106], ["Black Car Fund", 788]]);
-  assert.equal(ride.price.fare, DISTANCE_RATES["sprinter-executive"].minimum, "a short ride in the Executive Sprinter costs the $350 minimum fare before taxes and fees");
+  assert.deepEqual(pairs(ride.price.lines), [["Fare", 35000], ["Service fee", 4200]]);
+  assert.equal(ride.price.fare, DISTANCE_RATES["sprinter-executive"].minimum, "a short ride in the Executive Sprinter costs the $350 minimum fare before the service fee");
   assert.deepEqual([ride.price.service, serviceLabel(ride.trip)], ["distance", "Executive Sprinter, 4.6 miles and 27 min"]);
-  assert.equal((await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "" })).price.total, 38894, "the class default is the Executive Sprinter");
+  assert.equal((await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "" })).price.total, 39200, "the class default is the Executive Sprinter");
   for (const key of UNRATED) assert.equal(key in DISTANCE_RATES, false, key);
 });
 
@@ -306,7 +305,7 @@ await test("Stripe: the line items, the Checkout description in the owner's subj
   const { trip, price } = await priced({ ...HOURLY, sprinter: "sprinter-presidential", tip: "20", hours: "5" });
   const b = built(trip, price);
   const want = expected("sprinter-presidential", 5, 20);
-  assert.deepEqual(b.items.map(([name, cents]) => [name, cents]), [["Fare, 5 hours", want.fare], ["Taxes and fees", want.tax + want.bcf], ["Gratuity for your chauffeur (20%)", want.tip]]);
+  assert.deepEqual(b.items.map(([name, cents]) => [name, cents]), [["Fare, 5 hours", want.fare], ["Service fee", want.fee], ["Gratuity for your chauffeur (20%)", want.tip]]);
   assert.equal(b.items.reduce((sum, [, cents]) => sum + cents, 0), want.total);
   assert.equal(b.items[0][2].split(". ")[0], "By the hour, Presidential Sprinter, 5 hours");
   assert.ok(b.description.startsWith(`New booking ${REF}: Wed Oct 14, 6:00 PM, Presidential Sprinter, 5 hours from 350 5th Ave. Customer Ana Lopez.`), b.description);
@@ -362,8 +361,8 @@ await test("the receipt and the confirmation page rebuild the same lines, total 
   const id = new URL(paid.url, SITE).searchParams.get("session_id");
   const page = await (await bookGet(new Request(`${SITE}/api/book?session_id=${id}`))).json();
   assert.match(page.summary, /\. By the hour, Limo Sprinter, 4 hours\.$/);
-  assert.deepEqual(page.lines.map((l) => [l.label, l.cents]), [["Fare, 4 hours", 106000], ["Taxes and fees", 9408 + 2385]]);
-  assert.equal(page.total_cents, 117793);
+  assert.deepEqual(page.lines.map((l) => [l.label, l.cents]), [["Fare, 4 hours", 106000], ["Service fee", 12720]]);
+  assert.equal(page.total_cents, 118720);
 });
 
 await test("bookings made before this change read as they were booked: the Shuttle, Jet, Executive and Limo Sprinter keys and the event answer in old metadata give the same receipt, confirmation page, owner subject, both emails, text, calendar and ride reminder", async () => {
@@ -431,23 +430,23 @@ await test("the booking handler: options list each Sprinter with its total and s
   const hourly = await (await post({ ...HOURLY, ...soon, sprinter: "sprinter-white-limo", action: "options", nonce: "nonce-sprinter-options-1" })).json();
   assert.equal(hourly.kind, "options");
   assert.deepEqual(hourly.vehicles.filter((v) => v.vehicle.startsWith("sprinter-")).map((v) => [v.vehicle, v.label, v.seats, v.total_cents]), [
-    ["sprinter-executive", "Executive Sprinter", 14, 77788],
-    ["sprinter-luxury-jet", "Luxury Jet Sprinter", 8, 95568],
-    ["sprinter-presidential", "Presidential Sprinter", 12, 108903],
-    ["sprinter-limo", "Limo Sprinter", 14, 117793],
-    ["sprinter-white-limo", "White Luxury Limo Sprinter", 10, 122238],
+    ["sprinter-executive", "Executive Sprinter", 14, 78400],
+    ["sprinter-luxury-jet", "Luxury Jet Sprinter", 8, 96320],
+    ["sprinter-presidential", "Presidential Sprinter", 12, 109760],
+    ["sprinter-limo", "Limo Sprinter", 14, 118720],
+    ["sprinter-white-limo", "White Luxury Limo Sprinter", 10, 123200],
   ]);
-  assert.deepEqual([hourly.selected.vehicle, hourly.price.total_cents, hourly.classes.at(-1).total_cents, "event" in hourly.selected], ["sprinter-white-limo", 122238, 122238, false]);
+  assert.deepEqual([hourly.selected.vehicle, hourly.price.total_cents, hourly.classes.at(-1).total_cents, "event" in hourly.selected], ["sprinter-white-limo", 123200, 123200, false]);
   const one = await (await post({ ...AIRPORT, ...soon, time: "07:30", action: "options", nonce: "nonce-sprinter-options-2" })).json();
   assert.deepEqual(one.vehicles.map((v) => [v.vehicle, v.total_cents]), SPRINTERS.map((key) => [key, AIRPORT_TOTALS[key].jfk]));
   assert.equal("tolls_differ" in one.price, false);
   const later = { return: "1", return_date: nyDate(6), return_time: "18:00" };
-  for (const [key, back, tolls, differ] of [["sprinter-limo", {}, 1276, true], ["sprinter-limo", later, 2552, true], ["sprinter-executive", {}, 1275, undefined], ["sprinter-white-limo", later, 2550, undefined]]) {
+  for (const [key, back, tolls, differ] of [["sprinter-limo", {}, 1276, undefined], ["sprinter-limo", later, 2552, undefined], ["sprinter-executive", {}, 1276, undefined], ["sprinter-white-limo", later, 2552, undefined]]) {
     const answer = await (await post({ ...AIRPORT, ...soon, time: "07:30", ...back, sprinter: key, action: "options", nonce: `nonce-sprinter-tolls-${key}-${tolls}` })).json();
     assert.deepEqual([answer.price.lines.find((l) => l.label === LABELS.tollsShort).cents, answer.price.tolls_differ], [tolls, differ], key);
   }
   const suvTolls = await (await post({ ...AIRPORT, ...soon, time: "07:30", class: "suv", passengers: "2", action: "options", nonce: "nonce-sprinter-tolls-suv" })).json();
-  assert.deepEqual([suvTolls.price.lines.find((l) => l.label === LABELS.tollsShort).cents, "tolls_differ" in suvTolls.price], [1275, false]);
+  assert.deepEqual([suvTolls.price.lines.find((l) => l.label === LABELS.tollsShort).cents, "tolls_differ" in suvTolls.price], [1276, false]);
   const lga = await (await post({ ...AIRPORT, ...soon, time: "07:30", to_text: "LaGuardia (LGA)", to_id: "lga", sprinter: "sprinter-white-limo", action: "options", nonce: "nonce-sprinter-options-3" })).json();
   assert.deepEqual([lga.kind, lga.reason, lga.price, lga.pay, lga.classes.at(-1).total_cents, lga.classes.at(-1).reason], ["options", "sprinter-price", null, false, null, "sprinter-price"]);
   assert.deepEqual(lga.vehicles.map((v) => [v.vehicle, v.total_cents]), SPRINTERS.map((key) => [key, AIRPORT_TOTALS[key].lga ?? null]));
@@ -636,7 +635,7 @@ await test("the owner's 3 hour Sprinter notice, followed by the two SUVs sentenc
   const text = (el) => flat(el.textContent);
   const rates = dom("rates.html");
   assert.ok(text(rates.getElementById("sprinter-airport-caption")).endsWith(`New York City address. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
-  assert.ok(text(rates.getElementById("sprinter-caption")).includes(`Every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Taxes`));
+  assert.ok(text(rates.getElementById("sprinter-caption")).includes(`Every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} A 12% service fee`));
   const fleet = dom("fleet.html").getElementById("luxury-sprinter").querySelector("p");
   assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Our luxury limo service page`), text(fleet));
   const van = [...dom("sprinter-van-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);

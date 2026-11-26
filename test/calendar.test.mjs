@@ -368,7 +368,7 @@ await test("round trip: two events, the return at its own date and time from the
   assert.deepEqual([out.location, back.location], ["John F. Kennedy (JFK), Terminal 4", MANHATTAN]);
   assert.deepEqual([out.start.dateTime, out.end.dateTime, back.start.dateTime, back.end.dateTime], ["2026-11-12T12:30:00.000Z", "2026-11-12T13:30:00.000Z", "2026-11-15T23:00:00.000Z", "2026-11-16T00:00:00.000Z"]);
   const lines = out.description.split("\n");
-  for (const line of ["Reference: 83558982", "Customer: Ana Lopez", "Phone: +1 212 555 0100", "Email: ana.lopez@example.com", "Passenger: Ben Ortiz", "Passenger phone: +44 20 7946 0958", "Trip: Round trip", "Pickup: John F. Kennedy (JFK), Terminal 4", `Drop-off: ${MANHATTAN}`, "Return: Sun, Nov 15, 2026, 6:00 PM, New York time", "Flight: DL 401", "Passengers: 3", "Vehicle: Business Premium SUV", "Meet and greet: Yes", "Name for the sign: Ortiz Party", "Notes for the chauffeur: Infant seat, please", "  Two large cases", "Paid: $520.95"]) assert.ok(lines.includes(line), line);
+  for (const line of ["Reference: 83558982", "Customer: Ana Lopez", "Phone: +1 212 555 0100", "Email: ana.lopez@example.com", "Passenger: Ben Ortiz", "Passenger phone: +44 20 7946 0958", "Trip: Round trip", "Pickup: John F. Kennedy (JFK), Terminal 4", `Drop-off: ${MANHATTAN}`, "Return: Sun, Nov 15, 2026, 6:00 PM, New York time", "Flight: DL 401", "Passengers: 3", "Vehicle: Business Premium SUV", "Meet and greet: Yes", "Name for the sign: Ortiz Party", "Notes for the chauffeur: Infant seat, please", "  Two large cases", "Paid: $520.51"]) assert.ok(lines.includes(line), line);
   assert.equal(back.description, out.description);
   assert.deepEqual([out.reminders, back.reminders], [REMINDERS, REMINDERS]);
   assert.ok(noted.includes("calendar-added 83558982 2"));
@@ -922,8 +922,8 @@ await test("refund: a full refund of a round trip renames and notes both legs, t
   assert.equal(byId[out.id].summary, "[TEST] CANCELLED: 83558982 Business Premium SUV: JFK to 350 5th Ave");
   assert.equal(byId[back.id].summary, "[TEST] CANCELLED: Return: 83558982 Business Premium SUV: 350 5th Ave to JFK");
   for (const event of [out, back]) {
-    assert.equal(byId[event.id].description, `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`);
-    assert.deepEqual(byId[event.id].extendedProperties, { private: { nlrRefundedCents: "52095" } });
+    assert.equal(byId[event.id].description, `Cancelled and refunded $520.51 on Nov 17, 2026.\n${event.description}`);
+    assert.deepEqual(byId[event.id].extendedProperties, { private: { nlrRefundedCents: "52051" } });
   }
   untouched();
   assert.ok(noted.includes("calendar-refunded 83558982 2 0"));
@@ -1025,7 +1025,7 @@ await test("refund: an event that is not in the calendar yet is added already ca
   for (const event of [out, back]) {
     const now = google.events.get(event.id);
     assert.deepEqual(added.find((one) => one.id === event.id), now);
-    assert.deepEqual(now, { ...event, summary: `[TEST] CANCELLED: ${event.summary.slice("[TEST] ".length)}`, description: `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`, extendedProperties: { private: { nlrRefundedCents: "52095" } } });
+    assert.deepEqual(now, { ...event, summary: `[TEST] CANCELLED: ${event.summary.slice("[TEST] ".length)}`, description: `Cancelled and refunded $520.51 on Nov 17, 2026.\n${event.description}`, extendedProperties: { private: { nlrRefundedCents: "52051" } } });
   }
   assert.ok(noted.includes("calendar-refunded 83558982 2 0"), noted.join(" | "));
   assert.deepEqual(logged, []);
@@ -1298,7 +1298,7 @@ await test("checkout.session.completed is untouched by refunds: emails, text and
   for (const event of added) {
     const now = google.events.get(event.id);
     assert.ok(now.summary.startsWith("[TEST] CANCELLED: "), now.summary);
-    assert.equal(now.description, `Cancelled and refunded $520.95 on Nov 17, 2026.\n${event.description}`);
+    assert.equal(now.description, `Cancelled and refunded $520.51 on Nov 17, 2026.\n${event.description}`);
   }
   google.calls.length = 0;
   assert.equal((await hook(session)).status, 200);

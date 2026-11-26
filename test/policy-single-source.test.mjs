@@ -192,7 +192,7 @@ check("Stripe and the emails link the policies: the consent text links /rates#po
 check("the price notes are built from POLICY and NOTES.included", () => {
   assert.equal(NOTES.airport, NOTES.included + " " + POLICY.later.airport);
   assert.equal(NOTES.hourly, POLICY.later.hourly);
-  assert.equal(NOTES.included, "Tolls, airport fees and any taxes are included.");
+  assert.equal(NOTES.included, "Tolls, airport fees and the service fee are included.");
 });
 
 check("chauffeur-service-nyc.html: the hourly waiting answer gives the free waiting and no per-minute charge, in the visible text and the FAQPage JSON-LD", () => {

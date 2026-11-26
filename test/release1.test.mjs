@@ -104,7 +104,7 @@ check("private flights: the Teterboro page and its form promise no flight tracki
   assert.equal(norm(atSearch.querySelector("#bk-flight-status").textContent), "For a private flight, add the details as a note in the Details step.");
   const assure = (f) => [...pages.get(f).querySelectorAll("#bk-assure > li")].map((li) => norm(li.textContent));
   const jets = ["locations/teterboro-airport.html", "private-jet-car-service-nyc.html", "locations/morristown-airport.html", "locations/republic-airport.html", "locations/westchester-airport.html"];
-  for (const f of jets) assert.deepEqual(assure(f), ["Flat airport rates include tolls, airport fees and taxes", "Free waiting after airline landings", "We answer 24 hours a day, every day"], f);
+  for (const f of jets) assert.deepEqual(assure(f), ["Flat airport rates include tolls, airport fees and the service fee", "Free waiting after airline landings", "We answer 24 hours a day, every day"], f);
   assert.deepEqual(files.filter((f) => !jets.includes(f) && assure(f).includes("Free waiting after airline landings")), []);
   for (const f of files.filter((x) => pages.get(x).getElementById("bk-incl"))) {
     assert.deepEqual([...pages.get(f).querySelectorAll("#bk-incl > li[data-show]")].map((li) => [li.dataset.show, norm(li.textContent)]), [["from-airline", "Free waiting after you land"], ["from-airline", "Live flight tracking"]], f);

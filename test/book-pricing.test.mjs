@@ -47,7 +47,9 @@ const BROOKLYN = "277 Bedford Ave, Brooklyn, NY 11211";
 const BASE = { trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-10-14", time: "07:30", passengers: "2", class: "suv", action: "pay" };
 const FROM_JFK = { ...BASE, from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4", to_text: MANHATTAN, to_id: "" };
 const HOURLY = { trip_type: "hour", from_text: MANHATTAN, date: "2026-10-14", time: "07:30", passengers: "2", hours: "3", class: "sedan", action: "pay" };
-const LEG = [["Fare", 15500], ["NYC sales tax", 1376], ["Black Car Fund", 349], ["Tolls and airport fees", 1275]];
+const LEG = [["Fare", 15379], ["Service fee", 1845], ["Tolls and airport fees", 1276]];
+const OLD_LEG = [["Fare", 15500], ["NYC sales tax", 1376], ["Black Car Fund", 349], ["Tolls and airport fees", 1275]];
+const FEE = (fare) => percentCents(fare, RATES.FEE_PERCENT);
 
 const seenErrors = new Set();
 const seenReasons = new Set();
@@ -102,17 +104,17 @@ const PRICED = [
   ["Teterboro Jet Aviation to Manhattan, Electric Class", { ...FROM_JFK, from_text: "Teterboro (TEB), Jet Aviation", from_id: "teb-jet", class: "electric" }, 18000],
   ["Teterboro Jet Aviation to Manhattan, Luxury Sprinter", { ...FROM_JFK, from_text: "Teterboro (TEB), Jet Aviation", from_id: "teb-jet", class: "sprinter" }, AIRPORT_TOTALS["sprinter-executive"].teb],
   ["typed JFK alias to a typed Queens ZIP", { ...BASE, from_text: "jfk airport", to_text: "Astoria, NY 11102", to_id: "" }, 18500],
-  ["Executive Sedan, 3 hours", HOURLY, 28337],
-  ["Electric Class, 3 hours", { ...HOURLY, class: "electric" }, 30004],
-  ["Electric Class, 12 hours", { ...HOURLY, class: "electric", hours: "12" }, 120015],
-  ["Chevrolet Suburban or similar, 3 hours", { ...HOURLY, class: "suv", vehicle: "suv-suburban" }, 31670],
-  ["Business Premium SUV, Cadillac Escalade ESV, 4 hours", { ...HOURLY, class: "premium", hours: "4" }, 46673],
-  ["First Class, 3 hours", { ...HOURLY, class: "first" }, 58340],
-  ["First Class, 12 hours", { ...HOURLY, class: "first", hours: "12" }, 233363],
-  ["the retired suv-escalade key prices the default Business SUV vehicle, 3 hours", { ...HOURLY, class: "suv", vehicle: "suv-escalade" }, 31670],
-  ["hourly from JFK, Executive Sedan, 3 hours", { ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk" }, 28337],
-  ["hourly from LaGuardia, Executive Sedan, 3 hours", { ...HOURLY, from_text: "LaGuardia (LGA)", from_id: "lga" }, 28337],
-  ["hourly from LaGuardia, Electric Class, 3 hours", { ...HOURLY, from_text: "LaGuardia (LGA)", from_id: "lga", class: "electric" }, 30004],
+  ["Executive Sedan, 3 hours", HOURLY, 28560],
+  ["Electric Class, 3 hours", { ...HOURLY, class: "electric" }, 30240],
+  ["Electric Class, 12 hours", { ...HOURLY, class: "electric", hours: "12" }, 120960],
+  ["Chevrolet Suburban or similar, 3 hours", { ...HOURLY, class: "suv", vehicle: "suv-suburban" }, 31920],
+  ["Business Premium SUV, Cadillac Escalade ESV, 4 hours", { ...HOURLY, class: "premium", hours: "4" }, 47040],
+  ["First Class, 3 hours", { ...HOURLY, class: "first" }, 58800],
+  ["First Class, 12 hours", { ...HOURLY, class: "first", hours: "12" }, 235200],
+  ["the retired suv-escalade key prices the default Business SUV vehicle, 3 hours", { ...HOURLY, class: "suv", vehicle: "suv-escalade" }, 31920],
+  ["hourly from JFK, Executive Sedan, 3 hours", { ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk" }, 28560],
+  ["hourly from LaGuardia, Executive Sedan, 3 hours", { ...HOURLY, from_text: "LaGuardia (LGA)", from_id: "lga" }, 28560],
+  ["hourly from LaGuardia, Electric Class, 3 hours", { ...HOURLY, from_text: "LaGuardia (LGA)", from_id: "lga", class: "electric" }, 30240],
 ];
 
 for (const [name, fields, total] of PRICED) {
@@ -124,21 +126,23 @@ await test("the JFK drop-off lines, notes, value and service", async () => {
   assert.deepEqual(pairs(price.lines), LEG);
   assert.deepEqual(price.notes, [NOTES.included, POLICY.later.airport]);
   assert.equal(NOTES.airport, NOTES.included + " " + POLICY.later.airport);
-  assert.equal(price.value, 15500);
+  assert.equal(price.value, 15379);
   assert.equal(price.service, "airport");
-  assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.meet, price.tip, price.tipPercent], [15500, 1376, 349, 1275, 0, 0, 0]);
+  assert.deepEqual([price.fare, price.fee, price.tolls, price.meet, price.tip, price.tipPercent, price.total], [15379, 1845, 1276, 0, 0, 0, AIRPORT_TOTALS.suv.jfk]);
+  assert.equal(price.fee, Math.round(price.fare * 0.12));
+  assert.equal("tax" in price || "bcf" in price, false);
 });
 
 await test("the JFK pickup with meet and greet and a 15% tip: lines in the contract order, the tip on the fare only", async () => {
   const price = await priced({ ...FROM_JFK, meet: "1", tip: "15" });
-  assert.deepEqual(pairs(price.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(price.total, 23325);
-  assert.equal(price.value, 18000);
+  assert.deepEqual(pairs(price.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(price.total, 23307);
+  assert.equal(price.value, 17879);
 });
 
 await test("hourly lines have no tolls line and the hourly note", async () => {
   const price = await priced({ ...HOURLY, class: "suv", vehicle: "suv-denali" });
-  assert.deepEqual(pairs(price.lines), [["Fare, 3 hours", 30000], ["NYC sales tax", 2663], ["Black Car Fund", 675]]);
+  assert.deepEqual(pairs(price.lines), [["Fare, 3 hours", 30000], ["Service fee", 3600]]);
   assert.deepEqual(price.notes, [POLICY.later.hourly]);
   assert.equal(NOTES.hourly, POLICY.later.hourly);
   assert.equal(price.service, "hourly");
@@ -280,7 +284,7 @@ await test("hourly reasons: outside-hourly for typed text outside the city with 
   await isClass({ ...BASE, class: "electric", passengers: "4" }, "seats");
   await isClass({ ...HOURLY, class: "electric", passengers: "4" }, "seats");
   assert.equal((await priced({ ...BASE, class: "electric", passengers: "3" })).total, 18000);
-  assert.equal((await priced({ ...HOURLY, class: "electric", passengers: "3" })).total, 30004);
+  assert.equal((await priced({ ...HOURLY, class: "electric", passengers: "3" })).total, 30240);
   await isClass({ ...BASE, class: "first", passengers: "4" }, "seats");
   await isClass({ ...BASE, class: "suv", passengers: "7" }, "seats");
   assert.equal((await priced({ ...BASE, class: "suv", passengers: "6" })).total, AIRPORT_TOTALS.suv.jfk);
@@ -532,8 +536,8 @@ await test("composeMessage writes the 7.5 lines in order, the area of typed text
 await test("an hourly message names the hours and the vehicle and has no drop-off, stop or return line", async () => {
   const { trip } = await run({ ...HOURLY, class: "premium", hours: "4", to_text: "JFK", stop1_text: "x", return: "1", return_date: "2026-10-18", return_time: "18:00" });
   assert.equal(
-    composeMessage(trip, "48213590", 46673),
-    ["Hi NYC LUX RIDE, I would like to book this trip.", "Reference: 48213590", "Trip: By the hour, 4 hours", "Pickup: 350 5th Ave, New York, NY 10118 (Manhattan)", "Date: Wed, Oct 14, 2026", "Time: 7:30 AM", "Passengers: 2", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)", "Total shown: $466.73"].join("\n"),
+    composeMessage(trip, "48213590", 47040),
+    ["Hi NYC LUX RIDE, I would like to book this trip.", "Reference: 48213590", "Trip: By the hour, 4 hours", "Pickup: 350 5th Ave, New York, NY 10118 (Manhattan)", "Date: Wed, Oct 14, 2026", "Time: 7:30 AM", "Passengers: 2", "Vehicle: Cadillac Escalade ESV (Business Premium SUV)", "Total shown: $470.40"].join("\n"),
   );
 });
 
@@ -635,23 +639,29 @@ await test("tip, nonce, meet and non-string fields", () => {
   assert.deepEqual([trip.trip_type, trip.from_text], ["", ""]);
 });
 
-await test("receipt: new sessions rebuild the checkout lines, legacy sessions keep their gratuity and sales tax lines", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "to-airport", airport: "jfk", class: "suv", legs: "1", date: "2026-10-15", time: "12:40", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "0", tip_percent: "15", tip_cents: "2325", total_cents: "20825" };
+await test("receipt: new sessions rebuild the checkout lines with one Service fee line from tax_cents, sessions paid with a Black Car Fund line keep their sales tax and Black Car Fund lines, legacy sessions keep their gratuity and sales tax lines", () => {
+  const meta = { ref: "48213590", service: "airport", direction: "to-airport", airport: "jfk", class: "suv", legs: "1", date: "2026-10-15", time: "12:40", fare_cents: "15379", tax_cents: "1845", tolls_cents: "1276", meet_cents: "0", tip_percent: "15", tip_cents: "2307", total_cents: "20807" };
   const out = receipt(meta, ON);
   assert.equal(out.summary, "Thu, Oct 15, 2026, 12:40 PM. To JFK, Business SUV.");
-  assert.deepEqual(pairs(out.lines), [...LEG, ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(out.lines), [...LEG, ["Gratuity for your chauffeur (15%)", 2307]]);
   assert.deepEqual(out.notes, [NOTES.included, POLICY.later.airport]);
-  assert.equal(out.value, 15500);
+  assert.equal(out.value, 15379);
+  assert.equal(out.lines.reduce((sum, item) => sum + item.cents, 0), Number(meta.total_cents));
+  const before = { ...meta, fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", tip_cents: "2325", total_cents: "20825" };
+  assert.deepEqual(pairs(receipt(before, ON).lines), [...OLD_LEG, ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(shownLines(receipt(before, ON).lines)), [["Fare", 15500], ["Taxes and fees", 1725], ["Tolls", 1275], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(receipt({ ...before, tax_cents: "0", bcf_cents: "379" }, ON).lines).slice(1, 2), [["Black Car Fund", 379]]);
   assert.equal(receipt({ ...meta, legs: "2", direction: "from-airport" }, ON).summary, "Thu, Oct 15, 2026, 12:40 PM. Business SUV, 2 airport transfers.");
   const custom = receipt({ ...meta, tip_percent: "0", tip_cents: "4000", total_cents: "22500" }, ON);
   assert.deepEqual(pairs(custom.lines), [...LEG, ["Gratuity for your chauffeur", 4000]]);
-  assert.equal(custom.value, 15500);
+  assert.equal(custom.value, 15379);
   const unlabeled = { ...meta, tip_cents: "4000" };
   delete unlabeled.tip_percent;
   assert.deepEqual(pairs(receipt(unlabeled, ON).lines).at(-1), ["Gratuity for your chauffeur", 4000]);
-  const hourly = receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON);
+  const hourly = receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "5040", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON);
   assert.equal(hourly.summary, "Tue, Dec 1, 2026, 2:00 PM. By the hour, Cadillac Escalade ESV (Business Premium SUV), 4 hours.");
-  assert.deepEqual(pairs(hourly.lines), [["Fare, 4 hours", 42000], ["NYC sales tax", 3728], ["Black Car Fund", 945]]);
+  assert.deepEqual(pairs(hourly.lines), [["Fare, 4 hours", 42000], ["Service fee", 5040]]);
+  assert.deepEqual(pairs(receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines), [["Fare, 4 hours", 42000], ["NYC sales tax", 3728], ["Black Car Fund", 945]]);
   assert.deepEqual(hourly.notes, [POLICY.later.hourly]);
   const legacy = { ref: "10000001", service: "transfer", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", fare_cents: "16500", meet_cents: "2500", gratuity_cents: "3300", tax_cents: "1686", total_cents: "23986" };
   assert.deepEqual(pairs(receipt(legacy, ON).lines), [["Fare", 16500], ["Meet and greet", 2500], ["Gratuity for your chauffeur (20%)", 3300], ["Sales tax", 1686]]);
@@ -660,21 +670,25 @@ await test("receipt: new sessions rebuild the checkout lines, legacy sessions ke
   assert.deepEqual(receipt({}, ON), { summary: "", lines: [], value: 0, notes: [NOTES.included, POLICY.later.airport] });
 });
 
-await test("shownLines, the display of the price box, the confirmation page and the emails: one Taxes and fees line, the sales tax plus the Black Car Fund, in the place of the tax, Tolls for the tolls, every other line and the total as charged, the charged lines untouched", async () => {
-  assert.deepEqual([LABELS.taxes, LABELS.tollsShort, LABELS.tax, LABELS.bcf, LABELS.tolls], ["Taxes and fees", "Tolls", "NYC sales tax", "Black Car Fund", "Tolls and airport fees"]);
+await test("shownLines, the display of the price box, the confirmation page and the emails: one Service fee line in the place of the fees, Tolls for the tolls, every other line and the total as charged, the charged lines untouched, and a session paid with sales tax and the Black Car Fund shows them as one Taxes and fees line", async () => {
+  assert.deepEqual([LABELS.fee, LABELS.taxes, LABELS.tollsShort, LABELS.tax, LABELS.bcf, LABELS.tolls], ["Service fee", "Taxes and fees", "Tolls", "NYC sales tax", "Black Car Fund", "Tolls and airport fees"]);
   const price = await priced({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", booster_seats: "1" });
   const charged = JSON.parse(JSON.stringify(price.lines));
   const shown = shownLines(price.lines);
-  assert.deepEqual(pairs(shown), [["Fare", 15500], ["Taxes and fees", 1725], ["Tolls", 1275], ["Meet and greet", 2500], ["Child seats (2 x $20.00)", 4000], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(1725, price.tax + price.bcf);
+  assert.deepEqual(pairs(shown), [["Fare", 15379], ["Service fee", 1845], ["Tolls", 1276], ["Meet and greet", 2500], ["Child seats (2 x $20.00)", 4000], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(1845, price.fee);
   assert.deepEqual(price.lines, charged);
-  for (const lines of [price.lines, (await priced(HOURLY)).lines, receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines]) {
+  const paidBefore = receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "3728", bcf_cents: "945", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines;
+  const paidNow = receipt({ ref: "48213590", service: "hourly", class: "premium", vehicle: "premium", hours: "4", date: "2026-12-01", time: "14:00", fare_cents: "42000", tax_cents: "5040", tolls_cents: "0", meet_cents: "0", tip_cents: "0", tip_percent: "0" }, ON).lines;
+  for (const lines of [price.lines, (await priced(HOURLY)).lines, paidNow, paidBefore]) {
     const sum = (list) => list.reduce((total, item) => total + item.cents, 0);
     assert.equal(sum(shownLines(lines)), sum(lines));
-    assert.equal(shownLines(lines).filter((item) => item.label === "Taxes and fees").length, 1);
+    assert.equal(shownLines(lines).filter((item) => item.label === (lines === paidBefore ? "Taxes and fees" : "Service fee")).length, 1);
     assert.ok(!shownLines(lines).some((item) => /sales tax|Black Car Fund|airport fees|%\)$/.test(item.label) && !item.label.startsWith("Gratuity")), JSON.stringify(shownLines(lines)));
   }
-  assert.deepEqual(pairs(shownLines((await priced(HOURLY)).lines)), [["Fare, 3 hours", 25500], ["Taxes and fees", 2837]]);
+  assert.deepEqual(pairs(shownLines(paidBefore)), [["Fare, 4 hours", 42000], ["Taxes and fees", 4673]]);
+  assert.deepEqual(pairs(shownLines(paidNow)), [["Fare, 4 hours", 42000], ["Service fee", 5040]]);
+  assert.deepEqual(pairs(shownLines((await priced(HOURLY)).lines)), [["Fare, 3 hours", 25500], ["Service fee", 3060]]);
   const legacy = receipt({ ref: "10000001", service: "transfer", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", fare_cents: "16500", meet_cents: "2500", gratuity_cents: "3300", tax_cents: "1686", total_cents: "23986" }, ON);
   assert.deepEqual(shownLines(legacy.lines), legacy.lines);
   assert.deepEqual(shownLines([]), []);
@@ -771,13 +785,23 @@ const withMock = async (fn) => {
 
 await test("the owner's distance and time rates and limits are in api/_rates.mjs, in cents, with a rate for every class, the Luxury Sprinter too, and no list of areas a ride must start or end in", () => {
   assert.deepEqual(DISTANCE_RATES, {
-    suv: { base: 3500, mile: 400, minute: 65, minimum: 11000 },
-    premium: { base: 4500, mile: 475, minute: 80, minimum: 12500 },
-    first: { base: 5500, mile: 525, minute: 90, minimum: 17000 },
-    sedan: { base: 2500, mile: 300, minute: 50, minimum: 8700 },
-    electric: { base: 2647, mile: 318, minute: 53, minimum: 9212 },
+    suv: { base: 8500, mile: 400, minute: 65, minimum: 8500 },
+    premium: { base: 9500, mile: 475, minute: 80, minimum: 9500 },
+    first: { base: 10500, mile: 525, minute: 90, minimum: 10500 },
+    sedan: { base: 7500, mile: 300, minute: 50, minimum: 7500 },
+    electric: { base: 7647, mile: 318, minute: 53, minimum: 7647 },
     "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 35000 },
   });
+  assert.deepEqual(RATES.LONG_RATES, {
+    suv: { base: 0, mile: 410, minute: 25 },
+    premium: { base: 0, mile: 470, minute: 30 },
+    first: { base: 0, mile: 585, minute: 35 },
+    sedan: { base: 0, mile: 370, minute: 20 },
+    electric: { base: 0, mile: 370, minute: 20 },
+    "sprinter-executive": { base: 7300, mile: 820, minute: 132 },
+  });
+  assert.deepEqual([RATES.SHORT_MILES, RATES.LONG_MILES, RATES.FEE_PERCENT], [50, 75, "12"]);
+  for (const [key, rate] of Object.entries(DISTANCE_RATES)) assert.equal(rate.minimum, key === "sprinter-executive" ? 35000 : rate.base, key);
   assert.deepEqual(Object.keys(DISTANCE_RATES), Object.keys(CLASSES).map((cls) => rateKey(cls)));
   assert.equal(rateKey("sprinter"), "sprinter-executive");
   for (const key of ["sprinter-luxury-jet", "sprinter-presidential", "sprinter-limo", "sprinter-white-limo"]) assert.equal(key in DISTANCE_RATES, false, key);
@@ -786,32 +810,32 @@ await test("the owner's distance and time rates and limits are in api/_rates.mjs
   assert.deepEqual(DISTANCE_SKIP_ZIPS, ["11430", "11371", "07114", "07608"]);
 });
 
-await test("distanceFare is max(minimum, base + miles x per mile + minutes x per minute) in exact cents, with tenths of a mile and half cents rounded up", () => {
+await test("distanceFare under SHORT_MILES is max(minimum, base + miles x per mile + minutes x per minute) in exact cents, with tenths of a mile and half cents rounded up", () => {
   const CASES = [
-    ["sedan", 0, 0, 8700],
-    ["sedan", 46, 27, 8700],
-    ["sedan", 150, 33, 8700],
-    ["sedan", 150, 34, 8700],
-    ["sedan", 150, 35, 8750],
-    ["sedan", 314, 52, 14520],
-    ["sedan", 316, 58, 14880],
-    ["electric", 0, 0, 9212],
-    ["electric", 46, 27, 9212],
-    ["electric", 150, 35, 9272],
-    ["electric", 314, 52, 15388],
-    ["electric", 316, 58, 15770],
-    ["suv", 0, 0, 11000],
-    ["suv", 46, 27, 11000],
-    ["suv", 150, 45, 12425],
-    ["suv", 314, 52, 19440],
-    ["premium", 9, 8, 12500],
-    ["premium", 161, 20, 13748],
-    ["premium", 163, 20, 13843],
-    ["premium", 314, 52, 23575],
-    ["first", 0, 0, 17000],
-    ["first", 117, 15, 17000],
-    ["first", 163, 40, 17658],
-    ["first", 314, 52, 26665],
+    ["sedan", 0, 0, 7500],
+    ["sedan", 46, 27, 10230],
+    ["sedan", 150, 33, 13650],
+    ["sedan", 150, 34, 13700],
+    ["sedan", 150, 35, 13750],
+    ["sedan", 314, 52, 19520],
+    ["sedan", 316, 58, 19880],
+    ["electric", 0, 0, 7647],
+    ["electric", 46, 27, 10541],
+    ["electric", 150, 35, 14272],
+    ["electric", 314, 52, 20388],
+    ["electric", 316, 58, 20770],
+    ["suv", 0, 0, 8500],
+    ["suv", 46, 27, 12095],
+    ["suv", 150, 45, 17425],
+    ["suv", 314, 52, 24440],
+    ["premium", 9, 8, 10568],
+    ["premium", 161, 20, 18748],
+    ["premium", 163, 20, 18843],
+    ["premium", 314, 52, 28575],
+    ["first", 0, 0, 10500],
+    ["first", 117, 15, 17993],
+    ["first", 163, 40, 22658],
+    ["first", 314, 52, 31665],
     ["sprinter", 0, 0, 35000],
     ["sprinter", 46, 27, 35000],
     ["sprinter", 125, 46, 35000],
@@ -824,14 +848,14 @@ await test("distanceFare is max(minimum, base + miles x per mile + minutes x per
     assert.equal(distanceFare(rateKey(cls), tenths, minutes), cents, `${cls} ${tenths / 10} mi ${minutes} min`);
     assert.ok(Number.isInteger(distanceFare(rateKey(cls), tenths, minutes)));
   }
-  assert.deepEqual(priceDistance("suv", { tenths: 150, minutes: 45 }), { fare: 12425, tax: 1103, bcf: 280, tolls: 0, total: 13808 });
-  assert.deepEqual(priceDistance("sedan", { tenths: 46, minutes: 27 }), { fare: 8700, tax: 772, bcf: 196, tolls: 0, total: 9668 });
-  assert.deepEqual(priceDistance("electric", { tenths: 46, minutes: 27 }), { fare: 9212, tax: 818, bcf: 207, tolls: 0, total: 10237 });
-  assert.equal(distanceFare("electric", 150, 35), 2647 + (150 * 318) / 10 + 35 * 53);
-  assert.deepEqual(priceDistance("first", { tenths: 314, minutes: 52 }), { fare: 26665, tax: 2367, bcf: 600, tolls: 0, total: 29632 });
+  assert.deepEqual(priceDistance("suv", { tenths: 150, minutes: 45 }), { fare: 17425, fee: 2091, tolls: 0, total: 19516 });
+  assert.deepEqual(priceDistance("sedan", { tenths: 46, minutes: 27 }), { fare: 10230, fee: 1228, tolls: 0, total: 11458 });
+  assert.deepEqual(priceDistance("electric", { tenths: 46, minutes: 27 }), { fare: 10541, fee: 1265, tolls: 0, total: 11806 });
+  assert.equal(distanceFare("electric", 150, 35), 7647 + (150 * 318) / 10 + 35 * 53);
+  assert.deepEqual(priceDistance("first", { tenths: 314, minutes: 52 }), { fare: 31665, fee: 3800, tolls: 0, total: 35465 });
   assert.equal(distanceFare("sprinter-executive", 314, 52), 8000 + (314 * 900) / 10 + 52 * 145);
-  assert.deepEqual(priceDistance("sprinter-executive", { tenths: 314, minutes: 52 }), { fare: 43800, tax: 3887, bcf: 986, tolls: 0, total: 48673 });
-  assert.deepEqual(priceDistance("sprinter-executive", { tenths: 46, minutes: 27 }), { fare: 35000, tax: 3106, bcf: 788, tolls: 0, total: 38894 });
+  assert.deepEqual(priceDistance("sprinter-executive", { tenths: 314, minutes: 52 }), { fare: 43800, fee: 5256, tolls: 0, total: 49056 });
+  assert.deepEqual(priceDistance("sprinter-executive", { tenths: 46, minutes: 27 }), { fare: 35000, fee: 4200, tolls: 0, total: 39200 });
 });
 
 await test("the limits: up to 500.0 miles and 720 minutes a ride are priced, 500.1 miles or 721 minutes are not, and rides over the old 60 miles and 180 minutes are priced", () => {
@@ -841,61 +865,68 @@ await test("the limits: up to 500.0 miles and 720 minutes a ride are priced, 500
 await test("a one-way trip with no airport end is priced by distance and time from the Google route, in every class, the Luxury Sprinter too", async () => {
   await withMock(async () => {
     const price = await priced({ ...RIDE, class: "suv" });
-    assert.deepEqual(pairs(price.lines), [["Fare", 11000], ["NYC sales tax", 976], ["Black Car Fund", 248]]);
-    assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.meet, price.tip, price.total, price.value, price.service], [11000, 976, 248, 0, 0, 0, 12224, 11000, "distance"]);
+    assert.deepEqual(pairs(price.lines), [["Fare", 12095], ["Service fee", 1451]]);
+    assert.deepEqual([price.fare, price.fee, price.tolls, price.meet, price.tip, price.total, price.value, price.service], [12095, 1451, 0, 0, 0, 13546, 12095, "distance"]);
     assert.deepEqual(price.notes, [POLICY.later.hourly]);
-    for (const [cls, total] of [["suv", 12224], ["premium", 13890], ["first", 18892], ["sedan", 9668], ["electric", 10237], ["sprinter", 38894]]) assert.equal((await priced({ ...RIDE, class: cls })).total, total, cls);
-    for (const [cls, total] of [["suv", 19877], ["premium", 24105], ["first", 27265], ["sedan", 14847], ["electric", 15734], ["sprinter", 44786]]) assert.equal((await priced({ ...RIDE, to_text: GREENWICH, class: cls })).total, total, `${cls}: Manhattan to Connecticut is interstate, no New York sales tax`);
-    for (const [cls, total] of [["suv", 12224], ["premium", 13890], ["first", 18892], ["sedan", 9668], ["electric", 10237], ["sprinter", 38894]]) assert.equal((await priced({ ...RIDE, to_text: PARK, class: cls })).fare, DISTANCE_RATES[rateKey(cls)].minimum, cls);
+    for (const [cls, total] of [["suv", 13546], ["premium", 15506], ["first", 17186], ["sedan", 11458], ["electric", 11806], ["sprinter", 39200]]) assert.equal((await priced({ ...RIDE, class: cls })).total, total, cls);
+    for (const [cls, total] of [["suv", 27373], ["premium", 32004], ["first", 35465], ["sedan", 21862], ["electric", 22835], ["sprinter", 49056]]) assert.equal((await priced({ ...RIDE, to_text: GREENWICH, class: cls })).total, total, `${cls}: Manhattan to Connecticut carries the same 12% service fee`);
+    for (const [cls, fare] of [["suv", 9380], ["premium", 10568], ["first", 11693], ["sedan", 8170], ["electric", 8357], ["sprinter", 35000]]) {
+      const park = await priced({ ...RIDE, to_text: PARK, class: cls });
+      const rate = DISTANCE_RATES[rateKey(cls)];
+      assert.deepEqual([park.fare, park.fee], [fare, FEE(fare)], cls);
+      assert.equal(park.fare, Math.max(rate.minimum, rate.base + Math.round((9 * rate.mile) / 10) + 8 * rate.minute), cls);
+      assert.equal(park.fare === rate.minimum, cls === "sprinter", `${cls}: only the Sprinter has a minimum above its base`);
+    }
     const sprinter = await priced({ ...RIDE, class: "sprinter" });
-    assert.deepEqual(pairs(sprinter.lines), [["Fare", 35000], ["NYC sales tax", 3106], ["Black Car Fund", 788]]);
-    assert.deepEqual([sprinter.fare, sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [Math.max(DISTANCE_RATES["sprinter-executive"].minimum, 8000 + (46 * 900) / 10 + 27 * 145), 0, 38894, "distance", [POLICY.later.hourly]]);
+    assert.deepEqual(pairs(sprinter.lines), [["Fare", 35000], ["Service fee", 4200]]);
+    assert.deepEqual([sprinter.fare, sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [Math.max(DISTANCE_RATES["sprinter-executive"].minimum, 8000 + (46 * 900) / 10 + 27 * 145), 0, 39200, "distance", [POLICY.later.hourly]]);
     const far = await priced({ ...RIDE, to_text: GREENWICH, class: "sprinter" });
-    assert.deepEqual(pairs(far.lines), [["Fare", 8000 + (314 * 900) / 10 + 52 * 145], ["Black Car Fund", 986]]);
-    assert.equal(far.total, 43800 + 986);
+    assert.deepEqual(pairs(far.lines), [["Fare", 8000 + (314 * 900) / 10 + 52 * 145], ["Service fee", 5256]]);
+    assert.equal(far.total, 43800 + 5256);
     const { trip } = await run({ ...RIDE, class: "sprinter" });
-    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [12224, 13890, 18892, 9668, 10237, 38894]);
+    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [13546, 15506, 17186, 11458, 11806, 39200]);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.reason, leg.ride]), [["manhattan", "brooklyn", "", { tenths: 46, minutes: 27 }]]);
     assert.equal(serviceLabel({ ...trip, class: "suv" }), "Business SUV, 4.6 miles and 27 min");
-    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 12224).split("\n").at(-1), "Total shown: $122.24");
+    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 13546).split("\n").at(-1), "Total shown: $135.46");
   });
 });
 
-await test("each ride of a return trip of that kind is priced from its own route and pickup time, then tax, the Black Car Fund and the gratuity", async () => {
+await test("each ride of a return trip of that kind is priced from its own route and pickup time, then the service fee of each ride and the gratuity", async () => {
   await withMock(async () => {
     const back = { return: "1", return_date: "2026-10-18", return_time: "18:00" };
     const both = await priced({ ...RIDE, ...back, class: "sedan" });
-    assert.deepEqual(both.legs.map((leg) => leg.fare), [8700, 8700]);
-    assert.deepEqual(pairs(both.lines), [["Fare", 17400], ["NYC sales tax", 1544], ["Black Car Fund", 392]]);
-    assert.equal(both.total, 19336);
+    assert.deepEqual(both.legs.map((leg) => [leg.fare, leg.fee]), [[10230, 1228], [10490, 1259]]);
+    assert.deepEqual(pairs(both.lines), [["Fare", 20720], ["Service fee", 2487]]);
+    assert.equal(both.total, 23207);
     const far = await priced({ ...RIDE, ...back, to_text: GREENWICH, class: "sedan", tip: "15" });
-    assert.deepEqual(far.legs.map((leg) => [leg.fare, leg.tax, leg.bcf, leg.tolls]), [[14520, 0, 327, 0], [14880, 0, 335, 0]]);
-    assert.deepEqual(pairs(far.lines), [["Fare", 29400], ["Black Car Fund", 662], ["Gratuity for your chauffeur (15%)", 4410]]);
-    assert.equal(far.total, 29400 + 662 + 4410);
+    assert.deepEqual(far.legs.map((leg) => [leg.fare, leg.fee, leg.tolls]), [[19520, 2342, 0], [19880, 2386, 0]]);
+    assert.deepEqual(pairs(far.lines), [["Fare", 39400], ["Service fee", 4728], ["Gratuity for your chauffeur (15%)", 5910]]);
+    assert.equal(far.total, 39400 + 4728 + 5910);
     const { trip } = await run({ ...RIDE, ...back, to_text: GREENWICH, class: "sedan" });
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.back, leg.ride]), [["manhattan", "outside", false, { tenths: 314, minutes: 52 }], ["outside", "manhattan", true, { tenths: 316, minutes: 58 }]]);
     assert.equal(serviceLabel(trip), "Executive Sedan, 2 rides, 63.0 miles and 110 min");
     assert.equal(serviceLabel({ ...trip, class: "electric" }), "Electric Class, 2 rides, 63.0 miles and 110 min");
-    assert.equal((await priced({ ...RIDE, class: "suv", tip: "custom", tip_amount: "40" })).total, 16224);
-    assert.equal((await priced({ ...RIDE, class: "suv", tip: "20" })).total, 14424);
+    assert.equal((await priced({ ...RIDE, class: "suv", tip: "custom", tip_amount: "40" })).total, 17546);
+    assert.equal((await priced({ ...RIDE, class: "suv", tip: "20" })).total, 15965);
   });
 });
 
 await test("guardrails: both ends outside the five boroughs is priced, over 500 miles or 720 minutes is long-trip, no route keeps the no-airport request, airports keep their rules, a stop is priced over the whole route, and an airport to an address outside New York City pays at least the airport fare", async () => {
   await withMock(async () => {
     const both = await priced({ ...RIDE, from_text: "Hoboken, NJ 07030", to_text: GREENWICH });
-    assert.deepEqual([both.service, both.fare, both.total], ["distance", distanceFare("suv", 168, 43), 13308]);
+    assert.deepEqual([both.service, both.fare, both.total], ["distance", distanceFare("suv", 168, 43), 20177]);
     await isQuote({ ...RIDE, to_text: RALEIGH }, "long-trip");
     await isQuote({ ...RIDE, to_text: BAR_HARBOR }, "long-trip");
     await isQuote({ ...RIDE, to_text: RALEIGH, return: "1", return_date: "2026-10-18", return_time: "18:00" }, "long-trip");
-    assert.deepEqual([(await priced({ ...RIDE, to_text: MONTAUK })).fare, (await priced({ ...RIDE, to_text: MONTAUK })).total], [distanceFare("suv", 1183, 165), 68392]);
+    assert.deepEqual([(await priced({ ...RIDE, to_text: MONTAUK })).fare, (await priced({ ...RIDE, to_text: MONTAUK })).total], [distanceFare("suv", 1183, 165), 58943]);
     const stop = await priced({ ...RIDE, stop1_text: PARK });
     assert.deepEqual([stop.service, stop.legs.length, stop.fare, stop.tolls], ["distance", 1, distanceFare("suv", 168, 43), 0]);
     assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
     assert.equal((await priced({ ...FROM_JFK, to_text: BROOKLYN })).total, AIRPORT_TOTALS.suv.jfk);
     const hoboken = await priced({ ...FROM_JFK, to_text: "Hoboken, NJ 07030" });
-    assert.deepEqual([pairs(hoboken.lines), hoboken.tolls, hoboken.total, hoboken.service], [[["Fare", AIRPORT_FARES.suv.jfk], ["Black Car Fund", 349]], 0, 15849, "distance"]);
-    assert.equal((await priced({ ...HOURLY, from_text: BROOKLYN })).total, 28337);
+    assert.deepEqual([pairs(hoboken.lines), hoboken.tolls, hoboken.total, hoboken.service], [[["Fare", distanceFare("suv", 168, 43)], ["Service fee", 2162]], 0, 20177, "distance"]);
+    assert.ok(hoboken.fare > AIRPORT_FARES.suv.jfk, "the distance fare is above the JFK floor");
+    assert.equal((await priced({ ...HOURLY, from_text: BROOKLYN })).total, 28560);
   });
   await isQuote(RIDE, "no-airport");
   const fetch = globalThis.fetch;
@@ -964,7 +995,7 @@ await test("the route numbers come from the server: a signed route token it issu
     const key = routeKey({ address: MANHATTAN }, { address: BROOKLYN }, nycToUtc("2026-10-23", "09:10").toISOString());
     const token = signRoute([[key, 150, 45]], NOW);
     const own = await run({ ...fields, date: "2026-10-23", route: token });
-    assert.deepEqual([own.trip.legs[0].ride, own.price.fare, own.price.total], [{ tenths: 150, minutes: 45 }, 12425, 13808]);
+    assert.deepEqual([own.trip.legs[0].ride, own.price.fare, own.price.total], [{ tenths: 150, minutes: 45 }, 17425, 19516]);
     const [head, payload, mac] = token.split(".");
     const forged = `${head}.${Buffer.from(JSON.stringify({ t: Math.floor(NOW / 1000), l: [[key, 1, 1]] })).toString("base64url")}.${mac}`;
     for (const bad of [forged, `${head}.${payload}.${mac.slice(0, -1)}${mac.endsWith("A") ? "B" : "A"}`, signRoute([[key, 150, 45]], NOW - 21601000), signRoute([[routeKey({ address: MANHATTAN }, { address: BROOKLYN }, nycToUtc("2026-10-24", "09:10").toISOString()), 150, 45]], NOW)]) {
@@ -992,12 +1023,13 @@ const NJ_JFK = { ...BASE, from_text: SECAUCUS };
 const JFK_NJ = { ...FROM_JFK, to_text: SECAUCUS };
 const ROUND_TRIP = { return: "1", return_date: "2026-10-18", return_time: "18:00" };
 const TAX = "NYC sales tax";
-const BCF = "Black Car Fund";
+const FEE_LINE = "Service fee";
 
-await test("an airport fare is the floor of a ride between an airport and an address outside New York City: max(AIRPORT_FARES, distanceFare), then tax and the Black Car Fund, no tolls", () => {
-  assert.deepEqual([distanceFare("suv", 250, 45), distanceFare("sedan", 250, 45)], [16425, 12250]);
-  assert.deepEqual(priceDistance("suv", { tenths: 250, minutes: 45 }, "jfk"), { fare: 16425, tax: 1458, bcf: 370, tolls: 0, total: 18253 });
-  assert.deepEqual(priceDistance("sedan", { tenths: 250, minutes: 45 }, "jfk"), { fare: AIRPORT_FARES.sedan.jfk, tax: 1256, bcf: 318, tolls: 0, total: 15725 });
+await test("an airport fare is the floor of a ride between an airport and an address outside New York City: max(AIRPORT_FARES, distanceFare), then the service fee, no tolls", () => {
+  assert.deepEqual([distanceFare("suv", 250, 45), distanceFare("sedan", 250, 45), distanceFare("sedan", 90, 18)], [21425, 17250, 11100]);
+  assert.deepEqual(priceDistance("suv", { tenths: 250, minutes: 45 }, "jfk"), { fare: 21425, fee: 2571, tolls: 0, total: 23996 });
+  assert.deepEqual(priceDistance("sedan", { tenths: 90, minutes: 18 }, "jfk"), { fare: AIRPORT_FARES.sedan.jfk, fee: 1685, tolls: 0, total: 15724 });
+  assert.equal(priceDistance("sedan", { tenths: 90, minutes: 18 }, "jfk").total, AIRPORT_TOTALS.sedan.jfk - priceLeg("sedan", "jfk").tolls, "the floor is the flat total without its tolls");
   for (const cls of Object.keys(CLASSES)) {
     for (const airport of AIRPORT_PLACES) {
       for (const [tenths, minutes] of [[0, 0], [90, 18], [250, 45], [600, 180]]) {
@@ -1014,42 +1046,42 @@ await test("an airport fare is the floor of a ride between an airport and an add
 await test("an airport trip to or from an address outside New York City is priced from the Google route at the airport fare or by distance and time, whichever is higher, with no tolls line and the after the ride note, in every class, the Luxury Sprinter too", async () => {
   await withMock(async () => {
     const floor = await priced({ ...NJ_JFK, to_text: "Newark Liberty (EWR)", to_id: "ewr" });
-    assert.deepEqual(pairs(floor.lines), [["Fare", 16846], [BCF, 379]]);
-    assert.deepEqual([floor.fare, floor.tax, floor.bcf, floor.tolls, floor.meet, floor.tip, floor.total, floor.value, floor.service], [AIRPORT_FARES.suv.ewr, 0, 379, 0, 0, 0, 17225, 16846, "distance"]);
+    assert.deepEqual(pairs(floor.lines), [["Fare", 15379], [FEE_LINE, 1845]]);
+    assert.deepEqual([floor.fare, floor.fee, floor.tolls, floor.meet, floor.tip, floor.total, floor.value, floor.service], [AIRPORT_FARES.suv.ewr, 1845, 0, 0, 0, 17224, 15379, "distance"]);
     assert.deepEqual(floor.notes, [POLICY.later.outside]);
     for (const cls of Object.keys(CLASSES)) assert.equal((await priced({ ...NJ_JFK, to_text: "Newark Liberty (EWR)", to_id: "ewr", class: cls })).fare, AIRPORT_FARES[rateKey(cls)].ewr, cls);
     const suv = await priced(NJ_JFK);
-    assert.deepEqual(pairs(suv.lines), [["Fare", 16425], [BCF, 370]], "Secaucus, New Jersey, to JFK is interstate, no New York sales tax");
-    assert.deepEqual([suv.fare, suv.tolls, suv.total, suv.value, suv.service], [16425, 0, 16795, 16425, "distance"]);
+    assert.deepEqual(pairs(suv.lines), [["Fare", 21425], [FEE_LINE, 2571]], "Secaucus, New Jersey, to JFK carries the same 12% service fee");
+    assert.deepEqual([suv.fare, suv.tolls, suv.total, suv.value, suv.service], [21425, 0, 23996, 21425, "distance"]);
     assert.deepEqual(suv.notes, [POLICY.later.outside]);
     const sedan = await priced({ ...NJ_JFK, class: "sedan" });
-    assert.deepEqual(pairs(sedan.lines), [["Fare", 14151], [BCF, 318]]);
-    assert.equal(sedan.total, 14469);
+    assert.deepEqual(pairs(sedan.lines), [["Fare", 17250], [FEE_LINE, 2070]]);
+    assert.equal(sedan.total, 19320);
     const sprinter = await priced({ ...NJ_JFK, class: "sprinter" });
-    assert.deepEqual([distanceFare("sprinter-executive", 250, 45), 8000 + (250 * 900) / 10 + 45 * 145, AIRPORT_FARES["sprinter-executive"].jfk], [37025, 37025, 39348]);
+    assert.deepEqual([distanceFare("sprinter-executive", 250, 45), 8000 + (250 * 900) / 10 + 45 * 145, AIRPORT_FARES["sprinter-executive"].jfk], [37025, 37025, 39039]);
     assert.equal(sprinter.fare, Math.max(AIRPORT_FARES["sprinter-executive"].jfk, distanceFare("sprinter-executive", 250, 45)));
-    assert.deepEqual(pairs(sprinter.lines), [["Fare", AIRPORT_FARES["sprinter-executive"].jfk], [BCF, 885]]);
-    assert.deepEqual([sprinter.fare, sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [AIRPORT_FARES["sprinter-executive"].jfk, 0, AIRPORT_FARES["sprinter-executive"].jfk + 885, "distance", [POLICY.later.outside]]);
-    assert.equal(sprinter.total, 40233, "Secaucus to JFK in the Executive Sprinter is $402.33");
+    assert.deepEqual(pairs(sprinter.lines), [["Fare", AIRPORT_FARES["sprinter-executive"].jfk], [FEE_LINE, 4685]]);
+    assert.deepEqual([sprinter.fare, sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [AIRPORT_FARES["sprinter-executive"].jfk, 0, AIRPORT_FARES["sprinter-executive"].jfk + 4685, "distance", [POLICY.later.outside]]);
+    assert.equal(sprinter.total, 43724, "Secaucus to JFK in the Executive Sprinter is $437.24");
     const direct = routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-14", "07:30").toISOString());
     const beyond = await priced({ ...NJ_JFK, class: "sprinter", route: signRoute([[direct, 350, 60]], NOW) });
-    assert.deepEqual([distanceFare("sprinter-executive", 350, 60) > AIRPORT_FARES["sprinter-executive"].jfk, beyond.fare, beyond.total, beyond.service], [true, distanceFare("sprinter-executive", 350, 60), priceRide("sprinter-executive", { tenths: 350, minutes: 60 }, [], "0").total, "distance"]);
-    assert.deepEqual(pairs(beyond.lines), [["Fare", 48200], [BCF, 1085]]);
-    assert.equal(beyond.total, 49285);
+    assert.deepEqual([distanceFare("sprinter-executive", 350, 60) > AIRPORT_FARES["sprinter-executive"].jfk, beyond.fare, beyond.total, beyond.service], [true, distanceFare("sprinter-executive", 350, 60), priceRide("sprinter-executive", { tenths: 350, minutes: 60 }).total, "distance"]);
+    assert.deepEqual(pairs(beyond.lines), [["Fare", 48200], [FEE_LINE, 5784]]);
+    assert.equal(beyond.total, 53984);
     const floored = await priced({ ...NJ_JFK, to_text: "Newark Liberty (EWR)", to_id: "ewr", class: "sprinter" });
     assert.equal(distanceFare("sprinter-executive", 90, 18), DISTANCE_RATES["sprinter-executive"].minimum);
-    assert.deepEqual(pairs(floored.lines), [["Fare", AIRPORT_FARES["sprinter-executive"].ewr], [BCF, 1017]]);
+    assert.deepEqual(pairs(floored.lines), [["Fare", AIRPORT_FARES["sprinter-executive"].ewr], [FEE_LINE, 4953]]);
     assert.deepEqual([floored.tolls, floored.total, floored.service, floored.notes], [0, AIRPORT_TOTALS["sprinter-executive"].ewr - priceLeg("sprinter-executive", "ewr").tolls, "distance", [POLICY.later.outside]]);
     const { trip } = await run({ ...NJ_JFK, class: "sprinter" });
-    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [16795, 20424, 27351, 14469, 15389, 40233]);
+    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [23996, 27972, 30996, 19320, 20140, 43724]);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.direction, leg.reason, leg.ride]), [["outside", "jfk", "jfk", "to-airport", "", { tenths: 250, minutes: 45 }]]);
     assert.match(trip.route, ROUTE);
     assert.deepEqual([...readRoute(trip.route, NOW).values()].map(({ tenths, minutes }) => [tenths, minutes]), [[250, 45]]);
     assert.equal(serviceLabel({ ...trip, class: "suv" }), "Business SUV, 25.0 miles and 45 min");
-    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 16795).split("\n").at(-1), "Total shown: $167.95");
-    assert.equal((await priced({ ...NJ_JFK, to_text: "JFK Airport, Queens, NY 11430", to_id: "" })).total, 16795);
-    assert.equal((await priced({ ...NJ_JFK, to_text: "Newark Liberty International Airport, 3 Brewster Rd, Newark, NJ 07114", to_id: "" })).total, 17225);
-    assert.equal((await priced({ ...FROM_JFK, from_text: "JFK Airport, Queens, NY 11430", from_id: "", to_text: SECAUCUS })).total, 17423);
+    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 23996).split("\n").at(-1), "Total shown: $239.96");
+    assert.equal((await priced({ ...NJ_JFK, to_text: "JFK Airport, Queens, NY 11430", to_id: "" })).total, 23996);
+    assert.equal((await priced({ ...NJ_JFK, to_text: "Newark Liberty International Airport, 3 Brewster Rd, Newark, NJ 07114", to_id: "" })).total, 17224);
+    assert.equal((await priced({ ...FROM_JFK, from_text: "JFK Airport, Queens, NY 11430", from_id: "", to_text: SECAUCUS })).total, 24685);
   });
 });
 
@@ -1057,27 +1089,32 @@ await test("a JFK pickup to New Jersey keeps the flight number, meet and greet a
   await withMock(async () => {
     const { trip, price } = await run({ ...JFK_NJ, flight: "EK 201", meet: "1", tip: "15" });
     assert.deepEqual([trip.flight, trip.meetOffered, trip.meet, trip.legs[0].direction, trip.legs[0].airport, trip.legs[0].ride], ["EK 201", true, true, "from-airport", "jfk", { tenths: 252, minutes: 50 }]);
-    assert.deepEqual(pairs(price.lines), [["Fare", 16830], [BCF, 379], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2525]]);
-    assert.deepEqual([price.tolls, price.total, price.value, price.service, price.notes], [0, 22234, 19330, "distance", [POLICY.later.outside]]);
-    assert.equal(price.tip, Math.round((16830 * 15) / 100));
+    assert.deepEqual(pairs(price.lines), [["Fare", 21830], [FEE_LINE, 2620], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 3275]]);
+    assert.deepEqual([price.tolls, price.total, price.value, price.service, price.notes], [0, 30225, 24330, "distance", [POLICY.later.outside]]);
+    assert.equal(price.tip, Math.round((21830 * 15) / 100));
     const drop = await run({ ...NJ_JFK, flight: "EK 201", meet: "1" });
-    assert.deepEqual([drop.trip.flight, drop.trip.meetOffered, drop.trip.meet, drop.price.meet, drop.price.total, drop.price.notes], ["", false, false, 0, 16795, [POLICY.later.outside]]);
+    assert.deepEqual([drop.trip.flight, drop.trip.meetOffered, drop.trip.meet, drop.price.meet, drop.price.total, drop.price.notes], ["", false, false, 0, 23996, [POLICY.later.outside]]);
     const sedan = await priced({ ...JFK_NJ, class: "sedan", tip: "15" });
-    assert.deepEqual(pairs(sedan.lines), [["Fare", AIRPORT_FARES.sedan.jfk], [BCF, 318], ["Gratuity for your chauffeur (15%)", 2123]]);
-    assert.equal(sedan.total, 16592);
+    assert.deepEqual(pairs(sedan.lines), [["Fare", 17560], [FEE_LINE, 2107], ["Gratuity for your chauffeur (15%)", 2634]]);
+    assert.equal(sedan.total, 22301);
+    const sprinter = await priced({ ...JFK_NJ, class: "sprinter", tip: "15" });
+    assert.deepEqual(pairs(sprinter.lines), [["Fare", AIRPORT_FARES["sprinter-executive"].jfk], [FEE_LINE, 4685], ["Gratuity for your chauffeur (15%)", 5856]], "the JFK floor holds on a pickup too");
   });
 });
 
 await test("each ride of a return trip between an airport and an address outside New York City is priced from its own route and pickup time, each with its own airport floor", async () => {
   await withMock(async () => {
     const suv = await priced({ ...NJ_JFK, ...ROUND_TRIP, return_flight: "B6 1234" });
-    assert.deepEqual(suv.legs.map((leg) => [leg.fare, leg.tax, leg.bcf, leg.tolls]), [[16425, 0, 370, 0], [17040, 0, 383, 0]]);
-    assert.deepEqual(pairs(suv.lines), [["Fare", 33465], [BCF, 753]]);
-    assert.equal(suv.total, 34218);
+    assert.deepEqual(suv.legs.map((leg) => [leg.fare, leg.fee, leg.tolls]), [[21425, 2571, 0], [22040, 2645, 0]]);
+    assert.deepEqual(pairs(suv.lines), [["Fare", 43465], [FEE_LINE, 5216]]);
+    assert.equal(suv.total, 48681);
     assert.deepEqual(suv.notes, [POLICY.later.outside]);
     const sedan = await priced({ ...NJ_JFK, ...ROUND_TRIP, class: "sedan" });
-    assert.deepEqual(sedan.legs.map((leg) => leg.fare), [AIRPORT_FARES.sedan.jfk, AIRPORT_FARES.sedan.jfk]);
-    assert.equal(sedan.total, 28938);
+    assert.deepEqual(sedan.legs.map((leg) => leg.fare), [17250, 17720]);
+    assert.equal(sedan.total, 39166);
+    const sprinter = await priced({ ...NJ_JFK, ...ROUND_TRIP, class: "sprinter" });
+    assert.deepEqual(sprinter.legs.map((leg) => leg.fare), [AIRPORT_FARES["sprinter-executive"].jfk, AIRPORT_FARES["sprinter-executive"].jfk], "each ride keeps its own JFK floor");
+    assert.equal(sprinter.total, 2 * (39039 + 4685));
     const { trip } = await run({ ...NJ_JFK, ...ROUND_TRIP, return_flight: "B6 1234" });
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.back, leg.ride]), [["outside", "jfk", false, { tenths: 250, minutes: 45 }], ["jfk", "outside", true, { tenths: 254, minutes: 52 }]]);
     assert.deepEqual([trip.return_flight, serviceLabel(trip)], ["B6 1234", "Business SUV, 2 rides, 50.4 miles and 97 min"]);
@@ -1098,7 +1135,7 @@ await test("guardrails of an airport trip to an address outside New York City: l
     assert.equal((await priced({ ...NJ_JFK, route: signRoute([[out, 601, 181]], NOW) })).fare, distanceFare("suv", 601, 181));
     await isQuote({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 4000, 721]], NOW) }, "long-trip");
     await isQuote({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 5001, 60]], NOW) }, "long-trip");
-    assert.equal((await priced({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 5000, 720]], NOW) })).fare, 16425 + distanceFare("suv", 5000, 720));
+    assert.equal((await priced({ ...NJ_JFK, ...ROUND_TRIP, route: signRoute([[out, 250, 45], [back, 5000, 720]], NOW) })).fare, 21425 + distanceFare("suv", 5000, 720));
     for (const text of ["3 Brewster Rd, Newark, NJ 07114", "Terminal B, Newark, NJ 07114", "1 Hotel Rd, Newark, NJ 07114", "111 Industrial Ave, Teterboro, NJ 07608"]) {
       await isQuote({ ...FROM_JFK, to_text: text }, "outside-city");
       await isQuote({ ...BASE, from_text: text }, "outside-city");
@@ -1110,13 +1147,13 @@ await test("guardrails of an airport trip to an address outside New York City: l
     await isQuote({ ...NJ_JFK, from_text: "Newark Liberty (EWR)", from_id: "ewr" }, "airport-to-airport");
     for (const [fields, direct] of [[{ ...NJ_JFK, stop1_text: MANHATTAN }, { tenths: 250, minutes: 45 }], [{ ...JFK_NJ, stop1_text: "Hoboken, NJ 07030" }, { tenths: 252, minutes: 50 }]]) {
       const stop = await priced(fields);
-      const plain = priceRide("suv", direct, ["jfk"], "0");
-      assert.ok(plain.total + STOP_FEE_CENTS > priceRide("suv", { tenths: 168, minutes: 43 }, ["jfk"], "0").total, fields.stop1_text);
+      const plain = priceRide("suv", direct, ["jfk"]);
+      assert.ok(plain.total + STOP_FEE_CENTS > priceRide("suv", { tenths: 168, minutes: 43 }, ["jfk"]).total, fields.stop1_text);
       assert.deepEqual([stop.service, stop.legs, stop.fare, stop.tolls, stop.stops, stop.total, stop.notes, pairs(stop.lines).at(-1)], ["distance", [plain], plain.fare, 0, STOP_FEE_CENTS, plain.total + STOP_FEE_CENTS, [POLICY.later.outside], ["Extra stop", STOP_FEE_CENTS]], fields.stop1_text);
     }
     const whole = routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-14", "07:30").toISOString(), [{ address: MANHATTAN }]);
     const far = await priced({ ...NJ_JFK, stop1_text: MANHATTAN, route: signRoute([[whole, 400, 90]], NOW) });
-    assert.deepEqual([far.service, far.legs.length, far.fare, far.tolls, far.stops, far.total, far.notes, pairs(far.lines).map(([label]) => label)], ["distance", 1, distanceFare("suv", 400, 90), 0, 0, priceRide("suv", { tenths: 400, minutes: 90 }, [], "0").total, [POLICY.later.outside], ["Fare", BCF]]);
+    assert.deepEqual([far.service, far.legs.length, far.fare, far.tolls, far.stops, far.total, far.notes, pairs(far.lines).map(([label]) => label)], ["distance", 1, distanceFare("suv", 400, 90), 0, 0, priceRide("suv", { tenths: 400, minutes: 90 }).total, [POLICY.later.outside], ["Fare", FEE_LINE]]);
     assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
   });
   await isQuote(NJ_JFK, "outside-city");
@@ -1143,19 +1180,19 @@ await test("the route of an airport trip to New Jersey comes from the server: it
     const fields = { ...NJ_JFK, date: "2026-10-23", time: "09:10" };
     const key = routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-23", "09:10").toISOString());
     const own = await run({ ...fields, route: signRoute([[key, 300, 60]], NOW) });
-    assert.deepEqual([own.trip.legs[0].ride, own.price.fare, own.price.total], [{ tenths: 300, minutes: 60 }, 19400, 19837]);
+    assert.deepEqual([own.trip.legs[0].ride, own.price.fare, own.price.total], [{ tenths: 300, minutes: 60 }, 24400, 27328]);
     const other = await run({ ...fields, route: signRoute([[routeKey({ address: SECAUCUS }, { address: JFK_ADDRESS }, nycToUtc("2026-10-24", "09:10").toISOString()), 300, 60]], NOW) });
-    assert.deepEqual([other.trip.legs[0].ride, other.price.total], [{ tenths: 250, minutes: 45 }, 16795]);
+    assert.deepEqual([other.trip.legs[0].ride, other.price.total], [{ tenths: 250, minutes: 45 }, 23996]);
   });
 });
 
 await test("receipt: an airport trip to New Jersey rebuilds its lines with meet and greet and the gratuity, no tolls line, the after the ride note of a trip priced by distance and time, and the miles and minutes", () => {
-  const meta = { ref: "48213590", service: "distance", direction: "from-airport", airport: "jfk", class: "suv", legs: "1", miles: "25.2", minutes: "50", date: "2026-10-14", time: "07:30", flight: "EK 201", meet: "1", fare_cents: "16830", tax_cents: "1494", bcf_cents: "379", tolls_cents: "0", meet_cents: "2500", tip_percent: "15", tip_cents: "2525", total_cents: "23728" };
+  const meta = { ref: "48213590", service: "distance", direction: "from-airport", airport: "jfk", class: "suv", legs: "1", miles: "25.2", minutes: "50", date: "2026-10-14", time: "07:30", flight: "EK 201", meet: "1", fare_cents: "21830", tax_cents: "2620", tolls_cents: "0", meet_cents: "2500", tip_percent: "15", tip_cents: "3275", total_cents: "30225" };
   const out = receipt(meta, ON);
   assert.equal(out.summary, "Wed, Oct 14, 2026, 7:30 AM. Business SUV, 25.2 miles and 50 min.");
-  assert.deepEqual(pairs(out.lines), [["Fare", 16830], [TAX, 1494], [BCF, 379], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2525]]);
-  assert.equal(out.lines.reduce((sum, item) => sum + item.cents, 0), 23728);
-  assert.deepEqual([out.notes, out.value], [[POLICY.later.outside], 19330]);
+  assert.deepEqual(pairs(out.lines), [["Fare", 21830], [FEE_LINE, 2620], ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 3275]]);
+  assert.equal(out.lines.reduce((sum, item) => sum + item.cents, 0), 30225);
+  assert.deepEqual([out.notes, out.value], [[POLICY.later.outside], 24330]);
 });
 
 await test("an airport trip to or from text that names a New York City ZIP code or New York, NY and also another state or a ZIP code outside the city asks for the ZIP code or a pick, and never gets the price of an address outside New York City without its tolls line", async () => {
@@ -1196,14 +1233,14 @@ await test("an end that names only an area gets no distance price: a pickup that
     assert.equal((await priced({ ...JFK_NJ, to_text: "Hoboken, NJ, USA", to_ticket: picked("mock-hoboken", "outside", "Hoboken, NJ, USA", 2) })).service, "distance");
     assert.equal((await priced({ ...RIDE, from_text: "Manhattan, New York, NY", from_ticket: picked("ChIJmanhattan", "manhattan", "Manhattan, New York, NY", false) })).service, "distance");
     for (const [from_text, to_text] of [["Upper East Side, New York, NY", "Williamsburg, Brooklyn, NY"], ["Times Square, New York, NY", BROOKLYN], [MANHATTAN, "Hoboken, NJ 07030"], [MANHATTAN, GREENWICH]]) assert.equal((await priced({ ...RIDE, from_text, to_text })).service, "distance", `${from_text} to ${to_text}`);
-    assert.equal((await priced(NJ_JFK)).total, 16795);
+    assert.equal((await priced(NJ_JFK)).total, 23996);
     await isQuote({ ...BASE, from_text: "Manhattan" }, "pickup-address");
     await isQuote({ ...BASE, from_text: "Manhattan", ...ROUND_TRIP }, "pickup-address");
     assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
     assert.equal((await priced({ ...FROM_JFK, to_text: "Brooklyn" })).total, AIRPORT_TOTALS.suv.jfk);
     await isQuote({ ...FROM_JFK, to_text: "Brooklyn", ...ROUND_TRIP }, "return-address");
     await isQuote({ ...HOURLY, from_text: "Manhattan" }, "pickup-address");
-    assert.equal((await priced(HOURLY)).total, 28337);
+    assert.equal((await priced(HOURLY)).total, 28560);
     for (const fields of [{ ...JFK_NJ, to_text: "Bergen County, NJ" }, { ...JFK_NJ, to_text: "Fairfield County, CT" }]) await isQuote(fields, "street-address");
     for (const fields of [{ ...NJ_JFK, from_text: "Bergen County, NJ" }, { ...NJ_JFK, from_text: "Bergen County, NJ", ...ROUND_TRIP }, { ...RIDE, from_text: "Queens County" }, { ...RIDE, from_text: "Borough of Manhattan" }, { ...RIDE, from_text: "Manhattan Borough" }, { ...HOURLY, from_text: "Queens County" }]) await isQuote(fields, "pickup-address");
     await isQuote({ ...RIDE, from_text: "07030", to_text: GREENWICH }, "pickup-address");
@@ -1257,7 +1294,7 @@ await test("a Google pick whose ticket has expired and whose Place Details refre
   assert.equal((await priced(BASE)).total, AIRPORT_TOTALS.suv.jfk);
   await withMock(async () => {
     const price = await priced({ ...BASE, from_ticket: signTicket("mock-west350", "outside", MANHATTAN, NOW, 0, "NJ") });
-    assert.deepEqual([price.service, price.tax], ["distance", 0]);
+    assert.deepEqual([price.service, price.fee], ["distance", FEE(price.fare)]);
     assert.notEqual(price.total, AIRPORT_TOTALS.suv.jfk);
   });
 });
@@ -1360,7 +1397,7 @@ await test("an airport typed with its code or named after a terminal gets its fl
     assert.equal(price.total, 21000);
     const nj = await run({ ...T4, to_text: SECAUCUS, flight: "EK 201", meet: "1" });
     assert.deepEqual([nj.trip.flight, nj.trip.meet, nj.trip.legs[0].airport, nj.trip.legs[0].ride, nj.price.service], ["EK 201", true, "jfk", { tenths: 254, minutes: 52 }, "distance"]);
-    assert.deepEqual(pairs(nj.price.lines), [["Fare", 17040], [BCF, 383], ["Meet and greet", 2500]]);
+    assert.deepEqual(pairs(nj.price.lines), [["Fare", 22040], [FEE_LINE, 2645], ["Meet and greet", 2500]]);
     await isQuote({ ...BASE, to_text: "LaGuardia Airport (JFK)", to_id: "" }, "unplaced", "to_text");
     await isQuote({ ...BASE, to_text: "New York (LGA)", to_id: "" }, "unplaced", "to_text");
     assert.equal((await priced({ ...RIDE, to_text: "Hilton, JFK, Queens" })).service, "distance");
@@ -1375,8 +1412,9 @@ await test("a place picked with a long Google place ID keeps its ticket: the tic
     const ticket = signTicket(id, "outside", label, NOW, 0, "6511");
     assert.equal(ticket.length, 470);
     const { trip, price } = await run({ ...NJ_JFK, from_text: label, from_ticket: ticket });
-    assert.deepEqual([trip.from, trip.ends.from.place, trip.ends.from.region, price && price.service, price && price.total], ["outside", id, "6511", "distance", 17225]);
-    await isQuote({ ...NJ_JFK, from_text: label, from_ticket: signTicket(id, "outside", label, NOW) }, "unplaced", "from_text");
+    assert.deepEqual([trip.from, trip.ends.from.place, trip.ends.from.region, price && price.service, price && price.total], ["outside", id, "6511", "distance", 20177]);
+    const plain = await run({ ...NJ_JFK, from_text: label, from_ticket: signTicket(id, "outside", label, NOW) });
+    assert.deepEqual([plain.trip.ends.from.region, plain.price && plain.price.total], ["NY", 20177], "the pick with no county is priced too");
     await isQuote({ ...NJ_JFK, from_text: label }, "unplaced", "from_text");
   });
 });
@@ -1387,38 +1425,38 @@ const PHILADELPHIA = "1500 Market St, Philadelphia, PA 19102";
 const BOSTON = "1 Beacon St, Boston, MA 02108";
 const OWNER = { ...BASE, from_text: SECAUCUS_STREET, to_text: NIAGARA, to_id: "" };
 
-await test("the owner's trip from 806 6th Street, Secaucus, NJ to Niagara Falls, NY, 400.0 miles and 420 minutes with no end in New York City, is priced by distance and time in every class: the Executive Sedan fare is 2500 + 400 x 300 + 420 x 50 = 143,500 cents, the Electric Class fare 2647 + 400 x 318 + 420 x 53 = 152,107 cents, the Business SUV fare 3500 + 400 x 400 + 420 x 65 = 190,800 cents and the Luxury Sprinter fare 8000 + 400 x 900 + 420 x 145 = 428,900 cents, then tax and the Black Car Fund, with no charge for the drive back", async () => {
+await test("the owner's trip from 806 6th Street, Secaucus, NJ to Niagara Falls, NY, 400.0 miles and 420 minutes with no end in New York City, is priced on the long-distance card of LONG_RATES in every class: the Executive Sedan fare is 400 x 370 + 420 x 20 = 156,400 cents, the Business SUV fare 400 x 410 + 420 x 25 = 174,500 cents and the Luxury Sprinter fare 7300 + 400 x 820 + 420 x 132 = 390,740 cents, then the 12% service fee, with no charge for the drive back", async () => {
   await withMock(async () => {
-    assert.deepEqual([2500 + 400 * 300 + 420 * 50, 3500 + 400 * 400 + 420 * 65, 8000 + 400 * 900 + 420 * 145], [143500, 190800, 428900]);
+    assert.deepEqual([400 * 370 + 420 * 20, 400 * 410 + 420 * 25, 7300 + 400 * 820 + 420 * 132], [156400, 174500, 390740]);
     const sedan = await priced({ ...OWNER, class: "sedan" });
-    assert.deepEqual(pairs(sedan.lines), [["Fare", 143500], [BCF, 3229]], "Secaucus, New Jersey, to Niagara Falls is interstate, no New York sales tax");
-    assert.deepEqual([sedan.fare, sedan.tax, sedan.bcf, sedan.tolls, sedan.meet, sedan.tip, sedan.total, sedan.value, sedan.service, sedan.notes], [143500, 0, 3229, 0, 0, 0, 146729, 143500, "distance", [POLICY.later.hourly]]);
+    assert.deepEqual(pairs(sedan.lines), [["Fare", 156400], [FEE_LINE, 18768]], "Secaucus, New Jersey, to Niagara Falls carries the same 12% service fee");
+    assert.deepEqual([sedan.fare, sedan.fee, sedan.tolls, sedan.meet, sedan.tip, sedan.total, sedan.value, sedan.service, sedan.notes], [156400, 18768, 0, 0, 0, 175168, 156400, "distance", [POLICY.later.hourly]]);
     const suv = await priced({ ...OWNER, class: "suv" });
-    assert.deepEqual(pairs(suv.lines), [["Fare", 190800], [BCF, 4293]]);
-    assert.equal(suv.total, 195093);
-    const WANT = { suv: [190800, 195093], premium: [228100, 233232], first: [253300, 258999], sedan: [143500, 146729], electric: [152107, 155529], sprinter: [428900, 438550] };
+    assert.deepEqual(pairs(suv.lines), [["Fare", 174500], [FEE_LINE, 20940]]);
+    assert.equal(suv.total, 195440);
+    const WANT = { suv: [174500, 195440], premium: [200600, 224672], first: [248700, 278544], sedan: [156400, 175168], electric: [156400, 175168], sprinter: [390740, 437629] };
     assert.deepEqual(Object.keys(WANT), Object.keys(CLASSES));
     for (const [cls, [fare, total]] of Object.entries(WANT)) {
-      const rate = DISTANCE_RATES[rateKey(cls)];
-      assert.equal(fare, Math.max(rate.minimum, rate.base + 400 * rate.mile + 420 * rate.minute), cls);
+      const rate = RATES.LONG_RATES[rateKey(cls)];
+      assert.equal(fare, rate.base + 400 * rate.mile + 420 * rate.minute, cls);
       const price = await priced({ ...OWNER, class: cls });
-      assert.deepEqual([price.fare, price.total, price.fare + price.tax + price.bcf, price.tolls, price.legs.length], [fare, total, total, 0, 1], cls);
+      assert.deepEqual([price.fare, price.total, price.fare + price.fee, price.tolls, price.legs.length], [fare, total, total, 0, 1], cls);
       assert.equal(price.fare, distanceFare(rateKey(cls), 4000, 420), cls);
-      assert.deepEqual(priceRide(rateKey(cls), { tenths: 4000, minutes: 420 }, [], "0"), { fare, tax: 0, bcf: price.bcf, tolls: 0, total }, cls);
+      assert.deepEqual(priceRide(rateKey(cls), { tenths: 4000, minutes: 420 }), { fare, fee: FEE(fare), tolls: 0, total }, cls);
     }
     const sprinter = await priced({ ...OWNER, class: "sprinter" });
-    assert.deepEqual(pairs(sprinter.lines), [["Fare", 428900], [BCF, 9650]]);
-    assert.deepEqual([sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [0, 438550, "distance", [POLICY.later.hourly]]);
+    assert.deepEqual(pairs(sprinter.lines), [["Fare", 390740], [FEE_LINE, 46889]]);
+    assert.deepEqual([sprinter.tolls, sprinter.total, sprinter.service, sprinter.notes], [0, 437629, "distance", [POLICY.later.hourly]]);
     const { trip } = await run({ ...OWNER, class: "sprinter" });
-    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [195093, 233232, 258999, 146729, 155529, 438550]);
+    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [195440, 224672, 278544, 175168, 175168, 437629]);
     assert.deepEqual([trip.from, trip.to, trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.reason, leg.ride])], ["outside", "outside", [["outside", "outside", "", "", { tenths: 4000, minutes: 420 }]]]);
     assert.match(trip.route, ROUTE);
     assert.deepEqual([...readRoute(trip.route, NOW).values()].map(({ tenths, minutes }) => [tenths, minutes]), [[4000, 420]]);
     assert.equal(serviceLabel({ ...trip, class: "suv" }), "Business SUV, 400.0 miles and 420 min");
-    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 195093).split("\n").at(-1), "Total shown: $1,950.93");
+    assert.equal(composeMessage({ ...trip, class: "suv" }, "48213590", 195440).split("\n").at(-1), "Total shown: $1,954.40");
     const round = await priced({ ...OWNER, ...ROUND_TRIP, class: "sedan" });
-    assert.deepEqual(round.legs.map((leg) => [leg.fare, leg.tax, leg.bcf]), [[143500, 0, 3229], [distanceFare("sedan", 4004, 425), 0, 3237]]);
-    assert.deepEqual([round.fare, round.total], [143500 + 143870, 293836]);
+    assert.deepEqual(round.legs.map((leg) => [leg.fare, leg.fee]), [[156400, 18768], [distanceFare("sedan", 4004, 425), 18798]]);
+    assert.deepEqual([round.fare, round.total], [156400 + 156648, 350614]);
     await isQuote({ ...OWNER, to_text: "Niagara Falls, NY" }, "unplaced", "to_text");
     await isQuote({ ...OWNER, to_text: "Niagara Falls, NY, USA", to_ticket: signTicket("ChIJniagara", "outside", "Niagara Falls, NY, USA", NOW, true) }, "street-address");
     assert.equal((await priced({ ...OWNER, to_text: "Niagara Falls State Park, Niagara Falls, NY, USA", to_ticket: signTicket("ChIJniagarapark", "outside", "Niagara Falls State Park, Niagara Falls, NY, USA", NOW) })).service, "distance");
@@ -1447,14 +1485,15 @@ await test("Philadelphia to Boston, 308.6 miles and 322 minutes with neither end
     const fields = { ...BASE, from_text: PHILADELPHIA, to_text: BOSTON, to_id: "" };
     for (const cls of Object.keys(CLASSES)) {
       const price = await priced({ ...fields, class: cls });
-      const want = priceRide(rateKey(cls), { tenths: 3086, minutes: 322 }, [], "0");
-      assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.total, price.service, price.notes], [want.fare, want.tax, want.bcf, 0, want.total, "distance", [POLICY.later.hourly]], cls);
-      assert.equal(price.fare, DISTANCE_RATES[rateKey(cls)].base + Math.round((3086 * DISTANCE_RATES[rateKey(cls)].mile) / 10) + 322 * DISTANCE_RATES[rateKey(cls)].minute, cls);
+      const want = priceRide(rateKey(cls), { tenths: 3086, minutes: 322 });
+      assert.deepEqual([price.fare, price.fee, price.tolls, price.total, price.service, price.notes], [want.fare, want.fee, 0, want.total, "distance", [POLICY.later.hourly]], cls);
+      const long = RATES.LONG_RATES[rateKey(cls)];
+      assert.equal(price.fare, long.base + Math.round((3086 * long.mile) / 10) + 322 * long.minute, cls);
     }
     const suv = await priced(fields);
-    assert.deepEqual([pairs(suv.lines), suv.total], [[["Fare", 147870], [BCF, 3327]], 151197]);
+    assert.deepEqual([pairs(suv.lines), suv.total], [[["Fare", 134576], [FEE_LINE, 16149]], 150725]);
     const sprinter = await priced({ ...fields, class: "sprinter" });
-    assert.deepEqual([pairs(sprinter.lines), sprinter.total], [[["Fare", 8000 + 277740 + 322 * 145], [BCF, 7480]], 339910]);
+    assert.deepEqual([pairs(sprinter.lines), sprinter.total], [[["Fare", 7300 + 253052 + 322 * 132], [FEE_LINE, 36343]], 339199]);
     const { trip } = await run(fields);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.reason, leg.ride]), [["outside", "outside", "", { tenths: 3086, minutes: 322 }]]);
     assert.equal(serviceLabel(trip), "Business SUV, 308.6 miles and 322 min");
@@ -1473,7 +1512,7 @@ await test("over the limits the trip stays with dispatch as long-trip with today
     assert.deepEqual((await run({ ...RIDE, to_text: BAR_HARBOR })).trip.legs.map((leg) => [leg.reason, leg.ride]), [["long-trip", { tenths: 4800, minutes: 721 }]]);
     const key = routeKey({ address: MANHATTAN }, { address: RALEIGH }, nycToUtc("2026-10-14", "07:30").toISOString());
     const edge = await priced({ ...RIDE, to_text: RALEIGH, route: signRoute([[key, 5000, 720]], NOW) });
-    assert.deepEqual([edge.fare, edge.service, edge.legs[0].fare], [distanceFare("suv", 5000, 720), "distance", 3500 + 200000 + 46800]);
+    assert.deepEqual([edge.fare, edge.service, edge.legs[0].fare], [distanceFare("suv", 5000, 720), "distance", 205000 + 18000]);
     for (const ride of [[5001, 720], [5000, 721]]) await isQuote({ ...RIDE, to_text: RALEIGH, route: signRoute([[key, ...ride]], NOW) }, "long-trip");
   });
 });
@@ -1583,19 +1622,19 @@ await test("Philadelphia to JFK, 97.5 miles and 118 minutes, is priced at the ai
     for (const cls of Object.keys(CLASSES)) {
       const price = await priced({ ...fields, class: cls });
       const fare = Math.max(AIRPORT_FARES[rateKey(cls)].jfk, distanceFare(rateKey(cls), 975, 118));
-      assert.deepEqual([price.fare, price.tax, price.total, price.tolls, price.service, price.notes], [fare, 0, priceRide(rateKey(cls), { tenths: 975, minutes: 118 }, ["jfk"], "0").total, 0, "distance", [POLICY.later.outside]], cls);
+      assert.deepEqual([price.fare, price.fee, price.total, price.tolls, price.service, price.notes], [fare, FEE(fare), priceRide(rateKey(cls), { tenths: 975, minutes: 118 }, ["jfk"]).total, 0, "distance", [POLICY.later.outside]], cls);
       assert.equal(fare, distanceFare(rateKey(cls), 975, 118), cls);
     }
     const suv = await priced(fields);
-    assert.deepEqual([pairs(suv.lines), suv.total], [[["Fare", 50170], [BCF, 1129]], 51299]);
+    assert.deepEqual([pairs(suv.lines), suv.total], [[["Fare", 42925], [FEE_LINE, 5151]], 48076]);
     const sprinter = await priced({ ...fields, class: "sprinter" });
-    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", 8000 + 87750 + 118 * 145], [BCF, 2539]], 8000 + 87750 + 118 * 145 + 2539, [POLICY.later.outside]]);
+    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", 7300 + 79950 + 118 * 132], [FEE_LINE, 12339]], 7300 + 79950 + 118 * 132 + 12339, [POLICY.later.outside]]);
     assert.ok(sprinter.fare > AIRPORT_FARES["sprinter-executive"].jfk);
     const { trip } = await run(fields);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.direction, leg.reason, leg.ride]), [["outside", "jfk", "jfk", "to-airport", "", { tenths: 975, minutes: 118 }]]);
     const key = routeKey({ address: PHILADELPHIA }, { address: JFK_ADDRESS }, nycToUtc("2026-10-14", "07:30").toISOString());
-    const floor = await priced({ ...fields, class: "sedan", route: signRoute([[key, 300, 40]], NOW) });
-    assert.deepEqual([distanceFare("sedan", 300, 40) < AIRPORT_FARES.sedan.jfk, floor.fare, floor.total], [true, AIRPORT_FARES.sedan.jfk, 14469]);
+    const floor = await priced({ ...fields, class: "sedan", route: signRoute([[key, 100, 20]], NOW) });
+    assert.deepEqual([distanceFare("sedan", 100, 20) < AIRPORT_FARES.sedan.jfk, floor.fare, floor.total], [true, AIRPORT_FARES.sedan.jfk, 15724]);
   });
 });
 
@@ -1630,21 +1669,20 @@ await test("child seats: CHILD_SEAT_CENTS is 2000 in api/_rates.mjs and the seat
   assert.deepEqual(readInput({ ...HOURLY, booster_seats: "1" }).seats, { toddler: "", infant: "", booster: "1" });
 });
 
-await test("child seats on a one way airport trip: 0, 1 and the maximum of one seat per passenger (12 in a Luxury Sprinter) add count x $20.00 once as their own line after meet and greet and before the gratuity, with no NYC sales tax or Black Car Fund on them, like meet and greet, and the fare, tax, tolls and gratuity unchanged", async () => {
+await test("child seats on a one way airport trip: 0, 1 and the maximum of one seat per passenger (12 in a Luxury Sprinter) add count x $20.00 once as their own line after meet and greet and before the gratuity, with no service fee on them, like meet and greet, and the fare, fee, tolls and gratuity unchanged", async () => {
   const base = await priced({ ...FROM_JFK, meet: "1", tip: "15" });
-  assert.deepEqual(pairs(base.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.deepEqual([base.seats, base.seatCount, base.total, base.value], [0, 0, 23325, 18000]);
+  assert.deepEqual(pairs(base.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.deepEqual([base.seats, base.seatCount, base.total, base.value], [0, 0, 23307, 17879]);
   const one = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1" });
-  assert.deepEqual(pairs(one.lines), [...LEG, ["Meet and greet", 2500], seatLine(1), ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.deepEqual([one.fare, one.tax, one.bcf, one.tolls, one.meet, one.seats, one.seatCount, one.tip, one.total, one.value], [15500, 1376, 349, 1275, 2500, 2000, 1, 2325, 25325, 20000]);
+  assert.deepEqual(pairs(one.lines), [...LEG, ["Meet and greet", 2500], seatLine(1), ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.deepEqual([one.fare, one.fee, one.tolls, one.meet, one.seats, one.seatCount, one.tip, one.total, one.value], [15379, 1845, 1276, 2500, 2000, 1, 2307, 25307, 19879]);
   const fare = AIRPORT_FARES["sprinter-executive"].jfk;
   const max = await priced({ ...FROM_JFK, meet: "1", tip: "15", class: "sprinter", passengers: "12", ...SEATS_MAX });
   const tip = RATES.percentCents(fare, "15");
-  assert.deepEqual(pairs(max.lines).slice(4), [["Meet and greet", 2500], seatLine(12), ["Gratuity for your chauffeur (15%)", tip]]);
+  assert.deepEqual(pairs(max.lines).slice(3), [["Meet and greet", 2500], seatLine(12), ["Gratuity for your chauffeur (15%)", tip]]);
   assert.deepEqual([max.fare, max.seats, max.seatCount, max.total], [fare, 24000, 12, AIRPORT_TOTALS["sprinter-executive"].jfk + 2500 + 24000 + tip]);
-  assert.equal(max.total, 77402);
-  assert.equal(max.tax, RATES.percentCents(fare, RATES.NYC_TAX_PERCENT), "the seats add no sales tax");
-  assert.equal(max.bcf, RATES.percentCents(fare, RATES.BCF_PERCENT), "the seats add no Black Car Fund");
+  assert.equal(max.total, 77356);
+  assert.equal(max.fee, FEE(fare), "the seats add no service fee");
   assert.equal(max.lines.reduce((sum, l) => sum + l.cents, 0), max.total);
   assert.equal((await priced({ ...BASE, passengers: "3", toddler_seats: "2" })).total, AIRPORT_TOTALS.suv.jfk + 4000);
 });
@@ -1663,26 +1701,26 @@ await test("child seats on a round trip are charged once for the booking, not on
   assert.deepEqual(pairs(max.lines).at(-1), seatLine(12));
 });
 
-await test("child seats on an hourly booking: 0, 1 and the maximum (3 in a Business SUV with 6 passengers) add count x $20.00 once, after the fare, tax and Black Car Fund, and the gratuity stays a percent of the fare", async () => {
+await test("child seats on an hourly booking: 0, 1 and the maximum (3 in a Business SUV with 6 passengers) add count x $20.00 once, after the fare and the service fee, and the gratuity stays a percent of the fare", async () => {
   const fare = 8500 * 3;
   const none = await priced({ ...HOURLY, tip: "20" });
-  assert.deepEqual(pairs(none.lines), [["Fare, 3 hours", fare], ["NYC sales tax", 2263], ["Black Car Fund", 574], ["Gratuity for your chauffeur (20%)", 5100]]);
+  assert.deepEqual(pairs(none.lines), [["Fare, 3 hours", fare], [FEE_LINE, 3060], ["Gratuity for your chauffeur (20%)", 5100]]);
   const one = await priced({ ...HOURLY, tip: "20", infant_seats: "1" });
-  assert.deepEqual(pairs(one.lines), [["Fare, 3 hours", fare], ["NYC sales tax", 2263], ["Black Car Fund", 574], seatLine(1), ["Gratuity for your chauffeur (20%)", 5100]]);
+  assert.deepEqual(pairs(one.lines), [["Fare, 3 hours", fare], [FEE_LINE, 3060], seatLine(1), ["Gratuity for your chauffeur (20%)", 5100]]);
   assert.deepEqual([one.total - none.total, one.value], [2000, fare + 2000]);
   const max = await priced({ ...HOURLY, class: "suv", vehicle: "suv-denali", passengers: "6", toddler_seats: "2", booster_seats: "1" });
-  assert.deepEqual(pairs(max.lines), [["Fare, 3 hours", 30000], ["NYC sales tax", 2663], ["Black Car Fund", 675], seatLine(3)]);
-  assert.equal(max.total, 30000 + 2663 + 675 + 6000);
+  assert.deepEqual(pairs(max.lines), [["Fare, 3 hours", 30000], [FEE_LINE, 3600], seatLine(3)]);
+  assert.equal(max.total, 30000 + 3600 + 6000);
 });
 
-await test("child seats on trips priced by distance and time: one way and return trip add count x $20.00 once on top of the route fare, tax and Black Car Fund", async () => {
+await test("child seats on trips priced by distance and time: one way and return trip add count x $20.00 once on top of the route fare and the service fee", async () => {
   await withMock(async () => {
     const one = await priced({ ...RIDE, class: "suv", passengers: "3", booster_seats: "2" });
-    assert.deepEqual(pairs(one.lines), [["Fare", 11000], ["NYC sales tax", 976], ["Black Car Fund", 248], seatLine(2)]);
-    assert.deepEqual([one.total, one.service], [12224 + 4000, "distance"]);
+    assert.deepEqual(pairs(one.lines), [["Fare", 12095], [FEE_LINE, 1451], seatLine(2)]);
+    assert.deepEqual([one.total, one.service], [13546 + 4000, "distance"]);
     const back = await priced({ ...RIDE, ...ROUND_TRIP, to_text: GREENWICH, class: "sedan", tip: "15", infant_seats: "1" });
-    assert.deepEqual(pairs(back.lines), [["Fare", 29400], ["Black Car Fund", 662], seatLine(1), ["Gratuity for your chauffeur (15%)", 4410]]);
-    assert.equal(back.total, 29400 + 662 + 4410 + 2000);
+    assert.deepEqual(pairs(back.lines), [["Fare", 39400], [FEE_LINE, 4728], seatLine(1), ["Gratuity for your chauffeur (15%)", 5910]]);
+    assert.equal(back.total, 39400 + 4728 + 5910 + 2000);
   });
 });
 
@@ -1715,7 +1753,7 @@ await test("class totals and the too small car reason include the seats: every p
 await test("the reserve by email and WhatsApp messages and the dispatch quote path list each seat type with its count after meet and greet, only for the types chosen, and nothing when no seat is chosen", async () => {
   const { trip, price } = await run({ ...FROM_JFK, meet: "1", tip: "15", passengers: "5", infant_seats: "1", booster_seats: "2" });
   const text = composeMessage(trip, "48213590", price.total);
-  assert.ok(text.includes("\nVehicle: Business SUV\nMeet and greet: Yes\nInfant seats: 1\nBooster seats: 2\nGratuity: 15%\nTotal shown: $293.25"), text);
+  assert.ok(text.includes("\nVehicle: Business SUV\nMeet and greet: Yes\nInfant seats: 1\nBooster seats: 2\nGratuity: 15%\nTotal shown: $293.07"), text);
   assert.ok(!text.includes("Child seats:") && !/toddler/i.test(text), text);
   const links = contactLinks(trip, "48213590", price.total);
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nInfant seats: 1\nBooster seats: 2\n"), href);
@@ -1728,18 +1766,20 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
 });
 
 await test("the receipt rebuilds the seat line from the payment metadata, with the price per seat it was paid at, adds it to the value, and leaves it out when the booking has no seats", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "6000", child_seats: "3", infant_seats: "1", booster_seats: "2" };
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15379", tax_cents: "1845", tolls_cents: "1276", meet_cents: "2500", tip_percent: "15", tip_cents: "2307", seats_cents: "6000", child_seats: "3", infant_seats: "1", booster_seats: "2" };
   const r = receipt(meta, ON);
-  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(r.value, 15500 + 2500 + 6000);
-  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 29325);
-  assert.deepEqual(pairs(receipt({ ...meta, seats_cents: "3000", child_seats: "2" }, ON).lines)[5], ["Child seats (2 x $15.00)", 3000], "an old booking keeps the price per seat it was paid at");
-  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "" }, ON).lines)[5], ["Child seats", 6000]);
-  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "7" }, ON).lines)[5], ["Child seats", 6000]);
+  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(r.value, 15379 + 2500 + 6000);
+  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 29307);
+  assert.deepEqual(pairs(receipt({ ...meta, seats_cents: "3000", child_seats: "2" }, ON).lines)[4], ["Child seats (2 x $15.00)", 3000], "an old booking keeps the price per seat it was paid at");
+  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "" }, ON).lines)[4], ["Child seats", 6000]);
+  assert.deepEqual(pairs(receipt({ ...meta, child_seats: "7" }, ON).lines)[4], ["Child seats", 6000]);
   const none = { ...meta };
   for (const k of ["seats_cents", "child_seats", "infant_seats", "booster_seats"]) delete none[k];
-  assert.deepEqual(pairs(receipt(none, ON).lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(receipt(none, ON).value, 18000);
+  assert.deepEqual(pairs(receipt(none, ON).lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(receipt(none, ON).value, 17879);
+  const paidBefore = receipt({ ...meta, fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", tip_cents: "2325" }, ON);
+  assert.deepEqual(pairs(paidBefore.lines), [...OLD_LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2325]], "a booking paid with sales tax and the Black Car Fund keeps its lines");
 });
 
 const LGA_ADDRESS = "LaGuardia Airport, East Elmhurst, NY 11371";
@@ -1762,55 +1802,75 @@ const routesDown = async (fn) => {
   }
 };
 
-await test("the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St a few blocks apart, costs the LaGuardia flat total plus STOP_FEE_CENTS from api/_rates.mjs, with its tolls line, an Extra stop line and the notes of an airport transfer, in every class, the Luxury Sprinter too, because that is more than the whole route by distance and time, and a far stop is priced over the whole route when that costs more", async () => {
+await test("the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church St a few blocks apart, costs the LaGuardia flat total plus STOP_FEE_CENTS from api/_rates.mjs, with its tolls line, an Extra stop line and the notes of an airport transfer, in every class, the Luxury Sprinter too, when that is more than the whole route by distance and time, and the whole route prices it when that costs more, as the 16.8 miles and 43 min of the mock route do in every car class", async () => {
   await withMock(async () => {
     assert.equal(STOP_FEE_CENTS, 2000);
     const { trip } = await run(STOPS);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.direction, leg.stops, leg.reason, leg.ride]), [["lga", "manhattan", "lga", "from-airport", 1, "", { tenths: 168, minutes: 43 }]]);
     assert.deepEqual(trip.legs[0].plain, { from: "lga", to: "manhattan", airport: "lga", direction: "from-airport", back: false, reason: "", salesTax: { area: "8081", percent: "8.875" } });
-    assert.ok(distanceFare("first", 168, 43) < AIRPORT_FARES.first.lga && distanceFare("suv", 168, 43) < AIRPORT_FARES.suv.lga && distanceFare("sprinter-executive", 168, 43) < AIRPORT_FARES["sprinter-executive"].lga);
+    const NEAR = signRoute([[stopKey([ANN]), 100, 30]], NOW);
     const OWNER = { suv: 18500, premium: 21000, first: 27000, sedan: 16500, electric: 17500, sprinter: 47000 };
     assert.deepEqual(Object.keys(OWNER), Object.keys(CLASSES));
     for (const [cls, total] of Object.entries(OWNER)) {
-      const whole = priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga");
-      assert.ok(whole.fare === AIRPORT_FARES[rateKey(cls)].lga && whole.total < total, cls);
-      const price = await priced({ ...STOPS, class: cls });
+      const whole = priceDistance(rateKey(cls), { tenths: 100, minutes: 30 }, "lga");
+      assert.ok(whole.fare === Math.max(AIRPORT_FARES[rateKey(cls)].lga, distanceFare(rateKey(cls), 100, 30)) && whole.total < total, cls);
+      const price = await priced({ ...STOPS, class: cls, route: NEAR });
       assert.deepEqual([price.fare, price.tolls, price.stops, price.stopCount, price.total, price.service, price.notes, price.legs], [AIRPORT_FARES[rateKey(cls)].lga, priceLeg(rateKey(cls), "lga").tolls, 2000, 1, total, "airport", [NOTES.included, POLICY.later.airport], [priceLeg(rateKey(cls), "lga")]], cls);
-      assert.deepEqual(price.lines.map((item) => item.label), ["Fare", TAX, BCF, "Tolls and airport fees", "Extra stop"], cls);
+      assert.deepEqual(price.lines.map((item) => item.label), ["Fare", FEE_LINE, "Tolls and airport fees", "Extra stop"], cls);
       assert.deepEqual([price.total, price.value], [AIRPORT_TOTALS[rateKey(cls)].lga + STOP_FEE_CENTS, AIRPORT_FARES[rateKey(cls)].lga + STOP_FEE_CENTS], cls);
     }
-    assert.deepEqual(["suv", "sprinter"].map((cls) => priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga").total), [15225, AIRPORT_TOTALS["sprinter-executive"].lga - priceLeg("sprinter-executive", "lga").tolls], "the whole route alone");
+    const MOCK = { suv: 20177, premium: 23430, first: 25973, sedan: 16453, electric: 17100, sprinter: 47000 };
+    for (const [cls, total] of Object.entries(MOCK)) {
+      const whole = priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga");
+      const flat = AIRPORT_TOTALS[rateKey(cls)].lga - priceLeg(rateKey(cls), "lga").tolls + STOP_FEE_CENTS;
+      const price = await priced({ ...STOPS, class: cls });
+      assert.equal(price.total, total, cls);
+      assert.equal(price.total, cls === "sprinter" ? flat + priceLeg(rateKey(cls), "lga").tolls : whole.total, cls);
+      assert.equal(whole.total > flat, cls !== "sprinter", `${cls}: the whole route is dearer than the flat total plus the fee`);
+      if (cls !== "sprinter") assert.deepEqual([price.fare, price.fee, price.stops, price.tolls, price.service, price.notes, price.lines.map((item) => item.label)], [distanceFare(rateKey(cls), 168, 43), FEE(price.fare), 0, 0, "distance", [POLICY.later.outside], ["Fare", FEE_LINE]], cls);
+    }
+    assert.deepEqual(["suv", "sprinter"].map((cls) => priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga").total), [20177, AIRPORT_TOTALS["sprinter-executive"].lga - priceLeg("sprinter-executive", "lga").tolls], "the whole route alone");
     const sprinter = await priced({ ...STOPS, class: "sprinter" });
-    assert.deepEqual([distanceFare("sprinter-executive", 168, 43), AIRPORT_FARES["sprinter-executive"].lga], [Math.max(35000, 8000 + 15120 + 43 * 145), 39348]);
-    assert.deepEqual(pairs(sprinter.lines), [["Fare", 39348], [TAX, 3492], [BCF, 885], ["Tolls and airport fees", 1275], ["Extra stop", 2000]]);
-    assert.deepEqual(pairs(shownLines(sprinter.lines)), [["Fare", 39348], ["Taxes and fees", 4377], ["Tolls", 1275], ["Extra stop", 2000]]);
+    assert.deepEqual([distanceFare("sprinter-executive", 168, 43), AIRPORT_FARES["sprinter-executive"].lga], [Math.max(35000, 8000 + 15120 + 43 * 145), 39039]);
+    assert.deepEqual(pairs(sprinter.lines), [["Fare", 39039], [FEE_LINE, 4685], ["Tolls and airport fees", 1276], ["Extra stop", 2000]]);
+    assert.deepEqual(pairs(shownLines(sprinter.lines)), [["Fare", 39039], [FEE_LINE, 4685], ["Tolls", 1276], ["Extra stop", 2000]]);
     assert.deepEqual([sprinter.total, sprinter.service, sprinter.notes], [AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS, "airport", [NOTES.included, POLICY.later.airport]]);
     assert.equal(sprinter.total, 47000, "the client's LaGuardia trip by 26 Ann St to 55 Church St in the Luxury Sprinter is $470.00");
-    const extras = await priced({ ...STOPS, tip: "20", meet: "1", toddler_seats: "1" });
-    assert.deepEqual([extras.fare, extras.tax, extras.bcf, extras.stops, extras.meet, extras.seats, extras.tip, extras.total], [13701, 1216, 308, 2000, 2500, 2000, percentCents(13701, "20"), 18500 + 2500 + 2000 + percentCents(13701, "20")], "the stop fee is untaxed and outside the gratuity, like meet and greet and child seats");
-    assert.deepEqual(pairs(extras.lines).map(([label]) => label), ["Fare", TAX, BCF, "Tolls and airport fees", "Meet and greet", "Extra stop", "Child seats (1 x $20.00)", "Gratuity for your chauffeur (20%)"]);
+    const extras = await priced({ ...STOPS, class: "sprinter", tip: "20", meet: "1", toddler_seats: "1" });
+    assert.deepEqual([extras.fare, extras.fee, extras.stops, extras.meet, extras.seats, extras.tip, extras.total], [39039, 4685, 2000, 2500, 2000, percentCents(39039, "20"), 47000 + 2500 + 2000 + percentCents(39039, "20")], "the stop fee carries no service fee and is outside the gratuity, like meet and greet and child seats");
+    assert.deepEqual(pairs(extras.lines).map(([label]) => label), ["Fare", FEE_LINE, "Tolls and airport fees", "Meet and greet", "Extra stop", "Child seats (1 x $20.00)", "Gratuity for your chauffeur (20%)"]);
     const owner = await priced({ ...STOPS, class: "sprinter", route: signRoute([[stopKey([ANN]), 125, 46]], NOW) });
     assert.deepEqual([distanceFare("sprinter-executive", 125, 46), 8000 + 11250 + 46 * 145], [35000, 25920]);
-    assert.deepEqual([pairs(owner.lines), owner.total, (await priced({ ...STOPS, route: signRoute([[stopKey([ANN]), 125, 46]], NOW) })).total], [pairs(sprinter.lines), AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS, 18500]);
-    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [18500, 21000, 27000, 16500, 17500, 47000]);
-    assert.equal(serviceLabel(trip), "From LaGuardia (LGA), Business SUV");
-    assert.equal(composeMessage(trip, "48213590", 18500), ["Hi NYC LUX RIDE, I would like to book this trip.", "Reference: 48213590", "Trip: One way", "Pickup: LaGuardia (LGA)", `Stop 1: ${ANN} (Manhattan)`, `Drop-off: ${CHURCH} (Manhattan)`, "Date: Wed, Oct 14, 2026", "Time: 9:00 AM", "Passengers: 2", "Vehicle: Business SUV", "Total shown: $185.00"].join("\n"));
+    assert.deepEqual([pairs(owner.lines), owner.total, (await priced({ ...STOPS, route: NEAR })).total], [pairs(sprinter.lines), AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS, 18500]);
+    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(trip, cls)), [20177, 23430, 25973, 16453, 17100, 47000]);
+    const { trip: nearTrip } = await run({ ...STOPS, route: NEAR });
+    assert.deepEqual(["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => classTotal(nearTrip, cls)), [18500, 21000, 27000, 16500, 17500, 47000]);
+    assert.equal(serviceLabel(nearTrip), "From LaGuardia (LGA), Business SUV");
+    assert.equal(serviceLabel(trip), "Business SUV, 16.8 miles and 43 min");
+    assert.equal(composeMessage(nearTrip, "48213590", 18500), ["Hi NYC LUX RIDE, I would like to book this trip.", "Reference: 48213590", "Trip: One way", "Pickup: LaGuardia (LGA)", `Stop 1: ${ANN} (Manhattan)`, `Drop-off: ${CHURCH} (Manhattan)`, "Date: Wed, Oct 14, 2026", "Time: 9:00 AM", "Passengers: 2", "Vehicle: Business SUV", "Total shown: $185.00"].join("\n"));
     assert.deepEqual([...readRoute(trip.route, NOW).entries()].map(([key, { tenths, minutes }]) => [key, tenths, minutes]), [[stopKey([ANN]), 168, 43]], "a flat ride without the stop needs no route of its own");
     const far = { tenths: 250, minutes: 70 };
-    for (const [cls, fare, stops] of [["suv", 18050, 0], ["premium", 21975, 0], ["first", 24925, 0], ["sedan", AIRPORT_FARES.sedan.lga, 2000], ["electric", AIRPORT_FARES.electric.lga, 2000], ["sprinter", AIRPORT_FARES["sprinter-executive"].lga, 2000]]) {
+    for (const [cls, fare, stops] of [["suv", 23050, 0], ["premium", 26975, 0], ["first", 29925, 0], ["sedan", 18500, 0], ["electric", 19307, 0], ["sprinter", AIRPORT_FARES["sprinter-executive"].lga, 2000]]) {
       const price = await priced({ ...STOPS, class: cls, route: signRoute([[stopKey([ANN]), 250, 70]], NOW) });
       assert.deepEqual([price.fare, price.stops, price.total, price.service], [fare, stops, stops ? OWNER[cls] : priceDistance(rateKey(cls), far).total, stops ? "airport" : "distance"], cls);
       assert.equal(price.total, Math.max(priceDistance(rateKey(cls), far, "lga").total, OWNER[cls]), cls);
       assert.ok(price.total >= OWNER[cls], `${cls}: a far stop never costs less than a near one`);
     }
     const long = await priced({ ...STOPS, route: signRoute([[stopKey([ANN]), 250, 70]], NOW) });
-    assert.deepEqual([long.fare, long.total, long.tolls, long.notes, long.lines.map((item) => item.label)], [distanceFare("suv", 250, 70), priceDistance("suv", far).total, 0, [POLICY.later.outside], ["Fare", TAX, BCF]]);
+    assert.deepEqual([long.fare, long.total, long.tolls, long.notes, long.lines.map((item) => item.label)], [distanceFare("suv", 250, 70), priceDistance("suv", far).total, 0, [POLICY.later.outside], ["Fare", FEE_LINE]]);
     const back = await priced({ ...STOPS, from_text: CHURCH, from_id: "", stop1_text: ANN, to_text: "LaGuardia (LGA)", to_id: "lga", meet: "1" });
-    assert.deepEqual([back.fare, back.meet, back.stops, back.total, back.service], [AIRPORT_FARES.suv.lga, 0, 2000, 18500, "airport"]);
+    assert.deepEqual([back.fare, back.meet, back.stops, back.total, back.service], [distanceFare("suv", 168, 43), 0, 0, 20177, "distance"]);
+    const backNear = await priced({ ...STOPS, from_text: CHURCH, from_id: "", stop1_text: ANN, to_text: "LaGuardia (LGA)", to_id: "lga", meet: "1", route: signRoute([[routeKey({ address: CHURCH }, { address: LGA_ADDRESS }, nycToUtc("2026-10-14", "09:00").toISOString(), [{ address: ANN }]), 100, 30]], NOW) });
+    assert.deepEqual([backNear.fare, backNear.meet, backNear.stops, backNear.total, backNear.service], [AIRPORT_FARES.suv.lga, 0, 2000, 18500, "airport"]);
     for (const cls of Object.keys(CLASSES)) {
       const toJfk = await priced({ ...STOPS, class: cls, stop1_text: "Hoboken, NJ 07030", to_text: "John F. Kennedy (JFK)", to_id: "jfk" });
-      assert.deepEqual([toJfk.fare, toJfk.stops], [Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk), 0], `${cls} from LaGuardia to JFK has no price without the stop, so the whole route prices it`);
-      assert.equal((await priced({ ...FROM_JFK, class: cls, stop1_text: "Hoboken, NJ 07030", to_text: "LaGuardia (LGA)", to_id: "lga" })).fare, Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk), `${cls} from JFK to LaGuardia`);
+      const { trip: viaHoboken } = await run({ ...STOPS, class: cls, stop1_text: "Hoboken, NJ 07030", to_text: "John F. Kennedy (JFK)", to_id: "jfk" });
+      const ride = viaHoboken.legs[0].ride;
+      assert.deepEqual([toJfk.fare, toJfk.stops], [Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk, distanceFare(rateKey(cls), ride.tenths, ride.minutes)), 0], `${cls} from LaGuardia to JFK has no price without the stop, so the whole route prices it`);
+      const { trip: back, price: backPrice } = await run({ ...FROM_JFK, class: cls, stop1_text: "Hoboken, NJ 07030", to_text: "LaGuardia (LGA)", to_id: "lga" });
+      assert.equal(backPrice.fare, Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk, distanceFare(rateKey(cls), back.legs[0].ride.tenths, back.legs[0].ride.minutes)), `${cls} from JFK to LaGuardia`);
+      if (cls === "suv") assert.deepEqual([ride, toJfk.fare], [{ tenths: 168, minutes: 43 }, 18015]);
+      if (cls === "sprinter") assert.equal(toJfk.fare, AIRPORT_FARES["sprinter-executive"].jfk, "the JFK floor prices the Sprinter");
     }
   });
   const fetch = globalThis.fetch;
@@ -1827,28 +1887,28 @@ await test("the owner's trip with a stop, LaGuardia to 26 Ann St then 55 Church 
   }
 });
 
-await test("the stop fee and the whole route are compared like for like: the flat airport total without its tolls line plus the fee against the whole route by distance and time, whose tolls are charged after the ride, so a whole route of 21.8 miles and 50 min pays the fee and 21.9, 24.5 and 25.0 miles pay the whole route", async () => {
+await test("the stop fee and the whole route are compared like for like: the flat airport total without its tolls line plus the fee against the whole route by distance and time, whose tolls are charged after the ride, so a whole route of 9.0 miles and 50 min pays the fee and 9.1, 24.5 and 25.0 miles pay the whole route", async () => {
   await withMock(async () => {
     const lga = priceLeg("suv", "lga");
     const fee = lga.total - lga.tolls + STOP_FEE_CENTS;
-    assert.deepEqual([fee, priceDistance("suv", { tenths: 218, minutes: 50 }, "lga").total, priceDistance("suv", { tenths: 219, minutes: 50 }, "lga").total], [17225, 17191, 17236]);
+    assert.deepEqual([fee, priceDistance("suv", { tenths: 90, minutes: 50 }, "lga").total, priceDistance("suv", { tenths: 91, minutes: 50 }, "lga").total], [17224, 17192, 17237]);
     const at = async (tenths) => priced({ ...STOPS, route: signRoute([[stopKey([ANN]), tenths, 50]], NOW) });
-    const near = await at(218);
+    const near = await at(90);
     assert.deepEqual([near.total, near.tolls, near.stops, near.service, near.notes], [AIRPORT_TOTALS.suv.lga + STOP_FEE_CENTS, lga.tolls, STOP_FEE_CENTS, "airport", [NOTES.included, POLICY.later.airport]]);
-    for (const tenths of [219, 245, 250]) {
+    for (const tenths of [91, 245, 250]) {
       const far = await at(tenths);
       const whole = priceDistance("suv", { tenths, minutes: 50 }, "lga");
       assert.deepEqual([far.total, far.tolls, far.stops, far.service, far.notes], [whole.total, 0, 0, "distance", [POLICY.later.outside]], String(tenths));
     }
-    assert.deepEqual([(await at(245)).total, (await at(250)).total], [18391, 18614]);
+    assert.deepEqual([(await at(245)).total, (await at(250)).total], [24136, 24360]);
   });
 });
 
 await test("trips with stops whose parts are all airport transfers take the stop rule like every other trip with stops: the higher of the trip without the stops plus STOP_FEE_CENTS per stop and the whole route by distance and time, never below the highest airport fare on the route, in every class, one way, with two stops and round trip, and with Google routes off they stay with dispatch as stop-leg", async () => {
   const JFK_STOP = { stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk" };
   const WHOLE = { tenths: 168, minutes: 43 };
-  const FLOOR = { suv: 17225, premium: 20725, first: 29725, sedan: 15725, electric: 16725, sprinter: 43725 };
-  const FLOOR_NJ = { ...FLOOR, sprinter: 46225 };
+  const FLOOR = { suv: 20177, premium: 23430, first: 29724, sedan: 16453, electric: 17100, sprinter: 43724 };
+  const FLOOR_NJ = { ...FLOOR, sprinter: 46224 };
   const BY_ROUTE = [
     [{ ...BASE, ...JFK_STOP, to_text: BROOKLYN, to_id: "" }, ["jfk"]],
     [{ ...BASE, from_text: BROOKLYN, ...JFK_STOP, to_text: MANHATTAN, to_id: "" }, ["jfk"]],
@@ -1864,13 +1924,14 @@ await test("trips with stops whose parts are all airport transfers take the stop
       for (const [fields, airports] of BY_ROUTE) {
         const price = await priced({ ...fields, class: cls });
         const interstate = airports.includes("ewr");
-        const whole = interstate ? priceRide(rateKey(cls), WHOLE, airports, "0") : priceDistance(rateKey(cls), WHOLE, ...airports);
-        assert.deepEqual([price.total, price.fare, price.tax, price.bcf, price.tolls, price.stops, price.service, price.notes], [(interstate ? FLOOR_NJ : FLOOR)[cls], whole.fare, whole.tax, whole.bcf, 0, 0, "distance", [POLICY.later.outside]], `${cls} ${JSON.stringify(fields)}`);
-        assert.deepEqual(price.lines.map((item) => item.label), interstate ? ["Fare", BCF] : ["Fare", TAX, BCF], "Newark by a Manhattan stop to Teterboro starts and ends in New Jersey: no New York sales tax, the same floor total");
+        const whole = priceDistance(rateKey(cls), WHOLE, ...airports);
+        assert.deepEqual([price.total, price.fare, price.fee, price.tolls, price.stops, price.service, price.notes], [(interstate ? FLOOR_NJ : FLOOR)[cls], whole.fare, whole.fee, 0, 0, "distance", [POLICY.later.outside]], `${cls} ${JSON.stringify(fields)}`);
+        assert.equal(whole.fare, Math.max(distanceFare(rateKey(cls), 168, 43), ...airports.map((airport) => AIRPORT_FARES[rateKey(cls)][airport])), `${cls} never below the highest airport fare on the route`);
+        assert.deepEqual(price.lines.map((item) => item.label), ["Fare", FEE_LINE], "Newark by a Manhattan stop to Teterboro carries the same service fee line");
       }
       const two = await priced({ ...TWO, class: cls });
       assert.deepEqual([two.total, two.legs, two.stops, two.stopCount, two.service, two.notes], [BY_FEE[cls], [priceLeg(rateKey(cls), "jfk")], 2 * STOP_FEE_CENTS, 2, "airport", [NOTES.included, POLICY.later.airport]], cls);
-      assert.deepEqual(pairs(two.lines).map(([label]) => label), ["Fare", TAX, BCF, "Tolls and airport fees", "Extra stops (2 x $20.00)"], cls);
+      assert.deepEqual(pairs(two.lines).map(([label]) => label), ["Fare", FEE_LINE, "Tolls and airport fees", "Extra stops (2 x $20.00)"], cls);
       const round = await priced({ ...TWO, ...ROUND_TRIP, class: cls });
       assert.deepEqual([round.total, round.legs, round.stops, round.service], [BY_FEE_ROUND[cls], [priceLeg(rateKey(cls), "jfk"), priceLeg(rateKey(cls), "jfk")], 2 * STOP_FEE_CENTS, "airport"], cls);
       assert.equal(BY_FEE[cls], AIRPORT_TOTALS[rateKey(cls)].jfk + 2 * STOP_FEE_CENTS, cls);
@@ -1898,34 +1959,35 @@ await test("a part of the ride out between two airports, an airport stop next to
   const at = (name, end) => (typeof end === "string" ? { [`${name}_text`]: end, [`${name}_id`]: "" } : { [`${name}_text`]: end.text, [`${name}_id`]: end.id });
   const trip = (from, stops, to, extra = {}) => ({ ...BASE, ...at("from", from), ...(stops[0] && at("stop1", stops[0])), ...(stops[1] && at("stop2", stops[1])), ...at("to", to), ...extra });
   const WHOLE = { tenths: 168, minutes: 43 };
-  const FLOOR = { suv: 17225, premium: 20725, first: 29725, sedan: 15725, electric: 16725 };
-  const ONE_FEE = { suv: 20500, premium: 24000, first: 33000, sedan: 19000, electric: 20000 };
+  const FLOOR = { suv: 20177, premium: 23430, first: 29724, sedan: 16453, electric: 17100 };
+  const ONE_FEE = { suv: 20177, premium: 23430, first: 33000, sedan: 19000, electric: 20000 };
   const TWO_FEES = { suv: 22500, premium: 26000, first: 35000, sedan: 21000, electric: 22000 };
-  const OUT_ROUND = { suv: 33725, premium: 39725, first: 54725, sedan: 30225, electric: 32225 };
-  const BACK_ROUND = { suv: 39000, premium: 46000, first: 64000, sedan: 36000, electric: 38000 };
+  const OUT_ROUND = { suv: 36677, premium: 42430, first: 54724, sedan: 30953, electric: 32600 };
+  const BACK_ROUND = { suv: 38677, premium: 45430, first: 64000, sedan: 36000, electric: 38000 };
+  const BY_DISTANCE = ["suv", "premium"];
   const EXECUTIVE = [
     [47000, "airport", STOP_FEE_CENTS, AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS],
     [47000, "airport", STOP_FEE_CENTS, AIRPORT_TOTALS["sprinter-executive"].jfk + STOP_FEE_CENTS],
     [49500, "airport", STOP_FEE_CENTS, AIRPORT_TOTALS["sprinter-executive"].teb + STOP_FEE_CENTS],
-    [43725, "distance", 0, priceDistance("sprinter-executive", WHOLE, "jfk", "lga").total],
+    [43724, "distance", 0, priceDistance("sprinter-executive", WHOLE, "jfk", "lga").total],
     [49000, "airport", 2 * STOP_FEE_CENTS, AIRPORT_TOTALS["sprinter-executive"].jfk + 2 * STOP_FEE_CENTS],
     [92000, "airport", STOP_FEE_CENTS, 2 * AIRPORT_TOTALS["sprinter-executive"].lga + STOP_FEE_CENTS],
     [92000, "airport", STOP_FEE_CENTS, 2 * AIRPORT_TOTALS["sprinter-executive"].jfk + STOP_FEE_CENTS],
   ];
   const CASES = [
     ["350 5th Ave by JFK to LaGuardia", trip(MANHATTAN, [J], L), FLOOR, "distance", 0, (cls) => priceDistance(rateKey(cls), WHOLE, "jfk", "lga").total],
-    ["JFK by LaGuardia to 350 5th Ave", trip(J, [L], MANHATTAN), ONE_FEE, "airport", STOP_FEE_CENTS, (cls) => AIRPORT_TOTALS[rateKey(cls)].jfk + STOP_FEE_CENTS],
-    ["350 5th Ave by Newark to Teterboro", trip(MANHATTAN, [E], T), ONE_FEE, "airport", STOP_FEE_CENTS, (cls) => AIRPORT_TOTALS[rateKey(cls)].teb + STOP_FEE_CENTS],
+    ["JFK by LaGuardia to 350 5th Ave", trip(J, [L], MANHATTAN), ONE_FEE, (cls) => (BY_DISTANCE.includes(cls) ? "distance" : "airport"), (cls) => (BY_DISTANCE.includes(cls) ? 0 : STOP_FEE_CENTS), (cls) => (BY_DISTANCE.includes(cls) ? priceDistance(rateKey(cls), WHOLE, "jfk", "lga").total : AIRPORT_TOTALS[rateKey(cls)].jfk + STOP_FEE_CENTS)],
+    ["350 5th Ave by Newark to Teterboro", trip(MANHATTAN, [E], T), ONE_FEE, (cls) => (BY_DISTANCE.includes(cls) ? "distance" : "airport"), (cls) => (BY_DISTANCE.includes(cls) ? 0 : STOP_FEE_CENTS), (cls) => (BY_DISTANCE.includes(cls) ? priceDistance(rateKey(cls), WHOLE, "ewr", "teb").total : AIRPORT_TOTALS[rateKey(cls)].teb + STOP_FEE_CENTS)],
     ["350 5th Ave by JFK and LaGuardia to 200 Park Ave", trip(MANHATTAN, [J, L], PARK), FLOOR, "distance", 0, (cls) => priceDistance(rateKey(cls), WHOLE, "jfk", "lga").total],
     ["JFK by LaGuardia and Newark to 350 5th Ave", trip(J, [L, E], MANHATTAN), TWO_FEES, "airport", 2 * STOP_FEE_CENTS, (cls) => AIRPORT_TOTALS[rateKey(cls)].jfk + 2 * STOP_FEE_CENTS],
     ["350 5th Ave by JFK to LaGuardia, round trip", trip(MANHATTAN, [J], L, ROUND_TRIP), OUT_ROUND, "distance", 0, (cls) => priceDistance(rateKey(cls), WHOLE, "jfk", "lga").total + AIRPORT_TOTALS[rateKey(cls)].lga],
-    ["277 Bedford Ave by LaGuardia to JFK, round trip", trip(BROOKLYN, [L], J, ROUND_TRIP), BACK_ROUND, "airport", STOP_FEE_CENTS, (cls) => 2 * AIRPORT_TOTALS[rateKey(cls)].jfk + STOP_FEE_CENTS],
+    ["277 Bedford Ave by LaGuardia to JFK, round trip", trip(BROOKLYN, [L], J, ROUND_TRIP), BACK_ROUND, (cls) => (BY_DISTANCE.includes(cls) ? "distance" : "airport"), (cls) => (BY_DISTANCE.includes(cls) ? 0 : STOP_FEE_CENTS), (cls) => (BY_DISTANCE.includes(cls) ? priceDistance(rateKey(cls), WHOLE, "lga", "jfk").total + AIRPORT_TOTALS[rateKey(cls)].jfk : 2 * AIRPORT_TOTALS[rateKey(cls)].jfk + STOP_FEE_CENTS)],
   ];
   await withMock(async () => {
     for (const cls of Object.keys(CLASSES)) {
       for (const [i, [name, fields, totals, service, stops, rule]] of CASES.entries()) {
         const price = await priced({ ...fields, class: cls });
-        const want = cls === "sprinter" ? EXECUTIVE[i] : [totals[cls], service, stops, rule(cls)];
+        const want = cls === "sprinter" ? EXECUTIVE[i] : [totals[cls], typeof service === "function" ? service(cls) : service, typeof stops === "function" ? stops(cls) : stops, rule(cls)];
         assert.deepEqual([price.total, price.service, price.stops], want.slice(0, 3), `${cls} ${name}`);
         assert.equal(price.total, want[3], `${cls} ${name}`);
         assert.equal(price.lines.reduce((sum, item) => sum + item.cents, 0), price.total, `${cls} ${name}`);
@@ -1934,16 +1996,18 @@ await test("a part of the ride out between two airports, an airport stop next to
       assert.ok(charged(AIRPORT_TOTALS[rateKey(cls)].lga - priceLeg(rateKey(cls), "lga").tolls + STOP_FEE_CENTS, priceDistance(rateKey(cls), WHOLE, "jfk", "lga").total), `${cls}: the whole route is charged when it costs at least the trip without the stop plus the fee, and the Executive Sprinter, whose JFK and LaGuardia fares are the same, pays the trip without the stop plus the fee`);
     }
     const tie = await priced(CASES[0][1]);
-    assert.deepEqual([pairs(tie.lines), tie.notes], [[["Fare", 15500], [TAX, 1376], [BCF, 349]], [POLICY.later.outside]]);
-    assert.equal(AIRPORT_TOTALS.suv.lga - priceLeg("suv", "lga").tolls + STOP_FEE_CENTS, 17225, "A and B tie for the SUV and B is charged");
-    const fee = await priced(CASES[1][1]);
-    assert.deepEqual([pairs(fee.lines), fee.legs, fee.notes], [[...LEG, ["Extra stop", 2000]], [priceLeg("suv", "jfk")], [NOTES.included, POLICY.later.airport]]);
+    assert.deepEqual([pairs(tie.lines), tie.notes], [[["Fare", 18015], [FEE_LINE, 2162]], [POLICY.later.outside]]);
+    assert.equal(AIRPORT_TOTALS.suv.lga - priceLeg("suv", "lga").tolls + STOP_FEE_CENTS, 17224, "the whole route of the SUV costs more than A and B is charged");
+    const fee = await priced({ ...CASES[1][1], class: "sedan" });
+    assert.deepEqual([pairs(fee.lines), fee.legs, fee.notes], [[["Fare", 14039], [FEE_LINE, 1685], ["Tolls and airport fees", 1276], ["Extra stop", 2000]], [priceLeg("sedan", "jfk")], [NOTES.included, POLICY.later.airport]]);
+    const dear = await priced(CASES[1][1]);
+    assert.deepEqual([pairs(dear.lines), dear.notes], [[["Fare", 18015], [FEE_LINE, 2162]], [POLICY.later.outside]], "the SUV pays its whole route, dearer than the JFK flat total without its tolls plus the fee");
     const fees = await priced(CASES[4][1]);
     assert.deepEqual(pairs(fees.lines).at(-1), ["Extra stops (2 x $20.00)", 4000]);
     const out = await priced(CASES[5][1]);
-    assert.deepEqual([out.legs, pairs(out.lines).map(([label]) => label), out.notes], [[priceDistance("suv", WHOLE, "jfk", "lga"), priceLeg("suv", "lga")], ["Fare", TAX, BCF, "Tolls and airport fees"], [NOTES.returnFlat, POLICY.later.returnFlat]]);
-    const back = await priced(CASES[6][1]);
-    assert.deepEqual([back.legs, pairs(back.lines).at(-1)], [[priceLeg("suv", "jfk"), priceLeg("suv", "jfk")], ["Extra stop", 2000]]);
+    assert.deepEqual([out.legs, pairs(out.lines).map(([label]) => label), out.notes], [[priceDistance("suv", WHOLE, "jfk", "lga"), priceLeg("suv", "lga")], ["Fare", FEE_LINE, "Tolls and airport fees"], [NOTES.returnFlat, POLICY.later.returnFlat]]);
+    const back = await priced({ ...CASES[6][1], class: "sedan" });
+    assert.deepEqual([back.legs, pairs(back.lines).at(-1)], [[priceLeg("sedan", "jfk"), priceLeg("sedan", "jfk")], ["Extra stop", 2000]]);
     for (const [name, fields] of CASES) {
       const { trip: resolved } = await run(fields);
       assert.deepEqual(resolved.legs.filter((item) => !item.back).map((item) => [item.stops, item.reason, item.ride]), [[(fields.stop2_text ? 2 : 1), "", WHOLE]], name);
@@ -1980,17 +2044,17 @@ await test("with Google routes failing, trips with stops that need their whole r
   });
 });
 
-await test("Brooklyn by a JFK stop to 350 5th Ave in a Business SUV costs $222.80 over a whole route of 30.0 miles and 70 min, more than the trip without the stop plus the stop fee, where it cost the two flat JFK transfers of $370.00 before", async () => {
+await test("Brooklyn by a JFK stop to 350 5th Ave in a Business SUV costs $280.56 over a whole route of 30.0 miles and 70 min, more than the trip without the stop plus the stop fee, where it cost the two flat JFK transfers of $370.00 before", async () => {
   const fields = { ...BASE, from_text: BROOKLYN, stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk", to_text: MANHATTAN, to_id: "" };
   const jfk = localById("jfk").gid ? { placeId: localById("jfk").gid } : { address: localById("jfk").addr };
   const key = routeKey({ address: BROOKLYN }, { address: MANHATTAN }, nycToUtc("2026-10-14", "07:30").toISOString(), [jfk]);
   await withMock(async () => {
     const price = await priced({ ...fields, route: signRoute([[key, 300, 70]], NOW) });
-    assert.deepEqual(pairs(price.lines), [["Fare", 20050], [TAX, 1779], [BCF, 451]]);
-    assert.deepEqual([price.total, price.stops, price.tolls, price.service, price.notes], [22280, 0, 0, "distance", [POLICY.later.outside]]);
-    assert.equal(distanceFare("suv", 300, 70), 20050);
+    assert.deepEqual(pairs(price.lines), [["Fare", 25050], [FEE_LINE, 3006]]);
+    assert.deepEqual([price.total, price.stops, price.tolls, price.service, price.notes], [28056, 0, 0, "distance", [POLICY.later.outside]]);
+    assert.equal(distanceFare("suv", 300, 70), 25050);
     const without = priceDistance("suv", { tenths: 48, minutes: 31 });
-    assert.deepEqual([without.total, without.total + STOP_FEE_CENTS], [12224, 14224]);
+    assert.deepEqual([without.total, without.total + STOP_FEE_CENTS], [13927, 15927]);
     assert.ok(2 * AIRPORT_TOTALS.suv.jfk === 37000 && price.total < 37000);
     await isQuote({ ...fields, route: signRoute([[key, 5001, 70]], NOW) }, "long-trip");
   });
@@ -1998,26 +2062,29 @@ await test("Brooklyn by a JFK stop to 350 5th Ave in a Business SUV costs $222.8
 
 await test("a round trip with stops: a ride out with a stop a few blocks away costs its flat airport total plus the stop fee and the return keeps its flat total with its tolls line, a far stop prices the ride out over the whole route by distance and time with the return as today, and an address to address round trip prices the ride out without the stop plus the fee", async () => {
   await withMock(async () => {
-    const owner = await priced({ ...STOPS, ...ROUND_TRIP });
+    const NEAR = signRoute([[stopKey([ANN]), 100, 30]], NOW);
+    const owner = await priced({ ...STOPS, ...ROUND_TRIP, route: NEAR });
     assert.deepEqual(owner.legs, [priceLeg("suv", "lga"), priceLeg("suv", "lga")]);
-    assert.deepEqual([pairs(owner.lines), owner.total, owner.service, owner.notes], [[["Fare", 27402], [TAX, 2432], [BCF, 616], ["Tolls and airport fees", 2550], ["Extra stop", 2000]], 2 * AIRPORT_TOTALS.suv.lga + STOP_FEE_CENTS, "airport", [NOTES.included, POLICY.later.airport]]);
-    assert.ok(owner.total > priceDistance("suv", { tenths: 168, minutes: 43 }, "lga").total + AIRPORT_TOTALS.suv.lga);
+    assert.deepEqual([pairs(owner.lines), owner.total, owner.service, owner.notes], [[["Fare", 27186], [FEE_LINE, 3262], ["Tolls and airport fees", 2552], ["Extra stop", 2000]], 2 * AIRPORT_TOTALS.suv.lga + STOP_FEE_CENTS, "airport", [NOTES.included, POLICY.later.airport]]);
+    assert.ok(owner.total > priceDistance("suv", { tenths: 100, minutes: 30 }, "lga").total + AIRPORT_TOTALS.suv.lga);
+    const mock = await priced({ ...STOPS, ...ROUND_TRIP });
+    assert.deepEqual([mock.legs, mock.total, mock.service], [[priceDistance("suv", { tenths: 168, minutes: 43 }, "lga"), priceLeg("suv", "lga")], 20177 + AIRPORT_TOTALS.suv.lga, "distance"], "the 16.8 mile route out is dearer than the flat total plus the fee");
     const { trip } = await run({ ...STOPS, ...ROUND_TRIP });
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.back, leg.stops, leg.flat, leg.reason, leg.ride]), [["lga", "manhattan", false, 1, undefined, "", { tenths: 168, minutes: 43 }], ["manhattan", "lga", true, undefined, true, "", { tenths: 168, minutes: 43 }]]);
-    assert.equal(serviceLabel(trip), "Business SUV, 2 airport transfers");
-    for (const cls of Object.keys(CLASSES)) assert.equal((await priced({ ...STOPS, ...ROUND_TRIP, class: cls })).total, 2 * AIRPORT_TOTALS[rateKey(cls)].lga + STOP_FEE_CENTS, cls);
+    assert.equal(serviceLabel((await run({ ...STOPS, ...ROUND_TRIP, route: NEAR })).trip), "Business SUV, 2 airport transfers");
+    for (const cls of Object.keys(CLASSES)) assert.equal((await priced({ ...STOPS, ...ROUND_TRIP, class: cls, route: NEAR })).total, 2 * AIRPORT_TOTALS[rateKey(cls)].lga + STOP_FEE_CENTS, cls);
     const sprinter = await priced({ ...STOPS, ...ROUND_TRIP, class: "sprinter" });
     assert.deepEqual(sprinter.legs, [priceLeg("sprinter-executive", "lga"), priceLeg("sprinter-executive", "lga")]);
-    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", 2 * 39348], [TAX, 2 * 3492], [BCF, 2 * 885], ["Tolls and airport fees", 2 * 1275], ["Extra stop", 2000]], 2 * AIRPORT_TOTALS["sprinter-executive"].lga + 2000, [NOTES.included, POLICY.later.airport]]);
+    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", 2 * 39039], [FEE_LINE, 2 * 4685], ["Tolls and airport fees", 2 * 1276], ["Extra stop", 2000]], 2 * AIRPORT_TOTALS["sprinter-executive"].lga + 2000, [NOTES.included, POLICY.later.airport]]);
     const road = await priced({ ...RIDE, stop1_text: PARK, to_text: "Hoboken, NJ 07030", ...ROUND_TRIP });
     assert.deepEqual([road.legs.map((leg) => leg.fare), road.tolls, road.stops, road.service, road.notes], [[distanceFare("suv", 168, 43), distanceFare("suv", 168, 43)], 0, 2000, "distance", [POLICY.later.hourly]]);
     const turn = await priced({ ...BASE, stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk", to_text: BROOKLYN, to_id: "", ...ROUND_TRIP });
-    assert.deepEqual([turn.legs, turn.tolls, turn.stops, turn.service, turn.total], [[priceDistance("suv", { tenths: 168, minutes: 43 }, "jfk"), priceDistance("suv", { tenths: 48, minutes: 31 })], 0, 0, "distance", 29449]);
+    assert.deepEqual([turn.legs, turn.tolls, turn.stops, turn.service, turn.total], [[priceDistance("suv", { tenths: 168, minutes: 43 }, "jfk"), priceDistance("suv", { tenths: 48, minutes: 31 })], 0, 0, "distance", 34104]);
     const out = stopKey([ANN]);
     const home = routeKey({ address: CHURCH }, { address: LGA_ADDRESS }, nycToUtc("2026-10-18", "18:00").toISOString());
     const far = await priced({ ...STOPS, ...ROUND_TRIP, route: signRoute([[out, 250, 70], [home, 100, 30]], NOW) });
     assert.deepEqual(far.legs, [priceDistance("suv", { tenths: 250, minutes: 70 }, "lga"), priceLeg("suv", "lga")]);
-    assert.deepEqual([far.total, far.stops, far.service, far.notes, far.lines.map((item) => item.label)], [priceDistance("suv", { tenths: 250, minutes: 70 }).total + AIRPORT_TOTALS.suv.lga, 0, "distance", [NOTES.returnFlat, POLICY.later.returnFlat], ["Fare", TAX, BCF, "Tolls and airport fees"]]);
+    assert.deepEqual([far.total, far.stops, far.service, far.notes, far.lines.map((item) => item.label)], [priceDistance("suv", { tenths: 250, minutes: 70 }).total + AIRPORT_TOTALS.suv.lga, 0, "distance", [NOTES.returnFlat, POLICY.later.returnFlat], ["Fare", FEE_LINE, "Tolls and airport fees"]]);
     assert.ok(far.total > owner.total);
     assert.deepEqual([NOTES.returnFlat, POLICY.later.returnFlat], ["Tolls and airport fees for the return are included.", "Tolls for the ride out, extra waiting and parking are charged to your card after the ride."]);
     await isQuote({ ...STOPS, ...ROUND_TRIP, to_text: "Manhattan" }, "return-address");
@@ -2032,7 +2099,7 @@ await test("a round trip with an airport stop on the ride out, 350 5th Ave by JF
   const out = routeKey({ address: MANHATTAN }, { address: BROOKLYN }, departure, [jfk]);
   const alone = routeKey({ address: MANHATTAN }, { address: BROOKLYN }, departure, ["alone"]);
   const home = routeKey({ address: BROOKLYN }, { address: MANHATTAN }, nycToUtc("2026-10-18", "18:00").toISOString());
-  const ROUND = { suv: 29449, premium: 34615, first: 48617, sedan: 25393, electric: 26962, sprinter: 82619 };
+  const ROUND = { suv: 34104, premium: 39401, first: 47431, sedan: 28202, electric: 29214, sprinter: 82924 };
   await withMock(async () => {
     for (const cls of Object.keys(CLASSES)) {
       const one = await priced({ ...OUT, class: cls });
@@ -2044,7 +2111,7 @@ await test("a round trip with an airport stop on the ride out, 350 5th Ave by JF
       assert.deepEqual(round.legs, [ride, back], cls);
       assert.deepEqual([round.total, round.tolls, round.stops, round.service, round.notes], [ROUND[cls], 0, 0, "distance", [POLICY.later.outside]], cls);
       assert.equal(ROUND[cls], one.total + back.total, cls);
-      assert.deepEqual(pairs(round.lines).map(([label]) => label), ["Fare", TAX, BCF], cls);
+      assert.deepEqual(pairs(round.lines).map(([label]) => label), ["Fare", FEE_LINE], cls);
       assert.ok(round.total > one.total, cls);
     }
     assert.deepEqual([NOTES.outFlat, POLICY.later.outFlat], ["Tolls and airport fees for the ride out are included.", "Tolls for the return, extra waiting and parking are charged to your card after the ride."]);
@@ -2053,7 +2120,7 @@ await test("a round trip with an airport stop on the ride out, 350 5th Ave by JF
     assert.deepEqual([...readRoute(trip.route, NOW).keys()], [out, home, alone]);
     assert.equal(serviceLabel(trip), "Business SUV, 2 rides, 21.6 miles and 74 min");
     const sprinter = await priced({ ...OUT, ...ROUND_TRIP, class: "sprinter" });
-    assert.deepEqual([priceDistance("sprinter-executive", { tenths: 48, minutes: 31 }).total, sprinter.total, sprinter.tolls], [38894, priceDistance("sprinter-executive", WHOLE, "jfk").total + 38894, 0]);
+    assert.deepEqual([priceDistance("sprinter-executive", { tenths: 48, minutes: 31 }).total, sprinter.total, sprinter.tolls], [39200, priceDistance("sprinter-executive", WHOLE, "jfk").total + 39200, 0]);
     assert.equal((await priced({ ...OUT, class: "sprinter" })).total, AIRPORT_TOTALS["sprinter-executive"].jfk - priceLeg("sprinter-executive", "jfk").tolls);
     const longer = await priced({ ...OUT, ...ROUND_TRIP, route: signRoute([[home, 100, 30]], NOW) });
     assert.equal(longer.total, priceDistance("suv", WHOLE, "jfk").total + priceDistance("suv", { tenths: 100, minutes: 30 }).total);
@@ -2070,15 +2137,20 @@ await test("a round trip with an airport stop on the ride out, 350 5th Ave by JF
 await test("an airport stop on a route priced by distance sets the floor like an airport pickup or drop-off: the fare is never below the flat fare of any airport on the route, so going on past a JFK stop never costs less than the plain JFK transfer, with the after the ride note of an airport trip", async () => {
   await withMock(async () => {
     const PAST = { ...BASE, stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk", to_text: "Hoboken, NJ 07030", to_id: "" };
+    const key = routeKey({ address: MANHATTAN }, { address: "Hoboken, NJ 07030" }, nycToUtc("2026-10-14", "07:30").toISOString(), [localById("jfk").gid ? { placeId: localById("jfk").gid } : { address: localById("jfk").addr }]);
+    const alone = routeKey({ address: MANHATTAN }, { address: "Hoboken, NJ 07030" }, nycToUtc("2026-10-14", "07:30").toISOString(), ["alone"]);
+    const NEAR = signRoute([[key, 60, 20], [alone, 40, 15]], NOW);
     for (const cls of Object.keys(CLASSES)) {
-      const past = await priced({ ...PAST, class: cls });
-      assert.ok(distanceFare(rateKey(cls), 168, 43) < AIRPORT_FARES[rateKey(cls)].jfk, cls);
-      assert.deepEqual([past.fare, past.tolls, past.service, past.notes, past.legs.length], [AIRPORT_FARES[rateKey(cls)].jfk, 0, "distance", [POLICY.later.outside], 1], cls);
+      const past = await priced({ ...PAST, class: cls, route: NEAR });
+      assert.ok(distanceFare(rateKey(cls), 60, 20) < AIRPORT_FARES[rateKey(cls)].jfk, cls);
+      assert.deepEqual([past.fare, past.fee, past.tolls, past.service, past.notes, past.legs.length], [AIRPORT_FARES[rateKey(cls)].jfk, FEE(AIRPORT_FARES[rateKey(cls)].jfk), 0, "distance", [POLICY.later.outside], 1], cls);
       assert.ok(past.fare >= (await priced({ ...BASE, class: cls })).fare, cls);
+      const mock = await priced({ ...PAST, class: cls });
+      assert.equal(mock.total, Math.max(priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "jfk").total, priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }).total + STOP_FEE_CENTS), `${cls}: the higher of the whole route and the trip without the stop plus the fee`);
       const two = await priced({ ...BASE, class: cls, from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: "Hoboken, NJ 07030", stop2_text: "John F. Kennedy (JFK)", stop2_id: "jfk", to_text: MANHATTAN, to_id: "" });
-      const whole = priceRide(rateKey(cls), { tenths: 168, minutes: 43 }, ["lga", "jfk"], "0");
-      assert.equal(whole.fare, Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk), `${cls} from LaGuardia past a JFK stop`);
-      assert.equal(two.tax, 0, `${cls}: a stop in Hoboken, New Jersey, makes the trip interstate`);
+      const whole = priceRide(rateKey(cls), { tenths: 168, minutes: 43 }, ["lga", "jfk"]);
+      assert.equal(whole.fare, Math.max(AIRPORT_FARES[rateKey(cls)].lga, AIRPORT_FARES[rateKey(cls)].jfk, distanceFare(rateKey(cls), 168, 43)), `${cls} from LaGuardia past a JFK stop`);
+      assert.equal(two.fee, FEE(two.fare), `${cls}: a stop in Hoboken, New Jersey, carries the same service fee`);
       const fees = AIRPORT_TOTALS[rateKey(cls)].lga + 2 * STOP_FEE_CENTS;
       assert.equal(two.total, fees - priceLeg(rateKey(cls), "lga").tolls > whole.total ? fees : whole.total, `${cls} from LaGuardia past a JFK stop`);
       assert.ok(two.total >= whole.total && whole.fare >= AIRPORT_FARES[rateKey(cls)].jfk, cls);
@@ -2086,8 +2158,8 @@ await test("an airport stop on a route priced by distance sets the floor like an
     const { trip } = await run(PAST);
     assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.airport, leg.direction, leg.stops, leg.via, leg.reason]), [["manhattan", "outside", "jfk", "", 1, ["jfk"], ""]]);
     const sprinter = await priced({ ...PAST, class: "sprinter" });
-    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", AIRPORT_FARES["sprinter-executive"].jfk], [BCF, 885]], AIRPORT_FARES["sprinter-executive"].jfk + 885, [POLICY.later.outside]]);
-    const key = routeKey({ address: MANHATTAN }, { address: "Hoboken, NJ 07030" }, nycToUtc("2026-10-14", "07:30").toISOString(), [localById("jfk").gid ? { placeId: localById("jfk").gid } : { address: localById("jfk").addr }]);
+    assert.deepEqual([pairs(sprinter.lines), sprinter.total, sprinter.notes], [[["Fare", AIRPORT_FARES["sprinter-executive"].jfk], [FEE_LINE, 4685]], AIRPORT_FARES["sprinter-executive"].jfk + 4685, [POLICY.later.outside]]);
+    assert.deepEqual(pairs((await priced({ ...PAST, route: NEAR })).lines), [["Fare", 15379], [FEE_LINE, 1845]], "going on past a JFK stop never costs less than the plain JFK transfer without its tolls");
     assert.equal((await priced({ ...PAST, route: signRoute([[key, 300, 90]], NOW) })).fare, distanceFare("suv", 300, 90));
   });
 });
@@ -2102,8 +2174,10 @@ await test("two stops are routed in their order, pickup, stop 1, stop 2 and the 
     assert.equal(stopKey([]), routeKey({ address: LGA_ADDRESS }, { address: CHURCH }, nycToUtc("2026-10-14", "09:00").toISOString()));
     const price = await priced({ ...two, route: signRoute([[stopKey([ANN, WALL]), 300, 80]], NOW) });
     assert.deepEqual([price.fare, price.total], [distanceFare("suv", 300, 80), priceDistance("suv", { tenths: 300, minutes: 80 }).total]);
-    assert.equal((await priced({ ...two, stop1_text: WALL, stop2_text: ANN, route: signRoute([[stopKey([ANN, WALL]), 300, 80]], NOW) })).fare, AIRPORT_FARES.suv.lga);
-    assert.equal((await priced({ ...two, stop2_text: "", route: signRoute([[stopKey([ANN, WALL]), 300, 80]], NOW) })).fare, AIRPORT_FARES.suv.lga);
+    assert.equal(distanceFare("suv", 300, 80), 25700);
+    assert.equal((await priced({ ...two, stop1_text: WALL, stop2_text: ANN, route: signRoute([[stopKey([ANN, WALL]), 300, 80]], NOW) })).fare, distanceFare("suv", 168, 43), "the other order is the mock route, not the signed one");
+    assert.equal((await priced({ ...two, stop2_text: "", route: signRoute([[stopKey([ANN, WALL]), 300, 80]], NOW) })).fare, distanceFare("suv", 168, 43));
+    assert.equal((await priced({ ...two, stop2_text: "", route: signRoute([[stopKey([ANN]), 100, 30]], NOW) })).fare, AIRPORT_FARES.suv.lga, "a near stop of its own route pays the flat fare plus the fee");
   });
   await routesDown(async (sent) => {
     await isQuote({ ...STOPS, stop2_text: WALL, date: "2026-10-29" }, "stop-leg");
@@ -2133,7 +2207,8 @@ await test("a stop priced by distance must be an exact spot: a typed or picked b
     assert.deepEqual(REASONS["stop-address"], { group: "price", text: "Add the street address of each stop to see the price.", google: "Add the street address of each stop, or pick it from the list, to see the price." });
     await isQuote({ ...STOPS, to_text: "Manhattan" }, "street-address");
     const street = await priced({ ...STOPS, stop1_text: "277 Bedford Ave, Brooklyn, NY 11211", stop1_ticket: t("mock-bedford", "brooklyn", "277 Bedford Ave, Brooklyn, NY 11211", 0) });
-    assert.deepEqual([street.service, street.total], ["airport", AIRPORT_TOTALS.suv.lga + STOP_FEE_CENTS]);
+    assert.deepEqual([street.service, street.total], ["distance", 20177]);
+    assert.equal(street.total, Math.max(priceDistance("suv", { tenths: 168, minutes: 43 }, "lga").total, AIRPORT_TOTALS.suv.lga - priceLeg("suv", "lga").tolls + STOP_FEE_CENTS));
     await isQuote({ ...FROM_JFK, stop1_text: "Brooklyn", stop2_text: "LaGuardia (LGA)", stop2_id: "lga", to_text: "Queens" }, "street-address");
     await isQuote({ ...FROM_JFK, stop1_text: "Brooklyn", stop2_text: "LaGuardia (LGA)", stop2_id: "lga", to_text: BROOKLYN }, "stop-address");
   });
@@ -2152,7 +2227,7 @@ await test("a stop outside the United States or at another airport stays with di
       assert.deepEqual([trip.route, trip.legs.every((leg) => !leg.ride)], ["", true], JSON.stringify(fields));
     }
     await isQuote({ ...STOPS, from_text: "Toronto, ON", from_id: "" }, "stop-leg");
-    const between = { suv: 20500, premium: 23000, first: 29725, sedan: 18500, electric: 19500, sprinter: 49000 };
+    const between = { suv: 20177, premium: 23430, first: 29724, sedan: 18500, electric: 19500, sprinter: 49000 };
     for (const [cls, total] of Object.entries(between)) {
       const price = await priced({ ...STOPS, class: cls, stop1_text: "John F. Kennedy (JFK)", stop1_id: "jfk", stop2_text: ANN });
       const whole = priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga", "jfk").total;
@@ -2228,8 +2303,8 @@ await test("an address to address trip with a stop a few blocks off the way cost
       for (const cls of Object.keys(CLASSES)) {
         const price = await priced({ ...fields, class: cls });
         const fee = list.length * STOP_FEE_CENTS;
-        const plain = priceRide(rateKey(cls), direct, [], "0");
-        const route = priceRide(rateKey(cls), whole, [], "0");
+        const plain = priceRide(rateKey(cls), direct);
+        const route = priceRide(rateKey(cls), whole);
         assert.equal(price.total, Math.max(plain.total + fee, route.total), `${name} ${cls}`);
         assert.ok(price.total >= plain.total + fee, `${name} ${cls}: a stop never costs less than the fee`);
         if (cls === "suv") assert.equal(plain.total + fee > route.total, near, name);
@@ -2237,8 +2312,8 @@ await test("an address to address trip with a stop a few blocks off the way cost
       const suv = await priced(fields);
       const fee = list.length * STOP_FEE_CENTS;
       assert.deepEqual([suv.service, suv.tolls, suv.notes, suv.stops], ["distance", 0, [POLICY.later.hourly], near ? fee : 0], name);
-      assert.deepEqual(suv.legs, [priceRide("suv", near ? direct : whole, [], "0")], name);
-      assert.deepEqual(pairs(suv.lines).map(([label]) => label), ["Fare", BCF, ...(near ? [list.length > 1 ? `Extra stops (${list.length} x $20.00)` : "Extra stop"] : [])], name);
+      assert.deepEqual(suv.legs, [priceRide("suv", near ? direct : whole)], name);
+      assert.deepEqual(pairs(suv.lines).map(([label]) => label), ["Fare", FEE_LINE, ...(near ? [list.length > 1 ? `Extra stops (${list.length} x $20.00)` : "Extra stop"] : [])], name);
       const { trip } = await run(fields);
       assert.equal(serviceLabel(trip), `Business SUV, ${(whole.tenths / 10).toFixed(1)} miles and ${whole.minutes} min`, `${name}: the label gives the miles and minutes of the route the car drives, also when the stop fee prices it`);
       assert.deepEqual([...readRoute(trip.route, NOW).entries()].map(([k, { tenths, minutes }]) => [k, tenths, minutes]), [[key(list), whole.tenths, whole.minutes], [alone, direct.tenths, direct.minutes]], name);
@@ -2246,14 +2321,14 @@ await test("an address to address trip with a stop a few blocks off the way cost
       assert.deepEqual(rideOf(trip), whole, `${name}: the map keeps the whole route`);
     }
     const near = await priced({ ...TRIP, stop1_text: PARK, route: signRoute([[key([PARK]), 320, 58]], NOW) });
-    assert.deepEqual([pairs(near.lines), near.total], [[["Fare", 19440], [BCF, 437], ["Extra stop", 2000]], 19877 + 2000]);
+    assert.deepEqual([pairs(near.lines), near.total], [[["Fare", 24440], [FEE_LINE, 2933], ["Extra stop", 2000]], 27373 + 2000]);
     const two = await priced({ ...TRIP, stop1_text: PARK, stop2_text: WALL, route: signRoute([[key([PARK, WALL]), 330, 62]], NOW) });
-    assert.deepEqual([pairs(two.lines).at(-1), two.total, two.value], [["Extra stops (2 x $20.00)", 4000], 19877 + 4000, 19440 + 4000]);
+    assert.deepEqual([pairs(two.lines).at(-1), two.total, two.value], [["Extra stops (2 x $20.00)", 4000], 27373 + 4000, 24440 + 4000]);
     const far = await priced({ ...TRIP, stop1_text: PARK, route: signRoute([[key([PARK]), 450, 95]], NOW) });
-    assert.deepEqual([far.fare, far.total, far.stops], [distanceFare("suv", 450, 95), priceRide("suv", { tenths: 450, minutes: 95 }, [], "0").total, 0]);
+    assert.deepEqual([far.fare, far.total, far.stops], [distanceFare("suv", 450, 95), priceRide("suv", { tenths: 450, minutes: 95 }).total, 0]);
     assert.ok(far.total > near.total);
     const cached = await run({ ...TRIP, stop1_text: PARK, route: signRoute([[key([PARK]), 320, 58], [alone, 400, 70]], NOW) });
-    assert.equal(cached.price.total, Math.max(priceRide("suv", { tenths: 400, minutes: 70 }, [], "0").total + 2000, priceRide("suv", { tenths: 320, minutes: 58 }, [], "0").total), "the ride without the stops comes from the route token when it is there");
+    assert.equal(cached.price.total, Math.max(priceRide("suv", { tenths: 400, minutes: 70 }).total + 2000, priceRide("suv", { tenths: 320, minutes: 58 }).total), "the ride without the stops comes from the route token when it is there");
     await isQuote({ ...TRIP, stop1_text: PARK, route: signRoute([[key([PARK]), 320, 58], [alone, 5001, 60]], NOW) }, "long-trip");
   });
 });
@@ -2264,7 +2339,7 @@ await test("trips with stops keep what is not new: a trip between two airports b
       const flat = await priced({ ...BASE, class: cls, from_text: "LaGuardia (LGA)", from_id: "lga", stop1_text: BROOKLYN });
       assert.deepEqual([flat.total, flat.stops, flat.service], [priceDistance(rateKey(cls), { tenths: 168, minutes: 43 }, "lga", "jfk").total, 0, "distance"], cls);
       const between = await priced({ ...STOPS, class: cls, stop1_text: "Hoboken, NJ 07030", to_text: "John F. Kennedy (JFK)", to_id: "jfk" });
-      assert.deepEqual([between.stops, between.tax, between.total], [0, 0, priceRide(rateKey(cls), { tenths: 168, minutes: 43 }, ["lga", "jfk"], "0").total], `${cls}: LaGuardia by a Hoboken stop to JFK is interstate`);
+      assert.deepEqual([between.stops, between.fee, between.total], [0, FEE(between.fare), priceRide(rateKey(cls), { tenths: 168, minutes: 43 }, ["lga", "jfk"]).total], `${cls}: LaGuardia by a Hoboken stop to JFK carries the same service fee`);
       const plain = await priced({ ...STOPS, class: cls, stop1_text: "" });
       assert.deepEqual([plain.total, plain.stops, plain.lines.some((item) => /^Extra/.test(item.label))], [AIRPORT_TOTALS[rateKey(cls)].lga, 0, false], cls);
     }
@@ -2295,9 +2370,9 @@ await test("with Google routes failing for the ride without the stops, an addres
 });
 
 await test("receipt rebuilds the Extra stop line from stops_cents and the stop texts in the metadata, adds it to the value, and keeps the lines summing to the total", () => {
-  const base = { service: "airport", direction: "from-airport", airport: "lga", class: "suv", date: "2026-10-14", time: "09:00", legs: "1", fare_cents: "13701", tax_cents: "1216", bcf_cents: "308", tolls_cents: "1275", total_cents: "18500", stop1_text: ANN };
+  const base = { service: "airport", direction: "from-airport", airport: "lga", class: "suv", date: "2026-10-14", time: "09:00", legs: "1", fare_cents: "13593", tax_cents: "1631", tolls_cents: "1276", total_cents: "18500", stop1_text: ANN };
   const one = receipt({ ...base, stops_cents: "2000" }, ON);
-  assert.deepEqual([pairs(one.lines), one.value, one.summary, one.notes], [[["Fare", 13701], [TAX, 1216], [BCF, 308], ["Tolls and airport fees", 1275], ["Extra stop", 2000]], 15701, "Wed, Oct 14, 2026, 9:00 AM. From LaGuardia (LGA), Business SUV.", [NOTES.included, POLICY.later.airport]]);
+  assert.deepEqual([pairs(one.lines), one.value, one.summary, one.notes], [[["Fare", 13593], [FEE_LINE, 1631], ["Tolls and airport fees", 1276], ["Extra stop", 2000]], 15593, "Wed, Oct 14, 2026, 9:00 AM. From LaGuardia (LGA), Business SUV.", [NOTES.included, POLICY.later.airport]]);
   assert.equal(one.lines.reduce((sum, item) => sum + item.cents, 0), 18500);
   assert.deepEqual(pairs(receipt({ ...base, stop2_text: WALL, stops_cents: "4000" }, ON).lines).at(-1), ["Extra stops (2 x $20.00)", 4000]);
   assert.deepEqual(pairs(receipt({ ...base, stop1_text: "", stops_cents: "4000" }, ON).lines).at(-1), ["Extra stops", 4000]);
@@ -2315,10 +2390,11 @@ const HOBOKEN = "12 Washington St, Hoboken, NJ 07030";
 const STAMFORD = "10 Elm St, Greenwich, CT 06830";
 const EWR_ROW = { to_text: "Newark Liberty (EWR)", to_id: "ewr" };
 
-await test("sales tax: the Publication 718 table keeps the rates the owner charges, New York City 8.875, Nassau 8.625, Westchester 8.375 and Yonkers 8.875, from the 2/25 edition effective March 1, 2025", () => {
+await test("places: the Publication 718 table still places New York pickups by county, New York City 8081, Nassau 2811, Westchester 5581 and Yonkers 6511, from the 2/25 edition effective March 1, 2025, and no sales tax or Black Car Fund percent is left in api/_rates.mjs", () => {
   assert.deepEqual([RATES.PUB_718.edition, RATES.PUB_718.effective, RATES.PUB_718.url], ["2/25", "2025-03-01", "https://www.tax.ny.gov/pdf/publications/sales/pub718.pdf"]);
   assert.deepEqual(["8081", "2811", "5581", "6511", "4711", "3921", "3731", "5311", "4111"].map((area) => [RATES.TAX_AREAS[area].name, RATES.TAX_AREAS[area].percent]), [["New York City", "8.875"], ["Nassau", "8.625"], ["Westchester", "8.375"], ["Yonkers", "8.875"], ["Suffolk", "8.75"], ["Rockland", "8.375"], ["Putnam", "8.375"], ["Washington", "7"], ["Saratoga", "7"]]);
-  assert.equal(RATES.NYC_TAX_PERCENT, RATES.TAX_AREAS[RATES.NYC_TAX_AREA].percent);
+  assert.equal("NYC_TAX_PERCENT" in RATES || "BCF_PERCENT" in RATES, false);
+  assert.equal(RATES.NYC_TAX_AREA, "8081");
   assert.equal(Object.keys(RATES.COUNTY_AREAS).length, 62);
   for (const borough of ["Bronx", "Kings", "New York", "Queens", "Richmond"]) assert.equal(RATES.COUNTY_AREAS[borough], "8081", borough);
   assert.ok(Object.values(RATES.COUNTY_AREAS).every((area) => area in RATES.TAX_AREAS));
@@ -2332,7 +2408,7 @@ await test("sales tax: the Publication 718 table keeps the rates the owner charg
   assert.ok(!zips.some(([zip]) => zip === "11001"), "a ZIP code in two counties is left out");
 });
 
-await test("sales tax: legTax charges a trip that starts and ends in New York State at the pickup rate, and none when the pickup, a stop or the drop-off is outside the state", () => {
+await test("places: legTax places a trip that starts and ends in New York State in its pickup's Publication 718 area, and in none when the pickup, a stop or the drop-off is outside the state, and no price uses it", () => {
   const at = (region) => ({ region });
   assert.deepEqual(legTax([at("8081"), at("8081")]), { area: "8081", percent: "8.875" });
   assert.deepEqual(legTax([at("2811"), at("8081")]), { area: "2811", percent: "8.625" });
@@ -2343,83 +2419,97 @@ await test("sales tax: legTax charges a trip that starts and ends in New York St
   assert.deepEqual(legTax([at("NY"), at("NJ")]), { area: "", percent: "0" }, "an interstate trip needs no county");
   assert.equal(legTax([at("NY"), at("8081")]), null, "a New York pickup with no known county is not guessed");
   assert.equal(legTax([at(""), at("8081")]), null);
+  const ride = (salesTax) => priceTrip({ trip_type: "one", class: "suv", vehicle: "", tip: 0, passengers: "2", legs: [{ from: "outside", to: "manhattan", airport: "", direction: "", back: false, reason: "", salesTax, ride: { tenths: 231, minutes: 55 } }] });
+  assert.deepEqual([ride(legTax([at("2811"), at("8081")])), ride(legTax([at("NY"), at("8081")])), ride(legTax([at("NJ"), at("8081")]))].map((price) => [price.fare, price.fee, price.total]), Array(3).fill([21315, 2558, 23873]));
 });
 
-await test("sales tax: Manhattan to JFK and LaGuardia keeps NYC sales tax and every flat total, Manhattan to Newark or Teterboro and back carries none with the same total and a fare higher by the tax, in every class", async () => {
+await test("service fee: Manhattan to JFK, LaGuardia, Newark and Teterboro and back keeps every flat total with the AIRPORT_FARES fare and a 12% service fee, the same at the New Jersey airports as at JFK, in every class", async () => {
   for (const cls of Object.keys(CLASSES)) {
-    for (const airport of ["jfk", "lga"]) {
-      const price = await priced({ ...BASE, class: cls, to_text: localById(airport).label, to_id: airport });
-      assert.deepEqual([price.fare, price.tax, price.total], [AIRPORT_FARES[rateKey(cls)][airport], percentCents(AIRPORT_FARES[rateKey(cls)][airport], "8.875"), AIRPORT_TOTALS[rateKey(cls)][airport]], `${cls} ${airport}`);
-    }
-    const jfk = priceLeg(rateKey(cls), "jfk");
-    for (const airport of ["ewr", "teb"]) {
+    for (const airport of ["jfk", "lga", "ewr", "teb"]) {
       for (const fields of [{ ...BASE, class: cls, to_text: localById(airport).label, to_id: airport }, { ...BASE, class: cls, from_text: localById(airport).label, from_id: airport, to_text: MANHATTAN, to_id: "" }]) {
         const price = await priced(fields);
-        assert.deepEqual([price.fare, price.tax, price.tolls, price.total, price.service], [AIRPORT_FARES[rateKey(cls)][airport], 0, jfk.tolls, AIRPORT_TOTALS[rateKey(cls)][airport], "airport"], `${cls} ${airport}`);
-        assert.equal(price.fare + price.bcf + price.tolls, AIRPORT_TOTALS[rateKey(cls)][airport], `${cls} ${airport}: the fare absorbs the tax`);
-        if (cls === "sprinter") assert.deepEqual([price.fare, price.bcf, price.total - jfk.total], [45208, 1017, 2500], `${cls} ${airport}: the Executive Sprinter costs $25 more at Newark and Teterboro`);
-        else assert.equal(price.fare + price.bcf, jfk.fare + jfk.tax + jfk.bcf, `${cls} ${airport}: the fare absorbs the tax`);
-        assert.ok(price.lines.every((item) => item.label !== TAX), `${cls} ${airport}`);
+        const fare = AIRPORT_FARES[rateKey(cls)][airport];
+        assert.deepEqual([price.fare, price.fee, price.tolls, price.total, price.service], [fare, FEE(fare), priceLeg(rateKey(cls), airport).tolls, AIRPORT_TOTALS[rateKey(cls)][airport], "airport"], `${cls} ${airport}`);
+        assert.equal(price.fare + price.fee + price.tolls, AIRPORT_TOTALS[rateKey(cls)][airport], `${cls} ${airport}`);
+        assert.deepEqual(price.lines.map((item) => item.label), ["Fare", FEE_LINE, "Tolls and airport fees"], `${cls} ${airport}`);
       }
     }
+    const jfk = priceLeg(rateKey(cls), "jfk");
+    const ewr = priceLeg(rateKey(cls), "ewr");
+    if (cls === "sprinter") assert.deepEqual([ewr.fare, ewr.fee, ewr.total - jfk.total], [41271, 4953, 2500], "the Executive Sprinter costs $25 more at Newark and Teterboro");
+    else assert.deepEqual([ewr.fare, ewr.fee, ewr.tolls], [jfk.fare, jfk.fee, jfk.tolls], `${cls}: Newark and Teterboro split like JFK`);
   }
   const suv = await priced({ ...BASE, ...EWR_ROW });
-  assert.deepEqual(pairs(suv.lines), [["Fare", 16846], [BCF, 379], ["Tolls and airport fees", 1275]]);
-  assert.deepEqual(pairs(shownLines(suv.lines)), [["Fare", 16846], ["Taxes and fees", 379], ["Tolls", 1275]]);
+  assert.deepEqual(pairs(suv.lines), [["Fare", 15379], [FEE_LINE, 1845], ["Tolls and airport fees", 1276]]);
+  assert.deepEqual(pairs(shownLines(suv.lines)), [["Fare", 15379], [FEE_LINE, 1845], ["Tolls", 1276]]);
   assert.equal(suv.total, 18500);
-  assert.ok(suv.fare > AIRPORT_FARES.suv.jfk);
   const back = await priced({ ...BASE, ...EWR_ROW, ...ROUND_TRIP });
-  assert.deepEqual([back.fare, back.tax, back.bcf, back.tolls, back.total, back.legs.map((leg) => leg.tax)], [2 * 16846, 0, 2 * 379, 2 * 1275, 37000, [0, 0]]);
+  assert.deepEqual([back.fare, back.fee, back.tolls, back.total, back.legs.map((leg) => leg.fee)], [2 * 15379, 2 * 1845, 2 * 1276, 37000, [1845, 1845]]);
   const newark = await priced({ ...BASE, from_text: "Newark Liberty (EWR)", from_id: "ewr", to_text: MANHATTAN, to_id: "", meet: "1" });
-  assert.deepEqual(pairs(newark.lines), [["Fare", 16846], [BCF, 379], ["Tolls and airport fees", 1275], ["Meet and greet", 2500]]);
+  assert.deepEqual(pairs(newark.lines), [["Fare", 15379], [FEE_LINE, 1845], ["Tolls and airport fees", 1276], ["Meet and greet", 2500]]);
   assert.deepEqual([newark.total, newark.notes], [21000, [NOTES.included, POLICY.later.airport]]);
-  assert.ok(!NOTES.included.includes("NYC sales tax"), "the included note never claims NYC sales tax on a Newark or Teterboro transfer");
+  assert.ok(!/tax/i.test(NOTES.included), "the included note makes no claim about taxes");
+  assert.equal(NOTES.included, "Tolls, airport fees and the service fee are included.");
   const { trip } = await run({ ...BASE, ...EWR_ROW, ...ROUND_TRIP });
   assert.deepEqual(trip.legs.map((leg) => leg.salesTax), [{ area: "", percent: "0" }, { area: "", percent: "0" }]);
 });
 
-await test("sales tax: a New Jersey address to JFK and JFK to a Connecticut address carry no New York sales tax, priced by distance and time at no less than the JFK fare", async () => {
+await test("service fee: a New Jersey address to JFK and JFK to a Connecticut address are priced by distance and time at no less than the JFK fare, with the same 12% service fee", async () => {
   await withMock(async () => {
+    for (const fields of [{ ...BASE, from_text: HOBOKEN }, { ...FROM_JFK, to_text: STAMFORD }]) {
+      const { trip, price } = await run(fields);
+      const ride = trip.legs[0].ride;
+      const fare = Math.max(AIRPORT_FARES.suv.jfk, distanceFare("suv", ride.tenths, ride.minutes));
+      assert.deepEqual([pairs(price.lines), price.total, price.service], [[["Fare", fare], [FEE_LINE, FEE(fare)]], fare + FEE(fare), "distance"], JSON.stringify(fields));
+    }
     const nj = await priced({ ...BASE, from_text: HOBOKEN });
-    assert.deepEqual([pairs(nj.lines), nj.total, nj.service], [[["Fare", AIRPORT_FARES.suv.jfk], [BCF, 349]], 15849, "distance"]);
-    const ct = await priced({ ...FROM_JFK, to_text: STAMFORD });
-    assert.deepEqual([pairs(ct.lines), ct.total, ct.service], [[["Fare", AIRPORT_FARES.suv.jfk], [BCF, 349]], 15849, "distance"]);
+    assert.equal(nj.total, 20177);
     const { trip } = await run({ ...FROM_JFK, to_text: STAMFORD });
     assert.deepEqual([trip.ends.from.region, trip.ends.to.region, trip.legs[0].salesTax], ["8081", "US", { area: "", percent: "0" }]);
   });
 });
 
-await test("sales tax: a pickup in New York State outside the city pays the rate where the passenger is picked up, Nassau 8.625%, Westchester 8.375% and Yonkers 8.875%, a typed Yonkers address in a ZIP code that is partly outside the city pays the Yonkers rate, and the ride back to the city pays the city rate", async () => {
+await test("service fee: a pickup in New York State outside the city, in Nassau, Westchester or Yonkers, is still placed in its area and pays the same 12% service fee as any trip, one way and both ways of a round trip", async () => {
   await withMock(async () => {
-    for (const [from_text, area, tax] of [[MINEOLA, "2811", 1337], [SCARSDALE, "5581", 1298], [YONKERS, "6511", 1376], [YONKERS_MIXED, "6511", 1376], [YONKERS_CITY_HALL, "6511", 1376], [YONKERS_RIDGE_HILL, "6511", 1376], [TUCKAHOE, "5581", 1298]]) {
+    for (const [from_text, area] of [[MINEOLA, "2811"], [SCARSDALE, "5581"], [YONKERS, "6511"], [YONKERS_MIXED, "6511"], [YONKERS_CITY_HALL, "6511"], [YONKERS_RIDGE_HILL, "6511"], [TUCKAHOE, "5581"]]) {
       const { trip, price } = await run({ ...BASE, from_text });
-      assert.deepEqual([trip.ends.from.region, trip.legs[0].salesTax.area, price.fare, price.tax, price.bcf, price.total], [area, area, 15500, tax, 349, 15500 + tax + 349], from_text);
-      assert.equal(tax, percentCents(15500, RATES.TAX_AREAS[area].percent), from_text);
+      const ride = trip.legs[0].ride;
+      const fare = Math.max(AIRPORT_FARES.suv.jfk, distanceFare("suv", ride.tenths, ride.minutes));
+      assert.deepEqual([trip.ends.from.region, trip.legs[0].salesTax.area, price.fare, price.fee, price.total], [area, area, fare, FEE(fare), fare + FEE(fare)], from_text);
     }
     const round = await priced({ ...RIDE, to_text: SCARSDALE, ...ROUND_TRIP });
-    assert.deepEqual(round.legs.map((leg) => [leg.fare, leg.tax, leg.bcf]), [[13015, 1155, 293], [13015, 1090, 293]], "each direction pays the rate of its own pickup");
-    assert.equal(round.total, 2 * 13015 + 1155 + 1090 + 2 * 293);
+    assert.deepEqual(round.legs.map((leg) => [leg.fare, leg.fee]), [[18015, 2162], [18015, 2162]], "each direction pays the same fee on its own fare");
+    assert.equal(round.total, 2 * 20177);
     const from = await priced({ ...RIDE, from_text: SCARSDALE, to_text: MANHATTAN });
-    assert.equal(from.tax, percentCents(from.fare, "8.375"));
+    assert.equal(from.fee, FEE(from.fare));
   });
 });
 
-await test("sales tax: a New York pickup outside the city whose county is unknown goes to dispatch, with the county request when its typed ZIP code spans two counties and the unplaced request otherwise, unless the trip leaves the state and needs no rate", async () => {
+await test("service fee: a New York pickup outside the city whose county is unknown is priced like any other address outside the city, typed with a ZIP code in two counties or picked with no county, one way, round trip and to Newark, and the same street typed without a ZIP code still gets the ZIP code request", async () => {
   await withMock(async () => {
-    await isQuote({ ...BASE, from_text: "100 Jericho Tpke, Floral Park, NY 11001" }, "county", "from_text");
-    await isQuote({ ...BASE, from_text: "1 Tulip Ave, Floral Park, NY 11001" }, "county", "from_text");
-    await isQuote({ ...RIDE, to_text: "100 Jericho Tpke, Floral Park, NY 11001", ...ROUND_TRIP }, "county", "to_text");
+    const rides = [
+      { ...BASE, from_text: "100 Jericho Tpke, Floral Park, NY 11001" },
+      { ...BASE, from_text: "1 Tulip Ave, Floral Park, NY 11001" },
+      { ...RIDE, to_text: "100 Jericho Tpke, Floral Park, NY 11001", ...ROUND_TRIP },
+      { ...BASE, from_text: "Floral Park, NY, USA", from_ticket: signTicket("ChIJfloral", "outside", "Floral Park, NY, USA", NOW, 0, "NY") },
+      { ...BASE, from_text: "Floral Park, NY, USA", from_ticket: signTicket("ChIJfloral", "outside", "Floral Park, NY, USA", NOW, 0, "2811") },
+      { ...BASE, from_text: "100 Jericho Tpke, Floral Park, NY 11001", ...EWR_ROW },
+    ];
+    const got = [];
+    for (const fields of rides) {
+      const price = await priced(fields);
+      assert.equal(price.fee, price.legs.reduce((sum, item) => sum + FEE(item.fare), 0), JSON.stringify(fields));
+      got.push([price.service, price.total]);
+    }
+    assert.deepEqual(got, [["distance", 20177], ["distance", 20177], ["distance", 40354], ["distance", 20177], ["distance", 20177], ["distance", 20177]]);
     await isQuote({ ...BASE, from_text: "1 Tulip Ave, Floral Park, NY" }, "unplaced", "from_text");
     const out = await priced({ ...BASE, from_text: "100 Jericho Tpke, Floral Park, NY 11001", ...EWR_ROW });
-    assert.deepEqual([out.tax, out.fare, out.total], [0, AIRPORT_FARES.suv.ewr, 17225]);
-    const ticket = signTicket("ChIJfloral", "outside", "Floral Park, NY, USA", NOW, 0, "NY");
-    await isQuote({ ...BASE, from_text: "Floral Park, NY, USA", from_ticket: ticket }, "unplaced", "from_text");
-    const nassau = signTicket("ChIJfloral", "outside", "Floral Park, NY, USA", NOW, 0, "2811");
-    assert.equal((await priced({ ...BASE, from_text: "Floral Park, NY, USA", from_ticket: nassau })).tax, 1337);
+    assert.deepEqual([out.fee, out.fare, out.total], [2162, 18015, 20177]);
+    assert.ok(out.fare > AIRPORT_FARES.suv.ewr);
   });
 });
 
-await test("sales tax: a typed address whose state and ZIP code disagree, New York with a ZIP code outside it or another state with a New York ZIP code or city name, is not priced untaxed and gets the county request, unless the trip leaves the state anyway", async () => {
+await test("places: a typed address whose state and ZIP code disagree, New York with a ZIP code outside it or another state with a New York ZIP code or city name, gets the county request, also on a trip that leaves the state, and the same address with its own ZIP code is priced", async () => {
   await withMock(async () => {
     await isQuote({ ...BASE, from_text: "1 Old Country Rd, Mineola, NY 07030" }, "county", "from_text");
     await isQuote({ ...BASE, from_text: "1 Old Country Rd, Mineola, New York 06830" }, "county", "from_text");
@@ -2428,39 +2518,53 @@ await test("sales tax: a typed address whose state and ZIP code disagree, New Yo
     await isQuote({ ...BASE, from_text: "350 5th Ave, New York, NJ" }, "unplaced", "from_text");
     await isQuote({ ...RIDE, from_text: MANHATTAN, to_text: "1 Old Country Rd, Mineola, NY 07030" }, "county", "to_text");
     await isQuote({ ...BASE, stop1_text: "1 Old Country Rd, Mineola, NY 07030" }, "county", "stop1_text");
-    const out = await priced({ ...BASE, from_text: "1 Old Country Rd, Mineola, NY 07030", ...EWR_ROW });
-    assert.deepEqual([out.tax, out.fare, out.total], [0, AIRPORT_FARES.suv.ewr, 17225]);
+    await isQuote({ ...BASE, from_text: "1 Old Country Rd, Mineola, NY 07030", ...EWR_ROW }, "county", "from_text");
     const nassau = await priced({ ...BASE, from_text: MINEOLA });
-    assert.deepEqual([nassau.fare, nassau.tax, nassau.bcf, nassau.total], [15500, 1337, 349, 17186]);
+    assert.deepEqual([nassau.fare, nassau.fee, nassau.total], [18015, 2162, 20177]);
   });
 });
 
-await test("sales tax: a typed address in a ZIP code partly in Yonkers that names no place is not guessed and gets the county request", async () => {
+await test("places: a typed address in a ZIP code partly in Yonkers that names no place gets no county but is priced by its route, with no county request", async () => {
   await withMock(async () => {
-    await isQuote({ ...BASE, from_text: "40 S Broadway, NY 10701" }, "county", "from_text");
-    await isQuote({ ...BASE, from_text: "1 Ridge Hill 10710" }, "county", "from_text");
-    assert.equal((await priced({ ...BASE, from_text: YONKERS_CITY_HALL })).tax, 1376);
-    assert.equal((await priced({ ...BASE, from_text: TUCKAHOE })).tax, 1298);
+    const unnamed = [];
+    for (const from_text of ["40 S Broadway, NY 10701", "1 Ridge Hill 10710"]) {
+      const { trip, price } = await run({ ...BASE, from_text });
+      unnamed.push([trip.ends.from.region, price && price.service, price && price.fee === FEE(price.fare)]);
+    }
+    assert.deepEqual(unnamed, [["NY", "distance", true], ["NY", "distance", true]]);
+    for (const from_text of [YONKERS_CITY_HALL, TUCKAHOE]) {
+      const price = await priced({ ...BASE, from_text });
+      assert.equal(price.fee, FEE(price.fare), from_text);
+    }
   });
 });
 
-await test("sales tax: a stop in New Jersey makes the trip interstate as Example 4 of TSB-M-09(7)S reads, with the flat JFK total kept when the stop fee prices it, while a stop in Brooklyn keeps the city rate", async () => {
+await test("service fee: a stop in New Jersey or in Brooklyn carries the same 12% service fee and the stop rule prices the trip", async () => {
   await withMock(async () => {
-    const nj = await priced({ ...BASE, stop1_text: HOBOKEN });
-    assert.deepEqual(pairs(nj.lines), [["Fare", 16846], [BCF, 379], ["Tolls and airport fees", 1275], ["Extra stop", 2000]]);
-    assert.deepEqual([nj.tax, nj.total, nj.service], [0, AIRPORT_TOTALS.suv.jfk + STOP_FEE_CENTS, "airport"]);
-    const city = await priced({ ...BASE, stop1_text: BROOKLYN });
-    assert.deepEqual([city.tax, city.total], [1376, AIRPORT_TOTALS.suv.jfk + STOP_FEE_CENTS]);
+    for (const stop1_text of [HOBOKEN, BROOKLYN]) {
+      const { trip, price } = await run({ ...BASE, stop1_text });
+      const ride = trip.legs[0].ride;
+      const whole = priceDistance("suv", ride, "jfk");
+      assert.equal(price.total, Math.max(whole.total, AIRPORT_TOTALS.suv.jfk - priceLeg("suv", "jfk").tolls + STOP_FEE_CENTS), stop1_text);
+      assert.equal(price.fee, FEE(price.fare), stop1_text);
+      assert.ok(!price.lines.some((item) => [TAX, "Black Car Fund", "Taxes and fees"].includes(item.label)), stop1_text);
+    }
+    const near = await priced({ ...BASE, stop1_text: HOBOKEN, route: signRoute([[routeKey({ address: MANHATTAN }, { address: JFK_ADDRESS }, nycToUtc("2026-10-14", "07:30").toISOString(), [{ address: HOBOKEN }]), 60, 20]], NOW) });
+    const jfkKey = localById("jfk").gid ? { placeId: localById("jfk").gid } : { address: localById("jfk").addr };
+    const nearKey = routeKey({ address: MANHATTAN }, jfkKey, nycToUtc("2026-10-14", "07:30").toISOString(), [{ address: HOBOKEN }]);
+    const flat = await priced({ ...BASE, stop1_text: HOBOKEN, route: signRoute([[nearKey, 60, 20]], NOW) });
+    assert.deepEqual([pairs(flat.lines), flat.total, flat.service], [[...LEG, ["Extra stop", 2000]], AIRPORT_TOTALS.suv.jfk + STOP_FEE_CENTS, "airport"]);
+    assert.ok(near.total >= flat.total);
     const far = await priced({ ...RIDE, stop1_text: HOBOKEN, to_text: PARK });
-    assert.deepEqual([far.tax, far.service], [0, "distance"]);
+    assert.deepEqual([far.fee, far.service], [FEE(far.fare), "distance"]);
   });
 });
 
-await test("sales tax: hourly bookings from New York City pay the city rate, from an address and from JFK", async () => {
+await test("service fee: hourly bookings from New York City pay 12% of the fare, from an address and from JFK", async () => {
   for (const fields of [HOURLY, { ...HOURLY, from_text: "John F. Kennedy (JFK)", from_id: "jfk" }]) {
     const price = await priced(fields);
-    assert.deepEqual([price.fare, price.tax], [25500, percentCents(25500, "8.875")]);
-    assert.deepEqual(pairs(price.lines).slice(0, 3), [["Fare, 3 hours", 25500], [TAX, 2263], [BCF, 574]]);
+    assert.deepEqual([price.fare, price.fee], [25500, 3060]);
+    assert.deepEqual(pairs(price.lines).slice(0, 2), [["Fare, 3 hours", 25500], [FEE_LINE, 3060]]);
   }
 });
 
@@ -2471,7 +2575,7 @@ const NEAR_HOUR = { trip_type: "hour", from_text: CLINTON, date: "2026-11-29", t
 const SUV_HOUR = { ...NEAR_HOUR, passengers: "2", class: "suv" };
 const pickTicket = (id, label, region, at = NOW, zone = "outside") => signTicket(id, zone, label, at, 0, region);
 const SUV_FARE = VEHICLES["suv-suburban"].hourly * 4;
-const SUV_BCF = percentCents(SUV_FARE, "2.25");
+const SUV_FEE = percentCents(SUV_FARE, "12");
 const suvPickups = () => [
   ["Newark Liberty (EWR)", { from_text: "Newark Liberty (EWR)", from_id: "ewr" }, "NJ", "0"],
   ["Newark Liberty (EWR), Terminal B", { from_text: "Newark Liberty (EWR), Terminal B", from_id: "ewr-tb" }, "NJ", "0"],
@@ -2496,68 +2600,66 @@ await test("hourly from any pickup: api/_rates.mjs has no list of hourly start z
   assert.deepEqual([VEHICLES["suv-suburban"].hourly, VEHICLES.premium.hourly, RATES.TAX_AREAS["5581"].percent, RATES.TAX_AREAS["4711"].percent], [9500, 10500, "8.375", "8.75"]);
 });
 
-await test("hourly from any pickup: 4 hours in a Business SUV from Newark Liberty, Teterboro, JFK, LaGuardia, Hoboken, Stamford, Princeton, Philadelphia, a Westchester address, Yonkers, Westchester County Airport and MacArthur, each with the tax of where it starts and never New York City tax on a New Jersey pickup", async () => {
+await test("hourly from any pickup: 4 hours in a Business SUV from Newark Liberty, Teterboro, JFK, LaGuardia, Hoboken, Stamford, Princeton, Philadelphia, a Westchester address, Yonkers, Westchester County Airport and MacArthur, each placed in its region and each with the same 12% service fee", async () => {
   await withMock(async () => {
     const pickups = suvPickups();
-    for (const [name, fields, region, percent] of pickups) {
+    for (const [name, fields, region] of pickups) {
       const { trip, result, price } = await run({ ...SUV_HOUR, ...fields });
       assert.deepEqual([result, trip.ends.from.region, trip.vehicle], [{ kind: "price", reason: "", hold: "" }, region, "suv-suburban"], name);
-      const tax = percentCents(SUV_FARE, percent);
-      assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.total, price.service, price.notes], [SUV_FARE, tax, SUV_BCF, 0, SUV_FARE + tax + SUV_BCF, "hourly", [POLICY.later.hourly]], name);
-      assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", SUV_FARE], ...(tax ? [[TAX, tax]] : []), [BCF, SUV_BCF]], name);
-      assert.equal(classTotal(trip, "suv"), SUV_FARE + tax + SUV_BCF, name);
+      assert.deepEqual([price.fare, price.fee, price.tolls, price.total, price.service, price.notes], [SUV_FARE, SUV_FEE, 0, SUV_FARE + SUV_FEE, "hourly", [POLICY.later.hourly]], name);
+      assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", SUV_FARE], [FEE_LINE, SUV_FEE]], name);
+      assert.equal(classTotal(trip, "suv"), SUV_FARE + SUV_FEE, name);
     }
     const totals = async (fields) => (await priced({ ...SUV_HOUR, ...fields })).total;
-    assert.deepEqual(await Promise.all([0, 2, 6, 10, 4].map((i) => totals(pickups[i][1]))), [38855, 38855, 38855, 42038, 42228]);
+    assert.deepEqual(await Promise.all([0, 2, 6, 10, 4].map((i) => totals(pickups[i][1]))), [42560, 42560, 42560, 42560, 42560]);
   });
 });
 
-await test("hourly from any pickup: the customer's 4 hours in a Business Premium SUV from 1332 Clinton Street, Hoboken, NJ, Sun Nov 29 at 5:40 PM for 5 passengers, is priced at the hourly rate of $105 with the Black Car Fund and no New York sales tax for a New Jersey pickup, $429.45", async () => {
+await test("hourly from any pickup: the customer's 4 hours in a Business Premium SUV from 1332 Clinton Street, Hoboken, NJ, Sun Nov 29 at 5:40 PM for 5 passengers, is priced at the hourly rate of $105 with the 12% service fee, $470.40", async () => {
   await withMock(async () => {
     const { trip, price } = await run({ ...NEAR_HOUR, from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") });
     assert.deepEqual([trip.ends.from.zone, trip.ends.from.region, trip.ends.from.place, trip.vehicle], ["outside", "NJ", "mock-clinton", "premium"]);
     assert.ok(!("near" in trip.ends.from));
-    assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", 42000], [BCF, 945]]);
-    assert.deepEqual([price.fare, price.tax, price.bcf, price.tolls, price.total, price.service, price.notes], [VEHICLES.premium.hourly * 4, 0, 945, 0, 42945, "hourly", [POLICY.later.hourly]]);
-    assert.deepEqual(pairs(shownLines(price.lines)), [["Fare, 4 hours", 42000], ["Taxes and fees", 945]]);
-    assert.equal(classTotal(trip, "premium"), 42945);
-    assert.equal(classTotal(trip, "suv"), VEHICLES["suv-suburban"].hourly * 4 + percentCents(VEHICLES["suv-suburban"].hourly * 4, "2.25"));
+    assert.deepEqual(pairs(price.lines), [["Fare, 4 hours", 42000], [FEE_LINE, 5040]]);
+    assert.deepEqual([price.fare, price.fee, price.tolls, price.total, price.service, price.notes], [VEHICLES.premium.hourly * 4, 5040, 0, 47040, "hourly", [POLICY.later.hourly]]);
+    assert.deepEqual(pairs(shownLines(price.lines)), [["Fare, 4 hours", 42000], [FEE_LINE, 5040]]);
+    assert.equal(classTotal(trip, "premium"), 47040);
+    assert.equal(classTotal(trip, "suv"), VEHICLES["suv-suburban"].hourly * 4 + percentCents(VEHICLES["suv-suburban"].hourly * 4, "12"));
     assert.equal(classTotal(trip, "sedan"), null);
   });
 });
 
-await test("hourly from any pickup: Jersey City and Newark pay no New York sales tax, Yonkers the Yonkers rate of 8.875% and Scarsdale the Westchester rate of 8.375%, each with the same hourly fare and Black Car Fund", async () => {
+await test("hourly from any pickup: Jersey City, Newark, Yonkers and Scarsdale pay the same hourly fare and the same 12% service fee", async () => {
   await withMock(async () => {
     const pickups = [
-      ["mock-clinton", CLINTON, "NJ", 0],
-      ["mock-jersey-city", "30 Hudson Street, Jersey City, NJ", "NJ", 0],
-      ["mock-newark", "1 Gateway Center, Newark, NJ", "NJ", 0],
-      ["mock-yonkers", "40 South Broadway, Yonkers, NY", "6511", 3728],
-      ["mock-scarsdale", SCARSDALE_PICK, "5581", 3518],
+      ["mock-clinton", CLINTON, "NJ"],
+      ["mock-jersey-city", "30 Hudson Street, Jersey City, NJ", "NJ"],
+      ["mock-newark", "1 Gateway Center, Newark, NJ", "NJ"],
+      ["mock-yonkers", "40 South Broadway, Yonkers, NY", "6511"],
+      ["mock-scarsdale", SCARSDALE_PICK, "5581"],
     ];
-    for (const [id, from_text, region, tax] of pickups) {
-      const price = await priced({ ...NEAR_HOUR, from_text, from_ticket: pickTicket(id, from_text, region) });
-      assert.deepEqual([price.fare, price.tax, price.bcf, price.total], [42000, tax, 945, 42945 + tax], from_text);
-      assert.equal(price.tax, region === "NJ" ? 0 : percentCents(42000, RATES.TAX_AREAS[region].percent), from_text);
+    for (const [id, from_text, region] of pickups) {
+      const { trip, price } = await run({ ...NEAR_HOUR, from_text, from_ticket: pickTicket(id, from_text, region) });
+      assert.deepEqual([trip.ends.from.region, price.fare, price.fee, price.total], [region, 42000, 5040, 47040], from_text);
     }
   });
 });
 
-await test("hourly from any pickup: 10 hours for a day of meetings from Newark Liberty, Teterboro with meet and greet, and Hoboken, priced at 10 times the hourly rate with no New York tax, and the day can end back at the airport", async () => {
+await test("hourly from any pickup: 10 hours for a day of meetings from Newark Liberty, Teterboro with meet and greet, and Hoboken, priced at 10 times the hourly rate with the 12% service fee, and the day can end back at the airport", async () => {
   await withMock(async () => {
     const ewr = await priced({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "10", flight: "UA 1234" });
-    assert.deepEqual([ewr.fare, ewr.tax, ewr.bcf, ewr.meet, ewr.total], [95000, 0, 2138, 0, 97138]);
+    assert.deepEqual([ewr.fare, ewr.fee, ewr.meet, ewr.total], [95000, 11400, 0, 106400]);
     const teb = await run({ ...SUV_HOUR, from_text: "Teterboro (TEB)", from_id: "teb", hours: "10", meet: "1" });
-    assert.deepEqual([teb.trip.meet, teb.price.fare, teb.price.tax, teb.price.meet, teb.price.total], [true, 95000, 0, 2500, 99638]);
-    assert.deepEqual(pairs(teb.price.lines), [["Fare, 10 hours", 95000], [BCF, 2138], ["Meet and greet", 2500]]);
+    assert.deepEqual([teb.trip.meet, teb.price.fare, teb.price.fee, teb.price.meet, teb.price.total], [true, 95000, 11400, 2500, 108900]);
+    assert.deepEqual(pairs(teb.price.lines), [["Fare, 10 hours", 95000], [FEE_LINE, 11400], ["Meet and greet", 2500]]);
     const hoboken = await priced({ ...NEAR_HOUR, from_ticket: pickTicket("mock-clinton", CLINTON, "NJ"), hours: "10" });
-    assert.deepEqual([hoboken.fare, hoboken.tax, hoboken.bcf, hoboken.total], [105000, 0, 2363, 107363]);
+    assert.deepEqual([hoboken.fare, hoboken.fee, hoboken.total], [105000, 12600, 117600]);
     await isQuote({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "13" }, "hours-range");
     assert.equal((await priced({ ...SUV_HOUR, from_text: "Newark Liberty (EWR)", from_id: "ewr", hours: "12" })).fare, 114000);
   });
 });
 
-await test("hourly from any pickup: typed text outside the city with no pick, typed text that needs a ZIP, a pickup abroad, a New York State pickup with no tax area and posted coordinates, zones or regions keep their requests, and an expired ticket is checked again with Place Details", async () => {
+await test("hourly from any pickup: typed text outside the city with no pick, typed text that needs a ZIP, a pickup abroad and posted coordinates, zones or regions keep their requests, a New York State pickup with no county, picked from the list or Republic Airport, is priced, and an expired ticket is checked again with Place Details", async () => {
   await withMock(async () => {
     for (const from_text of [CLINTON, "1332 Clinton St, Hoboken, NJ 07030", "30 Hudson Street, Jersey City, NJ", "1 Gateway Center, Newark, NJ 07102", "40 S Broadway, Yonkers, NY 10701", "2 Popham Rd, Scarsdale, NY 10583", "30 Station Place, Stamford, CT"]) await isQuote({ ...NEAR_HOUR, from_text }, "outside-hourly");
     await isQuote({ ...NEAR_HOUR, from_text: "40 South Broadway, Yonkers, NY" }, "unplaced", "from_text");
@@ -2565,16 +2667,19 @@ await test("hourly from any pickup: typed text outside the city with no pick, ty
     await isQuote({ ...NEAR_HOUR, from_text: "Toronto, ON" }, "outside-hourly");
     const tower = "CN Tower, Bremner Boulevard, Toronto, ON, Canada";
     await isQuote({ ...NEAR_HOUR, from_text: tower, from_ticket: signTicket("mock-cn-tower", "abroad", tower, NOW) }, "outside-hourly");
-    await isQuote({ ...NEAR_HOUR, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") }, "outside-hourly");
-    await isQuote({ ...NEAR_HOUR, from_text: "Republic (FRG)", from_id: "frg" }, "outside-hourly");
+    const somewhere = await priced({ ...NEAR_HOUR, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") });
+    assert.deepEqual([somewhere.fare, somewhere.fee, somewhere.total], [42000, 5040, 47040]);
+    const republic = await priced({ ...NEAR_HOUR, from_text: "Republic (FRG)", from_id: "frg" });
+    assert.deepEqual([republic.fare, republic.fee, republic.total], [42000, 5040, 47040], "Republic Airport, a New York State pickup with no county, is priced by the hour");
     const posted = { from_lat: "40.753", from_lng: "-74.0343", lat: "40.753", lng: "-74.0343", near: "1", from_near: "1", from_zone: "manhattan", from_region: "8081", from_place: "mock-clinton", location: "40.753,-74.0343" };
     await isQuote({ ...NEAR_HOUR, ...posted }, "outside-hourly");
-    await isQuote({ ...NEAR_HOUR, ...posted, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") }, "outside-hourly");
+    const ignored = await run({ ...NEAR_HOUR, ...posted, from_text: "1 Main Street, Somewhere, NY", from_ticket: pickTicket("ChIJsomewhere", "1 Main Street, Somewhere, NY", "NY") });
+    assert.deepEqual([ignored.trip.ends.from.zone, ignored.trip.ends.from.region, ignored.trip.ends.from.place, ignored.price.total], ["outside", "NY", "ChIJsomewhere", somewhere.total], "the posted zone, region and place are not read");
     const old = NOW - (TICKET_TTL + 60) * 1000;
     const fresh = await run({ ...SUV_HOUR, from_text: SCARSDALE_PICK, from_ticket: pickTicket("mock-scarsdale", SCARSDALE_PICK, "5581", old) });
-    assert.deepEqual([fresh.result, fresh.trip.ends.from.region, fresh.price.total], [{ kind: "price", reason: "", hold: "" }, "5581", 42038]);
+    assert.deepEqual([fresh.result, fresh.trip.ends.from.region, fresh.price.total], [{ kind: "price", reason: "", hold: "" }, "5581", 42560]);
     const airport = await run({ ...SUV_HOUR, from_text: HPN_PICK, from_ticket: pickTicket("mock-hpn", HPN_PICK, "", old, "airport-other") });
-    assert.deepEqual([airport.result, airport.trip.ends.from.zone, airport.trip.ends.from.region, airport.price.total], [{ kind: "price", reason: "", hold: "" }, "airport-other", "5581", 42038]);
+    assert.deepEqual([airport.result, airport.trip.ends.from.zone, airport.trip.ends.from.region, airport.price.total], [{ kind: "price", reason: "", hold: "" }, "airport-other", "5581", 42560]);
   });
 });
 
@@ -2587,7 +2692,7 @@ await test("hourly from any pickup: a tampered ticket and a ticket for another l
     await isQuote({ ...NEAR_HOUR, from_text: "30 Station Place, Stamford, CT", from_ticket: pickTicket("mock-clinton", CLINTON, "NJ") }, "outside-hourly");
     await isQuote({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: `v1.${payload}.${mac.slice(0, -1)}${mac.endsWith("A") ? "B" : "A"}` }, "unplaced", "from_text");
     await isQuote({ ...NEAR_HOUR, from_ticket: `v1.${payload}.${mac}` }, "outside-hourly");
-    assert.equal((await priced({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: plain })).tax, 3518);
+    assert.equal((await priced({ ...NEAR_HOUR, from_text: SCARSDALE_PICK, from_ticket: plain })).fee, 5040);
   });
 });
 
@@ -2599,7 +2704,7 @@ await test("hourly from any pickup: every pickup keeps the other hourly rules, 3
       await isError({ ...NEAR_HOUR, ...fields, class: "sprinter", sprinter: "sprinter-executive", hours: "3" }, "sprinter-hours");
       await isClass({ ...NEAR_HOUR, ...fields, class: "sedan" }, "seats");
       const sprinter = await priced({ ...NEAR_HOUR, ...fields, class: "sprinter", sprinter: "sprinter-executive", passengers: "12" });
-      assert.deepEqual([sprinter.fare, sprinter.tax, sprinter.total], [VEHICLES["sprinter-executive"].hourly * 4, 0, VEHICLES["sprinter-executive"].hourly * 4 + percentCents(VEHICLES["sprinter-executive"].hourly * 4, "2.25")]);
+      assert.deepEqual([sprinter.fare, sprinter.fee, sprinter.total], [VEHICLES["sprinter-executive"].hourly * 4, 8400, 78400]);
     }
     await isQuote({ ...NEAR_HOUR, from_text: "Hoboken, NJ, USA", from_ticket: signTicket("mock-hoboken", "outside", "Hoboken, NJ, USA", NOW, 2, "NJ") }, "pickup-address");
     await isQuote({ ...NEAR_HOUR, from_text: "Yonkers, NY, USA", from_ticket: signTicket("ChIJyonkers", "outside", "Yonkers, NY, USA", NOW, 2) }, "pickup-address");
@@ -2607,22 +2712,23 @@ await test("hourly from any pickup: every pickup keeps the other hourly rules, 3
   });
 });
 
-await test("hourly from New York City is unchanged: Manhattan, Brooklyn, JFK and LaGuardia pay the city rate, and meet and greet at JFK and LaGuardia is $25", async () => {
+await test("hourly from New York City keeps its rates: Manhattan, Brooklyn, JFK and LaGuardia pay the 12% service fee, and meet and greet at JFK and LaGuardia is $25", async () => {
   for (const fields of [{}, { from_text: "277 Bedford Ave, Brooklyn, NY 11211" }, { from_text: "John F. Kennedy (JFK)", from_id: "jfk", meet: "1" }, { from_text: "LaGuardia (LGA)", from_id: "lga", meet: "1" }]) {
     const price = await priced({ ...HOURLY, ...fields });
-    assert.deepEqual([price.fare, price.tax, price.bcf, price.meet, price.total], [25500, 2263, 574, fields.meet ? 2500 : 0, 28337 + (fields.meet ? 2500 : 0)], JSON.stringify(fields));
+    assert.deepEqual([price.fare, price.fee, price.meet, price.total], [25500, 3060, fields.meet ? 2500 : 0, 28560 + (fields.meet ? 2500 : 0)], JSON.stringify(fields));
   }
 });
 
-await test("sales tax: the receipt rebuilt from the payment metadata matches the charged lines and total for taxed and untaxed trips, with no sales tax line when none was charged", async () => {
+await test("service fee: the receipt rebuilt from the payment metadata matches the charged lines and total for airport, distance, round and hourly trips, with one Service fee line from tax_cents and no sales tax line", async () => {
   await withMock(async () => {
     for (const fields of [BASE, { ...BASE, ...EWR_ROW, tip: "15" }, { ...BASE, from_text: MINEOLA }, { ...BASE, from_text: HOBOKEN, meet: "1" }, { ...BASE, ...EWR_ROW, ...ROUND_TRIP }, HOURLY]) {
       const { trip, price } = await run(fields);
-      const meta = Object.fromEntries(Object.entries({ ref: "48213590", service: price.service, class: trip.class, hours: trip.hours, vehicle: trip.vehicle, airport: (trip.legs[0] || {}).airport || "", direction: (trip.legs[0] || {}).direction || "", legs: trip.trip_type === "hour" ? "0" : String(trip.legs.length), date: trip.date, time: trip.time, fare_cents: price.fare, tax_cents: price.tax, bcf_cents: price.bcf, tolls_cents: price.tolls, meet_cents: price.meet, tip_percent: price.tipPercent, tip_cents: price.tip, total_cents: price.total }).map(([key, value]) => [key, String(value)]));
+      const meta = Object.fromEntries(Object.entries({ ref: "48213590", service: price.service, class: trip.class, hours: trip.hours, vehicle: trip.vehicle, airport: (trip.legs[0] || {}).airport || "", direction: (trip.legs[0] || {}).direction || "", legs: trip.trip_type === "hour" ? "0" : String(trip.legs.length), date: trip.date, time: trip.time, fare_cents: price.fare, tax_cents: price.fee, tolls_cents: price.tolls, meet_cents: price.meet, tip_percent: price.tipPercent, tip_cents: price.tip, total_cents: price.total }).map(([key, value]) => [key, String(value)]));
       const out = receipt(meta, ON);
       assert.deepEqual(pairs(shownLines(out.lines)), pairs(shownLines(price.lines)), JSON.stringify(fields));
       assert.equal(out.lines.reduce((sum, item) => sum + item.cents, 0), price.total, JSON.stringify(fields));
-      assert.equal(out.lines.some((item) => item.label === TAX), price.tax > 0, JSON.stringify(fields));
+      assert.equal(out.lines.some((item) => item.label === TAX || item.label === "Black Car Fund"), false, JSON.stringify(fields));
+      assert.deepEqual(out.lines.filter((item) => item.label === FEE_LINE).map((item) => item.cents), [price.fee], JSON.stringify(fields));
     }
   });
 });
@@ -2638,15 +2744,16 @@ await test("pets: SMALL_DOG_CENTS is 2000 and LARGE_DOG_CENTS is 4500 in api/_ra
   assert.deepEqual(readInput({ ...HOURLY, large_dogs: "1" }).dogs, { small: "", large: "1" });
 });
 
-await test("pets on a one way airport trip: 1 small dog and 2 large dogs add $20.00 and 2 x $45.00 as two lines of their own after the child seats and before the gratuity, untaxed and outside the gratuity like the child seats, and the fare, tax, tolls and gratuity stay the same", async () => {
+await test("pets on a one way airport trip: 1 small dog and 2 large dogs add $20.00 and 2 x $45.00 as two lines of their own after the child seats and before the gratuity, with no service fee on them and outside the gratuity like the child seats, and the fare, fee, tolls and gratuity stay the same", async () => {
   const base = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1" });
   const dogs = await priced({ ...FROM_JFK, meet: "1", tip: "15", infant_seats: "1", ...DOGS });
-  assert.deepEqual(pairs(dogs.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (1 x $20.00)", 2000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.deepEqual([dogs.fare, dogs.tax, dogs.bcf, dogs.tolls, dogs.meet, dogs.seats, dogs.tip], [base.fare, base.tax, base.bcf, base.tolls, base.meet, base.seats, base.tip]);
+  assert.deepEqual(pairs(dogs.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (1 x $20.00)", 2000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.deepEqual([dogs.fare, dogs.fee, dogs.tolls, dogs.meet, dogs.seats, dogs.tip], [base.fare, base.fee, base.tolls, base.meet, base.seats, base.tip]);
+  assert.equal(dogs.fee, 1845);
   assert.deepEqual([dogs.dogs, dogs.dogCounts, dogs.dogCents], [11000, { small: 1, large: 2 }, { small: 2000, large: 9000 }]);
-  assert.deepEqual([base.total, dogs.total, dogs.value], [25325, 36325, 15500 + 2500 + 2000 + 11000]);
-  assert.equal(dogs.lines.reduce((sum, l) => sum + l.cents, 0), 36325);
-  assert.deepEqual(pairs(shownLines(dogs.lines)).slice(-3), [...dogLines, ["Gratuity for your chauffeur (15%)", 2325]], "the dog lines are never merged with the fees or each other");
+  assert.deepEqual([base.total, dogs.total, dogs.value], [25307, 36307, 15379 + 2500 + 2000 + 11000]);
+  assert.equal(dogs.lines.reduce((sum, l) => sum + l.cents, 0), 36307);
+  assert.deepEqual(pairs(shownLines(dogs.lines)).slice(-3), [...dogLines, ["Gratuity for your chauffeur (15%)", 2307]], "the dog lines are never merged with the fees or each other");
   assert.deepEqual(pairs((await priced({ ...BASE, small_dogs: "1" })).lines).at(-1), ["Small dog (1 x $20.00)", 2000]);
   assert.deepEqual(pairs((await priced({ ...BASE, large_dogs: "1" })).lines).at(-1), ["Large dog (1 x $45.00)", 4500]);
   const max = await priced({ ...BASE, small_dogs: "3", large_dogs: "3" });
@@ -2655,13 +2762,13 @@ await test("pets on a one way airport trip: 1 small dog and 2 large dogs add $20
   assert.deepEqual([none.dogs, none.total, none.lines.some((l) => /dog/i.test(l.label))], [0, AIRPORT_TOTALS.suv.jfk, false]);
 });
 
-await test("pets in every class at every airport, flat totals plus $20.00 for each small dog and $45.00 for each large dog, with no change to the tax or the Black Car Fund", async () => {
+await test("pets in every class at every airport, flat totals plus $20.00 for each small dog and $45.00 for each large dog, with no change to the service fee", async () => {
   for (const cls of Object.keys(CLASSES)) {
     for (const [airport, to_text, to_id] of [["jfk", "John F. Kennedy (JFK)", "jfk"], ["lga", "LaGuardia (LGA)", "lga"], ["ewr", "Newark Liberty (EWR)", "ewr"]]) {
       const fields = { ...BASE, class: cls, to_text, to_id, passengers: "1" };
       const plain = await priced(fields);
       const dogs = await priced({ ...fields, ...DOGS });
-      assert.deepEqual([plain.total, dogs.total, dogs.tax, dogs.bcf], [AIRPORT_TOTALS[rateKey(cls)][airport], AIRPORT_TOTALS[rateKey(cls)][airport] + 11000, plain.tax, plain.bcf], `${cls} ${airport}`);
+      assert.deepEqual([plain.total, dogs.total, dogs.fee, plain.fee], [AIRPORT_TOTALS[rateKey(cls)][airport], AIRPORT_TOTALS[rateKey(cls)][airport] + 11000, FEE(plain.fare), FEE(plain.fare)], `${cls} ${airport}`);
       assert.deepEqual(pairs(dogs.lines).slice(-2), dogLines, `${cls} ${airport}`);
     }
   }
@@ -2679,29 +2786,29 @@ await test("pets on a round trip are charged once for the booking, not once per 
   assert.equal(sprinter.total, 2 * AIRPORT_TOTALS["sprinter-executive"].jfk + 19500);
 });
 
-await test("pets on hourly bookings in every class that books by the hour: count x $20.00 and count x $45.00 once, after the fare, tax and Black Car Fund, and the gratuity stays a percent of the fare", async () => {
+await test("pets on hourly bookings in every class that books by the hour: count x $20.00 and count x $45.00 once, after the fare and the service fee, and the gratuity stays a percent of the fare", async () => {
   for (const [cls, vehicle, hourly] of [["sedan", "sedan", 8500], ["electric", "electric", 9000], ["suv", "suv-denali", 10000], ["premium", "premium", 10500], ["first", "first", 17500]]) {
     const fields = { ...HOURLY, class: cls, vehicle, passengers: "1", tip: "20" };
     const none = await priced(fields);
     const dogs = await priced({ ...fields, ...DOGS });
-    assert.deepEqual([none.fare, dogs.fare, dogs.tax, dogs.bcf, dogs.tip, dogs.total - none.total], [hourly * 3, hourly * 3, none.tax, none.bcf, percentCents(hourly * 3, "20"), 11000], cls);
+    assert.deepEqual([none.fare, dogs.fare, dogs.fee, none.fee, dogs.tip, dogs.total - none.total], [hourly * 3, hourly * 3, FEE(hourly * 3), FEE(hourly * 3), percentCents(hourly * 3, "20"), 11000], cls);
     assert.deepEqual(pairs(dogs.lines).slice(-3), [...dogLines, [`Gratuity for your chauffeur (20%)`, percentCents(hourly * 3, "20")]], cls);
   }
   const sedan = await priced({ ...HOURLY, tip: "20", small_dogs: "2" });
-  assert.deepEqual(pairs(sedan.lines), [["Fare, 3 hours", 25500], ["NYC sales tax", 2263], ["Black Car Fund", 574], ["Small dog (2 x $20.00)", 4000], ["Gratuity for your chauffeur (20%)", 5100]]);
-  assert.equal(sedan.total, 25500 + 2263 + 574 + 4000 + 5100);
+  assert.deepEqual(pairs(sedan.lines), [["Fare, 3 hours", 25500], [FEE_LINE, 3060], ["Small dog (2 x $20.00)", 4000], ["Gratuity for your chauffeur (20%)", 5100]]);
+  assert.equal(sedan.total, 25500 + 3060 + 4000 + 5100);
 });
 
 await test("pets on trips priced by distance and time and on trips with stops add the same lines once on top of the route fare or the stop fee", async () => {
   await withMock(async () => {
     const one = await priced({ ...RIDE, class: "suv", ...DOGS });
-    assert.deepEqual(pairs(one.lines), [["Fare", 11000], ["NYC sales tax", 976], ["Black Car Fund", 248], ...dogLines]);
-    assert.deepEqual([one.total, one.service], [12224 + 11000, "distance"]);
+    assert.deepEqual(pairs(one.lines), [["Fare", 12095], [FEE_LINE, 1451], ...dogLines]);
+    assert.deepEqual([one.total, one.service], [13546 + 11000, "distance"]);
     const back = await priced({ ...RIDE, ...ROUND_TRIP, to_text: GREENWICH, class: "sedan", tip: "15", large_dogs: "1" });
-    assert.deepEqual(pairs(back.lines), [["Fare", 29400], ["Black Car Fund", 662], ["Large dog (1 x $45.00)", 4500], ["Gratuity for your chauffeur (15%)", 4410]]);
-    assert.equal(back.total, 29400 + 662 + 4500 + 4410);
-    const stop = await priced({ ...STOPS, ...DOGS });
-    assert.deepEqual(pairs(stop.lines), [["Fare", 13701], [TAX, 1216], [BCF, 308], ["Tolls and airport fees", 1275], ["Extra stop", 2000], ...dogLines]);
+    assert.deepEqual(pairs(back.lines), [["Fare", 39400], [FEE_LINE, 4728], ["Large dog (1 x $45.00)", 4500], ["Gratuity for your chauffeur (15%)", 5910]]);
+    assert.equal(back.total, 39400 + 4728 + 4500 + 5910);
+    const stop = await priced({ ...STOPS, ...DOGS, route: signRoute([[stopKey([ANN]), 100, 30]], NOW) });
+    assert.deepEqual(pairs(stop.lines), [["Fare", 13593], [FEE_LINE, 1631], ["Tolls and airport fees", 1276], ["Extra stop", 2000], ...dogLines]);
     assert.deepEqual([stop.total, stop.service], [16500 + 2000 + 11000, "airport"]);
     const sprinter = await priced({ ...STOPS, class: "sprinter", small_dogs: "1" });
     assert.equal(sprinter.total, AIRPORT_TOTALS["sprinter-executive"].lga + 2000 + 2000);
@@ -2733,8 +2840,8 @@ await test("the pet limit: 0 to 3 dogs of each size, on one way, round trip and 
 await test("the reserve by email and WhatsApp messages and the dispatch quote path list each dog size with its count after the child seats, only for the sizes chosen, and nothing when no dog is chosen", async () => {
   const { trip, price } = await run({ ...FROM_JFK, meet: "1", tip: "15", passengers: "3", infant_seats: "1", ...DOGS });
   const text = composeMessage(trip, "48213590", price.total);
-  assert.ok(text.includes("\nMeet and greet: Yes\nInfant seats: 1\nSmall dogs: 1\nLarge dogs: 2\nGratuity: 15%\nTotal shown: $363.25"), text);
-  assert.equal(price.total, 36325);
+  assert.ok(text.includes("\nMeet and greet: Yes\nInfant seats: 1\nSmall dogs: 1\nLarge dogs: 2\nGratuity: 15%\nTotal shown: $363.07"), text);
+  assert.equal(price.total, 36307);
   const links = contactLinks(trip, "48213590", price.total);
   for (const href of [links.whatsapp, links.mailto]) assert.ok(decodeURIComponent(href).includes("\nSmall dogs: 1\nLarge dogs: 2\n"), href);
   assert.ok(!/dogs: /.test(composeMessage((await run(FROM_JFK)).trip, "48213590", 18500)));
@@ -2747,17 +2854,17 @@ await test("the reserve by email and WhatsApp messages and the dispatch quote pa
 });
 
 await test("the receipt rebuilds the dog lines from the dogs metadata, with the price per dog it was paid at, adds them to the value, counts the child seats by type when the booking has dogs, and leaves them out when there are none", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325", seats_cents: "6000", infant_seats: "1", booster_seats: "2", dogs: "1 small 2000, 2 large 9000" };
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", fare_cents: "15379", tax_cents: "1845", tolls_cents: "1276", meet_cents: "2500", tip_percent: "15", tip_cents: "2307", seats_cents: "6000", infant_seats: "1", booster_seats: "2", dogs: "1 small 2000, 2 large 9000" };
   const r = receipt(meta, ON);
-  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(r.value, 15500 + 2500 + 6000 + 11000);
-  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 40325);
+  assert.deepEqual(pairs(r.lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ...dogLines, ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(r.value, 15379 + 2500 + 6000 + 11000);
+  assert.equal(r.lines.reduce((sum, l) => sum + l.cents, 0), 40307);
   assert.deepEqual(pairs(receipt({ ...meta, dogs: "2 large 6000" }, ON).lines).slice(-2, -1), [["Large dog (2 x $30.00)", 6000]], "an old booking keeps the price per dog it was paid at");
   assert.deepEqual(pairs(receipt({ ...meta, dogs: "3 small 6000" }, ON).lines).slice(-2, -1), [["Small dog (3 x $20.00)", 6000]]);
   const none = { ...meta };
   delete none.dogs;
-  assert.deepEqual(pairs(receipt({ ...none, child_seats: "3" }, ON).lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2325]]);
-  assert.equal(receipt({ ...none, child_seats: "3" }, ON).value, 24000);
+  assert.deepEqual(pairs(receipt({ ...none, child_seats: "3" }, ON).lines), [...LEG, ["Meet and greet", 2500], ["Child seats (3 x $20.00)", 6000], ["Gratuity for your chauffeur (15%)", 2307]]);
+  assert.equal(receipt({ ...none, child_seats: "3" }, ON).value, 23879);
   assert.deepEqual(pairs(receipt({ ...none, dogs: "lots of dogs" }, ON).lines).filter(([l]) => /dog/i.test(l)), []);
 });
 
@@ -2843,11 +2950,11 @@ await test("bags ride in the passengers metadata value: the count first, then ea
 });
 
 await test("the receipt of a booking with bags is the receipt without them: bags add no line and no value, from new and old metadata", () => {
-  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", passengers: "2", fare_cents: "15500", tax_cents: "1376", bcf_cents: "349", tolls_cents: "1275", meet_cents: "2500", tip_percent: "15", tip_cents: "2325" };
+  const meta = { ref: "48213590", service: "airport", direction: "from-airport", airport: "jfk", class: "suv", date: "2026-10-14", time: "07:30", legs: "1", passengers: "2", fare_cents: "15379", tax_cents: "1845", tolls_cents: "1276", meet_cents: "2500", tip_percent: "15", tip_cents: "2307" };
   const old = receipt(meta, ON);
   const bagged = receipt({ ...meta, passengers: "2, 4 large bags, 3 medium bags, 2 small bags" }, ON);
   assert.deepEqual([pairs(bagged.lines), bagged.value, bagged.summary, bagged.notes], [pairs(old.lines), old.value, old.summary, old.notes]);
-  assert.deepEqual(pairs(old.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2325]]);
+  assert.deepEqual(pairs(old.lines), [...LEG, ["Meet and greet", 2500], ["Gratuity for your chauffeur (15%)", 2307]]);
 });
 
 await test("the reserve by email and WhatsApp messages and the dispatch quote path list each bag size with its count right after the passengers, only for the sizes chosen, and nothing when no bag is chosen", async () => {

@@ -106,7 +106,7 @@ export const SEATS = {
   notes: "For example each child's age, weight and height, your dog's size or large luggage.",
   mail: "For the child seats, send us each child's age, weight and height and the seat you'd like, with your reference {ref}, by WhatsApp or email.",
 };
-const INCLUDED = "Tolls, airport fees and any taxes are included.";
+const INCLUDED = "Tolls, airport fees and the service fee are included.";
 const CONFIRM = "We confirm your car and chauffeur in writing before your ride.";
 const CHANGE = POLICY.howTo.replace(/\.$/, " {ref}.");
 export const NOTES = {
@@ -120,6 +120,7 @@ export const NOTES = {
 export const LABELS = {
   fare: "Fare",
   fareHours: "Fare, {hours} hours",
+  fee: "Service fee",
   tax: "NYC sales tax",
   bcf: "Black Car Fund",
   tolls: "Tolls and airport fees",
