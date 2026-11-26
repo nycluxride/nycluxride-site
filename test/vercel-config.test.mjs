@@ -249,24 +249,23 @@ test(".vercelignore does not exclude api/", () => {
   assert.deepEqual(lines.filter((l) => /^\/?api(\/.*)?$/.test(l)), []);
 });
 
-test("the files in api/ without a leading underscore are exactly book, flight, owner-update, places, ride-reminders, route, seo-weekly and stripe-webhook", () => {
-  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "owner-update.mjs", "places.mjs", "ride-reminders.mjs", "route.mjs", "seo-weekly.mjs", "stripe-webhook.mjs"]);
+test("the files in api/ without a leading underscore are exactly book, flight, places, ride-reminders, route, seo-weekly and stripe-webhook", () => {
+  assert.deepEqual(readdirSync(join(ROOT, "api")).filter((f) => !f.startsWith("_")).sort(), ["book.mjs", "flight.mjs", "places.mjs", "ride-reminders.mjs", "route.mjs", "seo-weekly.mjs", "stripe-webhook.mjs"]);
 });
 
 test("every api route answers no-store through the /api rule", () => {
-  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight", "/api/stripe-webhook", "/api/seo-weekly", "/api/ride-reminders", "/api/owner-update"]) {
+  for (const path of ["/api/book", "/api/places", "/api/route", "/api/flight", "/api/stripe-webhook", "/api/seo-weekly", "/api/ride-reminders"]) {
     const values = (config.headers || []).filter((h) => pathToRegexp(h.source).test(path)).flatMap((h) => h.headers.filter((x) => x.key === "Cache-Control").map((x) => x.value));
     assert.deepEqual(values, ["no-store"], path);
   }
 });
 
-test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 21:00 UTC every day, 4 PM in New York in winter and 5 PM in summer, and the owner update at 17:00 UTC, noon in New York on November 26, and their routes exist", () => {
+test("the crons are the weekly search email at 13:00 UTC on Monday, 8 AM in New York in winter and 9 AM in summer, the ride reminders at 21:00 UTC every day, 4 PM in New York in winter and 5 PM in summer, and their routes exist", () => {
   assert.deepEqual(config.crons, [
     { path: "/api/seo-weekly", schedule: "0 13 * * 1" },
     { path: "/api/ride-reminders", schedule: "0 21 * * *" },
-    { path: "/api/owner-update", schedule: "0 17 * * *" },
   ]);
-  for (const route of ["seo-weekly.mjs", "ride-reminders.mjs", "owner-update.mjs"]) assert.ok(existsSync(join(ROOT, "api", route)), route);
+  for (const route of ["seo-weekly.mjs", "ride-reminders.mjs"]) assert.ok(existsSync(join(ROOT, "api", route)), route);
 });
 
 test("every cron fits the Hobby plan: at most 100 jobs, each with a fixed minute and hour, so it runs at most once a day", () => {
