@@ -238,8 +238,8 @@ for (const [file, want] of Object.entries(HERO_C)) {
 check("rates.html: the On this page links follow the crumbs block, exact", () => {
   const doc = load("rates.html");
   const nav = doc.querySelector("main > section.banner").nextElementSibling.nextElementSibling;
-  assert.equal(nav.outerHTML, '<nav class="frame" aria-label="On this page"><ul class="jumps" role="list"><li><a href="#airport">Airport transfers</a></li><li><a href="#hourly">Hourly</a></li><li><a href="#distance">Distance and time</a></li><li><a href="#add-ons">Add-ons and terms</a></li><li><a href="#policies">Policies</a></li></ul></nav>');
-  for (const id of ["airport", "hourly", "distance", "add-ons", "cancellation"]) assert.ok(doc.getElementById(id), `no #${id}`);
+  assert.equal(nav.outerHTML, '<nav class="frame" aria-label="On this page"><ul class="jumps" role="list"><li><a href="#airport">Airport transfers</a></li><li><a href="#hourly">Hourly</a></li><li><a href="#routes">Fixed-price routes</a></li><li><a href="#distance">Quotes</a></li><li><a href="#add-ons">Add-ons and terms</a></li><li><a href="#policies">Policies</a></li></ul></nav>');
+  for (const id of ["airport", "hourly", "routes", "distance", "add-ons", "cancellation"]) assert.ok(doc.getElementById(id), `no #${id}`);
 });
 
 check("fleet.html: the class jump list of #fleet-all is tabs, one per class in class order, each with its set", () => {
@@ -551,10 +551,10 @@ check("the three posts that gained links keep their dateModified, so a new lastm
 {
   const doc = load("rates.html");
   const rows = (sel) => [...doc.querySelectorAll(sel)];
-  check("rates.html: each airport row ends with Book in its LaGuardia cell, each hourly row with Book by the hour in its Three hours cell, never in the th (C-06, F42)", () => {
-    assert.deepEqual(rows("#airport-rates tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?class=${k}">Book<span class="sr-only"> ${/^[AEIOU]/.test(CLASSES[k].name) ? "an" : "a"} ${CLASSES[k].name.replace("&", "&amp;")}${k === "electric" ? " car" : ""}</span></a>`));
-    assert.deepEqual(rows("#hourly tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...BY_HOUR.map((k) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=3&amp;class=${k}">Book by the hour<span class="sr-only">, ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`), ...SPRINTERS.map((v) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=${v.minHours}&amp;class=sprinter&amp;sprinter=${SPRINTER_KEY.get(v)}">Book by the hour<span class="sr-only">, ${v.name}</span></a>`)]);
-    assert.deepEqual(rows("#sprinter-airport tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...SPRINTER_KEY].map(([v, k]) => `<a class="lnk lnk--row" href="/book?class=sprinter&amp;sprinter=${k}">Book<span class="sr-only"> ${/^[AEIOU]/.test(v.name) ? "an" : "a"} ${v.name}</span></a>`));
+  check("rates.html: each airport row ends with Book in its LaGuardia cell, Request for the Luxury Sprinter, each hourly row with Book by the hour in its Three hours cell, never in the th (C-06, F42)", () => {
+    assert.deepEqual(rows("#airport-rates tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), KEYS.map((k) => `<a class="lnk lnk--row" href="/book?class=${k}">${k === "sprinter" ? "Request" : "Book"}<span class="sr-only"> ${/^[AEIOU]/.test(CLASSES[k].name) ? "an" : "a"} ${CLASSES[k].name.replace("&", "&amp;")}${k === "electric" ? " car" : ""}</span></a>`));
+    assert.deepEqual(rows("#hourly tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), BY_HOUR.map((k) => `<a class="lnk lnk--row" href="/book?trip-type=hour&amp;hours=3&amp;class=${k}">Book by the hour<span class="sr-only">, ${CLASSES[k].name.replace("&", "&amp;")}</span></a>`));
+    assert.deepEqual(rows("#sprinter-airport tbody tr").map((tr) => tr.lastElementChild.querySelector("a").outerHTML), [...SPRINTER_KEY].map(([v, k]) => `<a class="lnk lnk--row" href="/book?class=sprinter&amp;sprinter=${k}">Request<span class="sr-only"> ${/^[AEIOU]/.test(v.name) ? "an" : "a"} ${v.name}</span></a>`));
     assert.equal(doc.querySelectorAll(".rate-table th a, .rate-table td:not(:last-child) a.lnk--row").length, 0);
   });
   check("rates.html: Who is traveling? chips right before the airport table, data-seats and the two fit spans in each row header after the class name (C-23)", () => {
@@ -562,16 +562,17 @@ check("the three posts that gained links keep their dateModified, so a new lastm
     assert.equal(f.outerHTML, FITS);
     assert.ok(f.nextElementSibling.matches(".table-scroll") && f.nextElementSibling.querySelector("#airport-rates"), "the chips do not sit right before the airport table");
     const fit = (seats) => ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${seats}</span>`];
-    for (const [sel, want] of [["#airport-rates tbody tr", KEYS.map((k) => [CLASSES[k].name, CLASSES[k].seats])], ["#sprinter-airport tbody tr", SPRINTERS.map((v) => [v.name, v.seats])], ["#hourly tbody tr", [...BY_HOUR.map((k) => [CLASSES[k].name, CLASSES[k].seats]), ...SPRINTERS.map((v) => [v.name, v.seats])]]]) {
+    for (const [sel, want] of [["#airport-rates tbody tr", KEYS.map((k) => [CLASSES[k].name, CLASSES[k].seats])], ["#sprinter-airport tbody tr", SPRINTERS.map((v) => [v.name, v.seats])], ["#hourly tbody tr", BY_HOUR.map((k) => [CLASSES[k].name, CLASSES[k].seats])], ["#route-rates tbody tr", KEYS.filter((k) => k !== "sprinter").map((k) => [CLASSES[k].name, CLASSES[k].seats])]]) {
       assert.deepEqual(rows(sel).map((tr) => tr.dataset.seats), want.map(([, seats]) => String(seats)));
       assert.deepEqual(rows(sel).map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML).slice(0, 2)]; }), want.map(([name, seats]) => [name, fit(seats)]));
     }
   });
-  check("rates.html: each distance row carries data-seats and the two fit spans after the class name, so Who is traveling? marks it as in the airport and hourly tables", () => {
-    const keys = Object.keys(CLASSES);
-    assert.deepEqual(Object.keys(DISTANCE_RATES), keys.map((k) => (k === "sprinter" ? CLASS_DEFAULT_VEHICLE.sprinter : k)));
-    assert.deepEqual(rows("#distance-rates tbody tr").map((tr) => [tr.id, tr.dataset.seats]), keys.map((k) => [`distance-${k}`, String(CLASSES[k].seats)]));
-    assert.deepEqual(rows("#distance-rates tbody tr").map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML)]; }), keys.map((k) => [k === "sprinter" ? VEHICLES[CLASS_DEFAULT_VEHICLE.sprinter].name : CLASSES[k].name, ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`, ...(k === "sprinter" ? ["<small>Other Sprinters, we'll send you a price</small>"] : [])]]));
+  check("rates.html: each fixed-price route row carries data-seats and the two fit spans after the class name, so Who is traveling? marks it as in the airport and hourly tables, and the distance table is gone", () => {
+    const keys = Object.keys(CLASSES).filter((k) => k !== "sprinter");
+    assert.deepEqual(Object.keys(DISTANCE_RATES), [...keys, CLASS_DEFAULT_VEHICLE.sprinter]);
+    assert.equal(doc.getElementById("distance-rates"), null);
+    assert.deepEqual(rows("#route-rates tbody tr").map((tr) => [tr.id, tr.dataset.seats]), keys.map((k) => [`route-${k}`, String(CLASSES[k].seats)]));
+    assert.deepEqual(rows("#route-rates tbody tr").map((tr) => { const th = tr.querySelector("th"); return [th.firstChild.textContent, [...th.children].map((c) => c.outerHTML)]; }), keys.map((k) => [CLASSES[k].name, ['<span class="fits-yes">Fits your group</span>', `<span class="fits-no">Seats ${CLASSES[k].seats}</span>`]]));
   });
   check("rates.html: the closing card ends with Book a car, WhatsApp, then the reviews link (C-21, F13)", () => {
     const close = doc.querySelector("main .section--close");

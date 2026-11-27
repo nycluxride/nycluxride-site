@@ -317,6 +317,8 @@ const ROUTES = [
   [SECAUCUS_STREET, NIAGARA, 420, 400],
   [NIAGARA, SECAUCUS_STREET, 425, 400.4],
   [PHILADELPHIA, "1 Beacon St, Boston, MA 02108", 322, 308.6],
+  [MANHATTAN, "1 Beacon St, Boston, MA 02108", 290, 215.4, 1790],
+  ["1 Beacon St, Boston, MA 02108", MANHATTAN, 295, 215.8, 1790],
   [PHILADELPHIA, JFK, 118, 97.5],
   [MANHATTAN, "Raleigh, NC", 480, 501],
   [JFK, "Raleigh, NC", 505, 524.6],

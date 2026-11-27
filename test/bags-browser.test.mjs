@@ -246,7 +246,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await bags(page, 4, 0);
     assert.equal(await noteShown(page), true);
     assert.equal((await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), cash(START), "the JFK total with the Curbside pickup and no gratuity it opens on");
-    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$180.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
+    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$250.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
     assert.equal(await page.isDisabled("#bk-next"), false);
     await bags(page, MAX_BAGS, 0);
     await openBags(page);

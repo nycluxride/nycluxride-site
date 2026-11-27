@@ -12,6 +12,9 @@ import {
   LONG_RATES,
   SHORT_MILES,
   LONG_MILES,
+  TIME_CAP_PER_MILE,
+  TIME_CAP_BASE,
+  ROUTE_CAPS,
   DISTANCE_LIMITS,
   DISTANCE_SKIP_ZIPS,
   AIRPORT_STATES,
@@ -436,6 +439,7 @@ async function driveTrip(trip, token, context) {
   };
 }
 
+const longLeg = (item) => Boolean(item.ride) && item.ride.tenths >= LONG_MILES * 10;
 export const withinLimits = ({ tenths, minutes }) => tenths <= DISTANCE_LIMITS.miles * 10 && minutes <= DISTANCE_LIMITS.minutes;
 const distanceTrip = (trip) => trip.trip_type === "one" && Array.isArray(trip.legs) && trip.legs.length > 0 && trip.legs.every((item) => (item.ride || item.flat) && !item.reason);
 export const serviceOf = (trip) => (trip.trip_type === "hour" ? "hourly" : distanceTrip(trip) ? "distance" : "airport");
@@ -476,6 +480,14 @@ export function classReason(trip, cls) {
   return "";
 }
 
+export const requestReason = (trip, cls) => (cls === "sprinter" ? (serviceOf(trip.trip_type === "one" ? { ...trip, legs: chargedLegs(trip, cls) } : trip) === "airport" ? "sprinter-check" : "sprinter-quote") : "");
+export function bookReason(trip, cls) {
+  const reason = classReason(trip, cls);
+  const ask = requestReason(trip, cls);
+  return reason === "sprinter-price" && ask === "sprinter-quote" ? ask : reason || ask;
+}
+export const requestOnly = (trip) => (trip.trip_type === "one" && (trip.legs || []).some(longLeg) ? "long-distance" : requestReason(trip, trip.class));
+
 function spatialReason(trip) {
   if (trip.trip_type === "hour") {
     if (trip.from === "unknown") return { reason: unplaced(trip.from_text), field: "from_text" };
@@ -500,7 +512,7 @@ function spatialReason(trip) {
   const unpriced = legs.find((item) => item.reason);
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
   if (ask) return { reason: ask, field: "" };
-  if (!unpriced) return (ends.stop1 || ends.stop2) && !legs.some((item) => item.stops) ? { reason: "stop-leg", field: "" } : null;
+  if (!unpriced) return (ends.stop1 || ends.stop2) && !legs.some((item) => item.stops) ? { reason: "stop-leg", field: "" } : legs.some(longLeg) ? { reason: "long-distance", field: "" } : null;
   return { reason: (ends.stop1 || ends.stop2) && !ROUTE_REASONS.includes(unpriced.reason) ? "stop-leg" : unpriced.reason, field: "" };
 }
 
@@ -547,7 +559,7 @@ export function checkTrip(trip, now, settings) {
   if (trip.tip !== "custom" && !TIP_PERCENTS.includes(trip.tip)) return invalid("tip");
   const spatial = spatialReason(trip);
   if (spatial) return { kind: "quote", reason: spatial.reason, field: spatial.field };
-  return { kind: "price", reason: noticeReason(trip, trip.class, current) || classReason(trip, trip.class), hold: holdFor(trip, current, settings) };
+  return { kind: "price", reason: noticeReason(trip, trip.class, current) || bookReason(trip, trip.class), hold: holdFor(trip, current, settings) };
 }
 
 const counts = (kinds, chosen) => Object.fromEntries(kinds.map((k) => [k, INTEGER.test((chosen || {})[k] || "") ? Number(chosen[k]) : 0]));
@@ -646,7 +658,10 @@ if ([AIRPORT_FARES, AIRPORT_TOTALS].some((table) => Object.keys(table).some((key
 
 const cardFare = (rate, tenths, minutes) => rate.base + Math.round((tenths * rate.mile) / 10) + minutes * rate.minute;
 
-export function distanceFare(key, tenths, minutes) {
+export const billedMinutes = (tenths, minutes) => Math.min(minutes, Math.floor((TIME_CAP_PER_MILE * tenths) / 10 + TIME_CAP_BASE));
+
+export function distanceFare(key, tenths, driven) {
+  const minutes = billedMinutes(tenths, driven);
   const short = (at) => cardFare(DISTANCE_RATES[key], at, minutes);
   const long = (at) => cardFare(LONG_RATES[key], at, minutes);
   const [from, to] = [SHORT_MILES * 10, LONG_MILES * 10];
@@ -685,7 +700,31 @@ export function classTotal(trip, cls) {
   return priceTrip({ ...trip, class: cls, vehicle: trip.trip_type === "hour" || cls === "sprinter" ? vehicleFor(trip, cls) : "" }).total;
 }
 
-const legPrice = (key, item) => (item.ride && !item.flat ? priceRide(key, item.ride, [item.from, ...(item.via || []), item.to]) : priceLeg(key, item.airport));
+const townIn = (end, cap) =>
+  Boolean(end) &&
+  end.zone === "outside" &&
+  [cap.state, "US"].includes(end.region || "") &&
+  (cap.zips.includes(typedZip(end.text)) || cap.towns.some((town) => new RegExp(`(^|,)\\s*${town}\\s*,\\s*(${cap.state}|${cap.stateName})\\b`, "i").test(end.text)));
+const capFits = (cap, a, b) => Boolean(a) && Boolean(b) && cap.from.includes(a.zone) && townIn(b, cap);
+
+export function routeCap(trip, item, key) {
+  const ends = trip.ends;
+  if (!ends || ends.stop1 || ends.stop2 || !item.ride || item.flat || item.stops || item.feeStops) return null;
+  const [a, b] = item.back ? [ends.to, ends.from] : [ends.from, ends.to];
+  const cap = Object.values(ROUTE_CAPS).find((rule) => has(rule.totals, key) && item.ride.tenths <= rule.miles * 10 && (capFits(rule, a, b) || capFits(rule, b, a)));
+  return cap ? cap.totals[key] : null;
+}
+
+export function capPrice(price, cap) {
+  if (!Number.isInteger(cap) || price.total <= cap) return price;
+  const target = cap - price.tolls;
+  let fare = Math.max(0, Math.floor(target / (1 + Number(FEE_PERCENT) / 100)) + 2);
+  while (fare > 0 && fare + feeOf(fare) > target) fare--;
+  const fee = feeOf(fare);
+  return { fare, fee, tolls: price.tolls, total: fare + fee + price.tolls };
+}
+
+const legPrice = (key, item, cap = null) => (item.ride && !item.flat ? capPrice(priceRide(key, item.ride, [item.from, ...(item.via || []), item.to]), cap) : priceLeg(key, item.airport));
 
 export function chargedLegs(trip, cls = trip.class) {
   const legs = trip.legs || legsOf(trip);
@@ -709,7 +748,7 @@ export function priceTrip(input, settings) {
   const service = serviceOf(trip);
   const plain = service === "airport";
   const key = rateKey(trip.class, trip.vehicle);
-  const legs = hourly ? [] : trip.legs.map((item) => legPrice(key, item));
+  const legs = hourly ? [] : trip.legs.map((item) => legPrice(key, item, routeCap(trip, item, key)));
   const sum = (key) => legs.reduce((total, item) => total + item[key], 0);
   const fare = hourly ? VEHICLES[trip.vehicle].hourly * Number(trip.hours) : sum("fare");
   const fee = hourly ? feeOf(fare) : sum("fee");

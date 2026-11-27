@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, STRIPE_MAX_CENTS, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
 import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, SPRINTER_BUSY } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionBusy } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, requestReason, requestOnly, bookReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionBusy } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -59,8 +59,8 @@ const rideOnly = (trip) => ({ ...trip, tip: 0, tip_amount: "", meet: false });
 
 function classList(trip, tripReason, now) {
   return Object.keys(CLASSES).map((cls) => {
-    const reason = tripReason || noticeReason(trip, cls, now) || classReason(trip, cls);
-    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason ? null : classTotal(rideOnly(trip), cls), reason };
+    const reason = tripReason || noticeReason(trip, cls, now) || bookReason(trip, cls);
+    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason && reason !== "sprinter-check" ? null : classTotal(rideOnly(trip), cls), reason };
   });
 }
 
@@ -71,7 +71,7 @@ function vehicleList(trip, now) {
     .map((key) => {
       const priced = { ...trip, class: VEHICLES[key].cls, vehicle: key };
       const late = noticeReason(priced, priced.class, now);
-      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) ? null : priceTrip(rideOnly(priced)).total, ...(late && { reason: late }) };
+      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) || requestReason(priced, priced.class) === "sprinter-quote" ? null : priceTrip(rideOnly(priced)).total, ...(late && { reason: late }) };
     });
 }
 
@@ -106,7 +106,7 @@ const tollsDiffer = (trip, price) => trip.trip_type !== "hour" && trip.class !==
 
 function optionsBody(trip, ref, check, now, size, draw) {
   const hourly = trip.trip_type === "hour";
-  const price = check.reason ? null : priceTrip(trip);
+  const price = check.reason && check.reason !== "sprinter-check" ? null : priceTrip(trip);
   return {
     kind: "options",
     ref,
@@ -125,7 +125,7 @@ function optionsBody(trip, ref, check, now, size, draw) {
     selected: { class: trip.class, vehicle: hourly || trip.class === "sprinter" ? trip.vehicle : "", tip: trip.tip, tip_amount: trip.tip === "custom" ? Number(trip.tip_amount) : 0, meet: trip.meet },
     price: price ? { lines: shownLines(price.lines), total_cents: price.total, currency: "usd", notes: price.notes, ...(tollsDiffer(trip, price) && { tolls_differ: true }) } : null,
     reason: check.reason,
-    pay: Boolean(price) && !check.hold,
+    pay: Boolean(price) && !check.hold && !check.reason,
     hold: check.hold,
     earliest: firstSlot(now),
     sprinter_from: sprinterFrom(now),
@@ -235,6 +235,8 @@ async function handlePost(request) {
   if (detail) return invalid(detail.code);
   const origin = production() ? SITE_ORIGIN : new URL(request.url).origin;
   const paid = requestRef(input);
+  const ask = requestOnly(trip);
+  if (ask) return reply(200, quoteBody(trip, ref, ask, now, { scope: "class" }), `/book#q-${ask}`);
   const params = sessionParams(trip, price, paid, settings, now, origin);
   if (mockMode()) {
     const url = `/booking-confirmed?session_id=${rememberMock(params)}`;

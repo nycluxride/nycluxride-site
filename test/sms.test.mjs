@@ -272,7 +272,7 @@ await test("the text: the heading, the customer's name and phone, the pickup in 
       assert.equal(Intl.DateTimeFormat().resolvedOptions().timeZone, tz);
       const one = paid(ONE_WAY);
       assert.equal(one.metadata.pickup_at, "2026-11-08T15:00:00.000Z");
-      assert.equal(bookingText(one), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Sun Nov 8, 10:00 AM", "253 West 72nd Street to Newark Liberty (EWR)", "Business SUV", "Paid $185.00", "Reference 83558982"].join("\n"));
+      assert.equal(bookingText(one), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Sun Nov 8, 10:00 AM", "253 West 72nd Street to Newark Liberty (EWR)", "Business SUV", "Paid $195.00", "Reference 83558982"].join("\n"));
       const round = paid(ROUND);
       assert.equal(bookingText(round), ["[TEST] NYC LUX RIDE booking", "Ana Lopez, +1 212 555 0100", "Thu Nov 12, 7:30 AM", "JFK to 350 5th Ave, return Sun Nov 15, 6:00 PM", "Business Premium SUV", `Paid ${money(ROUND.total)}`, "Reference 83558982"].join("\n"));
       const hourly = paid(HOURLY);

@@ -59,6 +59,8 @@ const FORMS_64 = new Set([
   "A Sprinter by the hour has a 4-hour minimum.",
   "Book a Sprinter at least 3 hours ahead.",
   "If no Sprinter is free, we send two SUVs.",
+  "Under 75 miles, you see the total before you pay.",
+  "Send us the trip and we'll reply with a price.",
   "To change or cancel, email info@nycluxride.com or message us on WhatsApp with your reference.",
 ]);
 const VALUE_FORMS = {

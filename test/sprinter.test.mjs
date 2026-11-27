@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { JSDOM } from "jsdom";
-import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, receipt, shownLines, serviceLabel, composeMessage, classTotal, ownerSubject, bookingData, nycToUtc, rateKey } from "../api/_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, receipt, shownLines, serviceLabel, composeMessage, classTotal, ownerSubject, bookingData, nycToUtc, rateKey, requestReason, classReason } from "../api/_trip.mjs";
 import { sessionParams, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters, bookingText, bookingEvents, reminderLetter } from "../api/_mail.mjs";
 import { POST as bookPost, GET as bookGet } from "../api/book.mjs";
@@ -45,14 +45,15 @@ async function test(name, fn) {
 }
 
 const pairs = (lines) => lines.map(({ label, cents }) => [label, cents]);
+const REQUEST = /^sprinter-(check|quote)$/;
 async function run(fields, now = NOW) {
   const trip = await resolveTrip(readInput(fields), { now });
   const check = checkTrip(trip, now, ON);
-  return { trip, check, price: check.kind === "price" && !check.reason ? priceTrip(trip, ON) : null };
+  return { trip, check, price: check.kind === "price" && (!check.reason || (REQUEST.test(check.reason) && !classReason(trip, trip.class))) ? priceTrip(trip, ON) : null };
 }
 async function priced(fields) {
   const out = await run(fields);
-  assert.deepEqual(out.check, { kind: "price", reason: "", hold: "" }, JSON.stringify(fields));
+  assert.deepEqual(out.check, { kind: "price", reason: requestReason(out.trip, out.trip.class), hold: "" }, JSON.stringify(fields));
   return out;
 }
 const invalid = async (fields, code) => assert.deepEqual((await run(fields)).check, { kind: "invalid", code }, JSON.stringify(fields));
@@ -173,11 +174,11 @@ await test("every Sprinter is booked for airport transfers at its own total: to 
     assert.equal((await priced({ ...AIRPORT, ...BACK, sprinter: key })).price.total, 2 * AIRPORT_TOTALS[key].jfk, key);
   }
   assert.deepEqual(SPRINTERS.map((key) => [AIRPORT_TOTALS[key].jfk, AIRPORT_TOTALS[key].ewr, AIRPORT_TOTALS[key].teb, AIRPORT_TOTALS[key].lga ?? null]), [
-    [45000, 47500, 47500, 45000],
-    [57500, 59500, 59500, 55000],
-    [65000, 67500, 67500, 62500],
-    [70000, 72500, 72500, 67500],
-    [75000, 77500, 77500, null],
+    [45000, 48500, 47500, 45000],
+    [57500, 60500, 59500, 55000],
+    [65000, 68500, 67500, 62500],
+    [70000, 73500, 72500, 67500],
+    [75000, 78500, 77500, null],
   ]);
   assert.equal((await priced({ ...AIRPORT, class: "suv", passengers: "2", sprinter: "sprinter-white-limo" })).price.total, AIRPORT_TOTALS.suv.jfk);
 });
@@ -192,7 +193,7 @@ await test("the White Luxury Limo Sprinter to or from LaGuardia has no price yet
     }
     assert.deepEqual(check, { kind: "price", reason: "sprinter-price", hold: "" }, JSON.stringify(fields));
     assert.equal(classTotal(trip, "sprinter"), null);
-    for (const key of SPRINTERS.filter((k) => k !== "sprinter-white-limo")) assert.equal((await run({ ...fields, sprinter: key })).check.reason, "", key);
+    for (const key of SPRINTERS.filter((k) => k !== "sprinter-white-limo")) assert.equal((await run({ ...fields, sprinter: key })).check.reason, "sprinter-check", key);
   }
   const mixed = await run({ ...AIRPORT, from_text: "LaGuardia (LGA)", from_id: "lga", to_text: MANHATTAN, to_id: "", ...BACK, sprinter: "sprinter-white-limo" });
   assert.equal(mixed.check.reason, "sprinter-price");
@@ -216,11 +217,11 @@ await test("trips priced by distance and time: the Executive Sprinter keeps toda
   for (const [name, fields, total] of TRIPS) {
     const executive = await run({ ...fields, sprinter: "sprinter-executive" });
     assert.equal(executive.check.kind, "price", name);
-    assert.equal(executive.check.reason, "", name);
+    assert.equal(executive.check.reason, name === "a stop" ? "sprinter-check" : "sprinter-quote", `${name}: the stop near the LaGuardia transfer keeps the flat price, so it is an airport Sprinter`);
     if (total !== null) assert.equal(executive.price.total, total, name);
     for (const key of UNRATED) {
       const { trip, check } = await run({ ...fields, sprinter: key });
-      assert.deepEqual(check, { kind: "price", reason: "sprinter-price", hold: "" }, `${name} ${key}`);
+      assert.deepEqual(check, { kind: "price", reason: "sprinter-quote", hold: "" }, `${name} ${key}`);
       assert.equal(classTotal(trip, "sprinter"), null, `${name} ${key}`);
       assert.equal(classTotal(trip, "suv") === null, classTotal(executive.trip, "suv") === null, `${name} ${key}: the other classes keep their prices`);
     }
@@ -247,26 +248,24 @@ await test("the wedding, prom or event question is gone: any answer, or none, ne
   assert.equal(ERRORS.sprinter, undefined);
 });
 
-await test("the booking handler books every Sprinter by the hour with no event answer, as JSON and without JavaScript, and an event answer changes nothing", async () => {
+await test("no Sprinter is paid online: by the hour, as JSON and without JavaScript, the handler answers every Sprinter with the quote request and never opens Stripe, the options show no Sprinter price or pay button, and an event answer changes nothing", async () => {
   mockEnv();
   for (const key of SPRINTERS) {
     const pay = await (await post({ ...HOURLY, ...soon, sprinter: key, nonce: `nonce-sprinter-pay-${key.slice(9, 20)}` })).json();
-    assert.equal(pay.kind, "pay", key);
-    const id = new URL(pay.url, SITE).searchParams.get("session_id");
-    const page = await (await bookGet(new Request(`${SITE}/api/book?session_id=${id}`))).json();
-    assert.equal(page.total_cents, expected(key, 4).total, key);
+    assert.deepEqual([pay.kind, pay.reason, pay.group, pay.heading, pay.text, "url" in pay], ["quote", "sprinter-quote", "quote", HEADINGS.quote, REASONS["sprinter-quote"].text, false], key);
+    assert.doesNotMatch(decodeURIComponent(pay.whatsapp), /Total|\$\d/, key);
     const form = await post({ ...HOURLY, ...soon, sprinter: key }, { form: true });
-    assert.equal(form.status, 303, key);
-    assert.match(form.headers.get("location"), /^\/booking-confirmed\?session_id=cs_mock_/, key);
+    assert.deepEqual([form.status, form.headers.get("location")], [303, "/book#q-sprinter-quote"], key);
   }
   const yes = await (await post({ ...HOURLY, ...soon, sprinter: "sprinter-limo", event: "1", action: "options", nonce: "nonce-sprinter-event-yes1" })).json();
-  assert.deepEqual([yes.kind, yes.price.total_cents, "event" in yes.selected], ["options", expected("sprinter-limo", 4).total, false]);
+  assert.deepEqual([yes.kind, yes.reason, yes.price, yes.pay, yes.classes.at(-1).total_cents, "event" in yes.selected], ["options", "sprinter-quote", null, false, null, false]);
+  assert.deepEqual([HEADINGS.quote, REASONS["sprinter-quote"]], ["Request a quote", { group: "quote", text: "Sprinters are by quote. Send us the trip and we'll check one is free and reply with a price." }]);
 });
 
 await test("passengers follow the vehicle: up to 14 in the Executive and Limo, 8 in the Luxury Jet, 12 in the Presidential and 10 in the White Luxury Limo, by the hour and on transfers, and 15 is refused for every class", async () => {
   for (const [key, seats] of [["sprinter-executive", 14], ["sprinter-luxury-jet", 8], ["sprinter-presidential", 12], ["sprinter-limo", 14], ["sprinter-white-limo", 10]]) {
     for (const fields of [HOURLY, AIRPORT]) {
-      assert.equal((await run({ ...fields, sprinter: key, passengers: String(seats) })).check.reason, "", `${key} ${seats}`);
+      assert.equal((await run({ ...fields, sprinter: key, passengers: String(seats) })).check.reason, fields === HOURLY ? "sprinter-quote" : "sprinter-check", `${key} ${seats}`);
       if (seats < 14) assert.deepEqual((await run({ ...fields, sprinter: key, passengers: String(seats + 1) })).check, { kind: "price", reason: "seats", hold: "" }, `${key} ${seats + 1}`);
     }
   }
@@ -295,7 +294,7 @@ await test("tampering: an unknown or retired vehicle key, an SUV key sent for a 
   const at = nycToUtc(AIRPORT.date, AIRPORT.time).toISOString();
   const route = signRoute([[routeKey({ address: "350 5th Ave, New York, NY 10118" }, { address: BROOKLYN }, at), 46, 27]], NOW);
   const executive = await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "", route });
-  for (const key of UNRATED) assert.equal((await run({ ...AIRPORT, to_text: BROOKLYN, to_id: "", route, sprinter: key })).check.reason, "sprinter-price", key);
+  for (const key of UNRATED) assert.equal((await run({ ...AIRPORT, to_text: BROOKLYN, to_id: "", route, sprinter: key })).check.reason, "sprinter-quote", key);
   await invalid({ ...HOURLY, route, hours: "3" }, "sprinter-hours");
   assert.equal((await priced({ ...AIRPORT, to_text: BROOKLYN, to_id: "", route: route.slice(0, -2) + (route.endsWith("A") ? "BB" : "AA"), sprinter: "sprinter-executive" })).price.total, executive.price.total);
   assert.equal((await run({ ...AIRPORT, to_text: "LaGuardia (LGA)", to_id: "lga", sprinter: "sprinter-white-limo", ...loud })).check.reason, "sprinter-price");
@@ -357,12 +356,7 @@ await test("the receipt and the confirmation page rebuild the same lines, total 
   }
   mockEnv();
   const paid = await (await post({ ...HOURLY, ...soon, sprinter: "sprinter-limo", nonce: "nonce-sprinter-page-00001" })).json();
-  assert.equal(paid.kind, "pay");
-  const id = new URL(paid.url, SITE).searchParams.get("session_id");
-  const page = await (await bookGet(new Request(`${SITE}/api/book?session_id=${id}`))).json();
-  assert.match(page.summary, /\. By the hour, Limo Sprinter, 4 hours\.$/);
-  assert.deepEqual(page.lines.map((l) => [l.label, l.cents]), [["Fare, 4 hours", 106000], ["Service fee", 12720]]);
-  assert.equal(page.total_cents, 118720);
+  assert.deepEqual([paid.kind, paid.reason], ["quote", "sprinter-quote"]);
 });
 
 await test("bookings made before this change read as they were booked: the Shuttle, Jet, Executive and Limo Sprinter keys and the event answer in old metadata give the same receipt, confirmation page, owner subject, both emails, text, calendar and ride reminder", async () => {
@@ -430,15 +424,16 @@ await test("the booking handler: options list each Sprinter with its total and s
   const hourly = await (await post({ ...HOURLY, ...soon, sprinter: "sprinter-white-limo", action: "options", nonce: "nonce-sprinter-options-1" })).json();
   assert.equal(hourly.kind, "options");
   assert.deepEqual(hourly.vehicles.filter((v) => v.vehicle.startsWith("sprinter-")).map((v) => [v.vehicle, v.label, v.seats, v.total_cents]), [
-    ["sprinter-executive", "Executive Sprinter", 14, 78400],
-    ["sprinter-luxury-jet", "Luxury Jet Sprinter", 8, 96320],
-    ["sprinter-presidential", "Presidential Sprinter", 12, 109760],
-    ["sprinter-limo", "Limo Sprinter", 14, 118720],
-    ["sprinter-white-limo", "White Luxury Limo Sprinter", 10, 123200],
+    ["sprinter-executive", "Executive Sprinter", 14, null],
+    ["sprinter-luxury-jet", "Luxury Jet Sprinter", 8, null],
+    ["sprinter-presidential", "Presidential Sprinter", 12, null],
+    ["sprinter-limo", "Limo Sprinter", 14, null],
+    ["sprinter-white-limo", "White Luxury Limo Sprinter", 10, null],
   ]);
-  assert.deepEqual([hourly.selected.vehicle, hourly.price.total_cents, hourly.classes.at(-1).total_cents, "event" in hourly.selected], ["sprinter-white-limo", 123200, 123200, false]);
+  assert.deepEqual([hourly.selected.vehicle, hourly.price, hourly.pay, hourly.reason, hourly.classes.at(-1).total_cents, "event" in hourly.selected], ["sprinter-white-limo", null, false, "sprinter-quote", null, false]);
   const one = await (await post({ ...AIRPORT, ...soon, time: "07:30", action: "options", nonce: "nonce-sprinter-options-2" })).json();
   assert.deepEqual(one.vehicles.map((v) => [v.vehicle, v.total_cents]), SPRINTERS.map((key) => [key, AIRPORT_TOTALS[key].jfk]));
+  assert.deepEqual([one.reason, one.pay, one.price.total_cents, one.classes.at(-1).total_cents, one.classes.at(-1).reason], ["sprinter-check", false, AIRPORT_TOTALS["sprinter-executive"].jfk, AIRPORT_TOTALS["sprinter-executive"].jfk, "sprinter-check"]);
   assert.equal("tolls_differ" in one.price, false);
   const later = { return: "1", return_date: nyDate(6), return_time: "18:00" };
   for (const [key, back, tolls, differ] of [["sprinter-limo", {}, 1276, undefined], ["sprinter-limo", later, 2552, undefined], ["sprinter-executive", {}, 1276, undefined], ["sprinter-white-limo", later, 2552, undefined]]) {
@@ -461,12 +456,13 @@ await test("the booking handler: options list each Sprinter with its total and s
   }
   process.env.GOOGLE_MOCK = "true";
   const ride = await (await post({ ...AIRPORT, ...soon, time: "07:30", to_text: BROOKLYN, to_id: "", action: "options", nonce: "nonce-sprinter-options-6" })).json();
-  assert.deepEqual(ride.vehicles.map((v) => [v.vehicle, v.total_cents === null]), SPRINTERS.map((key) => [key, key !== "sprinter-executive"]));
+  assert.deepEqual(ride.vehicles.map((v) => [v.vehicle, v.total_cents === null]), SPRINTERS.map((key) => [key, true]));
   const pay = await (await post({ ...HOURLY, ...soon, sprinter: "sprinter-luxury-jet", hours: "6", nonce: "nonce-sprinter-pay-000001" })).json();
-  assert.equal(pay.kind, "pay");
-  const id = new URL(pay.url, SITE).searchParams.get("session_id");
-  const page = await (await bookGet(new Request(`${SITE}/api/book?session_id=${id}`))).json();
-  assert.equal(page.total_cents, expected("sprinter-luxury-jet", 6).total);
+  assert.deepEqual([pay.kind, pay.reason, "url" in pay], ["quote", "sprinter-quote", false]);
+  const airport = await (await post({ ...AIRPORT, ...soon, time: "07:30", sprinter: "sprinter-limo", nonce: "nonce-sprinter-pay-000002" })).json();
+  assert.deepEqual([airport.kind, airport.reason, airport.group, airport.heading, "url" in airport], ["quote", "sprinter-check", "check", "Request this Sprinter", false]);
+  const form = await post({ ...AIRPORT, ...soon, time: "07:30", sprinter: "sprinter-limo" }, { form: true });
+  assert.deepEqual([form.status, form.headers.get("location")], [303, "/book#q-sprinter-check"]);
 });
 
 const SITE_ROOT = new URL("..", import.meta.url).pathname;
@@ -550,7 +546,7 @@ await test("every Sprinter Book link on the fleet, rates and limousine pages car
     }
   }
   const all = (file, kind) => SPRINTERS.map((k) => `${file} ${VEHICLES[k].name} ${kind}`);
-  assert.deepEqual(found, [...all("fleet.html", "one"), ...all("rates.html", "one"), ...all("rates.html", "hour"), "limousine-service-nyc.html White Luxury Limo Sprinter hour"]);
+  assert.deepEqual(found, [...all("fleet.html", "one"), ...all("rates.html", "one"), "limousine-service-nyc.html White Luxury Limo Sprinter hour"]);
 });
 
 await test("each Sprinter photo shows the Sprinter its caption and alt name, as in PHOTOS.md after the owner's captions: every Sprinter, the Presidential included, has its studio photo on its booking and fleet card, the forward seats and the luggage space are the Executive, the garage front and the render the Luxury Jet, the black van with purple lights and the black van in a lot the Limo and the white van the White Luxury Limo, the earlier card photos and the earlier Luxury Jet photos are gone and the older Jet photo is captioned only as a Luxury Sprinter", async () => {
@@ -630,16 +626,15 @@ await test("each Sprinter photo shows the Sprinter its caption and alt name, as 
   assert.equal(new Set(frames).size, frames.length);
 });
 
-await test("the owner's 3 hour Sprinter notice, followed by the two SUVs sentence everywhere but the FAQ, is said once where each page describes booking a Sprinter: both Sprinter tables on the rates page, the fleet page's Sprinter part, the Sprinter van page's booking fact, the FAQ answer on when to book, visible and in its JSON-LD, and after the 90 minute booking facts and the itinerary step on the limousine and wedding pages", async () => {
+await test("the owner's 3 hour Sprinter notice is said once where each page describes booking a Sprinter: both Sprinter tables on the rates page, the fleet page's Sprinter part, the Sprinter van page's booking fact with the check that a Sprinter is free, the FAQ answer on when to book, visible and in its JSON-LD, and after the 90 minute booking facts and the itinerary step on the limousine and wedding pages, and no public page promises two SUVs, since every Sprinter is checked before you pay", async () => {
   assert.deepEqual([SPRINTER_NOTICE_HOURS, SPRINTER_AHEAD, SPRINTER_SWAP], [3, "Book a Sprinter at least 3 hours ahead.", "If no Sprinter is free, we send two SUVs."]);
   const text = (el) => flat(el.textContent);
   const rates = dom("rates.html");
-  assert.ok(text(rates.getElementById("sprinter-airport-caption")).endsWith(`New York City address. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
-  assert.ok(text(rates.getElementById("sprinter-caption")).includes(`Every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} A 12% service fee`));
+  assert.ok(text(rates.getElementById("sprinter-airport-caption")).endsWith(`New York City address. We check that a Sprinter is free before you pay. ${SPRINTER_AHEAD}`));
   const fleet = dom("fleet.html").getElementById("luxury-sprinter").querySelector("p");
-  assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP} Our luxury limo service page`), text(fleet));
+  assert.ok(text(fleet).includes(`By the hour, every Sprinter has a 4-hour minimum. ${SPRINTER_AHEAD} Our luxury limo service page`), text(fleet));
   const van = [...dom("sprinter-van-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);
-  assert.deepEqual(van.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", `${SPRINTER_AHEAD} ${SPRINTER_SWAP}`]);
+  assert.deepEqual(van.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", `${SPRINTER_AHEAD} We check one is free before you pay.`]);
   assert.ok(!sentences(dom("sprinter-van-service-nyc.html")).some((t) => new RegExp(`${MIN_NOTICE_MINUTES} minutes|Sooner by email`).test(t)), "the Sprinter van page offers no Sprinter online sooner than 3 hours");
   const faq = dom("faq.html");
   const answer = text(faq.querySelector("#q-when-to-book .acc__body"));
@@ -648,17 +643,23 @@ await test("the owner's 3 hour Sprinter notice, followed by the two SUVs sentenc
   assert.equal(ld.acceptedAnswer.text, answer);
   for (const file of ["rates.html", "fleet.html", "sprinter-van-service-nyc.html", "faq.html", "limousine-service-nyc.html", "wedding-car-service-nyc.html"]) {
     const body = flat(dom(file).querySelector("main").textContent);
-    assert.equal(body.split(SPRINTER_AHEAD).length - 1, file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
-    assert.equal(body.split(`${SPRINTER_AHEAD} ${SPRINTER_SWAP}`).length - 1, file === "faq.html" ? 0 : file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
-    assert.equal(body.split(SPRINTER_SWAP).length - 1, file === "faq.html" ? 0 : file === "limousine-service-nyc.html" ? 3 : file === "rates.html" ? 2 : 1, file);
+    assert.equal(body.split(SPRINTER_AHEAD).length - 1, file === "limousine-service-nyc.html" ? 3 : 1, file);
   }
-  const ahead = `Online at least ${MIN_NOTICE_MINUTES} minutes before pickup. Sooner by email or WhatsApp when a car is free. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`;
+  const ahead = `Online at least ${MIN_NOTICE_MINUTES} minutes before pickup. Sooner by email or WhatsApp when a car is free. ${SPRINTER_AHEAD}`;
   const limo = dom("limousine-service-nyc.html");
   assert.deepEqual([...limo.querySelectorAll("dl.facts dt")].filter((dt) => text(dt) === "Booking ahead").map((dt) => text(dt.nextElementSibling)), [ahead]);
   assert.deepEqual([...limo.querySelectorAll(".assure li")].filter((li) => text(li.querySelector("b")) === "Booking ahead").map((li) => text(li.querySelector("span"))), [ahead]);
-  assert.ok([...limo.querySelectorAll("ol.steps li")].some((li) => text(li) === `Send us the trip at least ${MIN_NOTICE_MINUTES} minutes before pickup. A Sprinter by the hour has a 4-hour minimum. ${SPRINTER_AHEAD} ${SPRINTER_SWAP}`));
+  assert.ok([...limo.querySelectorAll("ol.steps li")].some((li) => text(li) === `Send us the trip at least ${MIN_NOTICE_MINUTES} minutes before pickup. A Sprinter by the hour has a 4-hour minimum. ${SPRINTER_AHEAD}`));
   const wedding = [...dom("wedding-car-service-nyc.html").querySelectorAll("dl.facts dt")].map((dt) => [text(dt), text(dt.nextElementSibling)]);
   assert.deepEqual(wedding.find(([dt]) => dt === "Booking ahead"), ["Booking ahead", ahead]);
+  const swaps = [];
+  const pages = readdirSync(SITE_ROOT, { recursive: true }).filter((f) => f.endsWith(".html") && !/^(test|node_modules)\//.test(f));
+  assert.ok(pages.length > 100 && pages.includes("book.html") && pages.includes("locations/jfk-airport.html"), String(pages.length));
+  for (const file of pages) {
+    const html = readFileSync(SITE_ROOT + file, "utf8");
+    if (html.includes(SPRINTER_SWAP) || html.includes(SPRINTER_BUSY)) swaps.push(file);
+  }
+  assert.deepEqual(swaps, []);
   for (const t of [SPRINTER_AHEAD, SPRINTER_SWAP, SPRINTER_BUSY, HEADINGS.sprinter, REASONS["sprinter-notice"].text, ERRORS["sprinter-notice"].text]) assert.doesNotMatch(t, /[\u2013\u2014;]/, t);
 });
 
@@ -669,7 +670,11 @@ await test("every full booking form carries the Sprinter notice message and its 
     const e = d.getElementById("e-sprinter-notice");
     const q = d.getElementById("q-sprinter-notice");
     assert.ok(e.matches("p.bk-e.field__hint") && e.previousElementSibling.id === "e-class" && d.getElementById("bk-cards").contains(e) && flat(e.textContent) === ERRORS["sprinter-notice"].text, file);
-    assert.ok(q.matches("div.bk-q") && q.previousElementSibling.id === "q-sprinter-price" && flat(q.querySelector("h3").textContent) === HEADINGS.sprinter && flat(q.querySelector("p").textContent) === REASONS["sprinter-notice"].text && q.children.length === 2, file);
+    assert.ok(q.matches("div.bk-q") && q.previousElementSibling.id === "q-sprinter-quote" && flat(q.querySelector("h3").textContent) === HEADINGS.sprinter && flat(q.querySelector("p").textContent) === REASONS["sprinter-notice"].text && q.children.length === 2, file);
+    for (const [id, before] of [["sprinter-check", "q-sprinter-price"], ["sprinter-quote", "q-sprinter-check"]]) {
+      const block = d.getElementById(`q-${id}`);
+      assert.deepEqual([block.className, block.previousElementSibling.id, flat(block.querySelector("h3").textContent), flat(block.querySelector("p").textContent), block.children.length], ["bk-q", before, HEADINGS[REASONS[id].group], REASONS[id].text, 2], `${file} ${id}`);
+    }
   }
 });
 

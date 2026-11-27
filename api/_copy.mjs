@@ -1,4 +1,4 @@
-import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE_HOURS, CLASSES, CHILD_SEAT_LIMITS } from "./_rates.mjs";
+import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE_HOURS, CLASSES, CHILD_SEAT_LIMITS, LONG_MILES } from "./_rates.mjs";
 
 export const SPRINTER_AHEAD = `Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.`;
 export const SPRINTER_SWAP = "If no Sprinter is free, we send two SUVs.";
@@ -15,6 +15,8 @@ export const HEADINGS = {
   price: "Get a price for this trip",
   phone: "Reserve this trip by email or WhatsApp",
   sprinter: `Book a Sprinter ${SPRINTER_NOTICE_HOURS} hours ahead`,
+  quote: "Request a quote",
+  check: "Request this Sprinter",
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
@@ -29,6 +31,7 @@ export const REASONS = {
   "no-airport": { group: "price", text: "We can't price this trip online. We'll send you a price, or you can book by the hour and pay now.", short: "We can't price this trip online. We'll send you a price." },
   "outside-us": { group: "price", text: "For trips that start or end outside the United States, we'll send you a price." },
   "long-trip": { group: "price", text: "For very long trips, we'll send you a price." },
+  "long-distance": { group: "quote", text: `Trips of ${LONG_MILES} miles or more are by quote. Send us the trip and we'll reply with a price.` },
   "other-airport": { group: "price", text: "For this airport, we'll send you a price." },
   "outside-city": { group: "price", text: "Flat airport rates are for New York City addresses. For other places, we'll send you a price." },
   "outside-hourly": { group: "price", text: "For this pickup, we'll send you a price." },
@@ -38,6 +41,8 @@ export const REASONS = {
   adult: { group: "phone", text: `A ${SUV} or ${PREMIUM} needs at least ${SUV_SEATS.adults} adult on board. Children count as passengers. Choose another car, or send us the trip.` },
   "one-adult": { group: "phone", text: `With only ${SUV_SEATS.adults} adult, a ${SUV} or ${PREMIUM} takes up to ${seatCount(SUV_SEATS.oneAdult)}. Choose another car, or send us the trip.` },
   "sprinter-price": { group: "price", text: "For this Sprinter on this trip, we'll send you a price." },
+  "sprinter-check": { group: "check", text: "We check that a Sprinter is free before you pay. Send us the trip and we'll confirm it." },
+  "sprinter-quote": { group: "quote", text: "Sprinters are by quote. Send us the trip and we'll check one is free and reply with a price." },
   "sprinter-notice": { group: "sprinter", text: `We need ${SPRINTER_NOTICE_HOURS} hours to arrange a Sprinter. Choose a later pickup or another car, or send us the trip.` },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
   "clock-change": { group: "phone", text: "A pickup or return at this hour can't be booked online because the clocks change. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },

@@ -45,9 +45,11 @@ const STATIC = [
   "tolls",
   "seo-weekly",
   "ride-reminders",
+  "owner-update",
   "release1",
   "sprinter",
   "search-fixes",
+  "quotes",
 ];
 const BROWSER = ["redesign-browser", "book-browser", "sprinter-browser", "parity-browser", "lcp-budget", "motion-browser", "banners-browser", "pages-core-browser", "hero-browser", "landing-browser", "panel-browser", "map-browser", "trust-browser", "bags-browser"];
 

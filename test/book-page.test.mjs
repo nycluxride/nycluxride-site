@@ -323,18 +323,17 @@ check("the child seat limits: each class card carries the limits of CHILD_SEAT_L
   assert.ok(PAY.includes('KR=l=>{let d=l.dataset,s=SN(),a=+PA.value-s;return d.kids==null?"":s>d.kids?"child-seats":a<d.adults?"adult":a==1&&s>d.kids1?"one-adult":""}'));
   assert.ok(PAY.includes('Kx=(k,l)=>k=="adult"?"Needs an adult":"Fits "+(k=="one-adult"?l.dataset.kids1+" with 1 adult":l.dataset.kids+" child seat"+(l.dataset.kids>1?"s":""))'));
   assert.ok(PAY.includes('fc=n=>[...F.querySelectorAll("[name=class]")].find(i=>+i.parentNode.dataset.seats>=n&&!S9(i.value)&&!KR(i.parentNode))'));
-  assert.ok(PAY.includes('y?{total_cents:null,reason:y}:c.reason?{}:c}'));
+  assert.ok(PAY.includes('y?{total_cents:null,reason:y}:c.reason&&!/^sprinter-[cq]/.test(c.reason)?{}:c}'));
   assert.ok(PAY.includes('qh=(c,l)=>/^(seats|child-seats|adult|one-adult)$/.test(c.reason)?null:'));
   assert.ok(PAY.includes('"child-seats":["Too many child seats for this car","Show cars that fit"],adult:["This car needs an adult","Show cars that fit"],"one-adult":["Too many child seats for 1 adult","Show cars that fit"]'));
   assert.ok(PAY.includes('else if(/^(seats|child-seats|adult|one-adult)$/.test(r)){let x=fc(+PA.value);x&&(x.checked=!0,dc(x))}'));
   assert.ok(PAY.includes('k?\'<span class="bk-fig">\'+Kx(k,l)+"</span>"'));
 });
 
-check("the two SUVs line: under SPRINTER_BUSY_HOURS the cards line shows while a Sprinter can be booked and the price box line shows for a chosen Sprinter, both on the server corrected clock", () => {
-  assert.ok(PAY.includes('Sb=()=>ED.value&&ET.value&&!S9("sprinter")&&ny(Date.now()+AO+864e5+59999)>ED.value+" "+ET.value'));
-  assert.ok(PAY.includes('pz=()=>{let n=+PA.value,w=N("busy")&&Sb();') && PAY.includes('N("busy")&&(N("busy").hidden=!w)'));
-  assert.ok(PAY.includes('i.dataset.v&&tk(i,"bk-busy",w);'), "each Sprinter card points to the cards line only while it shows");
-  assert.ok(PAY.includes('q.dataset.r=r;$("price-busy")&&($("price-busy").hidden=!(E.class.value=="sprinter"&&Sb()));'), "the price box line follows every answer and every change of car");
+check("no two SUVs line before payment: every Sprinter is a request checked for a free Sprinter, so pay.js has no busy line for the cards or the price box and keeps the class change summary on a request", () => {
+  assert.ok(PAY.includes('pz=()=>{let n=+PA.value;T("fit"'));
+  assert.doesNotMatch(PAY, /bk-busy|price-busy|N\("busy"\)|[,{;]Sb=/);
+  assert.ok(PAY.includes('q=HO||c&&c.reason=="sprinter-check"&&c.reason;if(QK)return cz();'), "a class change on a request still names the chosen car in the summary and the bar");
 });
 
 check("a Sprinter link with no pickup fills in the first slot 3 hours plus AUTO_LEAD_MINUTES ahead with no auto move, Change the date leaves only the times a Sprinter can be booked on the first Sprinter day, a group no car can seat gets the Sprinter notice, and the bar keeps Email to reserve like every other request", () => {

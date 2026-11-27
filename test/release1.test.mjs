@@ -54,7 +54,7 @@ check("no page says tolls on distance trips are charged after the ride, and the 
   const old = /On other trips, tolls and parking are charged after the ride|On hourly and other trips|Tolls and any parking go on the card|Any tolls and parking are charged after the ride|added to your card with any parking/;
   assert.deepEqual(files.filter((f) => old.test(main(f)) || ld(f).some((n) => old.test(JSON.stringify(n)))), []);
   for (const f of ["about.html", "contact.html", "schedule.html", "faq.html", "rates.html", "locations/staten-island.html", "long-distance-car-service/nyc-to-boston.html", "long-distance-car-service/nyc-to-philadelphia.html", "long-distance-car-service/nyc-to-connecticut.html", "long-distance-car-service/nyc-to-atlantic-city.html", "long-distance-car-service/nyc-to-washington-dc.html"]) {
-    assert.match(main(f), /tolls are added (at booking|to your price when you book)|added to your price when you book/i, f);
+    assert.match(main(f), /tolls are added (at booking|to your price when you book)|added to your price when you book|with tolls in the price|tolls (and the service fee )?are in (the|your) price|in the price we send you/i, f);
   }
 });
 
@@ -68,7 +68,7 @@ check("pages promise no instant online price for airports the calculator only qu
   }
   for (const f of ["locations/bradley-airport.html", "locations/philadelphia-airport.html"]) assert.match(pages.get(f).querySelector('meta[name="description"]').getAttribute("content"), / Book online\.$/, f);
   const sprinter = pages.get("sprinter-van-service-nyc.html").querySelector('meta[name="description"]').getAttribute("content");
-  assert.equal(sprinter, "A Mercedes-Benz Sprinter and chauffeur for groups, airport transfers, events and trips to Boston, Philadelphia or the Hamptons. Book online.");
+  assert.equal(sprinter, "A Mercedes-Benz Sprinter and chauffeur for groups, airport transfers, events and trips to Boston, Philadelphia or the Hamptons. Request a quote.");
   const county = pages.get("locations/westchester-county.html").querySelector('meta[name="description"]').getAttribute("content");
   assert.match(county, /to JFK, LaGuardia, Newark and Manhattan\. See your price and book online\.$/);
   assert.doesNotMatch(county, /the airports/);
@@ -135,7 +135,7 @@ check("every page's business entity serves New York, New Jersey, Connecticut, Ph
     assert.ok(!JSON.stringify(ld(f)).includes("streetAddress"), f);
   }
   assert.match(main("locations.html"), /We also cover all of New York, New Jersey and Connecticut, plus Philadelphia and Pennsylvania\./);
-  assert.match(ldAnswer("long-distance-car-service.html", "How far will you drive?"), /anywhere in the United States or to Canada, send us the details and we'll send you a price\.$/);
+  assert.match(ldAnswer("long-distance-car-service.html", "How far will you drive?"), /and to Canada 24\/7 for tourism and transfers, in every vehicle\. Long trips are by quote\.$/);
 });
 
 check("child seats name the three seats on the owner's sheet, the Nuna RAVA, the Safety 1st Grow and Go and a backless booster, no page names Graco, and no page tells parents to bring their own seat", () => {

@@ -151,7 +151,7 @@ for (const [file, p] of pages) {
 const rates = pages.get(RATES);
 if (rates) {
   check(`${RATES}: carries the published airport and hourly rates`, () => {
-    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$450", "$475", "$153.79", "$18.45", "$12.76", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
+    for (const fig of ["$185", "$165", "$220", "$190", "$310", "$250", "$170", "$145", "$450", "$475", "$85", "$95", "$100", "$105", "$175", "$525", "$25"]) assert.ok(rates.text.includes(fig), `${fig} missing`);
     assert.match(rates.title, /\$145(?!\d)/);
   });
   check(`${RATES}: the stop fee is STOP_FEE_CENTS / 100 from api/_rates.mjs, in the distance section and the Extra stops fact, and no other price per stop appears`, () => {
@@ -161,12 +161,16 @@ if (rates) {
     const found = [...rates.text.matchAll(/(?:stop adds\s+\$\s*(\d+(?:\.\d+)?)|\$\s*(\d+(?:\.\d+)?)\s+(?:per stop|on top of the price))/g)].map((m) => Number(m[1] || m[2]));
     assert.deepEqual([...new Set(found)], [STOP_FEE_CENTS / 100]);
   });
-  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total, the old First Class $125 an hour and $375 for three hours, and the old Business Premium SUV distance minimum of $125, now that its minimum is its $95 base`, () => {
-    const parts = [...rates.document.querySelectorAll("#distance-premium td span")].map((s) => s.textContent);
-    assert.deepEqual(parts.filter((t) => t.endsWith(" minimum")), []);
-    assert.ok(parts.includes(`$${DISTANCE_RATES.premium.base / 100} base`) && DISTANCE_RATES.premium.minimum === DISTANCE_RATES.premium.base);
+  check(`${RATES}: the retired figures appear nowhere: the old $130 LaGuardia total, the old First Class $125 an hour, the old Electric Class $180, $155 and $90 an hour, and no distance card, base or minimum, while $375 is only the Electric Class three hours and $125 only its hourly rate`, () => {
+    assert.equal(rates.document.getElementById("distance-rates"), null);
+    assert.equal(rates.document.getElementById("distance-premium"), null);
     const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
-    assert.doesNotMatch(all, /\$\s*(?:130|125|375)(?!\d)|"price":"(?:130|125|375)"/);
+    assert.doesNotMatch(all, /\$\s*(?:130|155|90)(?!\d)|"price":"(?:130|155|90)"|\d+(?:\.\d+)? (?:base|minimum)\b/);
+    const electric = rates.document.getElementById("electric-class").textContent.replace(/\s+/g, " ");
+    assert.equal(all.split(/\$375(?![\d.])/).length - 1, 1, "$375 appears once");
+    assert.ok(electric.includes("$375"), electric);
+    assert.equal(VEHICLES.electric.hourly * 3, 37500);
+    assert.equal(VEHICLES.first.hourly, 17500);
   });
   check(`${RATES}: the add-ons carry the child seat price other pages quote, ${SEAT_PRICE}`, () => {
     const row = [...rates.document.querySelectorAll("#add-ons dt")].find((dt) => dt.textContent.trim() === "Child seats");
@@ -213,12 +217,13 @@ if (rates) {
   check(`${RATES}: the Luxury Sprinter airport totals come from api/_rates.mjs, from $450 in the class row and both rate questions, each Sprinter's own totals in the Sprinter table and its offer, and the retired $500 Sprinter total, $400 and $350 appear nowhere`, () => {
     const keys = Object.keys(VEHICLES).filter((k) => VEHICLES[k].cls === "sprinter");
     const far = Math.min(...keys.map((k) => AIRPORT_TOTALS[k].jfk)) / 100;
-    const ewr = Math.min(...keys.flatMap((k) => ["ewr", "teb"].map((a) => AIRPORT_TOTALS[k][a]))) / 100;
+    const teb = Math.min(...keys.map((k) => AIRPORT_TOTALS[k].teb)) / 100;
+    const ewr = Math.min(...keys.map((k) => AIRPORT_TOTALS[k].ewr)) / 100;
     const lga = Math.min(...keys.filter((k) => AIRPORT_TOTALS[k].lga).map((k) => AIRPORT_TOTALS[k].lga)) / 100;
-    assert.deepEqual([far, ewr, lga], [450, 475, 450]);
-    assert.deepEqual([...rates.document.querySelectorAll("#airport-sprinter td")].map((td) => td.firstChild.textContent), [far === ewr ? `$${far}` : `$${far} to $${ewr}`, `$${lga}`]);
+    assert.deepEqual([far, teb, ewr, lga], [450, 475, 485, 450]);
+    assert.deepEqual([...rates.document.querySelectorAll("#airport-sprinter td")].map((td) => td.firstChild.textContent), [`$${far} to $${teb}`, `$${ewr}`, `$${lga}`]);
     for (const key of keys) {
-      const cell = rates.document.querySelector(`#${key.replace("sprinter-", "sprinter-airport-")} td`).textContent.replace(/Book.*/, "");
+      const cell = rates.document.querySelector(`#${key.replace("sprinter-", "sprinter-airport-")} td`).textContent.replace(/Request.*/, "");
       assert.deepEqual([...cell.matchAll(/(JFK|Newark|Teterboro|LaGuardia)(?: \$(\d+)|, ask for a price)/g)].map((m) => m[2] || ""), ["jfk", "ewr", "teb", "lga"].map((a) => (AIRPORT_TOTALS[key][a] ? String(AIRPORT_TOTALS[key][a] / 100) : "")), key);
     }
     const offers = rates.ld.flatMap((b) => b["@graph"] || [b]).find((n) => n["@type"] === "OfferCatalog").itemListElement.filter((o) => o.name.startsWith("Airport transfer") && o.name.endsWith("Sprinter"));
@@ -227,10 +232,8 @@ if (rates) {
     assert.ok(answers[0].includes(`Luxury Sprinter from $${far}.`), answers[0]);
     assert.ok(answers[1].includes(`Luxury Sprinter from $${lga}.`), answers[1]);
     const all = [rates.title, rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");
-    const minimum = `$${DISTANCE_RATES["sprinter-executive"].minimum / 100} minimum`;
-    assert.equal(minimum, "$350 minimum");
-    assert.equal(all.split(minimum).length - 1, 1, "the Executive Sprinter's distance minimum appears once, in the distance and time table");
-    assert.doesNotMatch(all.split(minimum).join(" "), /\$\s*(?:500|400|350)(?![\d.])|"price":"(?:500|400|350)"/);
+    assert.equal(DISTANCE_RATES["sprinter-executive"].minimum, 35000);
+    assert.doesNotMatch(all, /\$\s*(?:500|400|350)(?![\d.])|"price":"(?:500|400|350)"|minimum"/);
   });
   check(`${RATES}: the retired $85 to $175 range appears nowhere`, () => {
     const all = [rates.text, ...rates.attrs.map(([, v]) => v), JSON.stringify(rates.ld)].join(" ");

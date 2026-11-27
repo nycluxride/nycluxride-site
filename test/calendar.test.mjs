@@ -345,7 +345,7 @@ await test("one way trip: the exact STS exchange, the service account token requ
     id: `nlr83558982a${tag(session)}`,
     summary: "[TEST] 83558982 Business SUV: 253 West 72nd Street to Newark Liberty (EWR)",
     location: "253 West 72nd Street, New York, NY 10023",
-    description: ["Test booking. No real payment was taken.", "Reference: 83558982", "Customer: Ana Lopez", "Phone: +1 212 555 0100", "Email: ana.lopez@example.com", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "Paid: $185.00"].join("\n"),
+    description: ["Test booking. No real payment was taken.", "Reference: 83558982", "Customer: Ana Lopez", "Phone: +1 212 555 0100", "Email: ana.lopez@example.com", "Trip: One way", "Pickup: 253 West 72nd Street, New York, NY 10023", "Drop-off: Newark Liberty (EWR)", "Date: Sun, Nov 8, 2026", "Time: 10:00 AM, New York time", "Passengers: 2", "Vehicle: Business SUV", "Paid: $195.00"].join("\n"),
     start: { dateTime: "2026-11-08T15:00:00.000Z", timeZone: "America/New_York" },
     end: { dateTime: "2026-11-08T16:00:00.000Z", timeZone: "America/New_York" },
     reminders: REMINDERS,

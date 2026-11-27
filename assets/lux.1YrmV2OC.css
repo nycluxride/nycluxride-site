@@ -1225,4 +1225,4 @@ a[href^="http"]::after,a[href^="/"]::after{content:" (" attr(href) ")";font-size
 .site-footer{padding-block-end:0}
 *{box-shadow:none}
 }
-.fleet-photos{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-block-start:24px}.fleet-photos__h{grid-column:1/-1;font:500 var(--type-subhead-sm) var(--font-sans);color:var(--ink)}
+.fleet-photos{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-block-start:24px}.fleet-photos__h{grid-column:1/-1;font:500 var(--type-subhead-sm) var(--font-sans);color:var(--ink)}@media (max-width:359px){#airport-rates :is(thead,tbody) tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0 12px;border-block-end:1px solid var(--line)}#airport-rates :is(thead,tbody) tr>*{padding-inline:0 12px;border-block-end:0}#airport-rates thead th:first-child,#airport-rates tbody th[scope=row]{grid-column:1/-1;position:static}#airport-rates :is(td,thead th:not(:first-child)){text-align:start}#airport-rates tbody tr{padding-block:4px 12px}#airport-rates td.num{white-space:normal}}

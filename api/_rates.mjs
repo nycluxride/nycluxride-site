@@ -13,7 +13,7 @@ export const VEHICLES = {
   "suv-navigator": { cls: "suv", model: "Lincoln Navigator", hourly: 10000 },
   premium: { cls: "premium", model: "Cadillac Escalade ESV", hourly: 10500 },
   sedan: { cls: "sedan", model: "Mercedes-Benz E-Class or similar", hourly: 8500 },
-  electric: { cls: "electric", model: "Cadillac Lyriq or similar", hourly: 9000 },
+  electric: { cls: "electric", model: "Cadillac Lyriq or similar", hourly: 12500 },
   first: { cls: "first", model: "", hourly: 17500 },
   "sprinter-executive": { cls: "sprinter", name: "Executive Sprinter", hourly: 17500, seats: 14, minHours: 4 },
   "sprinter-luxury-jet": { cls: "sprinter", name: "Luxury Jet Sprinter", hourly: 21500, seats: 8, minHours: 4 },
@@ -39,28 +39,28 @@ export const ADDRESS_PLACES = ["manhattan", "brooklyn", "queens", "bronx", "stat
 export const AIRPORT_PLACES = ["jfk", "lga", "ewr", "teb"];
 export const AIRPORT_STATES = { jfk: "NY", lga: "NY", ewr: "NJ", teb: "NJ" };
 export const AIRPORT_FARES = {
-  suv: { jfk: 15379, lga: 13593, ewr: 15379, teb: 15379 },
-  premium: { jfk: 18504, lga: 15825, ewr: 18504, teb: 18504 },
-  first: { jfk: 26539, lga: 21182, ewr: 26539, teb: 26539 },
-  sedan: { jfk: 14039, lga: 11807, ewr: 14039, teb: 14039 },
-  electric: { jfk: 14932, lga: 12700, ewr: 14932, teb: 14932 },
-  "sprinter-executive": { jfk: 39039, lga: 39039, ewr: 41271, teb: 41271 },
-  "sprinter-luxury-jet": { jfk: 50200, lga: 47968, ewr: 51986, teb: 51986 },
-  "sprinter-presidential": { jfk: 56896, lga: 54664, ewr: 59129, teb: 59129 },
-  "sprinter-limo": { jfk: 61361, lga: 59129, ewr: 63593, teb: 63593 },
-  "sprinter-white-limo": { jfk: 65825, ewr: 68057, teb: 68057 },
+  suv: { jfk: 15379, lga: 13593, ewr: 15375, teb: 15379 },
+  premium: { jfk: 18504, lga: 15825, ewr: 18500, teb: 18504 },
+  first: { jfk: 26539, lga: 21182, ewr: 26536, teb: 26539 },
+  sedan: { jfk: 14039, lga: 11807, ewr: 14036, teb: 14039 },
+  electric: { jfk: 21182, lga: 18057, ewr: 20286, teb: 21182 },
+  "sprinter-executive": { jfk: 39039, lga: 39039, ewr: 41268, teb: 41271 },
+  "sprinter-luxury-jet": { jfk: 50200, lga: 47968, ewr: 51982, teb: 51986 },
+  "sprinter-presidential": { jfk: 56896, lga: 54664, ewr: 59125, teb: 59129 },
+  "sprinter-limo": { jfk: 61361, lga: 59129, ewr: 63589, teb: 63593 },
+  "sprinter-white-limo": { jfk: 65825, ewr: 68054, teb: 68057 },
 };
 export const AIRPORT_TOTALS = {
-  suv: { jfk: 18500, lga: 16500, ewr: 18500, teb: 18500 },
-  premium: { jfk: 22000, lga: 19000, ewr: 22000, teb: 22000 },
-  first: { jfk: 31000, lga: 25000, ewr: 31000, teb: 31000 },
-  sedan: { jfk: 17000, lga: 14500, ewr: 17000, teb: 17000 },
-  electric: { jfk: 18000, lga: 15500, ewr: 18000, teb: 18000 },
-  "sprinter-executive": { jfk: 45000, lga: 45000, ewr: 47500, teb: 47500 },
-  "sprinter-luxury-jet": { jfk: 57500, lga: 55000, ewr: 59500, teb: 59500 },
-  "sprinter-presidential": { jfk: 65000, lga: 62500, ewr: 67500, teb: 67500 },
-  "sprinter-limo": { jfk: 70000, lga: 67500, ewr: 72500, teb: 72500 },
-  "sprinter-white-limo": { jfk: 75000, ewr: 77500, teb: 77500 },
+  suv: { jfk: 18500, lga: 16500, ewr: 19500, teb: 18500 },
+  premium: { jfk: 22000, lga: 19000, ewr: 23000, teb: 22000 },
+  first: { jfk: 31000, lga: 25000, ewr: 32000, teb: 31000 },
+  sedan: { jfk: 17000, lga: 14500, ewr: 18000, teb: 17000 },
+  electric: { jfk: 25000, lga: 21500, ewr: 25000, teb: 25000 },
+  "sprinter-executive": { jfk: 45000, lga: 45000, ewr: 48500, teb: 47500 },
+  "sprinter-luxury-jet": { jfk: 57500, lga: 55000, ewr: 60500, teb: 59500 },
+  "sprinter-presidential": { jfk: 65000, lga: 62500, ewr: 68500, teb: 67500 },
+  "sprinter-limo": { jfk: 70000, lga: 67500, ewr: 73500, teb: 72500 },
+  "sprinter-white-limo": { jfk: 75000, ewr: 78500, teb: 77500 },
 };
 export const FEE_PERCENT = "12";
 export const SHORT_MILES = 50;
@@ -68,9 +68,9 @@ export const LONG_MILES = 75;
 export const DISTANCE_RATES = {
   suv: { base: 8500, mile: 400, minute: 65, minimum: 8500 },
   premium: { base: 9500, mile: 475, minute: 80, minimum: 9500 },
-  first: { base: 10500, mile: 525, minute: 90, minimum: 10500 },
+  first: { base: 10500, mile: 525, minute: 90, minimum: 17000 },
   sedan: { base: 7500, mile: 300, minute: 50, minimum: 7500 },
-  electric: { base: 7647, mile: 318, minute: 53, minimum: 7647 },
+  electric: { base: 10621, mile: 442, minute: 74, minimum: 10621 },
   "sprinter-executive": { base: 8000, mile: 900, minute: 145, minimum: 35000 },
 };
 export const LONG_RATES = {
@@ -78,8 +78,14 @@ export const LONG_RATES = {
   premium: { base: 0, mile: 470, minute: 30 },
   first: { base: 0, mile: 585, minute: 35 },
   sedan: { base: 0, mile: 370, minute: 20 },
-  electric: { base: 0, mile: 370, minute: 20 },
+  electric: { base: 0, mile: 514, minute: 28 },
   "sprinter-executive": { base: 7300, mile: 820, minute: 132 },
+};
+export const TIME_CAP_PER_MILE = 2.5;
+export const TIME_CAP_BASE = 10;
+export const ROUTE_CAPS = {
+  hudson: { from: ["jfk", "lga", "queens", "brooklyn"], state: "NJ", stateName: "New Jersey", towns: ["Jersey City", "Hoboken", "North Bergen", "Union City"], zips: ["07030", "07047", "07087", "07302", "07304", "07305", "07306", "07307", "07310", "07311"], miles: 74, totals: { suv: 21143, premium: 25143, first: 35429, sedan: 19428, electric: 28572 } },
+  boston: { from: ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"], state: "MA", stateName: "Massachusetts", towns: ["Boston"], zips: [], miles: 260, totals: { suv: 87037, premium: 100061, first: 124045, sedan: 78000, electric: 108403, "sprinter-executive": 198323 } },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
