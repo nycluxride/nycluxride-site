@@ -254,7 +254,7 @@ for (const [engine, type] of ENGINES) {
   const browser = await type.launch();
   for (const [width, height] of [[390, 844], [1440, 900]]) {
     const ctx = await context(browser, { viewport: { width, height } });
-    await check(`P2 ${engine} at ${width}: the class rows and the Sprinter rows are white cards with radius 16 and the card shadow, a 3 px gold ring and the check badge on the chosen card, a 1 px line on the others, the photo on a light grey tile with radius 12 ${width < 600 ? "80 px tall, 4 px in from the left and centred in the row" : "set 4 px inside"}, and on step 1 the Where we meet rows have radius 16 with a 2 px gold edge on Inside pickup, chosen by default`, async () => {
+    await check(`P2 ${engine} at ${width}: the class rows and the Sprinter rows are white cards with radius 16 and the card shadow, a 3 px gold ring and the check badge on the chosen card, a 1 px line on the others, the photo on a light grey tile with radius 12 ${width < 600 ? "80 px tall, 4 px in from the left and centred in the row" : "set 4 px inside"}, and on step 1 the Where we meet rows have radius 16 with a 2 px gold edge on Curbside pickup, chosen by default`, async () => {
       const p = await open(ctx, "/book");
       await options(p);
       await p.mouse.move(0, 0);
@@ -270,7 +270,7 @@ for (const [engine, type] of ENGINES) {
       await p.waitForTimeout(100);
       cardLook(await look(p), "sprinter-limo", width < 600);
       const m = await meet(p);
-      assert.ok(m.length >= 2 && m.filter((x) => x.on).length === 1 && m[0].on, JSON.stringify(m));
+      assert.ok(m.length >= 2 && m.filter((x) => x.on).length === 1 && m[1].on, JSON.stringify(m));
       for (const x of m) assert.deepEqual([x.radius, x.ring], ["16px 16px 16px 16px", ring(x.on ? GOLD : LINE, x.on ? 2 : 1)], JSON.stringify(x));
       await p.click("#bk-next");
       await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");

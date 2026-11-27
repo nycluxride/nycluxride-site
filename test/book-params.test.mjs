@@ -872,6 +872,21 @@ await test("handler: a form post from an airport pickup charges the Inside picku
   assert.equal((await readJson(await post({ ...airport, action: "options" }), 200)).selected.meet, true, "the booking form's own options request keeps it");
 });
 
+await test("handler: a no-JavaScript post from an airport page with the form's own defaults, Curbside pickup checked and no gratuity field, pays the ride without the meet and greet or a gratuity", async () => {
+  setEnv(LIVE);
+  const html = readFileSync(join(ROOT, "locations/jfk-airport.html"), "utf8");
+  const meet = html.match(/<input type="radio" id="bk-meet(?:-no)?" name="meet" value="([^"]*)" checked>/)[1];
+  assert.equal(meet, "");
+  assert.doesNotMatch(html.slice(html.indexOf('id="bk-tip"'), html.indexOf('id="bk-meet-f"')), /name="tip"/);
+  const names = (form) => { const out = []; for (let i = 0; form.has(`line_items[${i}][quantity]`); i++) out.push(form.get(`line_items[${i}][price_data][product_data][name]`)); return out; };
+  const { tip: _tip, ...fields } = PICKUP_SOON;
+  calls = [];
+  assertRedirect(await formPost({ ...fields, rider: "me", meet, action: "pay" }), CHECKOUT_URL);
+  const form = formOf(calls[0]);
+  assert.ok(!names(form).some((n) => /^(Meet and greet|Gratuity)/.test(n)), JSON.stringify(names(form)));
+  assert.deepEqual(["meet", "tip_percent", "tip_cents"].map((k) => form.get(`metadata[${k}]`)), ["0", "0", "0"]);
+});
+
 await test("handler: every redirect of 13.1.8 for a form post", async () => {
   setEnv(LIVE);
   assertRedirect(await formPost(STRIPE_JFK), CHECKOUT_URL);
@@ -979,27 +994,35 @@ await test("handler: options and quote price the selected class, tip and meet an
   assert.equal(calls.length, 0);
 });
 
-await test("handler: the booking form's default at a JFK pickup, 25% and Inside pickup, opens Stripe with the meet and greet and 25% gratuity lines, None and Curbside take both out, the metadata keys stay the same and the class cards stay at the ride price", async () => {
+await test("handler: the booking form's default at a JFK pickup, None and Curbside pickup, opens Stripe without the meet and greet or a gratuity, a post missing both fields gets the same, 25% and Inside pickup add both lines, the metadata keys stay the same and the class cards stay at the ride price", async () => {
   setEnv(LIVE);
-  const base = { ...PICKUP_SOON, tip: String(TIP_DEFAULT), meet: "1", action: "pay" };
+  const base = { ...PICKUP_SOON, tip: String(TIP_DEFAULT), meet: "", action: "pay" };
   const fare = AIRPORT_FARES.suv.jfk;
-  const tip = percentCents(fare, String(TIP_DEFAULT));
+  const tip = percentCents(fare, "25");
   const lines = (form) => { const out = []; for (let i = 0; form.has(`line_items[${i}][quantity]`); i++) out.push([form.get(`line_items[${i}][price_data][product_data][name]`), Number(form.get(`line_items[${i}][price_data][unit_amount]`))]); return out; };
   const keys = (form) => [...form.keys()].filter((k) => k.startsWith("metadata[")).sort();
+  assert.equal(TIP_DEFAULT, 0);
   calls = [];
   assert.equal((await readJson(await post(base), 200)).kind, "pay");
-  const full = formOf(calls[0]);
-  assert.deepEqual(lines(full).slice(-2), [["Meet and greet", MEET_AND_GREET], [`Gratuity for your chauffeur (${TIP_DEFAULT}%)`, tip]]);
-  assert.deepEqual(["tip_percent", "tip_cents", "meet", "meet_cents"].map((k) => full.get(`metadata[${k}]`)), [String(TIP_DEFAULT), String(tip), "1", String(MEET_AND_GREET)]);
-  assert.equal(lines(full).reduce((a, [, c]) => a + c, 0), AIRPORT_TOTALS.suv.jfk + MEET_AND_GREET + tip);
-  calls = [];
-  assert.equal((await readJson(await post({ ...base, tip: "0", meet: "" }), 200)).kind, "pay");
   const bare = formOf(calls[0]);
   assert.ok(!lines(bare).some(([name]) => /^(Meet and greet|Gratuity)/.test(name)), JSON.stringify(lines(bare)));
   assert.equal(lines(bare).reduce((a, [, c]) => a + c, 0), AIRPORT_TOTALS.suv.jfk);
+  assert.deepEqual(["tip_percent", "tip_cents", "meet", "meet_cents"].map((k) => bare.get(`metadata[${k}]`)), ["0", "0", "0", "0"]);
+  const { tip: _tip, meet: _meet, ...missing } = base;
+  calls = [];
+  assert.equal((await readJson(await post(missing), 200)).kind, "pay");
+  assert.deepEqual(lines(formOf(calls[0])), lines(bare), "the server's own default when the fields are missing is None and Curbside");
+  const none = await readJson(await post({ ...missing, action: "options" }), 200);
+  assert.deepEqual([none.selected.tip, none.selected.meet, none.price.total_cents], [0, false, AIRPORT_TOTALS.suv.jfk]);
+  calls = [];
+  assert.equal((await readJson(await post({ ...base, tip: "25", meet: "1" }), 200)).kind, "pay");
+  const full = formOf(calls[0]);
+  assert.deepEqual(lines(full).slice(-2), [["Meet and greet", MEET_AND_GREET], ["Gratuity for your chauffeur (25%)", tip]]);
+  assert.deepEqual(["tip_percent", "tip_cents", "meet", "meet_cents"].map((k) => full.get(`metadata[${k}]`)), ["25", String(tip), "1", String(MEET_AND_GREET)]);
+  assert.equal(lines(full).reduce((a, [, c]) => a + c, 0), AIRPORT_TOTALS.suv.jfk + MEET_AND_GREET + tip);
   assert.deepEqual(keys(full), [...keys(bare), "metadata[sign_name]"].sort(), "no new metadata key, the sign name rides with the meet and greet as before");
   assert.ok(keys(full).length <= 50);
-  for (const [t, m] of [[String(TIP_DEFAULT), "1"], ["0", ""]]) {
+  for (const [t, m] of [["0", ""], ["25", "1"]]) {
     const options = await readJson(await post({ ...base, tip: t, meet: m, action: "options" }), 200);
     assert.deepEqual(options.classes.map((c) => c.total_cents), [18500, 22000, 31000, 17000, 18000, 45000], `${t} ${m}`);
     assert.equal(options.price.total_cents, AIRPORT_TOTALS.suv.jfk + (m ? MEET_AND_GREET + tip : 0), `${t} ${m}`);
