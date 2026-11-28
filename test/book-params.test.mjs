@@ -9,7 +9,7 @@ import { clientKey, clean } from "../api/_http.mjs";
 import { sessionParams, encodeForm, metadataFor } from "../api/_stripe.mjs";
 import { bookingLetters } from "../api/_mail.mjs";
 import { POST, GET } from "../api/book.mjs";
-import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY, SPRINTER_BUSY, SPRINTER_SWAP } from "../api/_copy.mjs";
+import { CHECKOUT, ERRORS, HEADINGS, REASONS, ERROR_BLOCK, NOTES, POLICY, SPRINTER_BUSY, SPRINTER_SWAP, FIRST_BUSY } from "../api/_copy.mjs";
 import { DESCRIPTOR_CODES, AIRPORT_PLACES, AIRPORT_FARES, AIRPORT_TOTALS, STOP_FEE_CENTS, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, TIP_PERCENTS, TIP_DEFAULT, MEET_AND_GREET, percentCents, MIN_NOTICE_MINUTES, AUTO_LEAD_MINUTES, PAID_NOTICE_MINUTES, SPRINTER_NOTICE_HOURS, VEHICLES, CLASSES, WAIT_CENTS_PER_MINUTE } from "../api/_rates.mjs";
 import { ROUTE, signTicket, signRoute, routeKey, placeProof } from "../api/_ticket.mjs";
 import { POST as placesPost } from "../api/places.mjs";
@@ -893,8 +893,10 @@ await test("handler: every redirect of 13.1.8 for a form post", async () => {
   assertRedirect(await formPost({ ...STRIPE_JFK, from_text: "350 5th Ave" }), "/book#q-unplaced");
   assertRedirect(await formPost({ ...STRIPE_JFK, to_text: "277 Bedford Ave, Brooklyn, NY 11211", to_id: "" }), "/book#q-no-airport");
   assertRedirect(await formPost({ ...STRIPE_JFK, stop1_text: "277 Bedford Ave, Brooklyn, NY 11211" }), "/book#q-stop-leg");
-  assertRedirect(await formPost({ ...trip(HOURLY), class: "sprinter" }), "/book#q-sprinter-quote");
-  assertRedirect(await formPost({ ...STRIPE_JFK, class: "sprinter" }), "/book#q-sprinter-check");
+  assertRedirect(await formPost({ ...trip(HOURLY), class: "sprinter" }), CHECKOUT_URL);
+  assertRedirect(await formPost({ ...STRIPE_JFK, class: "sprinter" }), CHECKOUT_URL);
+  assertRedirect(await formPost({ ...STRIPE_JFK, large_bags: "4" }), "/book#q-too-many-bags");
+  assertRedirect(await formPost({ ...STRIPE_JFK, class: "sprinter", large_bags: "4" }), CHECKOUT_URL);
   assertRedirect(await formPost({ ...trip(HOURLY), class: "sprinter", hours: "3" }), "/book#e-sprinter-hours");
   assertRedirect(await formPost({ ...STRIPE_JFK, to_text: "LaGuardia (LGA)", to_id: "lga", class: "sprinter", sprinter: "sprinter-white-limo" }), "/book#q-sprinter-price");
   assertRedirect(await formPost({ ...STRIPE_JFK, class: "first", passengers: "4" }), "/book#q-seats");
@@ -904,7 +906,7 @@ await test("handler: every redirect of 13.1.8 for a form post", async () => {
   assertRedirect(await formPost({ ...STRIPE_JFK, date: inDays(-2) }), "/book#e-date-past");
   assertRedirect(await formPost({ ...STRIPE_JFK, tip: "50" }), "/book#e-tip");
   assertRedirect(await formPost({ ...STRIPE_JFK, return: "1", return_date: inDays(1), return_time: "10:00" }), "/book#e-return-date");
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 4);
   stripe = () => new Response(JSON.stringify({ error: { message: "bad" } }), { status: 400 });
   assertRedirect(await formPost(STRIPE_JFK), "/book#q-error");
   setEnv({ PAYMENTS_ENABLED: "true" });
@@ -932,7 +934,7 @@ await test("handler: options answers the 13.1.2 shape with all six classes price
       { class: "first", name: "First Class", seats: 3, total_cents: 31000, reason: "" },
       { class: "sedan", name: "Executive Sedan", seats: 3, total_cents: 17000, reason: "" },
       { class: "electric", name: "Electric Class", seats: 3, total_cents: 25000, reason: "" },
-      { class: "sprinter", name: "Luxury Sprinter", seats: 14, total_cents: 45000, reason: "sprinter-check" },
+      { class: "sprinter", name: "Luxury Sprinter", seats: 14, total_cents: 45000, reason: "" },
     ],
     vehicles: [
       { vehicle: "sprinter-executive", label: "Executive Sprinter", seats: 14, total_cents: 45000 },
@@ -1084,13 +1086,13 @@ await test("handler: a class reason answers kind options with price null and tha
   setEnv(LIVE);
   const four = await readJson(await post({ ...STRIPE_JFK, class: "first", passengers: "4", action: "options" }), 200);
   assert.deepEqual([four.kind, four.price, four.reason, four.pay], ["options", null, "seats", false]);
-  assert.deepEqual(four.classes.map((item) => [item.class, item.total_cents, item.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", 45000, "sprinter-check"]]);
+  assert.deepEqual(four.classes.map((item) => [item.class, item.total_cents, item.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", 45000, ""]]);
   assert.ok(!decodeURIComponent(four.whatsapp).includes("Total shown"));
   const seven = await readJson(await post({ ...STRIPE_JFK, passengers: "7", action: "options" }), 200);
   assert.deepEqual(seven.classes.map((item) => item.total_cents), [null, null, null, null, null, 45000]);
   assert.equal(seven.reason, "seats");
   const six = await readJson(await post({ ...STRIPE_JFK, passengers: "6", action: "options" }), 200);
-  assert.deepEqual(six.classes.map((item) => [item.class, item.seats, item.total_cents, item.reason]), [["suv", 6, 18500, ""], ["premium", 6, 22000, ""], ["first", 3, null, "seats"], ["sedan", 3, null, "seats"], ["electric", 3, null, "seats"], ["sprinter", 14, 45000, "sprinter-check"]]);
+  assert.deepEqual(six.classes.map((item) => [item.class, item.seats, item.total_cents, item.reason]), [["suv", 6, 18500, ""], ["premium", 6, 22000, ""], ["first", 3, null, "seats"], ["sedan", 3, null, "seats"], ["electric", 3, null, "seats"], ["sprinter", 14, 45000, ""]]);
   assert.deepEqual([six.reason, six.pay], ["", true]);
   const hourly = await readJson(await post({ ...trip(HOURLY), class: "sprinter", sprinter: "sprinter-white-limo", passengers: "11", action: "options" }), 200);
   assert.deepEqual([hourly.kind, hourly.price, hourly.reason, hourly.service, hourly.legs], ["options", null, "seats", "hourly", 0]);
@@ -1099,10 +1101,10 @@ await test("handler: a class reason answers kind options with price null and tha
     { vehicle: "suv-suburban", label: "Chevrolet Suburban or similar", seats: 6, total_cents: null },
     { vehicle: "suv-denali", label: "GMC Denali", seats: 6, total_cents: null },
     { vehicle: "suv-navigator", label: "Lincoln Navigator", seats: 6, total_cents: null },
-    { vehicle: "sprinter-executive", label: "Executive Sprinter", seats: 14, total_cents: null },
+    { vehicle: "sprinter-executive", label: "Executive Sprinter", seats: 14, total_cents: 78400 },
     { vehicle: "sprinter-luxury-jet", label: "Luxury Jet Sprinter", seats: 8, total_cents: null },
-    { vehicle: "sprinter-presidential", label: "Presidential Sprinter", seats: 12, total_cents: null },
-    { vehicle: "sprinter-limo", label: "Limo Sprinter", seats: 14, total_cents: null },
+    { vehicle: "sprinter-presidential", label: "Presidential Sprinter", seats: 12, total_cents: 109760 },
+    { vehicle: "sprinter-limo", label: "Limo Sprinter", seats: 14, total_cents: 118720 },
     { vehicle: "sprinter-white-limo", label: "White Luxury Limo Sprinter", seats: 10, total_cents: null },
   ]);
   const three = await readJson(await post({ ...trip(HOURLY), hours: "3", action: "options" }), 200);
@@ -1110,10 +1112,10 @@ await test("handler: a class reason answers kind options with price null and tha
   assert.deepEqual([three.reason, three.price.total_cents, three.pay], ["", 35280, true]);
   assert.deepEqual(three.vehicles.map((item) => item.total_cents), [31920, 33600, 33600, null, null, null, null, null]);
   const crowd = await readJson(await post({ ...trip(HOURLY), passengers: "7", action: "options" }), 200);
-  assert.deepEqual(crowd.vehicles.map((item) => item.total_cents), [null, null, null, null, null, null, null, null], "Sprinters by the hour are by quote");
+  assert.deepEqual(crowd.vehicles.map((item) => item.total_cents), [null, null, null, 78400, 96320, 109760, 118720, 123200], "Sprinters by the hour are priced for 4 hours, with the 12% service fee");
   const sixHourly = await readJson(await post({ ...trip(HOURLY), passengers: "6", action: "options" }), 200);
-  assert.deepEqual(sixHourly.vehicles.map((item) => [item.seats, item.total_cents]), [[6, 42560], [6, 44800], [6, 44800], [14, null], [8, null], [12, null], [14, null], [10, null]], "six passengers fit every Business SUV");
-  assert.deepEqual(crowd.classes.map((item) => [item.class, item.reason, item.total_cents]), [["suv", "seats", null], ["premium", "seats", null], ["first", "seats", null], ["sedan", "seats", null], ["electric", "seats", null], ["sprinter", "sprinter-quote", null]]);
+  assert.deepEqual(sixHourly.vehicles.map((item) => [item.seats, item.total_cents]), [[6, 42560], [6, 44800], [6, 44800], [14, 78400], [8, 96320], [12, 109760], [14, 118720], [10, 123200]], "six passengers fit every Business SUV and every Sprinter");
+  assert.deepEqual(crowd.classes.map((item) => [item.class, item.reason, item.total_cents]), [["suv", "seats", null], ["premium", "seats", null], ["first", "seats", null], ["sedan", "seats", null], ["electric", "seats", null], ["sprinter", "", 78400]]);
   assert.equal(calls.length, 0);
 });
 
@@ -1195,8 +1197,9 @@ await test("handler: options and quote turn every Sprinter off a minute short of
   for (const action of ["options", "quote"]) {
     const fields = { ...sprinterAt(Date.now() + SPRINTER_MS + 61000), action };
     const body = await slotted(async () => readJson(await post(fields), 200));
-    assert.deepEqual([body.kind, body.reason, body.pay, body.hold, body.price.total_cents], ["options", "sprinter-check", false, "", 45000], action);
-    assert.deepEqual(body.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", 31000, ""], ["sedan", 17000, ""], ["electric", 25000, ""], ["sprinter", 45000, "sprinter-check"]], action);
+    assert.deepEqual([body.kind, body.reason, body.pay, body.hold, body.price.total_cents], ["options", "", true, "", 45000], action);
+    assert.deepEqual(body.classes.map((c) => c.busy || ""), ["", "", "", "", "", SPRINTER_SWAP], `${action}: a Sprinter under SPRINTER_BUSY_HOURS carries the two SUVs line`);
+    assert.deepEqual(body.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 18500, ""], ["premium", 22000, ""], ["first", 31000, ""], ["sedan", 17000, ""], ["electric", 25000, ""], ["sprinter", 45000, ""]], action);
     assert.deepEqual(body.vehicles.map((v) => [v.vehicle, v.total_cents, "reason" in v]), SPRINTER_KEYS.map((key) => [key, AIRPORT_TOTALS[key].jfk, false]), action);
     assert.ok(wall(body.sprinter_from) <= wall(fields), `${wall(body.sprinter_from)} not after ${wall(fields)}`);
   }
@@ -1242,13 +1245,15 @@ await test("handler: a pay post for any Sprinter under 3 hours away is refused b
   assert.equal(suv.kind, "pay");
   assert.equal(calls.length, 1);
   const later = await readJson(await post({ ...sprinterAt(Date.now() + SPRINTER_MS + 61000), nonce: "nonce-sprinter-notice-03" }), 200);
-  assert.deepEqual([later.kind, later.reason, later.group, "url" in later], ["quote", "sprinter-check", "check", false], "a Sprinter 3 hours away is requested, never paid online");
+  assert.deepEqual([later.kind, "url" in later], ["pay", true], "a Sprinter 3 hours away pays online");
+  assert.ok(formOf(calls[1]).get("custom_text[submit][message]").endsWith(` ${SPRINTER_BUSY}`), "its Stripe page says two SUVs come if no Sprinter is free");
   const round = await readJson(await post({ ...sprinterAt(Date.now() + SPRINTER_MS + 61000, { ...STRIPE_JFK, return: "1", return_date: inDays(5), return_time: "18:00" }), nonce: "nonce-sprinter-notice-04" }), 200);
-  assert.deepEqual([round.kind, round.reason], ["quote", "sprinter-check"]);
+  assert.equal(round.kind, "pay");
   const far = await readJson(await post({ ...sprinterAt(Date.now() + 25 * 3600000), nonce: "nonce-sprinter-notice-05" }), 200);
-  assert.deepEqual([far.kind, far.reason], ["quote", "sprinter-check"]);
-  assertRedirect(await formPost(sprinterAt(Date.now() + 25 * 3600000)), "/book#q-sprinter-check");
-  assert.equal(calls.length, 1, "no Sprinter reaches Stripe");
+  assert.equal(far.kind, "pay");
+  assert.ok(!formOf(calls[3]).get("custom_text[submit][message]").includes(SPRINTER_BUSY), "25 hours ahead has no two SUVs line");
+  assertRedirect(await formPost(sprinterAt(Date.now() + 25 * 3600000)), CHECKOUT_URL);
+  assert.equal(calls.length, 5, "every Sprinter 3 hours or more away reaches Stripe");
 });
 
 await test("handler: a trip reason for a Sprinter under 3 hours away answers sprinter-notice with its heading and text and keeps the trip reason on every class, and the other classes keep the trip reason", async () => {
@@ -1482,8 +1487,8 @@ await test("handler: by the hour from Newark Liberty, Teterboro with meet and gr
   assert.deepEqual([typed.kind, typed.reason, typed.meet, typed.price.total_cents], ["options", "", false, 38000 + 4560]);
   const frg = await readJson(await post({ ...base, from_text: "Republic (FRG)", from_id: "frg", action: "options" }), 200);
   assert.deepEqual([frg.kind, frg.reason, frg.meet, frg.price.total_cents], ["options", "", false, 38000 + 4560], "Republic Airport, in New York State with no county, prices like Westchester");
-  const noAirport = await readJson(await post({ ...trip({ trip_type: "one", from_text: "Newark Liberty (EWR)", from_id: "ewr", to_text: "Teterboro (TEB)", to_id: "teb", passengers: "2", class: "suv" }), action: "options" }), 200);
-  assert.deepEqual([noAirport.kind, noAirport.reason, noAirport.hourly], ["quote", "airport-to-airport", true]);
+  const between = await readJson(await post({ ...trip({ trip_type: "one", from_text: "Newark Liberty (EWR)", from_id: "ewr", to_text: "Teterboro (TEB)", to_id: "teb", passengers: "2", class: "suv" }), action: "options" }), 200);
+  assert.deepEqual([between.kind, between.reason, between.service, between.pay, between.price.total_cents >= Math.max(AIRPORT_TOTALS.suv.ewr, AIRPORT_TOTALS.suv.teb)], ["options", "", "distance", true, true], "Newark to Teterboro is priced by distance, never below either flat total");
   assert.equal(calls.length, 0);
 });
 
@@ -2369,7 +2374,7 @@ await test("handler: the place resolution of the server decides the price, a tic
   assert.equal((await readJson(await post({ ...fields, from_text: full, from_ticket: "" }), 200)).price.total_cents, 18500);
   const outside = signTicket("mock-hoboken", "outside", "Hoboken", Date.now(), 0, "NJ");
   const hoboken = await readJson(await post({ ...fields, from_text: "Hoboken", from_ticket: outside }), 200);
-  assert.deepEqual([hoboken.kind, hoboken.service, hoboken.reason, hoboken.price.total_cents, hoboken.classes.map((c) => [c.total_cents, c.reason])], ["options", "distance", "", 20177, [[20177, ""], [23430, ""], [29724, ""], [16453, ""], [23776, ""], [null, "sprinter-quote"]]]);
+  assert.deepEqual([hoboken.kind, hoboken.service, hoboken.reason, hoboken.price.total_cents, hoboken.classes.map((c) => [c.total_cents, c.reason])], ["options", "distance", "", 20177, [[20177, ""], [23430, ""], [29724, ""], [16453, ""], [23776, ""], [43724, ""]]]);
   const unknown = await readJson(await post({ ...fields, from_text: "Hoboken", from_ticket: signTicket("mock-hoboken", "outside", "Hoboken", Date.now()) }), 200);
   assert.deepEqual([unknown.kind, unknown.reason, unknown.field], ["quote", "unplaced", "from_text"], "a pickup outside New York City whose state the server can not tell goes to dispatch");
   assert.equal((await readJson(await post({ ...fields, from_text: "The Plaza Hotel" }), 200)).reason, "unplaced");
@@ -2600,7 +2605,7 @@ await test("handler: a one-way trip with no airport end gets distance prices on 
   const fields = trip({ trip_type: "one", from_text: MANHATTAN, to_text: "277 Bedford Ave, Brooklyn, NY 11211", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-distance-options-1" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason], ["options", "distance", 1, true, "", ""]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 13110, ""], ["premium", 14969, ""], ["first", 19040, ""], ["sedan", 11122, ""], ["electric", 15913, ""], ["sprinter", null, "sprinter-quote"]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 13110, ""], ["premium", 14969, ""], ["first", 19040, ""], ["sedan", 11122, ""], ["electric", 15913, ""], ["sprinter", 39200, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 11705 }, { label: FEES, cents: 1405 }], total_cents: 13110, currency: "usd", notes: [HOURLY_NOTE] });
   assert.match(options.route, ROUTE);
   assert.ok(decodeURIComponent(options.whatsapp.split("?text=")[1]).endsWith("\nTotal shown: $131.10"));
@@ -2617,10 +2622,12 @@ await test("handler: a one-way trip with no airport end gets distance prices on 
   assertRedirect(await formPost(fields), CHECKOUT_URL);
   assert.equal(Object.fromEntries(formOf(calls[1]))["metadata[total_cents]"], "13110");
   const sprinter = await readJson(await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-distance-sprinter-1" }), 200);
-  assert.deepEqual([sprinter.kind, sprinter.reason, "url" in sprinter], ["quote", "sprinter-quote", false]);
-  assert.ok(!/Total shown/.test(decodeURIComponent(sprinter.whatsapp)), "the Sprinter request carries no price");
-  assertRedirect(await formPost({ ...fields, class: "sprinter", route: options.route }), "/book#q-sprinter-quote");
-  assert.equal(calls.length, 2);
+  assert.deepEqual([sprinter.kind, sprinter.url], ["pay", CHECKOUT_URL]);
+  assert.deepEqual(["service", "class", "vehicle", "total_cents"].map((key) => formOf(calls[2]).get(`metadata[${key}]`)), ["distance", "sprinter", "sprinter-executive", "39200"], "the Executive Sprinter by distance pays its card price");
+  assertRedirect(await formPost({ ...fields, class: "sprinter", route: options.route }), CHECKOUT_URL);
+  const jet = await readJson(await post({ ...fields, class: "sprinter", sprinter: "sprinter-luxury-jet", route: options.route, nonce: "nonce-distance-sprinter-2" }), 200);
+  assert.deepEqual([jet.kind, jet.reason, "url" in jet], ["quote", "sprinter-price", false], "a Sprinter with no distance rate stays a price on request");
+  assert.equal(calls.length, 4);
 });
 
 await test("handler: an options call with the map size answers the ride that set the distance price with the map of that ride, a return lists both rides, and other calls keep the priced ride", async () => {
@@ -2686,8 +2693,8 @@ await test("handler: the distance requests and their redirects, outside-us and l
     assert.ok(!/Total shown|\$\d/.test(decodeURIComponent(pay.whatsapp) + decodeURIComponent(pay.mailto)), `${reason}: the request carries the trip and no price`);
   }
   const sprinter = await readJson(await post({ ...fields, class: "sprinter", action: "quote" }), 200);
-  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.pay, sprinter.price], ["options", "sprinter-quote", false, null]);
-  assertRedirect(await formPost({ ...fields, class: "sprinter" }), "/book#q-sprinter-quote");
+  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.pay, sprinter.price.total_cents], ["options", "", true, 39200]);
+  assertRedirect(await formPost({ ...fields, class: "sprinter" }), CHECKOUT_URL);
   setEnv(LIVE);
   assertRedirect(await formPost(fields), "/book#q-no-airport");
   const away = { ...fields, from_text: "806 6th Street, Secaucus, NJ", to_text: "Niagara Falls, NY 14303" };
@@ -2713,12 +2720,25 @@ await test("handler: BOOK_MOCK pays a distance trip and GET rebuilds its receipt
   assert.deepEqual(logged, []);
 });
 
-await test("handler: no Sprinter is paid online, 5 or 25 hours away, and a Sprinter booking paid before keeps the two SUVs line first on its confirmation when its Stripe page showed it, while an SUV session gets none", async () => {
+await test("handler: a Sprinter pays online 5 or 25 hours away, the one under SPRINTER_BUSY_HOURS gets the two SUVs line first on its confirmation, First Class under FIRST_BUSY_HOURS gets the Escalade line, a Sprinter booking paid before keeps the two SUVs line when its Stripe page showed it, and an SUV session gets none", async () => {
   setEnv({ BOOK_MOCK: "true", PAYMENTS_ENABLED: "true" });
-  for (const ahead of [5, 25]) {
-    const body = await readJson(await post({ ...sprinterAt(Date.now() + ahead * 3600000), ...ME, reach: "phone", nonce: `nonce-busy-mock-0000${ahead}` }), 200);
-    assert.deepEqual([body.kind, body.reason, "url" in body], ["quote", "sprinter-check", false], String(ahead));
+  const paidNotes = async (fields, nonce) => {
+    const body = await readJson(await post({ ...fields, ...ME, reach: "phone", nonce }), 200);
+    assert.equal(body.kind, "pay", nonce);
+    return (await readJson(await get(new URL(body.url, LOCAL).searchParams.get("session_id")), 200)).notes;
+  };
+  for (const [ahead, busy] of [[5, true], [25, false]]) {
+    const notes = await paidNotes(sprinterAt(Date.now() + ahead * 3600000), `nonce-busy-mock-0000${ahead}`);
+    assert.deepEqual([notes[0] === SPRINTER_BUSY, notes.filter((n) => n === SPRINTER_BUSY).length], [busy, busy ? 1 : 0], String(ahead));
   }
+  for (const [minutes, busy] of [[100, true], [119, true], [121, false], [180, false]]) {
+    const options = await readJson(await post({ ...STRIPE_JFK, ...nyAt(Date.now() + minutes * 60000), class: "first", action: "options" }), 200);
+    assert.deepEqual([options.pay, options.classes.map((c) => c.busy || "")], [true, ["", "", busy ? FIRST_BUSY : "", "", "", ""]], `First Class card ${minutes} minutes ahead`);
+    const notes = await paidNotes({ ...STRIPE_JFK, ...nyAt(Date.now() + minutes * 60000), class: "first" }, `nonce-first-busy-0${minutes}`);
+    assert.deepEqual([notes[0] === FIRST_BUSY, notes.includes(SPRINTER_BUSY)], [busy, false], `First Class ${minutes} minutes ahead`);
+  }
+  assert.ok(!(await paidNotes({ ...STRIPE_JFK, ...nyAt(Date.now() + 100 * 60000), class: "suv" }, "nonce-suv-busy-000100")).some((n) => n === FIRST_BUSY || n === SPRINTER_BUSY), "an SUV has no busy line");
+  assert.equal(FIRST_BUSY, "If no S-Class or BMW 7 Series is free, we send a Cadillac Escalade.");
   setEnv({ STRIPE_SECRET_KEY: KEY });
   const old = { ...PAID_SESSION, custom_text: { submit: { message: `You pay the total shown today. ${SPRINTER_BUSY}` } }, metadata: { ...PAID_SESSION.metadata, class: "sprinter", vehicle: "sprinter-executive" } };
   stripe = () => new Response(JSON.stringify(old), { status: 200 });
@@ -2798,7 +2818,7 @@ await test("handler: a New Jersey address to JFK gets the airport fare or the di
   const fields = trip({ trip_type: "one", from_text: "Secaucus, NJ 07094", to_text: "John F. Kennedy (JFK)", to_id: "jfk", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-nj-options-000001" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet], ["options", "distance", 1, true, "", "", false]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 23996, ""], ["premium", 27972, ""], ["first", 30996, ""], ["sedan", 19320, ""], ["electric", 28001, ""], ["sprinter", null, "sprinter-quote"]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 23996, ""], ["premium", 27972, ""], ["first", 30996, ""], ["sedan", 19320, ""], ["electric", 28001, ""], ["sprinter", 43724, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 21425 }, { label: FEES, cents: 2571 }], total_cents: 23996, currency: "usd", notes: [OUTSIDE_NOTE] });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 45, miles: 25, attribution: "Google Maps" });
   assert.match(options.route, ROUTE);
@@ -2820,11 +2840,11 @@ await test("handler: a New Jersey address to JFK gets the airport fare or the di
   const sedan = Object.fromEntries(formOf(calls[2]));
   assert.deepEqual([sedan["metadata[fare_cents]"], sedan["metadata[total_cents]"], sedan["line_items[2][quantity]"]], ["17250", "19320", undefined]);
   const sprinter = await readJson(await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-nj-pay-0000000003" }), 200);
-  assert.deepEqual([sprinter.kind, sprinter.reason, "url" in sprinter], ["quote", "sprinter-quote", false]);
-  assert.equal(calls.length, 3);
+  assert.deepEqual([sprinter.kind, sprinter.url, Object.fromEntries(formOf(calls[3]))["metadata[total_cents]"]], ["pay", CHECKOUT_URL, "43724"]);
+  assert.equal(calls.length, 4);
 });
 
-await test("handler: an airport trip to an address outside New York City asks dispatch as long-trip over the limits, as outside-us for an end in Canada and as outside-city for an airport ZIP code address or with no route, with their redirects, in the Luxury Sprinter too, and prices the Luxury Sprinter like every class", async () => {
+await test("handler: an airport trip to an address outside New York City asks dispatch as long-trip over the limits, as outside-us for an end in Canada and as outside-city for an airport ZIP code address or with no route, with their redirects, in the Luxury Sprinter too, and prices and pays the Luxury Sprinter like every class", async () => {
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const fields = trip({ trip_type: "one", from_text: "John F. Kennedy (JFK)", from_id: "jfk", to_text: "Secaucus, NJ 07094", passengers: "2", class: "suv", ...ME, reach: "phone" });
   for (const [change, reason] of [[{ to_text: "Raleigh, NC" }, "long-trip"], [{ to_text: "Montreal, QC" }, "outside-us"], [{ to_text: "3 Brewster Rd, Newark, NJ 07114" }, "outside-city"], [{ to_text: "Montreal, QC", class: "sprinter" }, "outside-us"], [{ to_text: "3 Brewster Rd, Newark, NJ 07114", class: "sprinter" }, "outside-city"]]) {
@@ -2834,8 +2854,9 @@ await test("handler: an airport trip to an address outside New York City asks di
   }
   const sprinter = await readJson(await post({ ...fields, class: "sprinter", action: "quote" }), 200);
   assert.deepEqual([8000 + 254 * 90 + 52 * 145 < AIRPORT_FARES["sprinter-executive"].jfk, AIRPORT_FARES["sprinter-executive"].jfk], [true, 39039]);
-  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.pay, sprinter.price, sprinter.classes.at(-1).total_cents], ["options", "sprinter-quote", false, null, null]);
-  assertRedirect(await formPost({ ...fields, class: "sprinter" }), "/book#q-sprinter-quote");
+  assert.deepEqual([sprinter.kind, sprinter.reason, sprinter.pay, sprinter.price.total_cents, sprinter.classes.at(-1).total_cents], ["options", "", true, AIRPORT_FARES["sprinter-executive"].jfk + 4685, AIRPORT_FARES["sprinter-executive"].jfk + 4685]);
+  assertRedirect(await formPost({ ...fields, class: "sprinter" }), CHECKOUT_URL);
+  calls = [];
   const long = await readJson(await post({ ...fields, to_text: "Raleigh, NC", action: "options" }), 200);
   assert.deepEqual([long.reason, long.ride], ["long-trip", { kind: "ok", minutes: 505, miles: 524.6, attribution: "Google Maps" }]);
   setEnv(LIVE);
@@ -2856,12 +2877,12 @@ await test("handler: BOOK_MOCK pays a JFK pickup to New Jersey with meet and gre
   assert.deepEqual(logged, []);
 });
 
-await test("handler: the owner's trip from 806 6th Street, Secaucus, NJ to Niagara Falls, NY, 400.0 miles and 420 minutes, shows its price on the cards of every car and pays online, and Stripe gets the same total, 195,440 cents in the Business SUV with a 20,940 cent service fee, in its line items and metadata, with its route token and without JavaScript, while the Luxury Sprinter stays a request with no price", async () => {
+await test("handler: the owner's trip from 806 6th Street, Secaucus, NJ to Niagara Falls, NY, 400.0 miles and 420 minutes, shows its price on the cards of every car and pays online, and Stripe gets the same total, 195,440 cents in the Business SUV with a 20,940 cent service fee, in its line items and metadata, with its route token and without JavaScript, and the Executive Sprinter pays its price too", async () => {
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const fields = trip({ trip_type: "one", from_text: "806 6th Street, Secaucus, NJ", to_text: "Niagara Falls, NY 14303", passengers: "2", class: "suv", ...ME, reach: "phone" });
   const options = await readJson(await post({ ...fields, action: "options", nonce: "nonce-niagara-options-01" }), 200);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet], ["options", "distance", 1, true, "", "", false]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 195440, ""], ["premium", 224672, ""], ["first", 278544, ""], ["sedan", 175168, ""], ["electric", 243443, ""], ["sprinter", null, "sprinter-quote"]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 195440, ""], ["premium", 224672, ""], ["first", 278544, ""], ["sedan", 175168, ""], ["electric", 243443, ""], ["sprinter", 437629, ""]]);
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 174500 }, { label: FEES, cents: 20940 }], total_cents: 195440, currency: "usd", notes: [HOURLY_NOTE] });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 420, miles: 400, attribution: "Google Maps" });
   assert.match(options.route, ROUTE);
@@ -2882,10 +2903,9 @@ await test("handler: the owner's trip from 806 6th Street, Secaucus, NJ to Niaga
   await readJson(await post({ ...fields, class: "first", route: options.route, nonce: "nonce-niagara-pay-000002" }), 200);
   assert.deepEqual([stripeTotal(calls[2].init.body), Object.fromEntries(formOf(calls[2]))["metadata[total_cents]"]], [278544, "278544"]);
   const van = await readJson(await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-niagara-pay-000004" }), 200);
-  assert.deepEqual([van.kind, van.reason, "url" in van], ["quote", "sprinter-quote", false]);
-  assert.ok(!/Total shown|\$\d/.test(decodeURIComponent(van.whatsapp) + decodeURIComponent(van.mailto)), "the Sprinter request carries no price");
-  assertRedirect(await formPost({ ...fields, class: "sprinter" }), "/book#q-sprinter-quote");
-  assert.equal(calls.length, 3);
+  assert.deepEqual([van.kind, van.url, stripeTotal(calls[3].init.body)], ["pay", CHECKOUT_URL, 437629]);
+  assertRedirect(await formPost({ ...fields, class: "sprinter" }), CHECKOUT_URL);
+  assert.equal(calls.length, 5);
 });
 
 await test("handler: when Stripe's amount for a trip priced by distance differs from the total, the session is expired and the rider gets the payment error, never a payment link", async () => {
@@ -3025,7 +3045,7 @@ await test("handler: options sends the price per seat and the class cards includ
   const fields = { ...STRIPE_JFK, passengers: "3", infant_seats: "1", booster_seats: "1", nonce: "nonce-seat-handler-000001" };
   const options = await readJson(await post({ ...fields, action: "options" }), 200);
   assert.equal(options.seat_cents, 2000);
-  assert.deepEqual(options.classes.map((c) => [c.total_cents, c.reason]), [[22500, ""], [26000, ""], [35000, ""], [null, "child-seats"], [null, "child-seats"], [49000, "sprinter-check"]]);
+  assert.deepEqual(options.classes.map((c) => [c.total_cents, c.reason]), [[22500, ""], [26000, ""], [35000, ""], [null, "child-seats"], [null, "child-seats"], [49000, ""]]);
   assert.deepEqual(options.price.lines.at(-1), { label: "Child seats (2 x $20.00)", cents: 4000 });
   assert.equal(options.price.total_cents, 22500);
   const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
@@ -3059,11 +3079,11 @@ await test("handler: the seat limit answers the child_seats error on options, qu
 await test("handler: the child seat limits per class turn the cards off with their reasons on options, and a pay post over a limit answers its request block, or without JavaScript lands on it, before any Stripe call, while a booking inside the limits reaches Stripe", async () => {
   setEnv(LIVE);
   const cards = async (extra) => (await readJson(await post({ ...STRIPE_JFK, ...extra, action: "options" }), 200)).classes.map((c) => [c.class, c.total_cents === null ? null : "priced", c.reason]);
-  assert.deepEqual(await cards({ passengers: "2", infant_seats: "1" }), [["suv", "priced", ""], ["premium", "priced", ""], ["first", "priced", ""], ["sedan", "priced", ""], ["electric", "priced", ""], ["sprinter", "priced", "sprinter-check"]]);
-  assert.deepEqual(await cards({ passengers: "2", toddler_seats: "2" }), [["suv", null, "adult"], ["premium", null, "adult"], ["first", "priced", ""], ["sedan", null, "child-seats"], ["electric", null, "child-seats"], ["sprinter", "priced", "sprinter-check"]]);
-  assert.deepEqual(await cards({ passengers: "4", toddler_seats: "3" }), [["suv", null, "one-adult"], ["premium", null, "one-adult"], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", "sprinter-check"]]);
-  assert.deepEqual(await cards({ passengers: "6", toddler_seats: "4" }), [["suv", null, "child-seats"], ["premium", null, "child-seats"], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", "sprinter-check"]]);
-  assert.deepEqual(await cards({ passengers: "6", toddler_seats: "2" }), [["suv", "priced", ""], ["premium", "priced", ""], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", "sprinter-check"]]);
+  assert.deepEqual(await cards({ passengers: "2", infant_seats: "1" }), [["suv", "priced", ""], ["premium", "priced", ""], ["first", "priced", ""], ["sedan", "priced", ""], ["electric", "priced", ""], ["sprinter", "priced", ""]]);
+  assert.deepEqual(await cards({ passengers: "2", toddler_seats: "2" }), [["suv", null, "adult"], ["premium", null, "adult"], ["first", "priced", ""], ["sedan", null, "child-seats"], ["electric", null, "child-seats"], ["sprinter", "priced", ""]]);
+  assert.deepEqual(await cards({ passengers: "4", toddler_seats: "3" }), [["suv", null, "one-adult"], ["premium", null, "one-adult"], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", ""]]);
+  assert.deepEqual(await cards({ passengers: "6", toddler_seats: "4" }), [["suv", null, "child-seats"], ["premium", null, "child-seats"], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", ""]]);
+  assert.deepEqual(await cards({ passengers: "6", toddler_seats: "2" }), [["suv", "priced", ""], ["premium", "priced", ""], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", "priced", ""]]);
   for (const [extra, reason] of [[{ class: "sedan", passengers: "3", infant_seats: "2" }, "child-seats"], [{ class: "electric", passengers: "2", toddler_seats: "1", booster_seats: "1" }, "child-seats"], [{ class: "suv", passengers: "2", toddler_seats: "2" }, "adult"], [{ class: "premium", passengers: "4", booster_seats: "3" }, "one-adult"], [{ class: "suv", passengers: "6", toddler_seats: "4" }, "child-seats"]]) {
     const body = await readJson(await post({ ...STRIPE_JFK, ...extra, nonce: `nonce-kids-${reason}-${extra.class}-01` }), 200);
     assert.deepEqual([body.kind, body.reason, body.heading, body.text], ["quote", reason, HEADINGS[REASONS[reason].group], REASONS[reason].text], JSON.stringify(extra));
@@ -3280,11 +3300,12 @@ await test("builder: two long Google place ids share the places key only as whol
   }
 });
 
-await test("handler: the worst case sent as the booking form posts it, without JavaScript, lands on the Sprinter request, and its Stripe session would carry 44 metadata keys on the session and the payment, at most 48, and none of the old keys", async () => {
+await test("handler: the worst case sent as the booking form posts it, without JavaScript, pays in its Sprinter, and its Stripe session carries 44 metadata keys on the session and the payment, at most 48, and none of the old keys", async () => {
   setEnv({ ...LIVE, GOOGLE_MOCK: "true" });
   const fields = { ...worstFields(Date.now(), SOON, "10:00", inDays(5)), nonce: "nonce-worst-form-00000001" };
-  assertRedirect(await formPost(fields), "/book#q-sprinter-quote");
-  assert.equal(calls.length, 0, "the worst case rides in a Sprinter, so the form lands on its request and Stripe is never called");
+  assertRedirect(await formPost(fields), CHECKOUT_URL);
+  assert.equal(calls.length, 1, "the worst case rides in a Sprinter and pays online");
+  assert.equal([...formOf(calls[0]).keys()].filter((k) => k.startsWith("metadata[")).length, 44);
   const resolved = await resolveTrip(readInput({ ...fields, action: "pay" }), { now: new Date() });
   const form = sessionParams(resolved, priceTrip(resolved, ON), "48213590", ON, new Date(), SITE);
   const keys = [...form.keys()].filter((k) => k.startsWith("metadata[")).map((k) => k.slice(9, -1));
@@ -3379,7 +3400,7 @@ await test("handler: when Google expects tolls but gives no price, the owner's t
   const flat = ["suv", "premium", "first", "sedan", "electric", "sprinter"].map((cls) => AIRPORT_TOTALS[rateKey(cls)].lga + 2 * STOP_FEE_CENTS);
   assert.deepEqual(flat, [20500, 23000, 29000, 18500, 25500, 49000]);
   assert.deepEqual([options.kind, options.service, options.legs, options.pay, options.hold, options.reason, options.meet, options.stop_cents], ["options", "airport", 1, true, "", "", true, STOP_FEE_CENTS]);
-  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 20500, ""], ["premium", 22204, ""], ["first", 29000, ""], ["sedan", 18500, ""], ["electric", 25500, ""], ["sprinter", 49000, "sprinter-check"]]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", 20500, ""], ["premium", 22204, ""], ["first", 29000, ""], ["sedan", 18500, ""], ["electric", 25500, ""], ["sprinter", 49000, ""]]);
   assert.deepEqual(options.classes.map((c, i) => c.total_cents), totals.map((total, i) => (flat[i] - priceLeg(rateKey(["suv", "premium", "first", "sedan", "electric", "sprinter"][i]), "lga").tolls > total ? flat[i] : total)));
   assert.deepEqual(options.price, { lines: [{ label: "Fare", cents: 13593 }, { label: FEES, cents: 1631 }, { label: TOLLS_SHOWN, cents: 1276 }, { label: "Extra stops (2 x $20.00)", cents: 4000 }], total_cents: 20500, currency: "usd", notes: AIRPORT_NOTES });
   assert.deepEqual(options.ride, { kind: "ok", minutes: 40, miles: 15, attribution: "Google Maps" });
@@ -3421,9 +3442,9 @@ await test("handler: when Google expects tolls but gives no price, the owner's t
   assert.deepEqual([8000 + 150 * 90 + 40 * 145, AIRPORT_FARES["sprinter-executive"].lga], [27300, 39039]);
   const looked = sent.length;
   const sprinter = await readJson(await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-stops-sprinter-001" }), 200);
-  assert.deepEqual([sprinter.kind, sprinter.reason, sent.length, stripeCalls().length], ["quote", "sprinter-check", looked, 3], "a Sprinter airport transfer with stops is requested, never paid online");
-  assertRedirect(await formPost({ ...fields, class: "sprinter", route: options.route }), "/book#q-sprinter-check");
-  assert.equal(stripeCalls().length, 3);
+  assert.deepEqual([sprinter.kind, sent.length, stripeCalls().length, stripeTotal(stripeCalls()[3].init.body)], ["pay", looked, 4, AIRPORT_TOTALS["sprinter-executive"].lga + 2 * STOP_FEE_CENTS], "a Sprinter airport transfer with stops pays online");
+  assertRedirect(await formPost({ ...fields, class: "sprinter", route: options.route }), CHECKOUT_URL);
+  assert.equal(stripeCalls().length, 5);
   const { trip: resolved } = await (async () => ({ trip: await resolveTrip(readInput({ ...fields, class: "sprinter", route: options.route }), { now: new Date() }) }))();
   const van = Object.fromEntries(sessionParams(resolved, priceTrip(resolved, ON), "48213590", ON, new Date(), SITE));
   assert.deepEqual([0, 1, 2, 3].map((i) => [van[`line_items[${i}][price_data][product_data][name]`], van[`line_items[${i}][price_data][unit_amount]`]]), [["Fare", String(AIRPORT_FARES["sprinter-executive"].lga)], [FEES, "4685"], [TOLLS_SHOWN, "1276"], ["Extra stops (2 x $20.00)", "4000"]], "the Luxury Sprinter costs more by the LaGuardia flat total without tolls plus the fees than over the whole route, so it pays the flat total and the fees");
@@ -3627,42 +3648,50 @@ await test("builder: the true worst case with 14 large, 14 medium and 14 small b
   }
 });
 
-await test("handler: options, quote and pay send the bags to the server, which keeps them on the trip, puts them in the WhatsApp and email messages right after the passengers and in the Stripe metadata, changes no price, and pays with JavaScript and without", async () => {
+await test("handler: options, quote and pay send the bags to the server, which keeps them on the trip, puts them in the WhatsApp and email messages right after the passengers and in the Stripe metadata, changes no price for a car that holds them, and pays with JavaScript and without", async () => {
   setEnv(LIVE);
-  const fields = { ...STRIPE_JFK, passengers: "3", ...BAG_FIELDS, nonce: "nonce-bag-handler-0000001" };
+  const FIT = { large_bags: "2", medium_bags: "1", small_bags: "3" };
+  const fields = { ...STRIPE_JFK, passengers: "3", ...FIT, nonce: "nonce-bag-handler-0000001" };
   const options = await readJson(await post({ ...fields, action: "options" }), 200);
   const bare = await readJson(await post({ ...STRIPE_JFK, passengers: "3", nonce: "nonce-bag-handler-0000001", action: "options" }), 200);
-  assert.deepEqual([options.classes, options.price], [bare.classes, bare.price]);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), bare.classes.map((c) => [c.class, ["first", "sedan", "electric"].includes(c.class) ? null : c.total_cents, ["first", "sedan", "electric"].includes(c.class) ? "too-many-bags" : c.reason]), "2 large, 1 medium and 3 small bags fit the SUVs and the Sprinter, not the cars");
+  assert.deepEqual(options.price, bare.price);
   const message = decodeURIComponent(options.whatsapp.split("?text=")[1]);
-  assert.ok(message.includes("\nPassengers: 3\nLarge suitcase: 4\nMedium suitcase: 3\nSmall suitcase or hand carry: 2\nVehicle: Business SUV\n"), message);
-  assert.ok(decodeURIComponent(options.mailto).includes("\nPassengers: 3\nLarge suitcase: 4\nMedium suitcase: 3\nSmall suitcase or hand carry: 2\n"));
+  assert.ok(message.includes("\nPassengers: 3\nLarge suitcase: 2\nMedium suitcase: 1\nSmall suitcase or hand carry: 3\nVehicle: Business SUV\n"), message);
+  assert.ok(decodeURIComponent(options.mailto).includes("\nPassengers: 3\nLarge suitcase: 2\nMedium suitcase: 1\nSmall suitcase or hand carry: 3\n"));
   const paid = await readJson(await post(fields), 200);
   assert.deepEqual([paid.kind, paid.url], ["pay", CHECKOUT_URL]);
   const form = formOf(calls.at(-1));
-  assert.deepEqual([form.get("metadata[passengers]"), form.get("payment_intent_data[metadata][passengers]")], ["3, 4 large bags, 3 medium bags, 2 small bags", "3, 4 large bags, 3 medium bags, 2 small bags"]);
+  assert.deepEqual([form.get("metadata[passengers]"), form.get("payment_intent_data[metadata][passengers]")], ["3, 2 large bags, 1 medium bag, 3 small bags", "3, 2 large bags, 1 medium bag, 3 small bags"]);
   assert.equal(stripeTotal(form.toString()), bare.price.total_cents);
   const nojs = await formPost({ ...fields, nonce: "nonce-bag-handler-0000002" });
   assert.equal(nojs.status, 303);
-  assert.equal(formOf(calls.at(-1)).get("metadata[passengers]"), "3, 4 large bags, 3 medium bags, 2 small bags");
+  assert.equal(formOf(calls.at(-1)).get("metadata[passengers]"), "3, 2 large bags, 1 medium bag, 3 small bags");
 });
 
-await test("handler: the bag limit answers the bags error on options, quote and pay, and without JavaScript lands on its message, before any Stripe call", async () => {
+await test("handler: a car whose BAG_CAPACITY cannot fit the bags is off on options with too-many-bags and no price, and a pay post for it answers the too-many-bags request, or without JavaScript lands on it, before any Stripe call, while the owner's 6 passengers with 2 large, 3 medium and 3 small bags pay only in the Luxury Sprinter", async () => {
   setEnv(LIVE);
-  const want = { kind: "invalid", code: "bags", field: "bags", text: ERRORS.bags.text };
-  for (const action of ["options", "quote", "pay"]) {
-    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_bags: "15", action }), 422), want, action);
-    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, medium_bags: "15", action }), 422), want, action);
-    assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, small_bags: "15", action }), 422), want, action);
+  calls = [];
+  const owner = { ...STRIPE_JFK, passengers: "6", infant_seats: "1", large_bags: "2", medium_bags: "3", small_bags: "3" };
+  const options = await readJson(await post({ ...owner, action: "options", nonce: "nonce-bag-limit-00000001" }), 200);
+  assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents, c.reason]), [["suv", null, "too-many-bags"], ["premium", null, "too-many-bags"], ["first", null, "seats"], ["sedan", null, "seats"], ["electric", null, "seats"], ["sprinter", AIRPORT_TOTALS["sprinter-executive"].jfk + 2000, ""]]);
+  assert.deepEqual([options.reason, options.pay, options.price], ["too-many-bags", false, null]);
+  for (const cls of ["suv", "premium"]) {
+    const body = await readJson(await post({ ...owner, class: cls, nonce: `nonce-bag-limit-${cls}-0001`.slice(0, 24) }), 200);
+    assert.deepEqual([body.kind, body.reason, body.group, body.heading, body.text, "url" in body], ["quote", "too-many-bags", "bags", HEADINGS.bags, REASONS["too-many-bags"].text, false], cls);
+    assertRedirect(await formPost({ ...owner, class: cls }), "/book#q-too-many-bags");
   }
-  for (const bad of ["-1", "1.5", "two", "1e9"]) assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, large_bags: bad }), 422), want, bad);
-  for (const bad of ["-1", "15", "two"]) assert.deepEqual(await readJson(await post({ ...STRIPE_JFK, medium_bags: bad }), 422), want, `medium ${bad}`);
-  assertRedirect(await formPost({ ...STRIPE_JFK, small_bags: "99" }), "/book#e-bags");
-  assert.equal(calls.length, 0);
+  assert.equal(calls.length, 0, "no car that cannot fit the bags reaches Stripe");
+  assert.deepEqual([HEADINGS.bags, REASONS["too-many-bags"].text], ["Too many bags for this car", "Choose a bigger car to see its price and book online."]);
+  const van = await readJson(await post({ ...owner, class: "sprinter", nonce: "nonce-bag-limit-van-0001" }), 200);
+  assert.deepEqual([van.kind, calls.length, formOf(calls[0]).get("metadata[passengers]")], ["pay", 1, "6, 2 large bags, 3 medium bags, 3 small bags"]);
+  const medium = await readJson(await post({ ...STRIPE_JFK, class: "first", large_bags: "1", medium_bags: "2", action: "options", nonce: "nonce-bag-limit-med-0001" }), 200);
+  assert.deepEqual([medium.reason, medium.classes.find((c) => c.class === "first").reason, medium.classes.find((c) => c.class === "suv").total_cents], ["too-many-bags", "too-many-bags", 18500], "a medium suitcase takes a large space: 1 large and 2 medium are 3 large for First Class");
 });
 
 await test("handler: BOOK_MOCK pays an airport pickup with bags, with JavaScript and without, and GET rebuilds the confirmation with the same lines, total and value as without them", async () => {
   setEnv({ BOOK_MOCK: "true", PAYMENTS_ENABLED: "true" });
-  const fields = { ...trip(PICKUP), ...BAG_FIELDS, nonce: "nonce-bag-mock-000000001" };
+  const fields = { ...trip(PICKUP), large_bags: "2", medium_bags: "1", small_bags: "3", nonce: "nonce-bag-mock-000000001" };
   const body = await readJson(await post(fields), 200);
   const session = await readJson(await get(`cs_mock_${body.ref}`), 200);
   const plainBody = await readJson(await post({ ...trip(PICKUP), nonce: "nonce-bag-mock-000000003" }), 200);

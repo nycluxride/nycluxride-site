@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { DESCRIPTOR_CODES, TLC_BASE_LICENSE, STRIPE_VERSION, PAID_NOTICE_MINUTES } from "./_rates.mjs";
-import { CHECKOUT, LABELS, POLICY, SPRINTER_BUSY } from "./_copy.mjs";
-import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText, sprinterBusy } from "./_trip.mjs";
+import { CHECKOUT, LABELS, POLICY } from "./_copy.mjs";
+import { fill, formatDate, formatTime, nycToUtc, legsOf, serviceLabel, serviceOf, airportDistance, flatPart, tollsIn, rideTotals, emailOk, seatText, seatMeta, dogText, dogMeta, bagText, paxMeta, endMeta, bookingData, shownLines, chargedTrip, ownerSubject, shortPlace, placeText, busyNote } from "./_trip.mjs";
 import { production, clean } from "./_http.mjs";
 
 const API = "https://api.stripe.com/v1";
@@ -212,7 +212,7 @@ export function sessionParams(input, price, ref, settings, now, origin) {
     consent_collection: { terms_of_service: "required", payment_method_reuse_agreement: { position: "auto" } },
     custom_text: {
       terms_of_service_acceptance: { message: CHECKOUT.terms },
-      submit: { message: sprinterBusy(trip.class, pickup, now) ? `${submitText(trip, hourly)} ${SPRINTER_BUSY}` : submitText(trip, hourly) },
+      submit: { message: [submitText(trip, hourly), busyNote(trip.class, pickup, now)].filter(Boolean).join(" ") },
       after_submit: { message: afterSubmit },
     },
     line_items: lineItems,

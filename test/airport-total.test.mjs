@@ -58,7 +58,7 @@ async function build(fields) {
 async function priced(fields) {
   const { trip, check } = await build(fields);
   assert.equal(check.kind, "price", JSON.stringify(check));
-  assert.equal(check.reason, fields.class === "sprinter" ? (fields.trip_type === "hour" ? "sprinter-quote" : "sprinter-check") : "", JSON.stringify(check));
+  assert.equal(check.reason, "", JSON.stringify(check));
   return { trip, price: priceTrip(trip, ON) };
 }
 
@@ -332,9 +332,9 @@ await test("hourly tip is a percent of the hourly fare only", async () => {
 });
 
 await test("the Electric Class costs more because it is harder to find a driver: $250 at JFK, Newark and Teterboro, $215 at LaGuardia, $125 an hour, and its distance cards are the old ones times 250/180 rounded to the cent, with the same waiting charge as the Executive Sedan", () => {
-  assert.deepEqual(CLASSES.electric, { name: "Electric Class", seats: 3, bags: "" });
+  assert.deepEqual(CLASSES.electric, { name: "Electric Class", seats: 3, bags: "2 large plus 1 small bag" });
   assert.deepEqual(VEHICLES.electric, { cls: "electric", model: "Cadillac Lyriq or similar", hourly: 12500 });
-  assert.deepEqual(CLASSES.sedan, { name: "Executive Sedan", seats: 3, bags: "" });
+  assert.deepEqual(CLASSES.sedan, { name: "Executive Sedan", seats: 3, bags: "2 large plus 1 small bag" });
   assert.deepEqual(VEHICLES.sedan, { cls: "sedan", model: "Mercedes-Benz E-Class or similar", hourly: 8500 });
   assert.deepEqual(AIRPORT_TOTALS.electric, { jfk: 25000, lga: 21500, ewr: 25000, teb: 25000 });
   assert.deepEqual(AIRPORT_TOTALS.sedan, { jfk: 17000, lga: 14500, ewr: 18000, teb: 17000 });
@@ -362,16 +362,16 @@ await test("the return example: Fare 30758, service fee 3690, tolls 2552, total 
   assert.equal(tipped.price.total, 41614);
 });
 
-await test("a stop trip whose legs are all airport transfers, JFK by a Manhattan stop to LaGuardia, is no longer the sum of its legs: it takes the stop rule, so with no price for the trip between the two airports it is priced over its whole route at no less than the JFK fare, and without the route it stays with dispatch", async () => {
+await test("a stop trip whose legs are all airport transfers, JFK by a Manhattan stop to LaGuardia, is no longer the sum of its legs: it takes the stop rule, and the trip between the two airports without the stop is priced by distance at no less than the JFK flat total, so it pays that plus the stop fee when the whole route costs less, and without the route it stays with dispatch", async () => {
   const fields = { ...BASE, from_text: AIRPORT_ROW.jfk.label, from_id: "jfk", stop1_text: MANHATTAN, to_text: AIRPORT_ROW.lga.label, to_id: "lga" };
   assert.deepEqual((await build(fields)).check, { kind: "quote", reason: "stop-leg", field: "" });
   process.env.GOOGLE_MOCK = "true";
   try {
     const { trip, price } = await priced(fields);
-    assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.stops, leg.ride, leg.plain]), [["jfk", "lga", 1, { tenths: 168, minutes: 43 }, undefined]]);
-    assert.deepEqual(pairs(price.lines), [["Fare", 18015], ["Service fee", 2162]]);
-    assert.deepEqual([price.total, price.stops, price.tolls, price.service], [20177, 0, 0, "distance"]);
-    assert.ok(price.fare >= AIRPORT_FARES.suv.jfk);
+    assert.deepEqual(trip.legs.map((leg) => [leg.from, leg.to, leg.stops, leg.ride, leg.plain.reason, leg.plain.ride.tenths]), [["jfk", "lga", 1, { tenths: 168, minutes: 43 }, "", 168]]);
+    assert.deepEqual(pairs(price.lines), [["Fare", 18015], ["Service fee", 2162], ["Extra stop", 2000]], "the mock drives 16.8 miles with or without the stop, so the trip without it plus the fee is dearer");
+    assert.deepEqual([price.total, price.stops, price.tolls, price.service], [22177, 2000, 0, "distance"]);
+    assert.ok(price.fare >= AIRPORT_FARES.suv.jfk && price.total - price.stops >= 18500);
     assert.ok(price.total < 18500 + 16500);
   } finally {
     delete process.env.GOOGLE_MOCK;

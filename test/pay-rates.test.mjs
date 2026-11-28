@@ -112,7 +112,7 @@ test("AIRPORT_FARES and AIRPORT_TOTALS cover every car class at every priced air
   }
 });
 
-test("the airport table has one row per class in CLASSES order with the JFK and Teterboro total, the Newark total and the LaGuardia total, and the Luxury Sprinter row gives the lowest Sprinter totals, says so and is requested, not booked", () => {
+test("the airport table has one row per class in CLASSES order with the JFK and Teterboro total, the Newark total and the LaGuardia total, and the Luxury Sprinter row gives the lowest Sprinter totals, says so and is booked online", () => {
   const rows = [...page.querySelectorAll("#airport-rates tbody tr")];
   assert.deepEqual(rows.map((tr) => tr.id), CLASS_KEYS.map((k) => `airport-${k}`));
   for (const [i, cls] of CLASS_KEYS.entries()) {
@@ -124,18 +124,18 @@ test("the airport table has one row per class in CLASSES order with the JFK and 
       const lga = Math.min(...SPRINTER_KEYS.filter((k) => AIRPORT_TOTALS[k].lga).map((k) => AIRPORT_TOTALS[k].lga));
       assert.deepEqual([...rows[i].querySelectorAll("td")].map((td) => cents(squash(td))), [[jfk, teb], [ewr], [lga]], cls);
       assert.deepEqual([jfk, teb, ewr, lga], [45000, 47500, 48500, 45000]);
-      assert.equal(squash(rows[i].querySelector("a")), "Request a Luxury Sprinter");
+      assert.equal(squash(rows[i].querySelector("a")), "Book a Luxury Sprinter");
       continue;
     }
     assert.deepEqual([...rows[i].querySelectorAll("td")].map((td) => cents(squash(td))), [[AIRPORT_TOTALS[cls].jfk], [AIRPORT_TOTALS[cls].ewr], [AIRPORT_TOTALS[cls].lga]], cls);
   }
 });
 
-test("the Sprinter airport table has one row per Sprinter in VEHICLES order with its JFK, Newark, Teterboro and LaGuardia totals from api/_rates.mjs, the White Luxury Limo Sprinter asks for a price at LaGuardia, the caption says we check a Sprinter is free before you pay, and each row requests its Sprinter", () => {
+test("the Sprinter airport table has one row per Sprinter in VEHICLES order with its JFK, Newark, Teterboro and LaGuardia totals from api/_rates.mjs, the White Luxury Limo Sprinter asks for a price at LaGuardia, the caption says to book 3 hours ahead with no availability check, and each row books its Sprinter", () => {
   const table = row("sprinter-airport");
   assert.equal(table.closest("section").id, "airport");
   assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Sprinter", "One-way totals"]);
-  assert.equal(squash(table.querySelector("caption")), "Luxury Sprinter airport transfers to or from any New York City address. We check that a Sprinter is free before you pay. Book a Sprinter at least 3 hours ahead.");
+  assert.equal(squash(table.querySelector("caption")), "Luxury Sprinter airport transfers to or from any New York City address. Book a Sprinter at least 3 hours ahead.");
   assert.doesNotMatch(squash(row("airport")), /two SUVs/);
   assert.deepEqual([...table.querySelectorAll("tfoot td")].map(squash), ["One-way totals in either direction, with tolls, airport fees and the service fee included."]);
   const NAMES = { jfk: "JFK", ewr: "Newark", teb: "Teterboro", lga: "LaGuardia" };
@@ -147,7 +147,7 @@ test("the Sprinter airport table has one row per Sprinter in VEHICLES order with
     const cells = [...rows[i].querySelectorAll("td")];
     assert.equal(cells.length, 1, key);
     const text = ["jfk", "ewr", "teb", "lga"].map((a) => (AIRPORT_TOTALS[key][a] ? `${NAMES[a]} $${AIRPORT_TOTALS[key][a] / 100}` : `${NAMES[a]}, ask for a price`)).join(", ");
-    assert.equal(squash(cells[0]), `${text}Request ${/^[AEIOU]/.test(v.name) ? "an" : "a"} ${v.name}`, key);
+    assert.equal(squash(cells[0]), `${text}Book ${/^[AEIOU]/.test(v.name) ? "an" : "a"} ${v.name}`, key);
     assert.deepEqual(cents(squash(cells[0])), ["jfk", "ewr", "teb", "lga"].filter((a) => AIRPORT_TOTALS[key][a]).map((a) => AIRPORT_TOTALS[key][a]), key);
     assert.equal(cells[0].querySelector("a").getAttribute("href"), `/book?class=sprinter&sprinter=${key}`, key);
   }
@@ -186,8 +186,8 @@ const hourlyRows = [
   ["electric-class", "electric", "electric"],
 ];
 
-test("the hourly rows follow CLASSES order and the hourly rates are the owner's: First Class $175, Electric Class $125, Sprinters by quote", () => {
-  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "executive-sedan", "electric-class"]);
+test("the hourly rows follow CLASSES order and the hourly rates are the owner's: First Class $175, Electric Class $125, then the five Sprinters", () => {
+  assert.deepEqual([...page.querySelectorAll("#hourly tbody tr")].map((tr) => tr.id), ["business-suv", "business-premium-suv", "first-class", "executive-sedan", "electric-class", "hourly-executive", "hourly-luxury-jet", "hourly-presidential", "hourly-limo", "hourly-white-limo"]);
   assert.deepEqual(Object.fromEntries(Object.entries(VEHICLES).map(([k, v]) => [k, v.hourly])), { "suv-suburban": 9500, "suv-denali": 10000, "suv-navigator": 10000, premium: 10500, sedan: 8500, electric: 12500, first: 17500, "sprinter-executive": 17500, "sprinter-luxury-jet": 21500, "sprinter-presidential": 24500, "sprinter-limo": 26500, "sprinter-white-limo": 27500 });
   assert.deepEqual(cents(squash(row("first-class"))), [17500, 52500]);
   assert.equal(squash(row("business-premium-suv").querySelector("th small")), VEHICLES.premium.model);
@@ -237,17 +237,30 @@ test("the five Sprinters are priced by the hour with a 4-hour minimum and the ow
   assert.doesNotMatch(squash(row("hourly")), /\bFrom\b/);
 });
 
-test("Sprinters by the hour are by quote: the hourly section has no Sprinter price, says so with the 4-hour minimum, and links a request for an hourly Sprinter", () => {
-  const line = row("luxury-sprinter");
-  assert.equal(line.closest("section").id, "hourly");
-  assert.equal(squash(line), "Request a Luxury Sprinter by the hour. We check that a Sprinter is free and reply with a price.");
-  assert.deepEqual([...line.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["/book?trip-type=hour&hours=4&class=sprinter", "Request a Luxury Sprinter by the hour"]]);
-  assert.deepEqual(cents(squash(line)), []);
-  assert.deepEqual([...row("hourly").querySelectorAll("tr")].filter((tr) => /Sprinter/.test(squash(tr))), []);
-  assert.ok(squash(row("hourly").querySelector(".prose")).includes("Sprinters have a 4-hour minimum. By the hour, Sprinters are by quote."));
+test("Sprinters by the hour are booked online: the Sprinter table lists each Sprinter with its seats, hourly rate and the cost of the 4-hour minimum, each row books it by the hour, and the hourly section says so with no quote wording", () => {
+  const table = row("luxury-sprinter");
+  assert.equal(table.tagName, "TABLE");
+  assert.equal(table.closest("section").id, "hourly");
+  assert.deepEqual([...table.querySelectorAll("thead th")].map(squash), ["Sprinter", "Seats", "Per hour", "Four hours"]);
+  assert.equal(squash(table.querySelector("caption")), `Luxury Sprinter hourly rates. Every Sprinter has a 4-hour minimum. Book a Sprinter at least 3 hours ahead. A ${FEE_PERCENT}% service fee is added at booking.`);
+  const rows = [...table.querySelectorAll("tbody tr")];
+  assert.deepEqual(rows.map((tr) => tr.id), sprinters.map(([k]) => k.replace("sprinter-", "hourly-")));
+  for (const [i, [key, v]] of sprinters.entries()) {
+    const [seats, perHour, four] = [...rows[i].querySelectorAll("td")].map(squash);
+    assert.equal(own(rows[i].querySelector("th")), v.name, key);
+    assert.equal(rows[i].dataset.seats, String(v.seats), key);
+    assert.equal(Number(seats), v.seats, key);
+    assert.deepEqual(cents(perHour), [v.hourly], key);
+    assert.deepEqual(cents(four), [v.hourly * v.minHours], key);
+    assert.equal(rows[i].querySelector("a").getAttribute("href"), `/book?trip-type=hour&hours=${v.minHours}&class=sprinter&sprinter=${key}`, key);
+    assert.equal(squash(rows[i].querySelector("a")), `Book by the hour, ${v.name}`, key);
+  }
+  assert.deepEqual(rows.map((tr) => cents(squash(tr.querySelectorAll("td")[2]))[0]), [70000, 86000, 98000, 106000, 110000]);
+  assert.ok(squash(row("hourly").querySelector(".prose")).endsWith("Sprinters have a 4-hour minimum."));
+  assert.doesNotMatch(squash(row("hourly")), /quote|request|reply with/i);
   assert.equal(own(row("airport-sprinter").querySelector("th")), CLASSES.sprinter.name);
   assert.equal(squash(row("airport-sprinter").querySelector("th small")), "Five kinds of Sprinter, lowest prices shown");
-  assert.doesNotMatch(squash(page.body), /Weddings, proms and events|booked by the hour only|Shuttle|Jet Sprinter(?<!Luxury Jet Sprinter)/);
+  assert.doesNotMatch(squash(page.body), /Weddings, proms and events|booked by the hour only|Shuttle|Jet Sprinter(?<!Luxury Jet Sprinter)|two SUVs/);
 });
 
 test("each model and figure in #business-suv matches one suv- entry, in both directions", () => {
@@ -368,19 +381,19 @@ test("the fixed-price routes table gives the highest total for each car class be
   }
   assert.deepEqual(CAR_KEYS.map((cls) => squash(row(`route-${cls}`).querySelector("td"))), ["$211.43", "$251.43", "$354.29", "$194.28", "$285.72"]);
   assert.equal(squash(section.querySelector("tfoot td")), "In either direction with no stops, with tolls and the service fee included. Any meet and greet, child seats, pets and gratuity are added when you book.");
-  assert.deepEqual([...page.querySelectorAll(".jumps a")].map((a) => [a.getAttribute("href"), squash(a)]), [["#airport", "Airport transfers"], ["#hourly", "Hourly"], ["#routes", "Fixed-price routes"], ["#distance", "Quotes"], ["#add-ons", "Add-ons and terms"], ["#policies", "Policies"]]);
+  assert.deepEqual([...page.querySelectorAll(".jumps a")].map((a) => [a.getAttribute("href"), squash(a)]), [["#airport", "Airport transfers"], ["#hourly", "Hourly"], ["#routes", "Fixed-price routes"], ["#distance", "Other trips"], ["#add-ons", "Add-ons and terms"], ["#policies", "Policies"]]);
 });
 
-test("the quotes section says other one-way trips up to DISTANCE_LIMITS.miles show their total before you pay, each stop adds the stop fee, long distance from LONG_MILES shows its price when you book and pays online, and Sprinters and Canada are plain Request a quote lines, with Canada 24/7 for tourism and transfers in every vehicle", () => {
+test("the quotes section says other one-way trips up to DISTANCE_LIMITS.miles show their total before you pay, each stop adds the stop fee, long distance from LONG_MILES shows its price when you book and pays online, and Canada runs 24/7 in the Executive Sedan, Business SUV and Business Premium SUV with a car within an hour for a last-minute call, booked by phone or WhatsApp, with no quote line left", () => {
   assert.equal(LONG_MILES, 75);
-  assert.equal(squash(row("distance").querySelector("h2")), "Other trips and quotes");
+  assert.equal(squash(row("distance").querySelector("h2")), "Other trips");
   assert.deepEqual([...row("distance").querySelectorAll(".prose.c1-4 p")].map(squash), [`For other one-way trips up to ${DISTANCE_LIMITS.miles} miles, you see the total before you pay, with tolls in the price. Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Parking is charged after the ride.`]);
   const quotes = [...row("quotes").querySelectorAll("dt")].map((dt) => [squash(dt), squash(dt.nextElementSibling), [...dt.nextElementSibling.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)])]);
   assert.deepEqual(quotes, [
     ["Long distance", `For ${LONG_MILES} miles or more, the price shows when you book and you can pay online`, [["/long-distance-car-service", `For ${LONG_MILES} miles or more`]]],
-    ["Sprinters", "For Sprinter trips other than airport transfers, request a quote", [["/sprinter-van-service-nyc", "request a quote"]]],
-    ["Canada", "We drive to Canada 24/7 for tourism and transfers, in every vehicle, request a quote", [["/long-distance-car-service#canada", "request a quote"]]],
+    ["Canada", `Canada trips run 24/7 in the ${CLASSES.sedan.name}, ${CLASSES.suv.name} and ${CLASSES.premium.name}, with a car within an hour for a last-minute call. Call or WhatsApp us to book`, [["/long-distance-car-service#canada", "Canada trips run 24/7"], ["tel:+16467750556", "Call"], ["https://wa.me/16467750556", "WhatsApp"]]],
   ]);
+  assert.doesNotMatch(squash(row("distance")), /quote|Sprinter/i);
 });
 
 test("the airport section says that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City shows its total before payment, links the fixed-price routes, and api/_trip.mjs never prices its Fare line below the airport fare", () => {
@@ -401,12 +414,13 @@ test("the airport section says that a trip between JFK, LaGuardia, Newark or Tet
 
 test("every $ figure in the rate tables, the waiting table included, is reproducible from the config", () => {
   const tables = [...page.querySelectorAll("table.rate-table")];
-  assert.equal(tables.length, 5);
+  assert.equal(tables.length, 6);
   const legs = [...CAR_KEYS, ...SPRINTER_KEYS].flatMap((key) => Object.keys(AIRPORT_TOTALS[key]).map((airport) => leg(key, airport)));
   const known = new Set([
     ...legs.flatMap((l) => [l.fare, l.fee, l.tolls, l.total]),
     ...hourlyFigures,
     ...hourlyFigures.map((v) => v * HOURS.min),
+    ...sprinters.map(([, v]) => v.hourly * v.minHours),
     example.fare,
     example.fee,
     example.total,
@@ -447,7 +461,7 @@ test("every Offer price in the rates JSON-LD is reproducible from the config", (
   }
   const routes = catalog.itemListElement.filter((o) => o.name.startsWith("Fixed-price route, "));
   assert.deepEqual(routes.map((o) => [o.name.split(", ").at(-1), o.url, o.priceSpecification]), CAR_KEYS.map((cls) => [CLASSES[cls].name, "https://www.nycluxride.com/rates#routes", { "@type": "PriceSpecification", priceCurrency: "USD", maxPrice: String(ROUTE_CAPS.hudson.totals[cls] / 100) }]));
-  assert.equal(catalog.itemListElement.some((o) => /Sprinter/.test(o.name) && /Hourly/.test(o.name)), false);
+  assert.deepEqual(catalog.itemListElement.filter((o) => /Sprinter/.test(o.name) && /Hourly/.test(o.name)).map((o) => [o.name, o.url, o.priceSpecification.minPrice, o.priceSpecification.maxPrice, o.priceSpecification.eligibleQuantity.minValue]), [["Hourly and as directed, Luxury Sprinter", "https://www.nycluxride.com/rates#luxury-sprinter", String(Math.min(...sprinters.map(([, v]) => v.hourly)) / 100), String(Math.max(...sprinters.map(([, v]) => v.hourly)) / 100), VEHICLES["sprinter-executive"].minHours]]);
   for (const offer of catalog.itemListElement) {
     const spec = offer.priceSpecification || {};
     const open = spec.minPrice !== undefined && spec.maxPrice === undefined && spec.price === undefined;

@@ -45,6 +45,7 @@ const STATIC = [
   "tolls",
   "seo-weekly",
   "ride-reminders",
+  "owner-update",
   "release1",
   "sprinter",
   "search-fixes",

@@ -58,16 +58,16 @@ check("pets: pay.js reprices on a change of either dog count, keys the price on 
   assert.equal(book.html.split('id="bk-pets"').length, 2);
 });
 
-check("bags: pay.js gives each bag count the stepper of the pet counts with Less off at 0 and More off at the last option, shows the bags message when More is pressed there and clears it with the next change, never reprices or asks the server again on a bag change, writes one line per bag size right after Passengers into both messages, replaces the stale bag lines of the server's message, shows the over-capacity note from the chosen card and speaks it only after load, adds a Bags row with its Change button to Your trip, writes the counts on the Bags row of step 1, reads the three counts from a deep link, and done.js shows them on the confirmation", () => {
+check("bags: pay.js gives each bag count the stepper of the pet counts with Less off at 0 and More off at the last option, shows the bags message when More is pressed there and clears it with the next change, asks the server for fresh options on a bag change so every card follows BAG_CAPACITY, writes one line per bag size right after Passengers into both messages, replaces the stale bag lines of the server's message, shows the over-capacity note from the chosen card and speaks it only after load, adds a Bags row with its Change button to Your trip, writes the counts on the Bags row of step 1, reads the three counts from a deep link, and done.js shows them on the confirmation", () => {
   assert.match(PAY, /BF=\$\("bk-bags"\),BS=\(\)=>\[\.\.\.BF\.elements\]\.filter\(x=>x\.name\),bn2=\(\)=>BS\(\)\.filter\(x=>\+x\.value\),bl=\(\)=>bn2\(\)\.map\(x=>x\.labels\[0\]\.textContent\+": "\+x\.value\),bg=\(\)=>bn2\(\)\.map\(x=>x\.value\+" "\+x\.name\.split\("_"\)\[0\]\)\.join\(", "\),/);
   assert.match(PAY, /DX=DS\(\)\.map\(s=>mS\(s,s\.name\.replace\("_"," "\)\)\);BX=BS\(\)\.map\(s=>mS\(s,s\.name\.replace\("_bags"," suitcases"\)\)\);/);
   assert.match(PAY, /KX=\[\],DX=\[\],BX=\[\],/);
-  assert.match(PAY, /x\.lastChild\.ariaDisabled=i>=s\.length-1\}\);let c=kc\(\),g=c\?c\.parentNode\.dataset:\{\},a=\+E\.large_bags\.value,b=\+E\.medium_bags\.value\+ \+E\.small_bags\.value,h=N\("bagfit"\),u=BT\|\|\(BT=h\.textContent\),K=\[\.\.\.F\.querySelectorAll\("\.bk-card\[data-large\]"\)\]\.map\(x=>x\.dataset\),f=x=>a<=x\.large&&a\+b<=\+x\.large\+ \+x\.small,y=!!c&&!\(g\.large\?f\(g\):K\.every\(f\)\),t=K\.some\(f\)\?u:"Your bags may not fit in any of our cars\. Tell us in the notes\.",k=BC&&BC!=c;BC=c;y\?\(h\.hidden\|\|h\.textContent!=t\)&&\(k&&h\.hidden&&!cs\(h,"keep"\)&&c\.parentNode\.after\(h\),h\.textContent=t,h\.hidden=!1,IL\|\|SU\(t\)\):h\.hidden\|\|\(tg\(h,"keep",!!k\),h\.hidden=!0,IL\|\|N\("status"\)\.textContent!=h\.textContent\|\|SU\(""\)\);XU\(\)\}/, "the note shows when the large suitcases pass the card's large count or all bags, medium and small included, pass its total, checks a card without a stated count against the smallest stated one, says so when no car fits, sits after a newly chosen card and keeps its space when a car change hides it so the clicked card stays put, speaks only on a change after load and clears its words from the status line when it hides");
-  assert.match(PAY, /\/_bags\$\/\.test\(n\)&&\(tg\(N\("bagfit"\),"keep",0\),su\(\),uk\(\$\("e-bags"\)\)\);ch\(\);/);
+  assert.match(PAY, /x\.lastChild\.ariaDisabled=i>=s\.length-1\}\);let c=kc\(\),g=c\?c\.parentNode\.dataset:\{\},a=\+E\.large_bags\.value\+ \+E\.medium_bags\.value,b=\+E\.small_bags\.value,h=N\("bagfit"\),u=BT\|\|\(BT=h\.textContent\),K=\[\.\.\.F\.querySelectorAll\("\.bk-card\[data-large\]"\)\]\.map\(x=>x\.dataset\),f=x=>a<=x\.large&&a\+b<=\+x\.large\+ \+x\.small,y=!!c&&!\(g\.large\?f\(g\):K\.every\(f\)\),t=K\.some\(f\)\?u:BN,k=BC&&BC!=c;BC=c;y\?\(h\.hidden\|\|h\.textContent!=t\)&&\(k&&h\.hidden&&!cs\(h,"keep"\)&&c\.parentNode\.after\(h\),h\.textContent=t,h\.hidden=!1,IL\|\|SU\(t\)\):h\.hidden\|\|\(tg\(h,"keep",!!k\),h\.hidden=!0,IL\|\|N\("status"\)\.textContent!=h\.textContent\|\|SU\(""\)\);XU\(\)\}/, "the note shows when the large and medium suitcases pass the card's large count or all bags pass its total, says so when no car fits, sits after a newly chosen card and keeps its space when a car change hides it so the clicked card stays put, speaks only on a change after load and clears its words from the status line when it hides");
+  assert.ok(PAY.includes('/_bags$/.test(n)&&(tg(N("bagfit"),"keep",0),su(),uk($("e-bags")),y&&(ps(),pz(),sp(),CT(qt),qt=TO(()=>pQ("options"),150)));ch();'), "a bag change marks the cards at once and asks for fresh options");
   assert.ok(PAY.includes('XW=(a,n)=>{let p=a.filter(s=>+s.value).map(s=>[+s.value,s.labels[0].firstChild.data.split(" ")[0].toLowerCase()]);return p.length>1?p.map(x=>x.join(" ")).join(", "):p.length?p[0].join(" ")+" "+n+(p[0][0]>1?"s":""):"None"}') && PAY.includes('s:[BS,KS,DS][j],n:["bag","seat","dog"][j]'), "each row says None, 2 large bags, 1 child seat or 1 small, 1 large");
   assert.match(PAY, /KX=\[\],DX=\[\],BX=\[\],BC=0,BT="",/);
-  assert.match(PAY, /if\(\/\^\(class\|vehicle\|sprinter\|meet\|tip\|passengers\|\\w\+_\(seats\|dogs\)\)\$\/\.test\(n\)\)/, "a bag change never reprices");
-  assert.doesNotMatch(PAY, /_bags\.value,ap\(\)|BS\(\)\.map\(x=>x\.value\)/, "the price key leaves the bags out");
+  assert.match(PAY, /if\(\/\^\(class\|vehicle\|sprinter\|meet\|tip\|passengers\|\\w\+_\(seats\|dogs\)\)\$\/\.test\(n\)\)/);
+  assert.ok(PAY.includes("DS().map(x=>x.value),BS().map(x=>x.value),ap()||one()&&fk(1)]"), "the price key holds the bags");
   assert.match(PAY, /GO\|\|l\.push\("Passengers: "\+PA\.value,\.\.\.bl\(\)\);/);
   assert.match(PAY, /a=SV\?SV\[0\]\.split\("\\n"\)\.filter\(l=>!\/\^\(Flight\|\(Large\|Medium\|Small\) suitcase\[\^:\]\*\): \/\.test\(l\)\):wl\(\)/);
   assert.match(PAY, /SV&&\(i=a\.findIndex\(l=>\/\^Passengers: \/\.test\(l\)\)\)>=0&&a\.splice\(i\+1,0,\.\.\.bl\(\)\);/);
@@ -80,7 +80,7 @@ check("bags: pay.js gives each bag count the stepper of the pet counts with Less
   assert.match(DONE, /\+rw\("Car",cn\[0\]&&ES\(cn\[0\]\)\+sm\(ES\(cn\[1\]\|\|""\)\)\)\+rw\("Bags",\["large","medium","small"\]\.filter\(k=>\+f\[k\+"_bags"\]\)\.map\(k=>f\[k\+"_bags"\]\+" "\+k\)\.join\(", "\)\)/);
   assert.equal(book.html.split('id="bk-bags"').length, 2);
   assert.equal($("e-bags").textContent, ERRORS.bags.text);
-  assert.equal($("bk-bagfit").textContent, "Your bags may not fit in this car. Choose a larger car or tell us in the notes.");
+  assert.equal($("bk-bagfit").textContent, "Too many bags for this car. Choose a bigger car.");
   assert.ok($("bk-bagfit").hidden && $("bk-bagfit").matches(".bk-mrow__x.bk-js-only"));
   assert.doesNotMatch(SRC, /bag_cents|bags_cents/);
 });
@@ -320,20 +320,31 @@ check("the price box and the confirmation receipt (owner change 2) hold the Serv
 });
 
 check("the child seat limits: each class card carries the limits of CHILD_SEAT_LIMITS, pay.js turns a card off with a short reason for too many child seats, no adult or too many seats with one adult, the selected card shows the request block, the fix picks the first car that fits, and a seat change marks the cards at once", () => {
-  assert.ok(PAY.includes('KR=l=>{let d=l.dataset,s=SN(),a=+PA.value-s;return d.kids==null?"":s>d.kids?"child-seats":a<d.adults?"adult":a==1&&s>d.kids1?"one-adult":""}'));
-  assert.ok(PAY.includes('Kx=(k,l)=>k=="adult"?"Needs an adult":"Fits "+(k=="one-adult"?l.dataset.kids1+" with 1 adult":l.dataset.kids+" child seat"+(l.dataset.kids>1?"s":""))'));
+  assert.ok(PAY.includes('KR=l=>{let d=l.dataset,s=SN(),a=+PA.value-s,g=+E.large_bags.value+ +E.medium_bags.value;return d.large&&(g>d.large||g+ +E.small_bags.value>+d.large+ +d.small)?"too-many-bags":d.kids==null?"":s>d.kids?"child-seats":a<d.adults?"adult":a==1&&s>d.kids1?"one-adult":""}'), "a card that cannot take the bags is off first, a medium suitcase counting as a large one");
+  assert.ok(PAY.includes('Kx=(k,l)=>k=="too-many-bags"?"Too many bags for this car":k=="adult"?"Needs an adult":"Fits "+(k=="one-adult"?l.dataset.kids1+" with 1 adult":l.dataset.kids+" child seat"+(l.dataset.kids>1?"s":""))'));
   assert.ok(PAY.includes('fc=n=>[...F.querySelectorAll("[name=class]")].find(i=>+i.parentNode.dataset.seats>=n&&!S9(i.value)&&!KR(i.parentNode))'));
-  assert.ok(PAY.includes('y?{total_cents:null,reason:y}:c.reason&&!/^sprinter-[cq]/.test(c.reason)?{}:c}'));
-  assert.ok(PAY.includes('qh=(c,l)=>/^(seats|child-seats|adult|one-adult)$/.test(c.reason)?null:'));
+  assert.ok(PAY.includes('y?{total_cents:null,reason:y}:c.reason?{}:c}'));
+  assert.ok(PAY.includes('CF=/^(seats|child-seats|adult|one-adult|too-many-bags)$/,') && PAY.includes('BN="Too many bags for any of our cars. Send us the trip.",'));
+  assert.ok(PAY.includes('qh=(c,l)=>CF.test(c.reason)?null:'));
+  assert.ok(PAY.includes('seats:["Too small for N passengers","Show cars for N"],"too-many-bags":["Too many bags for this car","Choose a bigger car"],'));
   assert.ok(PAY.includes('"child-seats":["Too many child seats for this car","Show cars that fit"],adult:["This car needs an adult","Show cars that fit"],"one-adult":["Too many child seats for 1 adult","Show cars that fit"]'));
-  assert.ok(PAY.includes('else if(/^(seats|child-seats|adult|one-adult)$/.test(r)){let x=fc(+PA.value);x&&(x.checked=!0,dc(x))}'));
+  assert.ok(PAY.includes('else if(CF.test(r)){let x=fc(+PA.value);x&&(x.checked=!0,dc(x))}'));
+  assert.ok(PAY.includes('y=CF.test(r)&&fc(+n),g=!!(f&&y),k=N("fix")') && PAY.includes('tg(N("bar"),"is-f",g);k.hidden=!g;[k,N("bar-fix")].map(b=>(tc(b,g?f:""),b.dataset.r=r));tg($("q-mail"),"btn--ghost",g||!BG.hidden);'), "a car that cannot take the trip, with a car that can, gets its fix as the gold button by the price and in the bar, Email and WhatsApp as the outline buttons");
+  assert.ok(PAY.includes('$("q-body").hidden=r=="too-many-bags"&&!!y;') && PAY.includes('tc(p,r=="too-many-bags"&&!y?BN:p.dataset.t)'), "too many bags shows the request steps only when no car takes the bags");
+  assert.ok(PAY.includes('[$("q-fix"),N("fix"),N("bar-fix")].map(b=>b.onclick=()=>fx(b.dataset.r));') && PAY.includes('[cs(N("bar"),"is-q")?cs(N("bar"),"is-f")?"bk-fix":"q-mail":'));
   assert.ok(PAY.includes('k?\'<span class="bk-fig">\'+Kx(k,l)+"</span>"'));
 });
 
-check("no two SUVs line before payment: every Sprinter is a request checked for a free Sprinter, so pay.js has no busy line for the cards or the price box and keeps the class change summary on a request", () => {
+check("the busy line: the price box shows the server's busy line of the chosen class, the two SUVs line for a Sprinter under SPRINTER_BUSY_HOURS and the Escalade line for First Class under FIRST_BUSY_HOURS, from an empty hidden #price-busy on every booking form, and no Sprinter is a request", () => {
   assert.ok(PAY.includes('pz=()=>{let n=+PA.value;T("fit"'));
-  assert.doesNotMatch(PAY, /bk-busy|price-busy|N\("busy"\)|[,{;]Sb=/);
-  assert.ok(PAY.includes('q=HO||c&&c.reason=="sprinter-check"&&c.reason;if(QK)return cz();'), "a class change on a request still names the chosen car in the summary and the bar");
+  assert.ok(PAY.includes('sp=ax(()=>{let c=CL[E.class.value],q=HO;if(QK)return cz();'), "a class change on a request still names the chosen car in the summary and the bar");
+  assert.ok(PAY.includes('pb();cz();dq();rq()}),pb=()=>{let c=CL[E.class.value],b=$("price-busy");b&&(b.hidden=!(c&&c.busy),tc(b,c&&c.busy||""))}'), "a class change shows or hides the chosen class's busy line");
+  assert.ok(PAY.includes('}pb();dq();sy();rq();r.price&&!QK'), "every answer shows or hides it too");
+  assert.doesNotMatch(PAY, /bk-busy|N\("busy"\)|[,{;]Sb=|sprinter-check|sprinter-quote|Request a quote|Request this Sprinter/);
+  for (const f of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) {
+    const busy = new JSDOM(readFileSync(join(ROOT, f), "utf8")).window.document.getElementById("price-busy");
+    assert.ok(busy && busy.hidden && busy.textContent === "" && busy.matches("#price > .bk-mrow__x") && busy.previousElementSibling.id === "price-notes", f);
+  }
 });
 
 check("a Sprinter link with no pickup fills in the first slot 3 hours plus AUTO_LEAD_MINUTES ahead with no auto move, Change the date leaves only the times a Sprinter can be booked on the first Sprinter day, a group no car can seat gets the Sprinter notice, and the bar keeps Email to reserve like every other request", () => {
@@ -345,7 +356,7 @@ check("a Sprinter link with no pickup fills in the first slot 3 hours plus AUTO_
   assert.ok(PAY.includes('f=="sf"?SF.slice(11)<="23:50"?SF.slice(0,10):nd(SF.slice(0,10))'), "after 11:50 PM the calendar opens on the next day, the first day with a time a Sprinter can take");
   assert.ok(PAY.includes(`S9(E.class?.value)?"Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.":`));
   assert.ok(PAY.includes('S8=()=>!fc(+PA.value)&&S9("sprinter")') && PAY.includes('reason:S8()?"sprinter-notice":"seats"') && PAY.includes('CL[c.class]=c.reason=="seats"&&S8()?{...c,reason:"sprinter-notice"}:c') && PAY.includes('r.reason=="seats"&&S8()&&(r.reason="sprinter-notice")'));
-  assert.ok(!SRC.includes("bar-fix") && !SHEETS.includes("bar-fix"));
+  assert.ok(!PAY.match(/CF=\/\^\(([^)]*)\)\$\//)[1].split("|").includes("sprinter-notice") && SHEETS.includes(".bk-bar:not(.is-f)>#bk-bar-fix,.bk-bar.is-f>#bk-bar-mail{display:none}") && !/sprinter-notice[^;]*bar-fix|bar-fix[^;]*sprinter-notice/.test(SRC + SHEETS), "the bar fix shows only for a car that cannot take the trip, so the Sprinter notice keeps Email to reserve");
   assert.ok(!SHEETS.includes("#q-sprinter-notice.is-on) #bk-bar-mail"), "the bar under the Sprinter notice shows Email to reserve");
 });
 

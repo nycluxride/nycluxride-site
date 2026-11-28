@@ -11,7 +11,7 @@ import { POST as bookPost } from "../api/book.mjs";
 import { CHECKOUT, NOTES, POLICY, LABELS } from "../api/_copy.mjs";
 import { AIRPORT_TOTALS, FEE_PERCENT, STOP_FEE_CENTS, TOLL_CLASS, PA_TOLLS, PA_PEAK, NJTP_TOLLS, TOLL_TABLE_UNTIL, percentCents } from "../api/_rates.mjs";
 import { instanceBudget } from "../api/_http.mjs";
-import { distanceFare, nycToUtc, requestReason } from "../api/_trip.mjs";
+import { distanceFare, nycToUtc } from "../api/_trip.mjs";
 
 const NOW = new Date("2026-10-01T16:00:00.000Z");
 const ON = readSettings({ PAYMENTS_ENABLED: "true" });
@@ -59,7 +59,7 @@ async function run(fields, now = NOW) {
 
 async function priced(fields, now = NOW) {
   const out = await run(fields, now);
-  assert.deepEqual(out.check, { kind: "price", reason: requestReason(out.trip, out.trip.class), hold: "" }, JSON.stringify(fields));
+  assert.deepEqual(out.check, { kind: "price", reason: "", hold: "" }, JSON.stringify(fields));
   return out;
 }
 
@@ -354,7 +354,7 @@ await test("tamper: the toll estimate rides in the signed route token, a changed
   const options = await bookPost(new Request(`${SITE}/api/book`, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", origin: SITE, "sec-fetch-site": "same-origin" }, body: JSON.stringify({ ...fields, route: changed, action: "options", nonce: "nonce-tolls-tamper-0001" }) }));
   const answer = await options.json();
   assert.deepEqual(answer.price.lines.map(({ label, cents }) => [label, cents]), [["Fare", 25876], ["Service fee", 3105], ["Tolls", 2250]]);
-  assert.deepEqual([answer.price.total_cents, answer.price.notes, answer.classes.map((c) => c.total_cents)], [31231, [POLICY.later.waiting], [38829, 45224, 50114, 31231, 44344, null]]);
+  assert.deepEqual([answer.price.total_cents, answer.price.notes, answer.classes.map((c) => c.total_cents)], [31231, [POLICY.later.waiting], [38829, 45224, 50114, 31231, 44344, 73882]]);
   assert.match(answer.route, ROUTE);
 });
 

@@ -11,7 +11,7 @@ import { JSDOM } from "jsdom";
 import { readInput, resolveTrip, priceTrip, readSettings, receipt, shownLines, money, fill, nycToUtc, bookingData } from "../api/_trip.mjs";
 import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { metadataFor } from "../api/_stripe.mjs";
-import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY, SPRINTER_BUSY } from "../api/_copy.mjs";
+import { MAIL, CHECKOUT, NOTES, POLICY, SEATS as SEAT_COPY, SPRINTER_BUSY, FIRST_BUSY } from "../api/_copy.mjs";
 import { smtpSend, buildMessage, header, mailbox } from "../api/_smtp.mjs";
 import { bookingLetters as lettersAt, mailSettings, bookingText, bookingEvents, refundChanges, reminderLetter } from "../api/_mail.mjs";
 import { dueLegs } from "../api/_remind.mjs";
@@ -618,6 +618,30 @@ await test("a Sprinter booked under SPRINTER_BUSY_HOURS before its pickup tells 
       checkHtml(letter, letter.kind === "owner" ? { stripeLink: `https://dashboard.stripe.com/test/payments/${session.payment_intent}` } : undefined);
     }
   }
+});
+
+await test("First Class booked under FIRST_BUSY_HOURS before its pickup tells the rider, and the owner, that a Cadillac Escalade comes if no S-Class or BMW 7 Series is free, right after the paid and confirmed steps, in both emails and on the confirmation page, while First Class booked 2 hours or more ahead and a Sprinter or SUV booked late get no Escalade line", async () => {
+  setEnv({ STRIPE_SECRET_KEY: KEY, STRIPE_WEBHOOK_SECRET: SECRET });
+  const trip = { trip_type: "one", from_text: MANHATTAN, to_text: "John F. Kennedy (JFK)", to_id: "jfk", date: "2026-11-12", time: "07:30", passengers: "2", tip: "0", rider: "me", ...ME, reach: "phone" };
+  const first = await booked({ ...trip, class: "first" });
+  const suv = await booked({ ...trip, class: "suv" });
+  const pickup = Date.parse(first.metadata.pickup_at);
+  const at = (fix, hours) => Object.assign(paid(fix), { created: Math.floor((pickup - hours * 3600000) / 1000) });
+  const steps = MAIL.steps.map(([label, value]) => `${label}: ${value}`).join("\n");
+  assert.equal((await import("../api/_rates.mjs")).FIRST_BUSY_HOURS, 2);
+  for (const [session, busy, name] of [[at(first, 1.6), true, "First Class booked 1 hour 36 minutes ahead"], [at(first, 1.99), true, "1.99 hours ahead"], [at(first, 2), false, "exactly 2 hours ahead"], [at(first, 5), false, "5 hours ahead"], [at(suv, 1.6), false, "an SUV booked 1 hour 36 minutes ahead"]]) {
+    for (const letter of bookingLetters(session, SETTINGS)) {
+      assert.equal(letter.text.includes(`${steps}\n\n${FIRST_BUSY}\n`), busy, `${name} ${letter.kind}`);
+      assert.equal(letter.text.split(FIRST_BUSY).length - 1, busy ? 1 : 0, `${name} ${letter.kind}`);
+      assert.equal(letter.html.includes(`>${FIRST_BUSY}</p>`), busy, `${name} ${letter.kind}`);
+      assert.ok(!letter.text.includes(SPRINTER_BUSY), `${name} ${letter.kind}`);
+    }
+    const body = await (await lookup(session)).json();
+    assert.equal(body.notes[0] === FIRST_BUSY, busy, name);
+  }
+  const shown = Object.assign(paid(first), { created: Math.floor((pickup - 5 * 3600000) / 1000), custom_text: { submit: { message: `${CHECKOUT.submit} ${FIRST_BUSY}` } } });
+  assert.equal((await (await lookup(shown)).json()).notes[0], FIRST_BUSY, "the Stripe page decides when it carries the line");
+  assert.equal(FIRST_BUSY, "If no S-Class or BMW 7 Series is free, we send a Cadillac Escalade.");
 });
 
 await test("the two SUVs line follows what the Stripe page showed: a Sprinter paid under SPRINTER_BUSY_HOURS ahead on a page with no two SUVs line, as before this release, gets none in either email or on the confirmation page, and one whose page showed it gets it in both", async () => {

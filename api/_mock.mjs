@@ -222,6 +222,9 @@ const PLACE_AT = new Map([
   ["LaGuardia Airport, East Elmhurst, NY 11371", [40.776927, -73.873966]],
   ["Newark Liberty International Airport, Newark, NJ 07114", [40.689532, -74.174462]],
   ["Teterboro Airport, Teterboro, NJ 07608", [40.850103, -74.060837]],
+  ["Long Island MacArthur Airport, 100 Arrival Ave, Ronkonkoma, NY 11779", [40.79524, -73.10021]],
+  ["Westchester County Airport, 240 Airport Road, White Plains, NY 10604", [41.06696, -73.70757]],
+  ["Boston Logan International Airport, East Boston, MA 02128", [42.36561, -71.00956]],
 ].map(([text, at]) => [norm(text), at]));
 const AREA = [40.758, -73.9855];
 
@@ -296,6 +299,9 @@ const RIVERSIDE = "19 Coventry Ln, Riverside, CT 06878";
 const STEAMBOAT = "1 Steamboat Rd, Greenwich, CT 06830";
 const STATEN = "10 Richmond Terrace, Staten Island, NY 10301";
 const RICHMOND_AVE = "2700 Richmond Ave, Staten Island, NY 10314";
+const ISP = "Long Island MacArthur Airport, 100 Arrival Ave, Ronkonkoma, NY 11779";
+const HPN_AIRPORT = "Westchester County Airport, 240 Airport Road, White Plains, NY 10604";
+const LOGAN = "Boston Logan International Airport, East Boston, MA 02128";
 const ROUTES = [
   [MANHATTAN, STATEN, 38, 13.4, 1424],
   [EWR, RIVERSIDE, 64, 52.5, 2250],
@@ -329,6 +335,13 @@ const ROUTES = [
   [MANHATTAN, "Raleigh, NC", 480, 501],
   [JFK, "Raleigh, NC", 505, 524.6],
   [MANHATTAN, "Bar Harbor, ME 04609", 721, 480],
+  [ISP, MANHATTAN, 72, 50.8, 694],
+  [MANHATTAN, ISP, 78, 51.2, 694],
+  [ISP, JFK, 52, 39.6, 0],
+  [JFK, ISP, 55, 39.9, 0],
+  [JFK, EWR, 58, 34.8, 1679],
+  [HPN_AIRPORT, MANHATTAN, 50, 31.9, 0],
+  [MANHATTAN, LOGAN, 285, 212.0, 1790],
 ];
 const STOP_ROUTES = [
   [[EWR, STEAMBOAT, RIVERSIDE], 72, 55.1, 2250],

@@ -33,17 +33,19 @@ import {
   MAX_DOGS,
   BAG_SIZES,
   MAX_BAGS,
+  BAG_CAPACITY,
   STOP_FEE_CENTS,
   HOURS,
   PASSENGERS,
   MIN_NOTICE_MINUTES,
   SPRINTER_NOTICE_HOURS,
   SPRINTER_BUSY_HOURS,
+  FIRST_BUSY_HOURS,
   AUTO_LEAD_MINUTES,
   MAX_ADVANCE_DAYS,
   CONTACT,
 } from "./_rates.mjs";
-import { LABELS, NOTES, POLICY, MESSAGE, MAIL, SPRINTER_BUSY } from "./_copy.mjs";
+import { LABELS, NOTES, POLICY, MESSAGE, MAIL, BUSY_LINES } from "./_copy.mjs";
 import { AIRPORT_ZONES, AREA_LABELS, norm, classifyText, classifyPlace, placeRegion, placeFits, endRegion, zoneRegion, inNewYork, localById, areaText, routeText, typedZip } from "./_places.mjs";
 import { TICKET, TICKET_TTL, ROUTE, verifyTicket, routeKey, signRoute, routeRide, readRoute } from "./_ticket.mjs";
 import { clean, clientBudget, instanceBudget, production } from "./_http.mjs";
@@ -55,7 +57,7 @@ const ENDS = ["from", "stop1", "stop2", "to"];
 const FIELDS = ["trip_type", "date", "time", "flight", "return", "return_date", "return_time", "return_flight", "passengers", ...CHILD_SEATS.map((k) => `${k}_seats`), ...DOG_SIZES.map((k) => `${k}_dogs`), ...BAG_SIZES.map((k) => `${k}_bags`), "hours", "class", "vehicle", "sprinter", "meet", "tip", "tip_amount", "action", "nonce", "nlr_hp"];
 const ACTIONS = ["options", "quote", "pay"];
 const BOROUGHS = ["manhattan", "brooklyn", "queens", "bronx", "staten-island"];
-const ROUTED = ["no-airport", "outside-city"];
+const ROUTED = ["no-airport", "outside-city", "airport-to-airport"];
 const ROUTE_REASONS = ["street-address", "stop-address", "airport-zip", "long-trip"];
 const NONCE = /^[A-Za-z0-9-]{16,64}$/;
 const FLIGHT = /^[A-Za-z0-9 -]{1,20}$/;
@@ -258,13 +260,18 @@ export function sprinterFrom(now) {
   }
 }
 
-export const sprinterBusy = (cls, pickup, now) => cls === "sprinter" && Number.isFinite(pickup) && pickup < Number(now) + SPRINTER_BUSY_HOURS * HOUR_MS;
+const BUSY_HOURS = { sprinter: SPRINTER_BUSY_HOURS, first: FIRST_BUSY_HOURS };
+const busyFor = (cls, pickup, now) => has(BUSY_HOURS, cls) && Number.isFinite(pickup) && pickup < Number(now) + BUSY_HOURS[cls] * HOUR_MS;
+export const sprinterBusy = (cls, pickup, now) => cls === "sprinter" && busyFor(cls, pickup, now);
+export const busyNote = (cls, pickup, now) => (busyFor(cls, pickup, now) ? BUSY_LINES[cls] : "");
 
 export function sessionBusy(session, cls, pickupAt) {
   const said = session.custom_text && session.custom_text.submit && session.custom_text.submit.message;
-  if (typeof said === "string") return cls === "sprinter" && said.includes(SPRINTER_BUSY);
-  return sprinterBusy(cls, Date.parse(pickupAt), Number(session.created) * 1000);
+  if (typeof said === "string") return has(BUSY_LINES, cls) && said.includes(BUSY_LINES[cls]);
+  return busyFor(cls, Date.parse(pickupAt), Number(session.created) * 1000);
 }
+
+export const sessionNote = (session, cls, pickupAt) => (sessionBusy(session, cls, pickupAt) ? BUSY_LINES[cls] : "");
 
 export const noticeReason = (trip, cls, now) => (cls === "sprinter" && validDate(trip.date) && TIME.test(trip.time) && nycToUtc(trip.date, trip.time).getTime() < Number(now) + SPRINTER_NOTICE_HOURS * HOUR_MS ? "sprinter-notice" : "");
 
@@ -288,13 +295,13 @@ export function legTax(points) {
 function leg(from, to, back, salesTax) {
   const fromAirport = AIRPORT_ZONES.includes(from);
   const toAirport = AIRPORT_ZONES.includes(to);
+  const fromFlat = AIRPORT_PLACES.includes(from);
   let reason = "";
   if (from === "unknown" || to === "unknown") reason = "unplaced";
   else if (from === "abroad" || to === "abroad") reason = "outside-us";
   else if (fromAirport && toAirport) reason = "airport-to-airport";
-  else if (!fromAirport && !toAirport) reason = "no-airport";
-  else if (from === "airport-other" || to === "airport-other") reason = "other-airport";
-  else if (!BOROUGHS.includes(fromAirport ? to : from)) reason = "outside-city";
+  else if (!fromFlat && !AIRPORT_PLACES.includes(to)) reason = "no-airport";
+  else if (!BOROUGHS.includes(fromFlat ? to : from)) reason = "outside-city";
   return {
     from,
     to,
@@ -403,7 +410,7 @@ async function driveTrip(trip, token, context) {
   const now = context.now === undefined ? Date.now() : Number(context.now);
   const check = checkTrip(trip, now, OPEN);
   const stops = [trip.ends.stop1, trip.ends.stop2].filter(Boolean);
-  const routed = stops.length ? check.reason === "stop-leg" && trip.legs.every((item) => !item.reason || ROUTED.includes(item.reason) || (!item.back && item.reason === "airport-to-airport" && [item.from, item.to].every((zone) => AIRPORT_PLACES.includes(zone)))) : ROUTED.includes(check.reason);
+  const routed = stops.length ? check.reason === "stop-leg" && trip.legs.every((item) => !item.reason || ROUTED.includes(item.reason)) : ROUTED.includes(check.reason);
   if (check.kind !== "quote" || !routed) return trip;
   const points = [trip.ends.from, ...stops, trip.ends.to];
   if (points.some((end) => !AIRPORT_PLACES.includes(end.zone) && airportZip(end.text))) return check.reason === "no-airport" || stops.length ? { ...trip, legs: trip.legs.map((item) => ({ ...item, reason: "airport-zip" })) } : trip;
@@ -414,7 +421,7 @@ async function driveTrip(trip, token, context) {
   const ends = points.map(waypointOf);
   const zones = points.map((end) => end.zone);
   const back = trip.legs.filter((item) => item.back).map((item) => (item.reason ? item : { ...item, flat: true }));
-  const whole = { ...leg(zones[0], zones[zones.length - 1], false, legTax(points)), airport: zones.find((zone) => AIRPORT_PLACES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
+  const whole = { ...leg(zones[0], zones[zones.length - 1], false, legTax(points)), airport: zones.find((zone) => AIRPORT_ZONES.includes(zone)) || "", stops: stops.length, via: zones.slice(1, -1) };
   const legs = stops.length ? [whole, ...back] : trip.legs;
   const plain = legs[0] === whole ? leg(zones[0], zones[zones.length - 1], false, whole.salesTax) : null;
   const direct = Boolean(plain) && ROUTED.includes(plain.reason);
@@ -473,19 +480,18 @@ export function classReason(trip, cls) {
   const vehicle = VEHICLES[key];
   if (trip.trip_type === "hour" && Number(trip.hours) < (vehicle.minHours || HOURS.min)) return "min-hours";
   if (Number(trip.passengers) > (vehicle.seats || CLASSES[cls].seats)) return "seats";
+  if (!bagsFit(trip, cls)) return "too-many-bags";
   const kids = childReason(trip, cls);
   if (kids) return kids;
   if (!tripRated(trip, rateKey(cls, key))) return "sprinter-price";
   return "";
 }
 
-export const requestReason = (trip, cls) => (cls === "sprinter" ? (serviceOf(trip.trip_type === "one" ? { ...trip, legs: chargedLegs(trip, cls) } : trip) === "airport" ? "sprinter-check" : "sprinter-quote") : "");
-export function bookReason(trip, cls) {
-  const reason = classReason(trip, cls);
-  const ask = requestReason(trip, cls);
-  return reason === "sprinter-price" && ask === "sprinter-quote" ? ask : reason || ask;
+export function bagsFit(trip, cls) {
+  const room = BAG_CAPACITY[cls];
+  const { large, medium, small } = bagCounts(trip);
+  return !room || (large + medium <= room.large && large + medium + small <= room.large + room.small);
 }
-export const requestOnly = (trip) => requestReason(trip, trip.class);
 
 function spatialReason(trip) {
   if (trip.trip_type === "hour") {
@@ -500,8 +506,7 @@ function spatialReason(trip) {
   for (const name of ENDS) if (ends[name] && ends[name].zone === "unknown") return { reason: unplaced(ends[name].text), field: `${name}_text` };
   const legs = trip.legs || legsOf(trip);
   if (!legs.length) return { reason: "unplaced", field: "from_text" };
-  const stopped = Boolean(ends.stop1 || ends.stop2);
-  const online = (item) => !item.reason || ROUTED.includes(item.reason) || (stopped && !item.back && item.reason === "airport-to-airport" && [item.from, item.to].every((zone) => AIRPORT_PLACES.includes(zone)));
+  const online = (item) => !item.reason || ROUTED.includes(item.reason);
   const blind = ENDS.every((name) => exact(ends[name])) && legs.every(online) ? ENDS.find((name) => ends[name] && !ends[name].region) : "";
   if (blind) {
     const end = ends[blind];
@@ -558,7 +563,7 @@ export function checkTrip(trip, now, settings) {
   if (trip.tip !== "custom" && !TIP_PERCENTS.includes(trip.tip)) return invalid("tip");
   const spatial = spatialReason(trip);
   if (spatial) return { kind: "quote", reason: spatial.reason, field: spatial.field };
-  return { kind: "price", reason: noticeReason(trip, trip.class, current) || bookReason(trip, trip.class), hold: holdFor(trip, current, settings) };
+  return { kind: "price", reason: noticeReason(trip, trip.class, current) || classReason(trip, trip.class), hold: holdFor(trip, current, settings) };
 }
 
 const counts = (kinds, chosen) => Object.fromEntries(kinds.map((k) => [k, INTEGER.test((chosen || {})[k] || "") ? Number(chosen[k]) : 0]));
@@ -701,7 +706,7 @@ export function classTotal(trip, cls) {
 
 const townIn = (end, cap) =>
   Boolean(end) &&
-  end.zone === "outside" &&
+  ["outside", "airport-other"].includes(end.zone) &&
   [cap.state, "US"].includes(end.region || "") &&
   (cap.zips.includes(typedZip(end.text)) || cap.towns.some((town) => new RegExp(`(^|,)\\s*${town}\\s*,\\s*(${cap.state}|${cap.stateName})\\b`, "i").test(end.text)));
 const capFits = (cap, a, b) => Boolean(a) && Boolean(b) && cap.from.includes(a.zone) && townIn(b, cap);
@@ -723,7 +728,17 @@ export function capPrice(price, cap) {
   return { fare, fee, tolls: price.tolls, total: fare + fee + price.tolls };
 }
 
-const legPrice = (key, item, cap = null) => (item.ride && !item.flat ? capPrice(priceRide(key, item.ride, [item.from, ...(item.via || []), item.to]), cap) : priceLeg(key, item.airport));
+export function floorPrice(price, floor) {
+  if (!Number.isInteger(floor) || price.total >= floor) return price;
+  const target = floor - price.tolls;
+  let fare = Math.max(price.fare, Math.floor(target / (1 + Number(FEE_PERCENT) / 100)) - 2);
+  while (fare + feeOf(fare) < target) fare++;
+  const fee = feeOf(fare);
+  return { fare, fee, tolls: price.tolls, total: fare + fee + price.tolls };
+}
+
+const flatFloor = (key, item) => ([item.from, item.to].every((zone) => AIRPORT_ZONES.includes(zone)) ? Math.max(0, ...[item.from, item.to].filter((zone) => has(AIRPORT_TOTALS[key] || {}, zone)).map((zone) => AIRPORT_TOTALS[key][zone])) : null);
+const legPrice = (key, item, cap = null) => (item.ride && !item.flat ? capPrice(floorPrice(priceRide(key, item.ride, [item.from, ...(item.via || []), item.to]), flatFloor(key, item)), cap) : priceLeg(key, item.airport));
 
 export function chargedLegs(trip, cls = trip.class) {
   const legs = trip.legs || legsOf(trip);
@@ -1006,6 +1021,6 @@ export function receipt(metadata, settings, taxCents) {
     summary: !known ? "" : validDate(data.return_date || "") && TIME.test(data.return_time || "") ? fill(LABELS.summaryReturn, { date: formatDate(data.date), time: formatTime(data.time), rdate: formatDate(data.return_date), rtime: formatTime(data.return_time), service }) : fill(LABELS.summary, { date: formatDate(data.date), time: formatTime(data.time), service }),
     lines,
     value: cents("fare_cents") + cents("stops_cents") + cents("meet_cents") + cents("seats_cents") + dogCents,
-    notes: laterNotes(hourly ? "hourly" : distance ? "distance" : "airport", flat, AIRPORT_PLACES.includes(data.airport), tolled),
+    notes: laterNotes(hourly ? "hourly" : distance ? "distance" : "airport", flat, AIRPORT_ZONES.includes(data.airport), tolled),
   };
 }

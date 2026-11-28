@@ -3,6 +3,9 @@ import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE
 export const SPRINTER_AHEAD = `Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.`;
 export const SPRINTER_SWAP = "If no Sprinter is free, we send two SUVs.";
 export const SPRINTER_BUSY = `Due to high demand, ${SPRINTER_SWAP[0].toLowerCase()}${SPRINTER_SWAP.slice(1)}`;
+export const FIRST_BUSY = "If no S-Class or BMW 7 Series is free, we send a Cadillac Escalade.";
+export const BUSY_NOTES = { sprinter: SPRINTER_SWAP, first: FIRST_BUSY };
+export const BUSY_LINES = { sprinter: SPRINTER_BUSY, first: FIRST_BUSY };
 const [SUV, PREMIUM] = [CLASSES.suv.name, CLASSES.premium.name];
 const { suv: SUV_SEATS, sedan: SEDAN_SEATS } = CHILD_SEAT_LIMITS;
 const seatCount = (n) => `${n} child seat${n === 1 ? "" : "s"}`;
@@ -15,8 +18,7 @@ export const HEADINGS = {
   price: "Get a price for this trip",
   phone: "Reserve this trip by email or WhatsApp",
   sprinter: `Book a Sprinter ${SPRINTER_NOTICE_HOURS} hours ahead`,
-  quote: "Request a quote",
-  check: "Request this Sprinter",
+  bags: "Too many bags for this car",
 };
 export const REASONS = {
   unplaced: { group: "price", text: "Add the ZIP code after the name to see the price, like this: The New York EDITION, 10010.", google: "Add the ZIP code, or pick the address from the list, to see the price." },
@@ -31,17 +33,15 @@ export const REASONS = {
   "no-airport": { group: "price", text: "We can't price this trip online. We'll send you a price, or you can book by the hour and pay now.", short: "We can't price this trip online. We'll send you a price." },
   "outside-us": { group: "price", text: "For trips that start or end outside the United States, we'll send you a price." },
   "long-trip": { group: "price", text: "For very long trips, we'll send you a price." },
-  "other-airport": { group: "price", text: "For this airport, we'll send you a price." },
   "outside-city": { group: "price", text: "Flat airport rates are for New York City addresses. For other places, we'll send you a price." },
   "outside-hourly": { group: "price", text: "For this pickup, we'll send you a price." },
-  "hours-range": { group: "price", text: "You can book 3 to 12 hours online. For a longer day, we'll send you a price." },
+  "hours-range": { group: "phone", text: "You can book 3 to 12 hours online. For more than 12 hours, email or WhatsApp us to book." },
   seats: { group: "phone", text: "This car doesn't seat that many people. Choose a larger car, or send us the trip for a price." },
+  "too-many-bags": { group: "bags", text: "Choose a bigger car to see its price and book online." },
   "child-seats": { group: "phone", text: `This car can't take that many child seats. An ${CLASSES.sedan.name} or ${CLASSES.electric.name} car takes ${SEDAN_SEATS.seats}, an SUV up to ${SUV_SEATS.seats}. Choose another car, or send us the trip.` },
   adult: { group: "phone", text: `A ${SUV} or ${PREMIUM} needs at least ${SUV_SEATS.adults} adult on board. Children count as passengers. Choose another car, or send us the trip.` },
   "one-adult": { group: "phone", text: `With only ${SUV_SEATS.adults} adult, a ${SUV} or ${PREMIUM} takes up to ${seatCount(SUV_SEATS.oneAdult)}. Choose another car, or send us the trip.` },
   "sprinter-price": { group: "price", text: "For this Sprinter on this trip, we'll send you a price." },
-  "sprinter-check": { group: "check", text: "We check that a Sprinter is free before you pay. Send us the trip and we'll confirm it." },
-  "sprinter-quote": { group: "quote", text: "Sprinters are by quote. Send us the trip and we'll check one is free and reply with a price." },
   "sprinter-notice": { group: "sprinter", text: `We need ${SPRINTER_NOTICE_HOURS} hours to arrange a Sprinter. Choose a later pickup or another car, or send us the trip.` },
   paused: { group: "phone", text: "Online payment isn't available for this trip." },
   "clock-change": { group: "phone", text: "A pickup or return at this hour can't be booked online because the clocks change. Choose another time, or email info@nycluxride.com or message us on WhatsApp." },

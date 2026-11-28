@@ -100,8 +100,8 @@ const USED = {
 
 const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport fees and the service fee. On distance trips, tolls are added at booking. Parking, and tolls on hourly trips, are charged to your card after the ride, with a receipt. A gratuity is optional and chosen when you book.";
 const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, the service fee, tolls and airport fees on airport rides to or from New York City, tolls on distance trips, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
-const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips are priced when you book, and you can pay online. Each stop adds a fee, or more if it takes the car out of the way. For trips outside the United States, we'll send you a price.";
-const FAQ_CANADA = "Yes. We drive to Canada 24/7 for tourism and transfers, in every vehicle, by quote.";
+const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips are priced when you book, and you can pay online. Each stop adds a fee, or more if it takes the car out of the way. For Canada, call or WhatsApp us.";
+const FAQ_CANADA = "Yes. We drive to Canada 24/7 in the Executive Sedan, Business SUV and Business Premium SUV. For a last-minute call, a car can be with you within an hour. Call or WhatsApp us to book.";
 
 const RATES_TITLE = "Car Service Rates and Airport Cost from $145 | NYC LUX RIDE";
 const RATES_DESCRIPTION = "Airport car service from $145 to LaGuardia, $170 to JFK or Teterboro and $180 to Newark, tolls and fees included. Hourly from $85 plus a 12% fee.";
@@ -122,7 +122,7 @@ const RATES_FAQ = [
   ["How much does a car service to the airport cost?", "From $145 to LaGuardia, $170 to JFK or Teterboro and $180 to Newark in an Executive Sedan, from any New York City address. Tolls, airport fees and the service fee are included, and the price stays the same in any traffic. Rides from outside the city show the total before you pay."],
   ["How much is a car from Manhattan to JFK?", "$185 in a Business SUV from anywhere in New York City, with tolls, airport fees and the service fee included. Executive Sedan is $170, Business Premium SUV $220, Electric Class $250, First Class $310 and Luxury Sprinter from $450. A gratuity is optional."],
   ["How much is a car to LaGuardia?", "$165 in a Business SUV from anywhere in New York City, with tolls, airport fees and the service fee included. Executive Sedan is $145, Business Premium SUV $190, Electric Class $215, First Class $250 and Luxury Sprinter from $450."],
-  ["How much is a car service by the hour in NYC?", "From $85 per hour in an Executive Sedan and from $95 in a Business SUV, with a 3-hour minimum. Sprinters by the hour are by quote. A 12% service fee is added at booking, and tolls and parking are charged after the ride."],
+  ["How much is a car service by the hour in NYC?", "From $85 per hour in an Executive Sedan and from $95 in a Business SUV, with a 3-hour minimum, or 4 hours in a Sprinter. A 12% service fee is added at booking, and tolls and parking are charged after the ride."],
   ["What is the shortest hourly booking?", "Three hours, or four in a Sprinter. For an Executive Sedan that's $255 plus the service fee, with tolls and parking after the ride."],
   ["When is my fare confirmed?", "We confirm your car, class and fare in writing before the day of your ride."],
 ];
@@ -301,7 +301,7 @@ check("faq.html: the tolls and gratuity answer is exact, visible and in json-ld,
   assert.equal(faqAnswer(p, question), FAQ_TOLLS);
 });
 
-check("faq.html: the outside New York City answer prices one-way trips when you book with online payment, each stop at the stop fee or more, and sends a price for trips outside the United States, exact, visible and in json-ld, and the next answer says trips to Canada run 24/7 for tourism and transfers in every vehicle, by quote", () => {
+check("faq.html: the outside New York City answer prices one-way trips when you book with online payment, each stop at the stop fee or more, and sends Canada trips to a call or WhatsApp, exact, visible and in json-ld, and the next answer says Canada trips run 24/7 in the Executive Sedan, Business SUV and Business Premium SUV with a car within an hour for a last-minute call, booked by phone or WhatsApp", () => {
   const p = pages.get("faq.html");
   const question = "Do you drive outside New York City?";
   assert.equal(visibleAnswer(p, question), FAQ_OUTSIDE);
@@ -311,6 +311,7 @@ check("faq.html: the outside New York City answer prices one-way trips when you 
   assert.equal(visibleAnswer(p, "Do you drive to Canada?"), FAQ_CANADA);
   assert.equal(faqAnswer(p, "Do you drive to Canada?"), FAQ_CANADA);
   assert.equal(p.document.getElementById("q-outside-city").nextElementSibling.id, "q-canada");
+  assert.doesNotMatch(FAQ_CANADA + FAQ_OUTSIDE, /quote|every vehicle|Sprinter|[\u2013\u2014;]/);
 });
 
 check("faq.html: the pets answer is exact, visible and in json-ld, right after the family answer, says the dog is chosen under Pets, charged once even on a round trip at the price on the rates page, and that service animals ride free, links the pet page, with no price of its own on the page", () => {
@@ -348,10 +349,10 @@ check("services.html: the Rates list names the three bookable extras, with pets 
   assert.equal(pages.get("faq.html").document.getElementById("q-pets").getAttribute("data-k"), "pet pets puppy animal service guide");
 });
 
-check("faq.html: the family answer gives the Luxury Sprinter its 14 seats, a flat price for airport transfers, other trips by quote and the check that a Sprinter is free before you pay, exact, visible and in json-ld", () => {
+check("faq.html: the family answer gives the Luxury Sprinter its 14 seats and says the price shows when you book, exact, visible and in json-ld", () => {
   const p = pages.get("faq.html");
   const question = "Which car fits a family of 6 or more?";
-  const want = "Book a Luxury Sprinter. It seats up to 14. Airport transfers have a flat price and other trips are by quote. We check a Sprinter is free before you pay.";
+  const want = "Book a Luxury Sprinter. It seats up to 14, and you see the price when you book.";
   assert.equal(visibleAnswer(p, question), want);
   assert.equal(faqAnswer(p, question), want);
 });
@@ -464,7 +465,7 @@ check("rates.html: the rate questions are exact and equal in the page and in jso
   assert.deepEqual(RATES_FAQ.map(([q]) => [q, visibleAnswer(rates, q)]), RATES_FAQ);
 });
 
-check("rates.html: the OfferCatalog has an airport offer per car class for JFK or Teterboro, for Newark and for LaGuardia and one per Sprinter with its lowest and highest total, tolls and fees included, then the hourly offers in class order with no Sprinter, the fixed-price routes, meet and greet and the child seat at its price per seat", () => {
+check("rates.html: the OfferCatalog has an airport offer per car class for JFK or Teterboro, for Newark and for LaGuardia and one per Sprinter with its lowest and highest total, tolls and fees included, then the hourly offers in class order with the Luxury Sprinter last, the fixed-price routes, meet and greet and the child seat at its price per seat", () => {
   const catalog = rates.graph.find((n) => n["@type"] === "OfferCatalog");
   const airport = catalog.itemListElement.filter((o) => o.name.startsWith("Airport transfer"));
   assert.deepEqual(airport.map((o) => [o.name, o.url]), [...RATES_AIRPORT_OFFERS.map(([name, id]) => [name, `https://www.nycluxride.com/rates#${id}`]), ...RATES_SPRINTER_OFFERS.map(([name]) => [`Airport transfer, ${name}`, "https://www.nycluxride.com/rates#sprinter-airport"])]);
@@ -484,8 +485,8 @@ check("rates.html: the OfferCatalog has an airport offer per car class for JFK o
   assert.deepEqual(catalog.itemListElement.slice(0, 20), airport);
   const hourly = catalog.itemListElement.slice(20);
   const ROUTE = "Fixed-price route, JFK, LaGuardia, Queens or Brooklyn and Jersey City, Hoboken, North Bergen or Union City, ";
-  assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Executive Sedan", "Hourly and as directed, Electric Class", ...["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class"].map((c) => ROUTE + c), "Meet and greet", "Child seat", "Small dog", "Large dog"]);
-  assert.deepEqual(hourly.slice(5, 10).map((o) => o.priceSpecification.maxPrice), ["211.43", "251.43", "354.29", "194.28", "285.72"]);
+  assert.deepEqual(hourly.map((o) => o.name), ["Hourly and as directed, Business SUV", "Hourly and as directed, Business Premium SUV", "Hourly and as directed, First Class", "Hourly and as directed, Executive Sedan", "Hourly and as directed, Electric Class", "Hourly and as directed, Luxury Sprinter", ...["Business SUV", "Business Premium SUV", "First Class", "Executive Sedan", "Electric Class"].map((c) => ROUTE + c), "Meet and greet", "Child seat", "Small dog", "Large dog"]);
+  assert.deepEqual(hourly.slice(6, 11).map((o) => o.priceSpecification.maxPrice), ["211.43", "251.43", "354.29", "194.28", "285.72"]);
   assert.deepEqual(hourly.at(-3), { "@type": "Offer", name: "Child seat", description: "Child, infant or booster seat, charged once per booking", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price: "20", priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price: "20" } });
   assert.deepEqual(Object.keys(hourly.at(-2)), Object.keys(hourly.at(-1)));
   const dog = (name, price) => ({ "@type": "Offer", name, description: "Charged once per booking. Service animals ride free", url: "https://www.nycluxride.com/rates#add-ons", priceCurrency: "USD", price, priceSpecification: { "@type": "PriceSpecification", priceCurrency: "USD", price } });
@@ -525,9 +526,12 @@ const HOUR_ELSEWHERE = [
   "If you'll spend an hour or more at one address, keeping the car by the hour usually costs less than two one-way bookings.",
   "An hour in the park with the photographer, and the Sprinter comes back to the same gate at the end.",
 ];
+const CANADA_HOUR = ["For a last-minute call, a car can be with you within an hour.", "with a car within an hour for a last-minute call."];
+const CANADA_PAGES = ["faq.html", "long-distance-car-service.html", "rates.html"];
+const unCanada = (value) => CANADA_HOUR.reduce((rest, s) => rest.split(s).join(" "), String(value));
 const HOUR = /\b(an?|one|1)[ -]hours?\b(?!-)/gi;
 const hourHits = (value) => {
-  let rest = String(value);
+  let rest = unCanada(value);
   for (const s of HOUR_ELSEWHERE) rest = rest.split(s).join(" ");
   return [...rest.matchAll(HOUR)].map((m) => rest.slice(Math.max(0, m.index - 50), m.index + 40));
 };
@@ -545,7 +549,8 @@ check(`the online cutoff is MIN_NOTICE_MINUTES, ${MIN_NOTICE_MINUTES} minutes (o
 for (const [file, p] of pages) {
   check(`${file}: no "1 hour" or "within the next hour" notice wording in text, attributes or json-ld, and an hour appears only about extending an hourly booking, waiting at one address or a wedding photo stop`, () => {
     const all = [p.title, p.text, ...p.attrs.map(([, v]) => v), ...p.strings];
-    assert.deepEqual(all.filter((v) => OLD_NOTICE.some((re) => re.test(v))).map((v) => v.slice(0, 160)), []);
+    assert.equal(all.some((v) => CANADA_HOUR.some((s) => String(v).includes(s))), CANADA_PAGES.includes(file), "the car within an hour for a last-minute call is said only about Canada");
+    assert.deepEqual(all.filter((v) => OLD_NOTICE.some((re) => re.test(unCanada(v)))).map((v) => v.slice(0, 160)), []);
     assert.deepEqual(all.flatMap(hourHits), []);
   });
   check(`${file}: every online notice sentence says ${MIN_NOTICE_MINUTES} minutes, or ${SPRINTER_NOTICE_HOURS} hours in the one Sprinter sentence, and is an approved form`, () => {
@@ -635,8 +640,8 @@ check("the Newark, Teterboro, Staten Island, Midtown, private jet, services, loc
     ["locations/staten-island.html", "Yes, from almost the whole island. Newark Liberty is over the Goethals Bridge and down the Turnpike. JFK means crossing the Verrazzano-Narrows Bridge and most of Brooklyn. Newark costs a little more in most cars and SUVs, and LaGuardia costs less. Choose the airport that suits your flight. LaGuardia uses the same Verrazzano crossing as JFK.", true],
     ["locations/midtown-manhattan.html", "Yes. Teterboro has one total by class from any Midtown address. In a car or SUV, it's the same as JFK. It is about 12 miles away through the Lincoln Tunnel.", true],
     ["locations/staten-island.html", "Airport prices stay the same in any traffic. In most cars and SUVs, Newark costs a little more than JFK, and LaGuardia costs less. Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.", false],
-    ["private-jet-car-service-nyc.html", "Teterboro has a flat rate. A ride between any of its FBOs and an address in the five boroughs has one total for the class you choose. In a car or SUV, it's the same as JFK. See the Teterboro rates. For Westchester, Morristown, Republic, MacArthur and Stewart, we'll send you a price.", false],
-    ["services.html", "In a car or SUV, Teterboro has the same flat rate as JFK from any city address. For the other airfields, we'll send you a price. Our private jet car service page lists the FBOs at each one.", false],
+    ["private-jet-car-service-nyc.html", "Teterboro has a flat rate. A ride between any of its FBOs and an address in the five boroughs has one total for the class you choose. In a car or SUV, it's the same as JFK. See the Teterboro rates. For Westchester, Morristown, Republic, MacArthur and Stewart, you see the price when you book.", false],
+    ["services.html", "In a car or SUV, Teterboro has the same flat rate as JFK from any city address. For the other airfields, you see the price when you book. Our private jet car service page lists the FBOs at each one.", false],
     ["locations.html", "JFK is in Jamaica, Queens. LaGuardia is in East Elmhurst, the closest commercial airport to Manhattan. Newark Liberty and Teterboro are in New Jersey. In a car or SUV, they have the same flat rate as JFK from any city address.", false],
     ["black-car-service-brooklyn.html", "Newark and Teterboro mean crossing Manhattan or Staten Island first. In a car or SUV, Teterboro costs the same as JFK, even though it's farther. Newark costs a little more in most cars and SUVs.", false],
     ["blog/teterboro-airport-fbos-manhattan-november-19.html", "The price doesn't change with traffic. One total by class from any New York City address, with tolls, airport fees and the service fee included. The Teterboro rates are the same as JFK in a car or SUV.", false],

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { CONTACT, SITE_ORIGIN, CHILD_SEATS, BAG_SIZES } from "./_rates.mjs";
-import { MAIL, CALENDAR, LABELS, POLICY, SEATS, SPRINTER_BUSY } from "./_copy.mjs";
-import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, knownVehicle, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts, sessionBusy } from "./_trip.mjs";
+import { MAIL, CALENDAR, LABELS, POLICY, SEATS } from "./_copy.mjs";
+import { receipt, shownLines, readSettings, formatDate, formatTime, money, vehicleLabel, vehicleName, knownVehicle, fill, validDate, nycToUtc, seatText, dogText, dogParts, bagText, bookingData, placeText, pickupWhen, shortPlace, routeSummary, ownerSubject, subjectParts, sessionNote } from "./_trip.mjs";
 import { instanceBudget } from "./_http.mjs";
 import { retrieveSession, updateMetadata } from "./_stripe.mjs";
 import { buildMessage, smtpSend, addressOk } from "./_smtp.mjs";
@@ -103,7 +103,7 @@ function bookingOf(session) {
     total: Number.isInteger(session.amount_total) ? session.amount_total : null,
     intent: intentOf(session),
     receipt: receipt(data, readSettings(process.env), tax),
-    busy: sessionBusy(session, field("class"), field("pickup_at")),
+    busy: sessionNote(session, field("class"), field("pickup_at")),
   };
 }
 
@@ -204,7 +204,7 @@ function whereBlocks(b, legs, ask) {
 function told(b) {
   return [
     { steps: MAIL.steps },
-    ...(b.busy ? [{ p: SPRINTER_BUSY }] : []),
+    ...(b.busy ? [{ p: b.busy }] : []),
     ...whereBlocks(b, b.back ? ["a", "b"] : ["a"], true),
     ...(b.other ? [{ p: fill(MAIL.other, { name: b.field("passenger_name") || MAIL.thePassenger }) }] : []),
     ...(seatsOf(b) ? [{ p: fill(SEATS.mail, { ref: b.ref }) }] : []),

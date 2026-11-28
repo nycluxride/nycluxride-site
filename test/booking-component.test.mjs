@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 const ROOT = process.env.SITE_ROOT || join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
 const load = (f) => import(pathToFileURL(join(ROOT, "api", f)).href);
-const { CLASSES, VEHICLES, HOURS, PASSENGERS, MAX_DOGS, MAX_BAGS, BAG_SIZES, CHILD_SEAT_LIMITS, TIP_PERCENTS, TIP_DEFAULT } = await load("_rates.mjs");
+const { CLASSES, VEHICLES, HOURS, PASSENGERS, MAX_DOGS, MAX_BAGS, BAG_SIZES, BAG_CAPACITY, CHILD_SEAT_LIMITS, TIP_PERCENTS, TIP_DEFAULT } = await load("_rates.mjs");
 const { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, NOTES, POLICY, LABELS, SEATS, SPRINTER_BUSY, CHILD_LIMITS } = await load("_copy.mjs");
 const { PLACE_LIST, norm } = await load("_places.mjs");
 const { COUNTRIES, MAIN_BY_DIAL, TRUNK } = await load("_phone.mjs");
@@ -41,7 +41,7 @@ const MEET = ['<fieldset class="bk-meet" id="bk-meet-f" data-show="from-priced">
 const INCL = `<ul class="incl" id="bk-incl" role="list" aria-labelledby="bk-incl-h"><li data-show="from-airline">${ICON("i-plane-arrive")}<span>Free waiting</span> <small>after you land</small></li><li>${ICON("i-clock")}<span>15 minutes of free waiting</span> <small>at other pickups</small></li><li data-show="from-airline">${ICON("i-shield")}<span>Live flight tracking</span></li><li>${ICON("i-wifi")}<span>Free Wi-Fi</span> <small>in every class</small></li><li>${ICON("i-phone")}<span>We answer</span> <small>24 hours a&nbsp;day, every day</small></li></ul>`;
 const INCL_FACTS = ["Free waiting after you land", "15 minutes of free waiting at other pickups", "Live flight tracking", "Free Wi-Fi in every class", "We answer 24 hours a day, every day"];
 const PILLS = '<div class="bk-pills bk-js-only" id="bk-pills" aria-hidden="true"><button class="bk-pill" type="button" tabindex="-1" data-c="suv"><span>Business SUV</span><span id="bk-pp-suv"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="premium"><span>Business Premium SUV</span><span id="bk-pp-premium"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="first"><span>First Class</span><span id="bk-pp-first"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sedan"><span>Executive Sedan</span><span id="bk-pp-sedan"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="electric"><span>Electric Class</span><span id="bk-pp-electric"></span></button><button class="bk-pill" type="button" tabindex="-1" data-c="sprinter"><span>Luxury Sprinter</span><span id="bk-pp-sprinter"></span></button></div>';
-const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Continue</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a></div>`;
+const BAR = `<div class="bk-bar bk-js-only" id="bk-bar" data-show="side"><p class="bk-bar__sum" aria-hidden="true"><span id="bk-bar-name"></span><span id="bk-bar-total"></span></p><p class="bk-bar__q" id="bk-bar-q"></p><button class="btn" id="bk-bar-go" type="button" aria-describedby="bk-nopay">Continue</button><a class="btn" id="bk-bar-mail" href="mailto:info@nycluxride.com">Email to reserve</a><button class="btn" id="bk-bar-fix" type="button"></button></div>`;
 const EXT = `${ICON("i-external")}<span class="sr-only"> (opens in a new tab)</span>`;
 const CONSENT = `<p class="bk-consent" id="bk-consent" data-show="details">${ICON("i-lock")}You pay on Stripe and accept the <a href="/terms-of-service#payments" target="_blank" rel="noopener">terms of service${EXT}</a> and the <a href="/rates#policies" target="_blank" rel="noopener">cancellation, no-show and waiting <span class="nowrap">terms${ICON("i-external")}</span><span class="sr-only"> (opens in a new tab)</span></a>.</p>`;
 const ASSURE = `<ul class="assure-row" id="bk-assure" role="list"><li>${ICON("i-check")}Flat airport rates include tolls, airport fees and the service fee</li><li>${ICON("i-clock")}Free waiting after you land</li><li>${ICON("i-phone")}We answer 24 hours a day, every day</li></ul>`;
@@ -206,7 +206,7 @@ check("document order of the form, step 1 with the passengers and luggage card, 
   assert.deepEqual(ids($("bk-side")), ["bk-map", "bk-pay"]);
   assert.deepEqual(ids(pay), ["bk-wait", "bk-choice", "bk-route", "bk-route-n", "bk-qline", "bk-result", "bk-go", "bk-policy", "bk-bar"]);
   assert.deepEqual(ids($("bk-result")), ["price"]);
-  assert.deepEqual(ids($("bk-go")), ["bk-next", "bk-submit", "bk-alt__h", "bk-alt", "bk-nopay", "bk-consent", "bk-terms", "q-sent", "e-form"]);
+  assert.deepEqual(ids($("bk-go")), ["bk-next", "bk-submit", "bk-fix", "bk-alt__h", "bk-alt", "bk-nopay", "bk-consent", "bk-terms", "q-sent", "e-form"]);
   assert.deepEqual(ids($("bk-go").querySelector(".bk-alt")), ["q-mail", "q-wa"]);
   assert.deepEqual(ids($("quote")).slice(-3), ["q-error", "q-fix", "bk-qnotes-f"]);
   assert.deepEqual([$("bk-sum").dataset.show, $("bk-edit").dataset.show, $("bk-side").dataset.show, $("bk-det").dataset.show, $("bk-tip").dataset.show, $("bk-submit").dataset.show, $("bk-next").dataset.show, $("bk-bar").dataset.show, $("bk-policy").dataset.show, $("bk-nopay").dataset.show, $("bk-terms").dataset.show, $("bk-act").dataset.show, $("bk-more").dataset.show, $("bk-meet-f").dataset.show, $("bk-check").dataset.show], ["side", "side", "side", "details", undefined, "details", "options", "side", "options", "options", "details", "side", "options", "from-priced", "details"]);
@@ -441,8 +441,9 @@ check("step 1: the bags, three counts in the sheet behind the Bags row, right un
   assert.deepEqual([...f.querySelectorAll(":scope > div.field")].map((d) => [d.querySelector("label").getAttribute("for"), nt(d.querySelector("label").textContent), d.querySelector("select").id, d.querySelector("select").name, d.querySelector("select").getAttribute("aria-describedby"), [...d.querySelector("select").options].map((o) => o.value), d.querySelector("select").value]), [["bk-bags-large", "Large suitcase", "bk-bags-large", "large_bags", "bk-bags-h", counts, "0"], ["bk-bags-medium", "Medium suitcase", "bk-bags-medium", "medium_bags", "bk-bags-h", counts, "0"], ["bk-bags-small", "Small suitcase or hand carry", "bk-bags-small", "small_bags", "bk-bags-h", counts, "0"]]);
   assert.deepEqual([...f.querySelectorAll(":scope > div.field > label")].map((l) => l.textContent), BAG_SIZES.map((k) => LABELS.bagTypes[k]), "the messages name each size as the server does");
   assert.deepEqual([...f.children].map((c) => c.id || c.tagName.toLowerCase() + "." + c.className), ["bk-xr-bags-h", "div.field", "div.field", "div.field", "bk-bags-h", "e-bags", "bk-bagfit"]);
-  assert.ok($("bk-bags-h").matches("p.field__hint:not(.bk-e,.bk-js-only)") && nt($("bk-bags-h").textContent) === "Bags are free.");
-  assert.ok($("bk-bagfit").matches("p.bk-mrow__x.bk-js-only[hidden]") && nt($("bk-bagfit").textContent) === "Your bags may not fit in this car. Choose a larger car or tell us in the notes.");
+  assert.ok($("bk-bags-h").matches("p.field__hint:not(.bk-e,.bk-js-only)") && nt($("bk-bags-h").textContent) === "Bags are free. A medium suitcase counts as a large one.");
+  assert.ok(nt(new JSDOM(readFileSync(join(ROOT, "faq.html"), "utf8")).window.document.querySelector("main").textContent).includes("A medium suitcase counts as a large one."), "the hint says what the FAQ says");
+  assert.ok($("bk-bagfit").matches("p.bk-mrow__x.bk-js-only[hidden]") && nt($("bk-bagfit").textContent) === "Too many bags for this car. Choose a bigger car.");
   assert.ok(!f.querySelector(".bk-scope") && !/\$|price/i.test(f.textContent), "the bags are free, so they show no price");
   const at = parts["book.html"].indexOf('<fieldset class="bk-kids bk-bags"');
   const src = parts["book.html"].slice(at, parts["book.html"].indexOf("</fieldset>", at) + 11);
@@ -451,15 +452,16 @@ check("step 1: the bags, three counts in the sheet behind the Bags row, right un
   for (const h of SEARCH_HOSTS) assert.ok(!parts[h].includes("bk-bags") && !parts[h].includes("_bags"), h);
 });
 
-check("every class card states its luggage as data-large and data-small read from CLASSES bags, so the over-capacity note follows the rates, and a class with no stated luggage has neither", () => {
+check("every class card states its luggage as data-large and data-small from BAG_CAPACITY, the same as CLASSES bags, so pay.js turns off a card that cannot fit the bags", () => {
   for (const [k, c] of Object.entries(CLASSES)) {
     const card = form.querySelector(`label[for="bk-c-${k}"]`);
     const m = /^(\d+) large plus (\d+) small bags?$/.exec(c.bags);
-    assert.ok(c.bags === "" || m, `${k}: ${c.bags}`);
-    assert.deepEqual([card.dataset.large, card.dataset.small], m ? [m[1], m[2]] : [undefined, undefined], k);
+    assert.ok(m, `${k}: ${c.bags}`);
+    assert.deepEqual([card.dataset.large, card.dataset.small], [m[1], m[2]], k);
+    assert.deepEqual([card.dataset.large, card.dataset.small], [String(BAG_CAPACITY[k].large), String(BAG_CAPACITY[k].small)], k);
   }
-  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], [undefined, undefined], [undefined, undefined], ["10", "2"], ...VANS.map(() => ["10", "2"])]);
-  for (const h of HOSTS) for (const [k, l, s] of [["suv", 3, 3], ["premium", 3, 3], ["first", 2, 1], ["sprinter", 10, 2], ...VANS.map((v) => [v, 10, 2])]) assert.ok(new RegExp(`for="bk-c-${k}" data-seats="\\d+"( data-kids="\\d+"( data-adults="\\d+")?( data-kids1="\\d+")?)?( data-min="\\d+")? data-large="${l}" data-small="${s}">`).test(parts[h]), `${h} ${k}`);
+  assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].map((c) => [c.dataset.large, c.dataset.small]), [["3", "3"], ["3", "3"], ["2", "1"], ["2", "1"], ["2", "1"], ["10", "2"], ...VANS.map(() => ["10", "2"])]);
+  for (const h of HOSTS) for (const [k, l, s] of [["suv", 3, 3], ["premium", 3, 3], ["first", 2, 1], ["sedan", 2, 1], ["electric", 2, 1], ["sprinter", 10, 2], ...VANS.map((v) => [v, 10, 2])]) assert.ok(new RegExp(`for="bk-c-${k}" data-seats="\\d+"( data-kids="\\d+"( data-adults="\\d+")?( data-kids1="\\d+")?)?( data-min="\\d+")? data-large="${l}" data-small="${s}">`).test(parts[h]), `${h} ${k}`);
 });
 
 check("step 2: trips our dispatch team prices show the notes field before Email to reserve and WhatsApp to reserve, it mirrors the details notes and adds a Notes line to both messages", () => {
@@ -487,7 +489,7 @@ check("six class rows and six pills, in the order Business SUV, Business Premium
   for (const [k, l] of Object.entries(CHILD_SEAT_LIMITS)) assert.deepEqual([form.querySelector(`label[for="bk-c-${k}"]`).dataset.kids, form.querySelector(`label[for="bk-c-${k}"]`).dataset.adults, form.querySelector(`label[for="bk-c-${k}"]`).dataset.kids1], [String(l.seats), l.adults && String(l.adults), l.oneAdult === undefined ? undefined : String(l.oneAdult)], k);
   for (const k of Object.keys(CLASSES)) assert.equal(form.querySelector(`label[for="bk-c-${k}"]`).dataset.seats, String(CLASSES[k].seats), k);
   for (const h of HOSTS) for (const k of ["suv", "premium"]) assert.ok(parts[h].includes(`id="bk-s-${k}"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span aria-hidden="true">6</span><span class="sr-only">Up to 6 passengers</span>`), `${h} ${k}`);
-  assert.deepEqual([$("bk-busy"), $("price-busy")], [null, null], "no two SUVs line on the cards or in the price box, since every Sprinter is checked before you pay");
+  assert.deepEqual([$("bk-busy"), $("price-busy").outerHTML, $("price-busy").previousElementSibling.id], [null, '<p class="bk-mrow__x" id="price-busy" hidden=""></p>', "price-notes"], "the price box has an empty busy line that pay.js fills from the server for a Sprinter or First Class booked at short notice");
   for (const h of HOSTS) assert.equal(parts[h].split(SPRINTER_BUSY).length - 1, 0, h);
   assert.deepEqual([...$("bk-cards").querySelectorAll("label.bk-card")].slice(5, 10).map((c) => c.dataset.seats), VANS.map((v) => String(VEHICLES[v].seats)));
   assert.deepEqual([...$("bk-cards").querySelectorAll("picture > img")].map((i) => i.getAttribute("src")), ["/fleet/chevrolet-suburban-card-300.webp", "/fleet/cadillac-escalade-card-300.webp", "/fleet/mercedes-s-class-card-300.webp", "/fleet/mercedes-e-class-studio-card-300.webp", "/fleet/cadillac-lyriq-card-300.webp", "/fleet/sprinter-executive-studio-card-300.webp", "/fleet/sprinter-luxury-jet-studio-card-300.webp", "/fleet/sprinter-presidential-studio-card-300.webp", "/fleet/sprinter-limo-black-studio-card-300.webp", "/fleet/sprinter-white-limo-studio-card-300.webp", "/fleet/sprinter-limo-card-300.webp"]);
@@ -510,7 +512,7 @@ check("the First Class model line keeps S-Class in one nowrap span and joins BMW
 check("class rows follow CLASSES with photo, name, model line, seats and bags with their spoken forms, each bag count in its own nowrap span, empty price and check", () => {
   const cards = [...$("bk-cards").querySelectorAll("label.bk-card")];
   assert.deepEqual(cards.map((c) => c.getAttribute("for")), [...Object.keys(CLASSES).filter((k) => k !== "sprinter"), ...VANS, "sprinter"].map((k) => `bk-c-${k}`));
-  const BAGS = { suv: ["3 large, 3 small", "3 large and 3 small bags"], premium: ["3 large, 3 small", "3 large and 3 small bags"], first: ["2 large, 1 small", "2 large and 1 small bag"], sprinter: ["10 large, 2 small", "10 large and 2 small bags"] };
+  const BAGS = { suv: ["3 large, 3 small", "3 large and 3 small bags"], premium: ["3 large, 3 small", "3 large and 3 small bags"], first: ["2 large, 1 small", "2 large and 1 small bag"], sedan: ["2 large, 1 small", "2 large and 1 small bag"], electric: ["2 large, 1 small", "2 large and 1 small bag"], sprinter: ["10 large, 2 small", "10 large and 2 small bags"] };
   for (const [k, c] of Object.entries(CLASSES)) {
     const card = form.querySelector(`label[for="bk-c-${k}"]`), radio = $(`bk-c-${k}`);
     assert.ok(card.contains(radio) && radio.matches(`input[type=radio][name=class][value="${k}"]`), k);
@@ -598,7 +600,8 @@ check("the summary card: wait line, choice, route list, price section with the l
   assert.ok($("q-retry").matches("button.btn.btn--sm.btn--ghost.bk-js-only"), "Try again is the outline button, so Email to reserve stays the one gold control of the block");
   assert.deepEqual([$("q-mail").className, $("q-mail").getAttribute("href"), !!$("q-mail").querySelector('use[href="#i-mail"]'), nt($("q-mail").textContent)], ["btn btn--ghost", "mailto:info@nycluxride.com", true, "Email to reserve"]);
   assert.deepEqual([$("q-mail"), $("q-wa")].map((a) => [a.parentElement.className, a.querySelector(":scope > span.sr-only").textContent]), [["bk-alt", " to reserve"], ["bk-alt", " to reserve"]], "the two half-width buttons read Email and WhatsApp and keep their full names");
-  assert.ok($("q-mail").parentElement.previousElementSibling.matches("p.bk-alt__h") && nt($("q-mail").parentElement.previousElementSibling.textContent) === "Or reserve without paying now" && $("q-mail").parentElement.previousElementSibling.previousElementSibling === $("bk-submit"));
+  assert.ok($("q-mail").parentElement.previousElementSibling.matches("p.bk-alt__h") && nt($("q-mail").parentElement.previousElementSibling.textContent) === "Or reserve without paying now" && $("q-mail").parentElement.previousElementSibling.previousElementSibling === $("bk-fix") && $("bk-fix").previousElementSibling === $("bk-submit"));
+  assert.ok($("bk-fix").matches("button.btn.bk-js-only[type=button][hidden]:not(.btn--ghost)") && $("bk-fix").textContent === "" && $("bk-bar-fix").matches("#bk-bar > button.btn[type=button]:not(.btn--ghost)") && $("bk-bar-fix").previousElementSibling === $("bk-bar-mail") && $("bk-bar-fix").textContent === "", "the fix of a car that cannot take the trip is the gold button by the price and in the bar, empty until a reason has one");
   assert.deepEqual([$("q-wa").className, $("q-wa").getAttribute("href"), $("q-wa").hasAttribute("data-wa"), $("q-wa").getAttribute("target"), $("q-wa").getAttribute("rel"), !!$("q-wa").querySelector('use[href="#i-whatsapp"]'), nt($("q-wa").textContent)], ["btn btn--ghost", "https://wa.me/16467750556", false, "_blank", "noopener", true, "WhatsApp to reserve"]);
   assert.equal($("q-call"), null);
   assert.ok($("q-sent").matches('div.notice.bk-js-only[role="status"][hidden]') && $("q-sent").textContent === "");

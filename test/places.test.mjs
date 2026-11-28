@@ -269,8 +269,8 @@ await test("NEIGHBORHOODS holds normalized names, no denylisted or multi-borough
 await test("ZONES, AIRPORT_ZONES and AREA_LABELS", () => {
   assert.deepEqual(ZONES, ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "abroad", "unknown"]);
   assert.deepEqual(AIRPORT_ZONES, ["jfk", "lga", "ewr", "teb", "airport-other"]);
-  assert.deepEqual(AREA_LABELS, { ...PLACES, "airport-other": "Price on request", abroad: "Outside the United States", unknown: "ZIP code needed" });
-  assert.deepEqual(ZONES.map((zone) => AREA_LABELS[zone]), ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island", "JFK", "LaGuardia (LGA)", "Newark Liberty (EWR)", "Teterboro (TEB)", "Price on request", "Outside New York City", "Outside the United States", "ZIP code needed"]);
+  assert.deepEqual(AREA_LABELS, { ...PLACES, "airport-other": "Other airport", abroad: "Outside the United States", unknown: "ZIP code needed" });
+  assert.deepEqual(ZONES.map((zone) => AREA_LABELS[zone]), ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island", "JFK", "LaGuardia (LGA)", "Newark Liberty (EWR)", "Teterboro (TEB)", "Other airport", "Outside New York City", "Outside the United States", "ZIP code needed"]);
 });
 
 await test("classifyPlace on synthetic Place Details objects", () => {
@@ -480,7 +480,7 @@ await test("suggest without a key answers google false with the typed area and n
   assert.equal(calls.length, 0);
   assert.deepEqual((await call(suggest("350 5th Ave"))).body.typed, { zone: "unknown", area: "ZIP code needed" });
   assert.deepEqual((await call(suggest("Hoboken, NJ"))).body.typed, { zone: "outside", area: "Outside New York City" });
-  assert.deepEqual((await call(suggest("HPN"))).body.typed, { zone: "airport-other", area: "Price on request" });
+  assert.deepEqual((await call(suggest("HPN"))).body.typed, { zone: "airport-other", area: "Other airport" });
   assert.deepEqual((await call(suggest("Toronto, ON M5V 3L9"))).body.typed, { zone: "abroad", area: "Outside the United States" });
   assert.deepEqual((await call(suggest("Niagara Falls, NY 14303"))).body.typed, { zone: "outside", area: "Outside New York City" });
 });

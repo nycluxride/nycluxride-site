@@ -409,7 +409,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 @media (prefers-reduced-motion:no-preference){.bk-route.is-draw>li:not(:last-child)::after{animation:bk-line .6s var(--ease-settle) backwards}.bk-route.is-draw>li:last-child .bk-route__t{animation:bk-fade .3s ease-out .45s backwards}}
 @keyframes bk-line{from{scale:1 0}}
 @keyframes bk-fade{from{opacity:0}}
-.bk-route[hidden],.bk-route__note[hidden],.bk-errs[hidden],.bk-s .band .lede,.bk-sum:empty,.bk[data-step=details] :is(#bk-sum,#bk-edit),.bk-qline[hidden],.bk-mrow__x[hidden],.bk-arrive[hidden],.bk-signcard,.bk.is-js #bk-notes-f:not(.is-open),#price-total .bk-delta,.bk.bk-off #bk-adds,#q-fix[hidden],#bk-next[hidden]~#bk-nopay,#bk-submit[hidden]~#bk-consent,#q-sent[hidden],.bk-pill>span:empty{display:none}
+.bk-route[hidden],.bk-route__note[hidden],.bk-errs[hidden],.bk-s .band .lede,.bk-sum:empty,.bk[data-step=details] :is(#bk-sum,#bk-edit),.bk-qline[hidden],.bk-mrow__x[hidden],.bk-arrive[hidden],.bk-signcard,.bk.is-js #bk-notes-f:not(.is-open),#price-total .bk-delta,.bk.bk-off #bk-adds,#q-fix[hidden],#bk-fix[hidden],#q-body[hidden],#bk-next[hidden]~#bk-nopay,#bk-submit[hidden]~#bk-consent,#q-sent[hidden],.bk-pill>span:empty{display:none}
 .bk-route__note{min-height:40px;font:var(--t4);color:var(--ink-2)}
 #bk-route-n .bk-sk{width:15em;max-width:100%;height:16px;vertical-align:-3px}
 .bk[data-sc=r] .bk-route__note{min-height:60px}
@@ -462,7 +462,7 @@ html:has(#bk-pills.is-on) .site-header{box-shadow:none}
 .bk-map img{width:100%;height:100%;object-fit:contain}
 .bk-drive{min-height:40px}
 :is(.bk-drive,.bk-map,.bk-route__note) .bk-attr{padding:0;color:#5E5E5E}
-.bk-pills,.bk-bar,.bk-bar.is-q>:is(.bk-bar__sum,#bk-bar-go),.bk-bar:not(.is-q)>:is(#bk-bar-q,#bk-bar-mail){display:none}
+.bk-pills,.bk-bar,.bk-bar.is-q>:is(.bk-bar__sum,#bk-bar-go),.bk-bar:not(.is-q)>:is(#bk-bar-q,#bk-bar-mail),.bk-bar:not(.is-f)>#bk-bar-fix,.bk-bar.is-f>#bk-bar-mail{display:none}
 .bk-bar__q{flex:1;min-width:0;margin:0;font:var(--t4);color:var(--ink)}
 .bk .btn[aria-busy=true],#resume-go[aria-busy=true]{position:relative;cursor:progress}
 .bk .btn[aria-busy=true]>.icon{box-sizing:border-box;border:2px solid currentColor;border-top-color:#0000;border-radius:50%;animation:bk-spin .8s linear infinite}

@@ -1,11 +1,20 @@
 export { PUB_718, ZIP_SOURCE, TAX_AREAS, NYC_TAX_AREA, COUNTY_AREAS, CITY_AREAS, CITY_ZIPS, ZIP_AREAS } from "./_salestax.mjs";
+export const BAG_CAPACITY = {
+  suv: { large: 3, small: 3 },
+  premium: { large: 3, small: 3 },
+  first: { large: 2, small: 1 },
+  sedan: { large: 2, small: 1 },
+  electric: { large: 2, small: 1 },
+  sprinter: { large: 10, small: 2 },
+};
+const bagRoom = ({ large, small }) => `${large} large plus ${small} small bag${small === 1 ? "" : "s"}`;
 export const CLASSES = {
-  suv: { name: "Business SUV", seats: 6, bags: "3 large plus 3 small bags" },
-  premium: { name: "Business Premium SUV", seats: 6, bags: "3 large plus 3 small bags" },
-  first: { name: "First Class", seats: 3, bags: "2 large plus 1 small bag" },
-  sedan: { name: "Executive Sedan", seats: 3, bags: "" },
-  electric: { name: "Electric Class", seats: 3, bags: "" },
-  sprinter: { name: "Luxury Sprinter", seats: 14, bags: "10 large plus 2 small bags" },
+  suv: { name: "Business SUV", seats: 6, bags: bagRoom(BAG_CAPACITY.suv) },
+  premium: { name: "Business Premium SUV", seats: 6, bags: bagRoom(BAG_CAPACITY.premium) },
+  first: { name: "First Class", seats: 3, bags: bagRoom(BAG_CAPACITY.first) },
+  sedan: { name: "Executive Sedan", seats: 3, bags: bagRoom(BAG_CAPACITY.sedan) },
+  electric: { name: "Electric Class", seats: 3, bags: bagRoom(BAG_CAPACITY.electric) },
+  sprinter: { name: "Luxury Sprinter", seats: 14, bags: bagRoom(BAG_CAPACITY.sprinter) },
 };
 export const VEHICLES = {
   "suv-suburban": { cls: "suv", model: "Chevrolet Suburban or similar", hourly: 9500 },
@@ -85,7 +94,7 @@ export const TIME_CAP_PER_MILE = 2.5;
 export const TIME_CAP_BASE = 10;
 export const ROUTE_CAPS = {
   hudson: { from: ["jfk", "lga", "queens", "brooklyn"], state: "NJ", stateName: "New Jersey", towns: ["Jersey City", "Hoboken", "North Bergen", "Union City"], zips: ["07030", "07047", "07087", "07302", "07304", "07305", "07306", "07307", "07310", "07311"], miles: 74, totals: { suv: 21143, premium: 25143, first: 35429, sedan: 19428, electric: 28572 } },
-  boston: { from: ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"], state: "MA", stateName: "Massachusetts", towns: ["Boston"], zips: [], miles: 260, totals: { suv: 87037, premium: 100061, first: 124045, sedan: 78000, electric: 108403, "sprinter-executive": 198323 } },
+  boston: { from: ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"], state: "MA", stateName: "Massachusetts", towns: ["Boston"], zips: ["02128"], miles: 260, totals: { suv: 87037, premium: 100061, first: 124045, sedan: 78000, electric: 108403, "sprinter-executive": 198323 } },
 };
 export const DISTANCE_LIMITS = { miles: 500, minutes: 720 };
 export const DISTANCE_SKIP_ZIPS = ["11430", "11371", "07114", "07608"];
@@ -115,6 +124,7 @@ export const MIN_NOTICE_MINUTES = 90;
 export const PAID_NOTICE_MINUTES = 60;
 export const SPRINTER_NOTICE_HOURS = 3;
 export const SPRINTER_BUSY_HOURS = 24;
+export const FIRST_BUSY_HOURS = 2;
 export const AUTO_LEAD_MINUTES = 5;
 export const AUTO_GUARD_MINUTES = 2;
 export const MAX_ADVANCE_DAYS = 365;

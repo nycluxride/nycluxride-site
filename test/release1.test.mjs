@@ -58,17 +58,18 @@ check("no page says tolls on distance trips are charged after the ride, and the 
   }
 });
 
-check("pages promise no instant online price for airports the calculator only quotes", () => {
+check("the pages of airports with no flat price say the price shows when you book and you can pay online, with no quote wording, and their search snippets stay as they were", () => {
   const banned = [/All of them are priced when you book/, /Each one is priced when you book/, /Every one is priced when you book/, /The price for each shows when you book/, /well inside our online limit/, /There's no quote to wait for by email/, /priced like any trip outside the city\. Priced by distance/, /other airfields are priced by distance and time/, /Bradley in Connecticut\. Priced by distance and time/];
   assert.deepEqual(files.flatMap((f) => banned.filter((b) => b.test(main(f))).map((b) => `${f}: ${b}`)), []);
   for (const f of ["locations/westchester-airport.html", "locations/long-island-macarthur-airport.html", "locations/stewart-airport.html", "locations/republic-airport.html", "locations/morristown-airport.html", "locations/philadelphia-airport.html", "locations/bradley-airport.html"]) {
     const rail = [...pages.get(f).querySelectorAll("main .rail dl.facts > div")].map((d) => [norm(d.querySelector("dt").textContent), norm(d.querySelector("dd").textContent)]);
-    assert.deepEqual(rail.filter(([k]) => k === "Your price"), [["Your price", "For this airport, we'll send you a price."]], f);
+    assert.deepEqual(rail.filter(([k]) => k === "Your price"), [["Your price", "You see the price when you book, and you can pay online."]], f);
+    assert.doesNotMatch(main(f), /send you a price|by quote|request a quote/i, f);
     for (const sel of ['meta[name="description"]', 'meta[property="og:description"]']) assert.doesNotMatch(pages.get(f).querySelector(sel).getAttribute("content"), /see your price|price first|price shows|instantly/i, `${f} ${sel}`);
   }
   for (const f of ["locations/bradley-airport.html", "locations/philadelphia-airport.html"]) assert.match(pages.get(f).querySelector('meta[name="description"]').getAttribute("content"), / Book online\.$/, f);
   const sprinter = pages.get("sprinter-van-service-nyc.html").querySelector('meta[name="description"]').getAttribute("content");
-  assert.equal(sprinter, "A Mercedes-Benz Sprinter and chauffeur for groups, airport transfers, events and trips to Boston, Philadelphia or the Hamptons. Request a quote.");
+  assert.equal(sprinter, "A Mercedes-Benz Sprinter and chauffeur for groups, airport transfers, events and trips to Boston, Philadelphia or the Hamptons. Book online.");
   const county = pages.get("locations/westchester-county.html").querySelector('meta[name="description"]').getAttribute("content");
   assert.match(county, /to JFK, LaGuardia, Newark and Manhattan\. See your price and book online\.$/);
   assert.doesNotMatch(county, /the airports/);
@@ -119,7 +120,7 @@ check("Westchester Airport, where most flights are private, scopes flight tracki
 });
 
 check("Westchester Airport pickups are offered and no county or state license is named", () => {
-  const a = "Yes. It is about 8 miles from Chappaqua and 10 from Scarsdale. We drop off and pick up there. Add your flight number when you book. For this airport, we'll send you a price.";
+  const a = "Yes. It is about 8 miles from Chappaqua and 10 from Scarsdale. We drop off and pick up there. Add your flight number when you book, and you see the price before you pay.";
   assert.deepEqual([faq("locations/westchester-county.html", "q-wch-hpn"), ldAnswer("locations/westchester-county.html", "Do you go to Westchester Airport?")], [a, a]);
   const named = /(Westchester|Nassau|Suffolk) County (Taxi|TLC)|Taxi and Limousine Commission license|New Jersey (authority|license)|Pennsylvania (authority|license)/i;
   assert.deepEqual(files.filter((f) => named.test(main(f))), []);
@@ -135,7 +136,7 @@ check("every page's business entity serves New York, New Jersey, Connecticut, Ph
     assert.ok(!JSON.stringify(ld(f)).includes("streetAddress"), f);
   }
   assert.match(main("locations.html"), /We also cover all of New York, New Jersey and Connecticut, plus Philadelphia and Pennsylvania\./);
-  assert.match(ldAnswer("long-distance-car-service.html", "How far will you drive?"), /far enough for Boston and Washington, booked online\. Canada is by quote\.$/);
+  assert.match(ldAnswer("long-distance-car-service.html", "How far will you drive?"), /far enough for Boston and Washington, booked online\. For Canada, call or WhatsApp us\.$/);
 });
 
 check("child seats name the three seats on the owner's sheet, the Nuna RAVA, the Safety 1st Grow and Go and a backless booster, no page names Graco, and no page tells parents to bring their own seat", () => {

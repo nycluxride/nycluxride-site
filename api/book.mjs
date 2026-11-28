@@ -1,7 +1,7 @@
 import { CLASSES, VEHICLES, TIP_PERCENTS, TIP_CUSTOM, STRIPE_MAX_CENTS, SITE_ORIGIN, CHECKOUT_ORIGINS, CONSENT_TERMS_LIVE, MEET_AND_GREET, CHILD_SEAT_CENTS, SMALL_DOG_CENTS, LARGE_DOG_CENTS, STOP_FEE_CENTS } from "./_rates.mjs";
-import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, SPRINTER_BUSY } from "./_copy.mjs";
+import { HEADINGS, REASONS, ERROR_BLOCK, ERRORS, BUSY_NOTES } from "./_copy.mjs";
 import { json, redirect, readBody, originAllowed, clientBudget, instanceBudget, wantsJson, production } from "./_http.mjs";
-import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, requestReason, requestOnly, bookReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionBusy } from "./_trip.mjs";
+import { readInput, readSettings, resolveTrip, checkTrip, checkDetails, priceTrip, requestRef, contactLinks, receipt, shownLines, classReason, classTotal, firstSlot, serviceOf, chargedTrip, hourlyStart, noticeReason, sprinterFrom, sessionNote, busyNote, nycToUtc } from "./_trip.mjs";
 import { sessionParams, createSession, retrieveSession, expireSession, secretKey, liveKey, keyProblem, stripeKey } from "./_stripe.mjs";
 import { googleUp, mapSize, routeMap } from "./_google.mjs";
 import { mailBooking, mailSoon } from "./_mail.mjs";
@@ -58,9 +58,11 @@ function rideBody(trip, size, draw) {
 const rideOnly = (trip) => ({ ...trip, tip: 0, tip_amount: "", meet: false });
 
 function classList(trip, tripReason, now) {
+  const pickup = nycToUtc(trip.date, trip.time).getTime();
   return Object.keys(CLASSES).map((cls) => {
-    const reason = tripReason || noticeReason(trip, cls, now) || bookReason(trip, cls);
-    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason && reason !== "sprinter-check" ? null : classTotal(rideOnly(trip), cls), reason };
+    const reason = tripReason || noticeReason(trip, cls, now) || classReason(trip, cls);
+    const busy = !reason && busyNote(cls, pickup, now) ? BUSY_NOTES[cls] : "";
+    return { class: cls, name: CLASSES[cls].name, seats: CLASSES[cls].seats, total_cents: reason ? null : classTotal(rideOnly(trip), cls), reason, ...(busy && { busy }) };
   });
 }
 
@@ -71,7 +73,7 @@ function vehicleList(trip, now) {
     .map((key) => {
       const priced = { ...trip, class: VEHICLES[key].cls, vehicle: key };
       const late = noticeReason(priced, priced.class, now);
-      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) || requestReason(priced, priced.class) === "sprinter-quote" ? null : priceTrip(rideOnly(priced)).total, ...(late && { reason: late }) };
+      return { vehicle: key, label: VEHICLES[key].name || VEHICLES[key].model, seats: VEHICLES[key].seats || CLASSES[VEHICLES[key].cls].seats, total_cents: late || classReason(priced, priced.class) ? null : priceTrip(rideOnly(priced)).total, ...(late && { reason: late }) };
     });
 }
 
@@ -106,7 +108,7 @@ const tollsDiffer = (trip, price) => trip.trip_type !== "hour" && trip.class !==
 
 function optionsBody(trip, ref, check, now, size, draw) {
   const hourly = trip.trip_type === "hour";
-  const price = check.reason && check.reason !== "sprinter-check" ? null : priceTrip(trip);
+  const price = check.reason ? null : priceTrip(trip);
   return {
     kind: "options",
     ref,
@@ -178,6 +180,7 @@ function sessionBody(session) {
   const stripeTax = session.total_details && Number.isInteger(session.total_details.amount_tax) ? session.total_details.amount_tax : undefined;
   const { summary, lines, value, notes } = receipt(metadata, readSettings(process.env), stripeTax);
   if (lines.length && lines.reduce((sum, item) => sum + item.cents, 0) !== session.amount_total) console.error("receipt-mismatch", metadata.ref || "");
+  const busy = sessionNote(session, metadata.class, metadata.pickup_at);
   return {
     kind: "session",
     status,
@@ -188,7 +191,8 @@ function sessionBody(session) {
     total_cents: session.amount_total,
     value_cents: value,
     currency: session.currency || "usd",
-    notes: sessionBusy(session, metadata.class, metadata.pickup_at) ? [SPRINTER_BUSY, ...notes] : notes,
+    notes: [busy, ...notes].filter(Boolean),
+    ...(busy && { busy: true }),
     ...(metadata.short_notice === "1" && { short_notice: true }),
   };
 }
@@ -235,7 +239,7 @@ async function handlePost(request) {
   if (detail) return invalid(detail.code);
   const origin = production() ? SITE_ORIGIN : new URL(request.url).origin;
   const paid = requestRef(input);
-  const ask = requestOnly(trip);
+  const ask = classReason(trip, trip.class);
   if (ask) return reply(200, quoteBody(trip, ref, ask, now, { scope: "class" }), `/book#q-${ask}`);
   const params = sessionParams(trip, price, paid, settings, now, origin);
   if (mockMode()) {

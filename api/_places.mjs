@@ -47,7 +47,7 @@ export const PLACE_LIST = Object.freeze(
 );
 export const ZONES = ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga", "ewr", "teb", "airport-other", "outside", "abroad", "unknown"];
 export const AIRPORT_ZONES = ["jfk", "lga", "ewr", "teb", "airport-other"];
-export const AREA_LABELS = { ...PLACES, "airport-other": "Price on request", abroad: "Outside the United States", unknown: "ZIP code needed" };
+export const AREA_LABELS = { ...PLACES, "airport-other": "Other airport", abroad: "Outside the United States", unknown: "ZIP code needed" };
 
 const STATE_CODES = "al ak az ar ca co ct de fl ga hi id il in ia ks ky la me md ma mi mn ms mo mt ne nv nh nj nm nc nd oh ok or pa ri sc sd tn tx ut vt va wa wv wi wy dc pr vi gu as mp";
 const STATE_NAMES =

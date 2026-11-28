@@ -6,13 +6,15 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
 const ROOT = join(dirname(fileURLToPath(new URL(import.meta.url))), "..");
-const { CLASSES, MAX_BAGS, AIRPORT_TOTALS, AIRPORT_FARES, TIP_DEFAULT, percentCents } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
+const { CLASSES, MAX_BAGS, AIRPORT_TOTALS, AIRPORT_FARES, TIP_DEFAULT, CHILD_SEAT_CENTS, percentCents } = await import(pathToFileURL(join(ROOT, "api", "_rates.mjs")).href);
 const START = AIRPORT_TOTALS.suv.jfk + percentCents(AIRPORT_FARES.suv.jfk, String(TIP_DEFAULT));
-const { ERRORS } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
+const { ERRORS, REASONS } = await import(pathToFileURL(join(ROOT, "api", "_copy.mjs")).href);
 const ENV_KEYS = ["BOOK_MOCK", "PAYMENTS_ENABLED", "PAY_BLACKOUT_DATES", "STRIPE_SECRET_KEY", "VERCEL_ENV", "GOOGLE_MOCK", "FLIGHT_MOCK", "MAP_MOCK", "GOOGLE_MAPS_JS", "GOOGLE_MAPS_SERVER_KEY", "GOOGLE_MAPS_BROWSER_KEY", "GOOGLE_MAPS_SIGNING_SECRET"];
 const DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(Date.now() + 3 * 864e5));
-const NOTE = "Your bags may not fit in this car. Choose a larger car or tell us in the notes.";
-const NONE = "Your bags may not fit in any of our cars. Tell us in the notes.";
+const NOTE = "Too many bags for this car. Choose a bigger car.";
+const NONE = "Too many bags for any of our cars. Send us the trip.";
+const OFF = "Too many bags for this car";
+const HINT = "Bags are free. A medium suitcase counts as a large one.";
 const cash = (c) => "$" + (c / 100).toLocaleString("en-US", { minimumFractionDigits: 2 });
 const ROOM = Object.fromEntries(Object.entries(CLASSES).map(([k, c]) => [k, (/^(\d+) large plus (\d+) small bags?$/.exec(c.bags) || []).slice(1).map(Number)]));
 const ME = { name: "Ana Lopez", email: "ana.lopez@example.com", phone: "+1 212 555 0100" };
@@ -79,6 +81,9 @@ const browser = await chromium.launch();
 async function context(viewport, options = {}) {
   const ctx = await browser.newContext({ viewport, reducedMotion: "reduce", ...options });
   ctx.api = [];
+  ctx.inflight = 0;
+  ctx.on("request", (r) => r.url().startsWith(`${P.base}/api/book`) && ctx.inflight++);
+  for (const e of ["requestfinished", "requestfailed"]) ctx.on(e, (r) => r.url().startsWith(`${P.base}/api/book`) && ctx.inflight--);
   await ctx.route((url) => !url.href.startsWith(P.base), (route) => route.fulfill({ status: 204, body: "" }));
   ctx.on("request", (r) => r.url().startsWith(`${P.base}/api/`) && ctx.api.push(r.url()));
   if (options.javaScriptEnabled !== false) await ctx.addInitScript(SPY);
@@ -96,6 +101,14 @@ async function open(ctx, path) {
   return page;
 }
 
+const quiet = async (page) => {
+  await page.waitForTimeout(400);
+  for (let i = 0; i < 80 && page.context().inflight > 0; i++) await page.waitForTimeout(100);
+  await page.waitForFunction(() => !document.getElementById("price-total").getAttribute("aria-busy") && !document.getElementById("bk-wait").textContent.startsWith("Finding") && !document.querySelector(".bk-card__price .bk-sk"));
+};
+const offCards = (page) => page.$$eval(".bk-card", (o) => o.filter((l) => l.classList.contains("is-small")).map((l) => l.htmlFor.slice(5)));
+const figOf = (page, card) => page.textContent(`#bk-p-${card} .bk-fig`);
+const boxed = (page) => page.waitForFunction(() => !document.getElementById("price").hidden && /\d/.test((document.getElementById("price-total").firstChild || {}).textContent || "") && !document.getElementById("price-total").getAttribute("aria-busy") && !document.getElementById("bk-wait").textContent.startsWith("Finding"));
 const priced = (page) => page.waitForFunction(() => /\$/.test(document.getElementById("bk-p-suv").textContent) && /\d/.test((document.getElementById("price-total").firstChild || {}).textContent || "") && !document.getElementById("price-total").getAttribute("aria-busy"));
 async function options(ctx, extra = {}) {
   const page = await open(ctx, `/book?${new URLSearchParams({ ...TRIP, ...extra })}`);
@@ -153,7 +166,7 @@ function sheetRows(r, size) {
   assert.ok(r.scroll <= 0, "no horizontal scroll");
 }
 const STATED = Object.values(ROOM).filter((r) => r.length);
-const holds = ([l, s], large, small, medium = 0) => large <= l && large + medium + small <= l + s;
+const holds = ([l, s], large, small, medium = 0) => large + medium <= l && large + medium + small <= l + s;
 const fits = (cls, large, small, medium = 0) => (ROOM[cls].length ? [ROOM[cls]] : STATED).every((r) => holds(r, large, small, medium));
 const noteFor = (large, small, medium = 0) => (STATED.some((r) => holds(r, large, small, medium)) ? NOTE : NONE);
 const status = (page) => page.textContent("#bk-status");
@@ -166,7 +179,7 @@ async function pickStill(page, cls) {
   await page.click(sel);
   await frames(page);
   const after = await top();
-  await priced(page);
+  await quiet(page);
   const settled = await top();
   assert.ok(Math.abs(after - before) <= 1 && Math.abs(settled - before) <= 1, `${cls} card moved under the pointer: ${before} -> ${after} -> ${settled}`);
 }
@@ -179,7 +192,7 @@ const noteState = (page) => page.evaluate(() => { const n = document.getElementB
 for (const [width, height] of [[390, 844], [1440, 900]]) {
   const ctx = await context({ width, height });
   let page;
-  await check(`BG1 ${width}: step 1 shows the Bags row reading None, and its ${width < 1024 ? "sheet" : "popover"} holds Large suitcase, Medium suitcase and Small suitcase or hand carry, each a stepper at 0 with Fewer off, named by its label with the hint that bags are free, no note, no horizontal scroll, and CLS 0 on load and on the way to step 1`, async () => {
+  await check(`BG1 ${width}: step 1 shows the Bags row reading None, and its ${width < 1024 ? "sheet" : "popover"} holds Large suitcase, Medium suitcase and Small suitcase or hand carry, each a stepper at 0 with Fewer off, named by its label with the hint that bags are free and a medium suitcase counts as a large one, no note, no horizontal scroll, and CLS 0 on load and on the way to step 1`, async () => {
     page = await options(ctx);
     await page.waitForTimeout(800);
     assert.deepEqual(await counts(page), [["0", "0"], ["0", "0"], ["0", "0"]]);
@@ -190,7 +203,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.equal(await page.getAttribute("#bk-xr-bags-b", "aria-expanded"), "true");
     const s = await page.evaluate(() => [...document.querySelectorAll("#bk-bags .bk-stepper")].map((x) => [document.getElementById(x.getAttribute("aria-labelledby")).textContent, x.getAttribute("aria-describedby"), x.getAttribute("role"), x.firstChild.getAttribute("aria-label"), x.firstChild.ariaDisabled, x.lastChild.getAttribute("aria-label"), x.lastChild.ariaDisabled]));
     assert.deepEqual(s, [["Large suitcase", "bk-bags-h", "group", "Fewer large suitcases", "true", "More large suitcases", "false"], ["Medium suitcase", "bk-bags-h", "group", "Fewer medium suitcases", "true", "More medium suitcases", "false"], ["Small suitcase or hand carry", "bk-bags-h", "group", "Fewer small suitcases", "true", "More small suitcases", "false"]]);
-    assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-bags-large").offsetParent, document.getElementById("bk-bags-medium").offsetParent, document.getElementById("bk-bags-small").offsetParent, document.getElementById("bk-bags-h").textContent, document.getElementById("bk-bags-h").offsetHeight > 0]), [null, null, null, "Bags are free.", true]);
+    assert.deepEqual(await page.evaluate(() => [document.getElementById("bk-bags-large").offsetParent, document.getElementById("bk-bags-medium").offsetParent, document.getElementById("bk-bags-small").offsetParent, document.getElementById("bk-bags-h").textContent, document.getElementById("bk-bags-h").offsetHeight > 0]), [null, null, null, HINT, true]);
     assert.equal(await noteShown(page), false);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
     await doneBags(page);
@@ -203,51 +216,69 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     if (width < 1024) assert.ok(r.modal && r.sheet.l === 0 && r.sheet.r === r.vw && r.sheet.b === r.vh, `a modal sheet at the foot of the window: ${JSON.stringify(r.sheet)}`);
     else assert.ok(!r.modal && Math.abs(r.sheet.l - r.row.l) <= 1 && r.sheet.t >= r.row.b && r.sheet.t - r.row.b <= 12, `a popover right under the Bags row: ${JSON.stringify([r.sheet, r.row])}`);
   });
-  await check(`BG3 ${width}: the over-capacity note per class, at the stated luggage no note, one large bag more or one bag more in all shows it, small and medium bags may take large bag room, all three sizes count toward the total, the Executive Sedan and the Electric Class, which state no luggage, are checked against the smallest stated luggage, each Sprinter card holds the Luxury Sprinter luggage, the note says so when no car holds the bags, it follows a change of car, it is spoken once in the status line and its words leave the status line when it hides`, async () => {
+  await check(`BG3 ${width}: each class holds the bags of BAG_CAPACITY, a medium suitcase counting as a large one and an unused large space taking a small bag: at its luggage the card stays priced with no note, one large or medium bag more or one bag more in all turns it off with Too many bags for this car and shows the note, the Executive Sedan and the Electric Class hold 2 large and 1 small like First Class, each Sprinter card holds the Luxury Sprinter luggage, the note says so when no car holds the bags, a bag change asks the server for fresh prices, the note is spoken once in the status line and its words leave the status line when it hides`, async () => {
     let asked = 0;
     const cases = {
-      suv: [[3, 3, false], [4, 0, true], [3, 4, true], [2, 4, false], [0, 6, false], [0, 7, true], [0, 3, false, 3], [3, 0, false, 3], [3, 3, true, 1], [0, 0, false, 6], [0, 0, true, 7], [4, 0, true, 0]],
-      premium: [[3, 3, false], [4, 0, true], [1, 6, true], [2, 4, false], [1, 1, false, 4], [1, 2, true, 4]],
-      first: [[2, 1, false], [3, 0, true], [2, 2, true], [1, 2, false], [0, 3, false], [0, 4, true], [2, 0, false, 1], [2, 0, true, 2], [0, 0, false, 3], [0, 0, true, 4]],
-      sedan: [[0, 1, false], [2, 1, false], [0, 3, false], [3, 0, true], [1, 3, true], [5, 5, true], [14, 14, true], [0, 0, false, 3], [1, 1, true, 2]],
-      electric: [[0, 1, false], [2, 1, false], [0, 3, false], [3, 0, true], [1, 3, true], [5, 5, true], [14, 14, true], [0, 0, false, 3], [1, 1, true, 2]],
-      sprinter: [[10, 2, false], [11, 0, true], [10, 3, true], [0, 12, false], [8, 4, false], [0, 13, true], [10, 0, false, 2], [10, 1, true, 2], [0, 0, false, 12], [0, 0, true, 13]],
+      suv: [[3, 3, false], [4, 0, true], [3, 4, true], [2, 4, false], [0, 6, false], [0, 7, true], [0, 3, false, 3], [1, 0, true, 3], [0, 0, false, 3], [0, 0, true, 4], [2, 3, false, 1], [2, 4, true, 1]],
+      premium: [[3, 3, false], [4, 0, true], [1, 5, false], [1, 6, true], [1, 1, false, 2], [1, 1, true, 3]],
+      first: [[2, 1, false], [3, 0, true], [2, 2, true], [1, 2, false], [0, 3, false], [0, 4, true], [1, 0, false, 1], [2, 0, true, 1], [0, 1, false, 2], [0, 0, true, 3]],
+      sedan: [[2, 1, false], [0, 3, false], [3, 0, true], [1, 3, true], [0, 1, false, 2], [1, 1, true, 2], [14, 14, true]],
+      electric: [[2, 1, false], [0, 3, false], [3, 0, true], [1, 3, true], [0, 1, false, 2], [1, 1, true, 2]],
+      sprinter: [[10, 2, false], [11, 0, true], [10, 3, true], [0, 12, false], [8, 4, false], [0, 13, true], [8, 2, false, 2], [10, 0, true, 1], [0, 0, false, 10], [0, 2, false, 10], [0, 0, true, 11]],
     };
     for (const [k, list] of Object.entries(cases)) for (const card of k === "sprinter" ? SPRINTER_CARDS : [k]) {
+      await bags(page, 0, 0);
+      await quiet(page);
       await pick(page, card);
-      await priced(page);
+      await quiet(page);
       for (const [large, small, want, medium = 0] of list) {
         const before = ctx.api.length;
         await bags(page, large, small, medium);
-        await page.waitForTimeout(250);
+        await quiet(page);
         asked += ctx.api.length - before;
-        assert.equal(want, !fits(k, large, small, medium), `${k} ${large} ${medium} ${small} follows CLASSES`);
+        assert.equal(want, !fits(k, large, small, medium), `${k} ${large} ${medium} ${small} follows BAG_CAPACITY`);
         assert.equal(await noteShown(page), want, `${k} ${large} large ${medium} medium ${small} small`);
-        if (want) assert.equal(await page.textContent("#bk-bagfit"), noteFor(large, small, medium), `${k} ${large} large ${medium} medium ${small} small`);
+        assert.equal((await offCards(page)).includes(card), want, `${card} ${large} large ${medium} medium ${small} small is off`);
+        if (want) assert.deepEqual([await page.textContent("#bk-bagfit"), await figOf(page, card), await page.isVisible("#price"), await page.isVisible("#bk-next")], [noteFor(large, small, medium), OFF, false, false], `${k} ${large} large ${medium} medium ${small} small`);
+        else assert.equal(await figOf(page, card) === OFF, false, `${card} keeps its price`);
       }
     }
     await bags(page, 4, 0);
     await pick(page, "first");
+    await quiet(page);
     assert.equal(await noteShown(page), true);
     await pick(page, "sprinter-white-limo");
+    await quiet(page);
     assert.equal(await noteShown(page), false, "a larger car clears it");
     assert.notEqual(await status(page), NOTE, "the status line drops the note when it hides");
     await page.evaluate(() => (document.getElementById("bk-status").textContent = ""));
     await pick(page, "suv");
-    assert.equal(await page.textContent("#bk-status"), NOTE);
-    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".bk-card.is-small")].length), 0, "bags never mark a car too small");
-    assert.equal(asked, 0, "a bag change asks the server for nothing");
+    await quiet(page);
+    assert.equal(await page.textContent("#bk-bagfit"), NOTE);
+    assert.ok(asked > 0, "a bag change asks the server for fresh prices");
+    await bags(page, 0, 0);
+    await quiet(page);
     const [value, shifts] = await cls(page);
     assert.equal(value, 0, shifts.join(" | "));
   });
-  await check(`BG4 ${width}: the note never blocks the booking, the price and the class cards stay as they were, More at ${MAX_BAGS} shows the bags message and the next change clears it`, async () => {
+  await check(`BG4 ${width}: a car that cannot take the bags is off: its card says Too many bags for this car, the request block, the bar and the fix button say so, there is no price box and no Continue, the fix picks the first car that holds them, fewer bags bring the price back, and More at ${MAX_BAGS} shows the bags message and the next change clears it`, async () => {
     await pick(page, "suv");
     await priced(page);
     await bags(page, 4, 0);
-    assert.equal(await noteShown(page), true);
-    assert.equal((await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), cash(START), "the JFK total with the Curbside pickup and no gratuity it opens on");
-    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), ["$185.00", "$220.00", "$310.00", "$170.00", "$250.00", "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
-    assert.equal(await page.isDisabled("#bk-next"), false);
+    await quiet(page);
+    assert.deepEqual(await offCards(page), ["suv", "premium", "first", "sedan", "electric"], "4 large bags fit only the Sprinters");
+    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)), [OFF, OFF, OFF, OFF, OFF, "$450.00", "$575.00", "$650.00", "$700.00", "$750.00"]);
+    assert.deepEqual([await page.isVisible("#price"), await page.isVisible("#bk-next"), await page.isVisible("#q-too-many-bags"), (await page.textContent("#q-too-many-bags p")).trim(), await page.textContent("#bk-bar-q"), await page.textContent("#q-fix")], [false, false, true, REASONS["too-many-bags"].text, OFF, "Choose a bigger car"]);
+    assert.deepEqual([(await page.textContent("#q-too-many-bags h3")).trim(), await page.isVisible("#q-body"), await page.textContent("#bk-fix"), await page.isVisible("#bk-fix")], [OFF, false, "Choose a bigger car", true], "the block names the problem, no request steps while a bigger car takes the bags, and the fix is the button by the price");
+    await page.click("#q-fix");
+    await quiet(page);
+    await boxed(page);
+    assert.deepEqual([await page.evaluate(() => document.querySelector("[name=class]:checked").dataset.v), (await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), await page.isVisible("#bk-next")], ["sprinter-executive", cash(AIRPORT_TOTALS["sprinter-executive"].jfk), true], "the fix picks the Executive Sprinter, which holds 10 large bags");
+    await pick(page, "suv");
+    await bags(page, 3, 0);
+    await quiet(page);
+    await boxed(page);
+    assert.deepEqual([await offCards(page), (await page.evaluate(() => document.getElementById("price-total").firstChild.textContent)), await page.isVisible("#bk-next")], [["first", "sedan", "electric"], cash(START), true], "3 large bags bring the Business SUV back at its price");
     await bags(page, MAX_BAGS, 0);
     await openBags(page);
     assert.equal(await page.getAttribute('[aria-label="More large suitcases"]', "aria-disabled"), "true");
@@ -261,8 +292,9 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     assert.deepEqual(await page.evaluate(() => [document.getElementById("e-bags").classList.contains("is-on"), document.getElementById("bk-bags").getAttribute("aria-invalid")]), [false, null]);
     await doneBags(page);
     assert.equal((await page.textContent("#bk-xr-bags-v")), `${MAX_BAGS - 1} large bags`, "the row reads the counts");
-    await bags(page, 4, 2);
-    assert.equal((await page.textContent("#bk-xr-bags-v")), "4 large, 2 small");
+    await bags(page, 2, 2);
+    assert.equal((await page.textContent("#bk-xr-bags-v")), "2 large, 2 small");
+    await quiet(page);
   });
   await check(`BG13 ${width}: with 3 large bags every clicked car card stays under the pointer, the note shows right after a newly chosen card that is too small, a larger car hides it but keeps its space, and the next bag change lets that space go`, async () => {
     await pick(page, "suv");
@@ -272,6 +304,7 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await pickStill(page, "first");
     await noteIs(page, { shown: true, keep: false, after: "bk-c-first" });
     assert.equal(await page.textContent("#bk-bagfit"), NOTE);
+    assert.equal(await figOf(page, "first"), OFF);
     await pickStill(page, "sedan");
     assert.equal((await noteState(page)).shown, true, "the Executive Sedan holds no more than First Class");
     await pickStill(page, "electric");
@@ -291,30 +324,26 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await noteIs(page, { shown: false, keep: false, h: 0 });
     assert.deepEqual(page.errors, []);
   });
-  await check(`BG14 ${width}: when no car holds the bags, as on the Luxury Sprinter with ${ROOM.sprinter[0] + 1} large bags, or ${ROOM.sprinter[0] + ROOM.sprinter[1] + 1} medium bags, or any car with ${MAX_BAGS} of each, the note says so and the status line speaks it, and fewer bags take it back`, async () => {
+  await check(`BG14 ${width}: when no car holds the bags, as with ${ROOM.sprinter[0] + 1} large bags, or ${ROOM.sprinter[0] + 1} medium bags, or ${ROOM.sprinter[0] + ROOM.sprinter[1] + 1} small bags, or ${MAX_BAGS} of each, every card is off, the note and the block say so and the status line speaks it, the request steps show and Email to reserve is the gold button, and fewer bags take it back`, async () => {
     await pick(page, "sprinter-presidential");
-    await priced(page);
-    await bags(page, ROOM.sprinter[0] + 1, 0);
-    assert.equal(await noteShown(page), true);
-    assert.equal(await page.textContent("#bk-bagfit"), NONE);
-    assert.equal(await status(page), NONE);
-    await bags(page, ROOM.sprinter[0], 0);
-    assert.equal(await noteShown(page), false);
-    await bags(page, 0, 0, ROOM.sprinter[0] + ROOM.sprinter[1] + 1);
-    assert.equal(await page.textContent("#bk-bagfit"), NONE, "medium suitcases past the largest total");
-    await bags(page, 0, 0, ROOM.sprinter[0] + ROOM.sprinter[1]);
-    assert.equal(await noteShown(page), false);
+    await quiet(page);
+    for (const [large, small, medium] of [[ROOM.sprinter[0] + 1, 0, 0], [0, 0, ROOM.sprinter[0] + 1], [0, ROOM.sprinter[0] + ROOM.sprinter[1] + 1, 0], [MAX_BAGS, MAX_BAGS, MAX_BAGS]]) {
+      await bags(page, large, small, medium);
+      await quiet(page);
+      assert.deepEqual([await noteShown(page), await page.textContent("#bk-bagfit"), await status(page), (await offCards(page)).length], [true, NONE, NONE, 10], `${large} ${medium} ${small}`);
+      assert.deepEqual([await page.textContent("#q-too-many-bags p"), await page.isVisible("#q-body"), await page.isVisible("#bk-fix"), await page.evaluate(() => document.getElementById("q-mail").classList.contains("btn--ghost"))], [NONE, true, false, false], `${large} ${medium} ${small}: with no car for the bags the block asks for the trip with the request steps and Email to reserve is the gold button`);
+    }
     await bags(page, ROOM.sprinter[0], 0, 0);
+    await quiet(page);
+    assert.equal(await noteShown(page), false);
     assert.notEqual(await status(page), NONE);
     await pick(page, "suv");
-    await priced(page);
+    await quiet(page);
     assert.equal(await page.textContent("#bk-bagfit"), NOTE);
     assert.equal(await status(page), NOTE);
-    await bags(page, MAX_BAGS, MAX_BAGS, MAX_BAGS);
-    assert.equal(await page.textContent("#bk-bagfit"), NONE);
-    assert.equal(await status(page), NONE);
-    await bags(page, 4, 2);
-    assert.equal(await page.textContent("#bk-bagfit"), NOTE);
+    await bags(page, 2, 2);
+    await quiet(page);
+    assert.equal(await noteShown(page), false);
     assert.deepEqual(page.errors, []);
   });
   await check(`BG17 ${width}: after Done with bags too many for the car and a change of car, the note shows under the cars, and a reopened Bags ${width < 1024 ? "sheet" : "popover"} takes it back inside, in view, while a bag is added, then Done puts it after the chosen car`, async () => {
@@ -331,17 +360,19 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await doneBags(page);
     await noteIs(page, { shown: true, after: "bk-c-first" });
     await pickStill(page, "suv");
-    await bags(page, 4, 2);
+    await bags(page, 2, 2);
+    await quiet(page);
     assert.deepEqual(page.errors, []);
   });
-  await check(`BG5 ${width}: the WhatsApp message carries one line per bag size right after Passengers with no server call, and the server's message after a passenger change says the same`, async () => {
+  await check(`BG5 ${width}: the WhatsApp message carries one line per bag size right after Passengers as soon as a bag changes, and the server's message after a passenger change says the same`, async () => {
     const before = ctx.api.length;
-    await bags(page, 4, 2, 1);
-    await waFor(page, "\nPassengers: 2\nLarge suitcase: 4\nMedium suitcase: 1\nSmall suitcase or hand carry: 2\nVehicle: Business SUV");
+    await bags(page, 2, 3, 1);
+    await waFor(page, "\nPassengers: 2\nLarge suitcase: 2\nMedium suitcase: 1\nSmall suitcase or hand carry: 3\nVehicle: Business SUV");
     await bags(page, 0, 1);
     const one = await waFor(page, "\nPassengers: 2\nSmall suitcase or hand carry: 1\nVehicle: ");
     assert.ok(!one.includes("Large suitcase") && !one.includes("Medium suitcase"), one);
-    assert.equal(ctx.api.length, before, "the messages change with no server call");
+    await quiet(page);
+    assert.ok(ctx.api.length > before, "a bag change asks for fresh prices");
     await page.click('[aria-label="More passengers"]');
     await page.waitForFunction(() => /Passengers: 3/.test(decodeURIComponent(document.querySelector(".site-footer a[data-wa]").getAttribute("href"))));
     await priced(page);
@@ -350,19 +381,23 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await priced(page);
     await bags(page, 4, 2, 3);
     await waFor(page, "\nPassengers: 2\nLarge suitcase: 4\nMedium suitcase: 3\nSmall suitcase or hand carry: 2\n");
+    await bags(page, 0, 0);
+    await quiet(page);
   });
   await check(`BG6 ${width}: Your trip has a Bags row after Passengers with its Change button, which goes back to step 1 and opens the bags ${width < 1024 ? "sheet" : "popover"} with focus on the large suitcases, and no Bags row without bags`, async () => {
-    await bags(page, 4, 2, 1);
+    await bags(page, 2, 3, 1);
+    await priced(page);
     await page.click("#bk-next");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
     const rows = await page.$$eval("#bk-check-rows > div", (o) => o.map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent, (d.querySelector("button") || {}).textContent || ""]));
     const at = rows.findIndex(([t]) => t === "Passengers");
-    assert.deepEqual(rows.slice(at, at + 3).map((r) => r.slice(0, 3)), [["Passengers", "2", "Change passengers"], ["Bags", "4 large, 1 medium, 2 small", "Change bags"], ["Car", rows[at + 2][1], "Change car"]]);
+    assert.deepEqual(rows.slice(at, at + 3).map((r) => r.slice(0, 3)), [["Passengers", "2", "Change passengers"], ["Bags", "2 large, 1 medium, 3 small", "Change bags"], ["Car", rows[at + 2][1], "Change car"]]);
     await page.click('#bk-check-rows button[data-c="bags"]');
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
     await page.waitForFunction(() => document.activeElement && document.activeElement.getAttribute("aria-label") === "Fewer large suitcases");
     assert.deepEqual([await page.evaluate(() => document.getElementById("bk-xr-bags-d").open), await page.getAttribute("#bk-xr-bags-b", "aria-expanded")], [true, "true"]);
     await bags(page, 0, 0);
+    await priced(page);
     await page.click("#bk-next");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
     assert.ok(!(await page.$$eval("#bk-check-rows dt", (o) => o.map((x) => x.textContent))).includes("Bags"));
@@ -370,27 +405,28 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
   await check(`BG7 ${width}: paying sends the three counts, the confirmation page shows them in a Bags row after the car and keeps them in its saved state, and Book the return trip carries them`, async () => {
     await page.click("#bk-back");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
-    await bags(page, 4, 2, 1);
+    await bags(page, 2, 3, 1);
+    await priced(page);
     await page.click("#bk-next");
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
     for (const [k, v] of Object.entries(ME)) await page.fill(`#bk-${k}`, v);
     const [post] = await Promise.all([page.waitForRequest((r) => r.url().endsWith("/api/book") && JSON.parse(r.postData() || "{}").action === "pay"), page.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/), page.click("#bk-submit")]);
     const sent = JSON.parse(post.postData());
-    assert.deepEqual([sent.large_bags, sent.medium_bags, sent.small_bags, sent.passengers], ["4", "1", "2", "2"]);
+    assert.deepEqual([sent.large_bags, sent.medium_bags, sent.small_bags, sent.passengers], ["2", "1", "3", "2"]);
     await page.waitForSelector("#cf-receipt", { state: "visible" });
     await page.waitForSelector("#cf-trip:not([hidden])");
     const rows = await page.$$eval("#cf-rows > div", (o) => o.map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent]));
     const car = rows.findIndex(([t]) => t === "Car");
-    assert.deepEqual(rows[car + 1], ["Bags", "4 large, 1 medium, 2 small"], JSON.stringify(rows));
+    assert.deepEqual(rows[car + 1], ["Bags", "2 large, 1 medium, 3 small"], JSON.stringify(rows));
     assert.equal(await page.textContent("#cf-total"), cash(START));
     const stored = await page.evaluate(() => [JSON.parse(sessionStorage.getItem("nlr-book")).fields, JSON.parse(sessionStorage.getItem("nlr-cf")).b.fields]);
-    for (const f of stored) assert.deepEqual([f.large_bags, f.medium_bags, f.small_bags], ["4", "1", "2"]);
+    for (const f of stored) assert.deepEqual([f.large_bags, f.medium_bags, f.small_bags], ["2", "1", "3"]);
     await page.reload({ waitUntil: "load" });
     await page.waitForSelector("#cf-trip:not([hidden])");
     assert.ok((await page.$$eval("#cf-rows dt", (o) => o.map((x) => x.textContent))).includes("Bags"), "the saved state shows them again after a reload");
     await Promise.all([page.waitForURL(/\/book#trip/), page.click("#cf-return")]);
     await page.waitForFunction(() => document.getElementById("bk-from").value.includes("350 5th Ave"));
-    assert.deepEqual([await page.inputValue("#bk-bags-large"), await page.inputValue("#bk-bags-medium"), await page.inputValue("#bk-bags-small")], ["4", "1", "2"]);
+    assert.deepEqual([await page.inputValue("#bk-bags-large"), await page.inputValue("#bk-bags-medium"), await page.inputValue("#bk-bags-small")], ["2", "1", "3"]);
     assert.deepEqual(page.errors, []);
   });
   if (page) await page.close();
@@ -461,9 +497,9 @@ for (const [width, height] of [[844, 390], [667, 375]]) {
 {
   const ctx = await context({ width: 390, height: 844 });
   await check("BG8 deep links: the options link from the homepage form carries large_bags, medium_bags and small_bags, a readable link takes large-bags, medium-bags and small-bags, and a value out of range falls back to 0", async () => {
-    const page = await options(ctx, { large_bags: "3", medium_bags: "2", small_bags: "1" });
-    assert.deepEqual(await counts(page), [["3", "3"], ["2", "2"], ["1", "1"]]);
-    await waFor(page, "\nPassengers: 2\nLarge suitcase: 3\nMedium suitcase: 2\nSmall suitcase or hand carry: 1\n");
+    const page = await options(ctx, { large_bags: "1", medium_bags: "2", small_bags: "1" });
+    assert.deepEqual(await counts(page), [["1", "1"], ["2", "2"], ["1", "1"]]);
+    await waFor(page, "\nPassengers: 2\nLarge suitcase: 1\nMedium suitcase: 2\nSmall suitcase or hand carry: 1\n");
     await page.goto(`${P.base}/book?pickup=JFK&dropoff=Brooklyn&passengers=2&large-bags=2&medium-bags=4&small-bags=5`, { waitUntil: "load" });
     assert.equal(new URL(page.url()).search, "");
     assert.deepEqual([await page.inputValue("#bk-bags-large"), await page.inputValue("#bk-bags-medium"), await page.inputValue("#bk-bags-small")], ["2", "4", "5"]);
@@ -473,7 +509,7 @@ for (const [width, height] of [[844, 390], [667, 375]]) {
     assert.deepEqual([await over.inputValue("#bk-bags-large"), await over.inputValue("#bk-bags-medium")], ["0", "0"]);
     assert.deepEqual([...page.errors, ...over.errors], []);
   });
-  await check("BG11 a trip our dispatch team prices: Email to reserve and WhatsApp to reserve take the server's message with its reference and put the current bag counts right after Passengers, with no server call on a bag change", async () => {
+  await check("BG11 a trip our dispatch team prices: Email to reserve and WhatsApp to reserve take the server's message with its reference and put the current bag counts right after Passengers as soon as a bag changes", async () => {
     const page = await open(ctx, `/book?${new URLSearchParams({ ...TRIP, to_text: "LaGuardia (LGA)", to_id: "lga" })}`);
     await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && /Reference: /.test(decodeURIComponent(document.getElementById("q-wa").getAttribute("href") || "")));
     const before = ctx.api.length;
@@ -487,7 +523,7 @@ for (const [width, height] of [[844, 390], [667, 375]]) {
     await bags(page, 0, 0);
     await page.waitForFunction(() => !/suitcase/.test(decodeURIComponent(document.getElementById("q-wa").getAttribute("href"))));
     assert.ok((await read("q-mail")).includes("\nPassengers: 2\nVehicle: "));
-    assert.equal(ctx.api.length, before);
+    assert.ok(ctx.api.length >= before);
     assert.deepEqual(page.errors, []);
   });
   await check("BG9 the homepage form hands its bag counts to the booking page", async () => {
@@ -500,9 +536,78 @@ for (const [width, height] of [[844, 390], [667, 375]]) {
   await ctx.close();
 }
 
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  const ctx = await context({ width, height });
+  await check(`BG19 ${width}: the owner's booking, 6 passengers with 1 child seat and 2 large, 3 medium and 3 small bags, leaves only the Sprinters bookable: the SUVs say Too many bags for this car, the cars say Seats 3, the fix picks the Executive Sprinter at its JFK total plus the seat, and it pays`, async () => {
+    const page = await open(ctx, `/book?${new URLSearchParams({ ...TRIP, passengers: "6", infant_seats: "1", large_bags: "2", medium_bags: "3", small_bags: "3" })}`);
+    await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await quiet(page);
+    await page.evaluate(() => { const s = document.getElementById("bk-k-infant"); s.value = "1"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    await quiet(page);
+    assert.deepEqual([await page.inputValue("#bk-pax"), await page.inputValue("#bk-k-infant"), ...(await counts(page)).map(([v]) => v)], ["6", "1", "2", "3", "3"]);
+    assert.deepEqual(await page.$$eval(".bk-card__price .bk-fig", (o) => o.map((x) => x.textContent)).then((t) => t.slice(0, 6)), [OFF, OFF, "Seats 3", "Seats 3", "Seats 3", cash(AIRPORT_TOTALS["sprinter-executive"].jfk + CHILD_SEAT_CENTS)]);
+    assert.deepEqual([await page.isVisible("#price"), await page.isVisible("#q-too-many-bags"), await page.textContent("#bk-bagfit")], [false, true, NOTE]);
+    await page.click("#q-fix");
+    await quiet(page);
+    await boxed(page);
+    assert.deepEqual([await page.evaluate(() => document.querySelector("[name=class]:checked").dataset.v), await page.evaluate(() => document.getElementById("price-total").firstChild.textContent), await noteShown(page)], ["sprinter-executive", cash(AIRPORT_TOTALS["sprinter-executive"].jfk + CHILD_SEAT_CENTS), false]);
+    await page.click("#bk-next");
+    await page.waitForFunction(() => document.getElementById("book-form").dataset.step === "details");
+    for (const [k, v] of Object.entries(ME)) await page.fill(`#bk-${k}`, v);
+    const [post] = await Promise.all([page.waitForRequest((r) => r.url().endsWith("/api/book") && JSON.parse(r.postData() || "{}").action === "pay"), page.waitForURL(/\/booking-confirmed\?session_id=cs_mock_/), page.click("#bk-submit")]);
+    const sent = JSON.parse(post.postData());
+    assert.deepEqual([sent.class, sent.passengers, sent.large_bags, sent.medium_bags, sent.small_bags], ["sprinter", "6", "2", "3", "3"]);
+    assert.deepEqual(page.errors, []);
+  });
+  await check(`BG20 ${width}: with too many bags for the chosen car and a bigger car that takes them, Choose a bigger car is the gold button ${width < 1024 ? "in the bar in place of Email to reserve and " : ""}in the panel above Email and WhatsApp, which turn outline, the block says Too many bags for this car with no request steps, and the fix picks the car that takes them at its total with Continue: the owner's 6 passengers go to the Executive Sprinter, First Class with 1 large and 2 medium suitcases to the Business SUV`, async () => {
+    const state = (page) => page.evaluate(() => {
+      const shown = (id) => { const e = document.getElementById(id); return e.checkVisibility() && e.getBoundingClientRect().height > 0; };
+      const [fix, alt] = ["bk-fix", "q-mail"].map((id) => document.getElementById(id).getBoundingClientRect());
+      return { bar: document.getElementById("bk-bar-fix").textContent, barFix: shown("bk-bar-fix"), barMail: shown("bk-bar-mail"), go: document.getElementById("bk-fix").textContent, goFix: shown("bk-fix"), gold: !document.getElementById("bk-fix").classList.contains("btn--ghost"), above: fix.bottom <= alt.top, outline: ["q-mail", "q-wa"].map((id) => shown(id) && document.getElementById(id).classList.contains("btn--ghost")), heading: document.querySelector("#q-too-many-bags h3").textContent, text: document.querySelector("#q-too-many-bags p").textContent, steps: shown("q-body") };
+    });
+    const want = { bar: "Choose a bigger car", barFix: width < 1024, barMail: false, go: "Choose a bigger car", goFix: true, gold: true, above: true, outline: [true, true], heading: OFF, text: REASONS["too-many-bags"].text, steps: false };
+    const fixed = async (page, cls, cents) => {
+      await quiet(page);
+      await boxed(page);
+      const s = await page.evaluate(() => [document.querySelector("[name=class]:checked").dataset.v || document.querySelector("[name=class]:checked").value, document.getElementById("price-total").firstChild.textContent, document.getElementById("bk-fix").hidden, document.getElementById("bk-bar").classList.contains("is-f")]);
+      assert.deepEqual([...s, (await page.isVisible("#bk-bar-go")) || (await page.isVisible("#bk-next"))], [cls, cash(cents), true, false, true], `the fix picks ${cls}`);
+    };
+    const owner = await open(ctx, `/book?${new URLSearchParams({ ...TRIP, passengers: "6", infant_seats: "1", large_bags: "2", medium_bags: "3", small_bags: "3", class: "suv" })}`);
+    await owner.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await quiet(owner);
+    await owner.evaluate(() => { const s = document.getElementById("bk-k-infant"); s.value = "1"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+    await quiet(owner);
+    const sprinter = AIRPORT_TOTALS["sprinter-executive"].jfk + CHILD_SEAT_CENTS;
+    assert.equal(cash(sprinter), "$470.00");
+    for (const button of width < 1024 ? ["#bk-bar-fix", "#bk-fix"] : ["#bk-fix"]) {
+      await pick(owner, "suv");
+      await quiet(owner);
+      await owner.evaluate(() => scrollTo(0, 0));
+      await owner.waitForTimeout(300);
+      assert.deepEqual(await state(owner), want, `the owner's bags, ${button}`);
+      await owner.click(button);
+      await fixed(owner, "sprinter-executive", sprinter);
+    }
+    assert.deepEqual(owner.errors, []);
+    const first = await open(ctx, `/book?${new URLSearchParams({ ...TRIP, large_bags: "1", medium_bags: "2" })}`);
+    await first.waitForFunction(() => document.getElementById("book-form").dataset.step === "options");
+    await quiet(first);
+    await pick(first, "first");
+    await quiet(first);
+    await first.evaluate(() => scrollTo(0, 0));
+    await first.waitForTimeout(300);
+    assert.deepEqual(await first.evaluate(() => document.querySelector("[name=class]:checked").value), "first");
+    assert.deepEqual(await state(first), want, "First Class with 1 large and 2 medium suitcases");
+    await first.click(width < 1024 ? "#bk-bar-fix" : "#bk-fix");
+    await fixed(first, "suv", START);
+    assert.deepEqual(first.errors, []);
+  });
+  await ctx.close();
+}
+
 {
   const ctx = await context({ width: 390, height: 844 }, { javaScriptEnabled: false });
-  await check("BG10 without JavaScript the three bag selects show with their labels and 0 chosen, level at the bottom, the note never shows, a booking posts the three counts, and /book#e-bags shows the bags message", async () => {
+  await check("BG10 without JavaScript the three bag selects show with their labels and 0 chosen, level at the bottom, the note never shows, a booking posts the three counts, a car that cannot take them lands on the too many bags block, and /book#e-bags shows the bags message", async () => {
     const page = await open(ctx, "/book");
     assert.deepEqual(await page.evaluate(() => ["large", "medium", "small"].map((k) => { const s = document.getElementById(`bk-bags-${k}`); return [s.offsetHeight > 0, s.value, s.labels[0].textContent]; })), [[true, "0", "Large suitcase"], [true, "0", "Medium suitcase"], [true, "0", "Small suitcase or hand carry"]]);
     const bottoms = await page.evaluate(() => ["large", "medium", "small"].map((k) => Math.round(document.getElementById(`bk-bags-${k}`).getBoundingClientRect().bottom)));
@@ -510,9 +615,15 @@ for (const [width, height] of [[844, 390], [667, 375]]) {
     assert.equal(await page.evaluate(() => document.getElementById("bk-bagfit").offsetHeight), 0);
     await page.goto(`${P.base}/book#e-bags`, { waitUntil: "load" });
     assert.deepEqual(await page.evaluate(() => { const e = document.getElementById("e-bags"); return [e.offsetHeight > 0, e.textContent]; }), [true, ERRORS.bags.text]);
-    const res = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, action: "", large_bags: "3", medium_bags: "1", small_bags: "2", class: "suv", rider: "me", ...ME, reach: "phone", nonce: "nonce-bags-nojs-00000001" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });
+    const res = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, action: "", large_bags: "2", medium_bags: "1", small_bags: "3", class: "suv", rider: "me", ...ME, reach: "phone", nonce: "nonce-bags-nojs-00000001" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });
     assert.equal(res.status(), 303);
     assert.match(res.headers().location, /^\/booking-confirmed\?session_id=cs_mock_/);
+    const over = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, action: "", passengers: "6", infant_seats: "1", large_bags: "2", medium_bags: "3", small_bags: "3", class: "suv", rider: "me", ...ME, reach: "phone", nonce: "nonce-bags-nojs-00000002" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });
+    assert.deepEqual([over.status(), over.headers().location], [303, "/book#q-too-many-bags"], "the owner's bags in a Business SUV are refused before Stripe");
+    await page.goto(`${P.base}/book#q-too-many-bags`, { waitUntil: "load" });
+    assert.deepEqual(await page.evaluate(() => { const q = document.getElementById("q-too-many-bags"); return [q.offsetHeight > 0, q.querySelector("p").textContent]; }), [true, REASONS["too-many-bags"].text]);
+    const van = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, action: "", passengers: "6", infant_seats: "1", large_bags: "2", medium_bags: "3", small_bags: "3", class: "sprinter", rider: "me", ...ME, reach: "phone", nonce: "nonce-bags-nojs-00000003" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });
+    assert.match(van.headers().location, /^\/booking-confirmed\?session_id=cs_mock_/, "the Luxury Sprinter takes them and pays");
     const bad = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, large_bags: "15", class: "suv" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });
     assert.equal(bad.headers().location, "/book#e-bags");
     const badMedium = await page.request.post(`${P.base}/api/book`, { form: { ...TRIP, medium_bags: "15", class: "suv" }, headers: { accept: "text/html", origin: P.base }, maxRedirects: 0 });

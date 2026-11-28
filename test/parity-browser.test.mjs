@@ -272,7 +272,7 @@ for (const [engine, type] of ENGINES) {
       const m = await meet(p);
       assert.ok(m.length >= 2 && m.filter((x) => x.on).length === 1 && m[1].on, JSON.stringify(m));
       for (const x of m) assert.deepEqual([x.radius, x.ring], ["16px 16px 16px 16px", ring(x.on ? GOLD : LINE, x.on ? 2 : 1)], JSON.stringify(x));
-      assert.equal(await p.isVisible("#bk-next"), false, "a Sprinter is requested, so there is no Continue");
+      assert.equal(await p.isVisible("#bk-next"), true, "a Sprinter books online, so Continue shows");
       await p.click('label[for="bk-c-first"]');
       await p.waitForFunction(() => document.getElementById("bk-c-first").checked && !document.getElementById("bk-next").hidden);
       await p.click("#bk-next");
