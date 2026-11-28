@@ -20,23 +20,16 @@ const ENV_KEYS = ["CRON_SECRET", "SMTP_USER", "SMTP_PASS", "SMTP_HOST", "SMTP_PO
 const LINES = [
   "Assalamu Alaikum,",
   "",
-  "These are now live on www.nycluxride.com:",
-  "- The website no longer shows per-mile, per-minute or base fare numbers. The rates page shows airport flat prices, fixed-price routes and hourly rates.",
-  "- Trips of 75 miles or more and all Sprinter bookings are now Request a quote. Sprinters at the airports show their flat price, and riders request them so you can check a Sprinter is free.",
-  "- JFK, LaGuardia, Queens or Brooklyn to Jersey City, Hoboken, North Bergen or Union City: the Business SUV is never more than $211.43.",
-  "- Newark to NYC in the Business SUV is $195. Other cars are $10 more at Newark.",
-  "- Electric Class is $250 at JFK, Newark and Teterboro, $215 at LaGuardia and $125 an hour.",
-  "- First Class keeps $170 as its lowest price and the Sprinter keeps $350.",
-  "- Rush-hour traffic can no longer push a price up much, and NYC to Boston in the Executive Sedan stays under $780.",
-  "- If a rider's flight lands at a different airport than the pickup, the site now shows a clear warning with a button to switch the pickup. The rider can still book.",
-  "- Canada trips are listed as 24/7 in every vehicle, by quote.",
+  "One quick question about Request a quote.",
   "",
-  "A few quick questions. A short reply is fine.",
+  "Right now long-distance trips (75 miles or more, like Philadelphia, Boston and Washington DC) and every Sprinter booking show Request a quote. Riders cannot see a price or pay online for these trips. They have to email or WhatsApp you and wait for a price, and some may book elsewhere instead.",
   "",
-  "1. Your Newark tolls ($16.79 and $5.71) add to $22.50, but you wrote $22.80. Which is right?",
-  "2. Should Weehawken, West New York, Guttenberg or Secaucus join the Jersey City, Hoboken, North Bergen and Union City price cap?",
-  "3. Sprinters by the hour are now by quote. Should the hourly Sprinter prices show on the rates page again?",
-  "4. First Class lowest price: should $170 be before the 12% fee ($190.40 total, as now) or the total?",
+  "Which do you want? A short reply is fine.",
+  "",
+  "1. Long-distance trips: show the price and let riders book and pay online, or keep Request a quote?",
+  "2. Sprinters: show the price and let riders book and pay online, show the price but have riders request it so you can check a Sprinter is free first, or keep Request a quote?",
+  "",
+  "Our suggestion: show the price and book online for long-distance trips, and show the price with a request for Sprinters.",
   "",
   "JazakAllah Khair,",
   "Ali",
@@ -238,8 +231,8 @@ await test("the email has the subject, the message id, the exact lines as text a
   await run();
   const { headers, text, html } = parse(smtp.messages[0].data);
   assert.equal(headers.get("to"), "info@nycluxride.com");
-  assert.equal(headers.get("subject"), "New prices are live, a few quick questions");
-  assert.equal(headers.get("message-id"), "<owner-update.20261127@nycluxride.com>");
+  assert.equal(headers.get("subject"), "One quick question about Request a quote");
+  assert.equal(headers.get("message-id"), "<owner-update.20261127b@nycluxride.com>");
   assert.equal(headers.get("from"), "\"NYC LUX RIDE\" <info@nycluxride.com>");
   assert.equal(headers.has("cc") || headers.has("bcc") || headers.has("reply-to"), false);
   assert.equal(text, LINES.join("\n"));
@@ -255,7 +248,7 @@ await test("the subject and the lines hold no em dash, en dash or semicolon", as
   const { headers, text, html } = parse(smtp.messages[0].data);
   const { document } = new JSDOM(html).window;
   for (const value of [headers.get("subject"), ...text.split("\n"), document.body.textContent]) assert.doesNotMatch(value, /[–—;]/, value);
-  assert.deepEqual(LINES.filter((l) => /^\d+\. /.test(l)).map((l) => l.split(".")[0]), ["1", "2", "3", "4"]);
+  assert.deepEqual(LINES.filter((l) => /^\d+\. /.test(l)).map((l) => l.split(".")[0]), ["1", "2"]);
 });
 
 await test("mail not set up or broken answers 500 with one line and opens no mail connection, and an SMTP refusal answers 500 with the stage and code", async () => {
