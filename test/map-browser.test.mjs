@@ -1451,8 +1451,7 @@ for (const phone of [true, false]) {
     assert.equal(await p.textContent(".bk-mp__c"), "400.0 miles, about 420 min by car.");
     for (const step of ["search", "options"]) {
       if (step === "options") {
-        await p.click("#bk-view");
-        await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "options" && document.getElementById("q-long-distance").classList.contains("is-on") && !document.getElementById("bk-wait").textContent.startsWith("Finding"));
+        await view(p);
         await settle(p);
       }
       await p.evaluate(() => document.getElementById("bk-live").scrollIntoView({ block: "center", behavior: "instant" }));
@@ -1466,8 +1465,9 @@ for (const phone of [true, false]) {
     assert.deepEqual([...readRoute(body.route, Date.now()).values()].map((x) => [x.tenths, x.minutes]), [[4000, 420]]);
     assert.equal(routes(ctx).length, 1, "no second route request");
     const cards = await p.$$eval(".bk-card__price", (o) => o.map((x) => (x.querySelector(".bk-fig") || x).textContent));
-    assert.deepEqual(cards.filter((c) => /\$\d/.test(c)), [], "400 miles is 75 miles or more, so no card has a price");
-    assert.equal(await p.isVisible("#q-long-distance"), true, "the Request a quote block");
+    assert.deepEqual(cards, [...["suv", "premium", "first", "sedan", "electric"].map((c) => cash(priceRide(rateKey(c), { tenths: 4000, minutes: 420 }, []).total)), ...Array(5).fill("Book 3 hours ahead")], "the pickup that filled in by itself is under 3 hours away, so the Sprinters are off");
+    assert.deepEqual(cards.slice(0, 5), ["$1,954.40", "$2,246.72", "$2,785.44", "$1,751.68", "$2,434.43"], "New Jersey to Niagara Falls is priced on the long-distance card with the same 12% service fee");
+    assert.equal(await p.isVisible("#quote .bk-q.is-on"), false, "no request block");
     await p.waitForTimeout(300);
     const [value, shifts] = await cls(p);
     assert.equal(value, 0, shifts.join(" | "));

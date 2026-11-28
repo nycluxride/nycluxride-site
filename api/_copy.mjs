@@ -1,4 +1,4 @@
-import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE_HOURS, CLASSES, CHILD_SEAT_LIMITS, LONG_MILES } from "./_rates.mjs";
+import { FREE_WAIT_MINUTES, WAIT_CENTS_PER_MINUTE, CANCEL_TIERS, SPRINTER_NOTICE_HOURS, CLASSES, CHILD_SEAT_LIMITS } from "./_rates.mjs";
 
 export const SPRINTER_AHEAD = `Book a Sprinter at least ${SPRINTER_NOTICE_HOURS} hours ahead.`;
 export const SPRINTER_SWAP = "If no Sprinter is free, we send two SUVs.";
@@ -31,7 +31,6 @@ export const REASONS = {
   "no-airport": { group: "price", text: "We can't price this trip online. We'll send you a price, or you can book by the hour and pay now.", short: "We can't price this trip online. We'll send you a price." },
   "outside-us": { group: "price", text: "For trips that start or end outside the United States, we'll send you a price." },
   "long-trip": { group: "price", text: "For very long trips, we'll send you a price." },
-  "long-distance": { group: "quote", text: `Trips of ${LONG_MILES} miles or more are by quote. Send us the trip and we'll reply with a price.` },
   "other-airport": { group: "price", text: "For this airport, we'll send you a price." },
   "outside-city": { group: "price", text: "Flat airport rates are for New York City addresses. For other places, we'll send you a price." },
   "outside-hourly": { group: "price", text: "For this pickup, we'll send you a price." },

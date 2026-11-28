@@ -439,7 +439,6 @@ async function driveTrip(trip, token, context) {
   };
 }
 
-const longLeg = (item) => Boolean(item.ride) && item.ride.tenths >= LONG_MILES * 10;
 export const withinLimits = ({ tenths, minutes }) => tenths <= DISTANCE_LIMITS.miles * 10 && minutes <= DISTANCE_LIMITS.minutes;
 const distanceTrip = (trip) => trip.trip_type === "one" && Array.isArray(trip.legs) && trip.legs.length > 0 && trip.legs.every((item) => (item.ride || item.flat) && !item.reason);
 export const serviceOf = (trip) => (trip.trip_type === "hour" ? "hourly" : distanceTrip(trip) ? "distance" : "airport");
@@ -486,7 +485,7 @@ export function bookReason(trip, cls) {
   const ask = requestReason(trip, cls);
   return reason === "sprinter-price" && ask === "sprinter-quote" ? ask : reason || ask;
 }
-export const requestOnly = (trip) => (trip.trip_type === "one" && (trip.legs || []).some(longLeg) ? "long-distance" : requestReason(trip, trip.class));
+export const requestOnly = (trip) => requestReason(trip, trip.class);
 
 function spatialReason(trip) {
   if (trip.trip_type === "hour") {
@@ -512,7 +511,7 @@ function spatialReason(trip) {
   const unpriced = legs.find((item) => item.reason);
   const ask = !unpriced || unpriced.reason === "street-address" ? askFor(trip, ends) : "";
   if (ask) return { reason: ask, field: "" };
-  if (!unpriced) return (ends.stop1 || ends.stop2) && !legs.some((item) => item.stops) ? { reason: "stop-leg", field: "" } : legs.some(longLeg) ? { reason: "long-distance", field: "" } : null;
+  if (!unpriced) return (ends.stop1 || ends.stop2) && !legs.some((item) => item.stops) ? { reason: "stop-leg", field: "" } : null;
   return { reason: (ends.stop1 || ends.stop2) && !ROUTE_REASONS.includes(unpriced.reason) ? "stop-leg" : unpriced.reason, field: "" };
 }
 

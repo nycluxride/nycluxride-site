@@ -37,6 +37,10 @@ const raw = (value) => (typeof value === "string" ? value : "");
 const labelOf = (item) => (item.main + (item.secondary ? `, ${item.secondary}` : "")).replace(/, USA$/, "");
 const PRICED = ["jfk", "lga", "ewr", "teb"];
 const OUTSIDE_OK = ["outside", "ewr", "teb", "airport-other", "abroad"];
+const typedZone = (label) => {
+  const hit = classifyText(label);
+  return hit.zone === "airport-other" && !hit.id ? "outside" : hit.zone;
+};
 const conflicts = (text, zone) => (PRICED.includes(text) || text === "airport-other" || text === "abroad" ? text !== zone : text === "outside" && !OUTSIDE_OK.includes(zone));
 const onEarth = (lat, lng) => [lat, lng].every((n) => typeof n === "number" && Number.isFinite(n)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
 const inArea = (lat, lng) => US_BOXES.some(([south, north, west, east]) => lat >= south && lat <= north && lng >= west && lng <= east);
@@ -75,7 +79,7 @@ async function pick(request, data) {
     return json(200, { kind: "error" });
   }
   const zone = classifyPlace(result.details, label);
-  if (conflicts(classifyText(label).zone, zone)) {
+  if (conflicts(typedZone(label), zone)) {
     console.error("places-pick", "label");
     return json(200, { kind: "error" });
   }
@@ -110,7 +114,7 @@ async function here(request, data) {
   const label = clean(found.formattedAddress.replace(/, USA$/, ""), MAX_TEXT);
   const zone = classifyPlace(found, label);
   const region = placeRegion(found);
-  if (!label || !PLACE_ID.test(found.placeId) || conflicts(classifyText(label).zone, zone) || !placeFits(zone, found.location, region)) {
+  if (!label || !PLACE_ID.test(found.placeId) || conflicts(typedZone(label), zone) || !placeFits(zone, found.location, region)) {
     console.error("places-here", "label");
     return json(200, { kind: "error" });
   }

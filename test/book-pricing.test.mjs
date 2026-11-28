@@ -66,13 +66,8 @@ async function run(fields, settings = ON, now = NOW) {
 }
 
 const REQUEST = /^sprinter-(check|quote)$/;
-const longLeg = (trip) => trip.trip_type === "one" && (trip.legs || []).some((item) => item.ride && item.ride.tenths >= RATES.LONG_MILES * 10);
 async function priced(fields, settings = ON) {
   const out = await run(fields, settings);
-  if (longLeg(out.trip)) {
-    assert.deepEqual(out.result, { kind: "quote", reason: "long-distance", field: "" }, JSON.stringify(fields));
-    return priceTrip(out.trip, settings);
-  }
   assert.deepEqual(out.result, { kind: "price", reason: requestReason(out.trip, out.trip.class), hold: "" }, JSON.stringify(fields));
   return out.price;
 }

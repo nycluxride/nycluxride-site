@@ -58,6 +58,8 @@ const AFTER_COMMA = new RegExp(`,\\s*(?:${STATE_CODES.split(" ").join("|")}|${ST
 const BEFORE_ZIP = new RegExp(`(?:^|[\\s,])(?:${STATE_CODES.split(" ").filter((code) => !WORD_CODES.includes(code)).join("|")})${ZIP_TAIL}(?![\\d-])`);
 const LAST_ZIP = /(?:^|\D)(\d{5})(?:-\d{4})?$/;
 const NYC_TAIL = /(?:^|\D)(\d{5})(?:-\d{4})?(?:[\s,]+(?:ny|new york|nyc|new york city))+$/;
+const TYPED_AIRPORT = /\b(?:international|regional|municipal|county) airport\b|\bairport,/;
+const AIRPORT_HOTEL = /\b(?:hotel|inn|suites|marriott|hilton|hyatt|sheraton|westin|courtyard|plaza|motel|parking)\b/;
 const STREET_WORDS = "ave|avenue|av|blvd|boulevard|st|street|rd|road|pl|place|plaza|pkwy|parkway|expy|expressway|dr|drive|ln|lane|ct|court|ter|terrace|bridge|beach|college|mall|crossing|center|centre";
 const BOROUGH_WORDS = new RegExp(`(?:^|[^a-z0-9'])(the bronx|bronx|manhattan|brooklyn|queens|staten island)(?![a-z0-9'])(?!\\s+(?:${STREET_WORDS})(?![a-z0-9']))`, "g");
 const BOROUGH_ZONES = { manhattan: "manhattan", brooklyn: "brooklyn", queens: "queens", bronx: "bronx", "the bronx": "bronx", "staten island": "staten-island" };
@@ -162,6 +164,7 @@ export function classifyText(text) {
   if (words.includes(" 07608 ") && /\s(?:teb|teterboro airport|aviation)\s/.test(words)) return { zone: "teb", id: "teb" };
   const plain = lite(text);
   if (ABROAD.test(plain.replace(/\./g, ""))) return { zone: "abroad", id: "" };
+  if (TYPED_AIRPORT.test(plain) && !AIRPORT_HOTEL.test(plain) && ["", "outside"].includes(zipBorough((LAST_ZIP.exec(plain) || NYC_TAIL.exec(plain) || [])[1]))) return { zone: "airport-other", id: "" };
   if (AFTER_COMMA.test(plain) || BEFORE_ZIP.test(plain)) return { zone: cityText(plain) ? "unknown" : "outside", id: "" };
   const zip = LAST_ZIP.exec(plain) || NYC_TAIL.exec(plain);
   if (zip) {

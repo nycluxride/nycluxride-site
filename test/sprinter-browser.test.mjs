@@ -637,6 +637,7 @@ await check("S21 Change the date opens the calendar on the first day a Sprinter 
   await p.click("#q-fix");
   await p.waitForFunction(() => document.getElementById("book-form").dataset.step === "search" && !document.getElementById("bk-cal").hidden);
   await p.waitForFunction((d) => document.activeElement.dataset.day === d, first);
+  for (let i = 0; i < 3 && !(await p.$(`#bk-cal [data-day="${DATE}"]`)); i++) await p.click('#bk-cal .bk-cal__nav[data-dir="1"]');
   await p.click(`#bk-cal [data-day="${DATE}"]`);
   await p.selectOption("#bk-time", "12:40", { force: true });
   await view(p);

@@ -40,7 +40,7 @@ const TITLE = "Why ride with NYC LUX RIDE";
 const SUPPORT = "We answer 24 hours a day, every day";
 const TRACKING = "We track your flight.";
 const PRIVATE_FLIGHT = "For a private flight, add the details as a note in the Details step.";
-const PRICING = /see (the|your) total (before you pay|first)/i;
+const PRICING = /see (the|your) (total (before you pay|first)|price when you book)/i;
 
 function htmlFiles(dir) {
   const out = [];

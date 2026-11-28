@@ -210,6 +210,7 @@ const PLACE_AT = new Map([
   ["Niagara Falls, NY 14303", [43.09447, -79.05671]],
   ["1500 Market St, Philadelphia, PA 19102", [39.952584, -75.165953]],
   ["1 Beacon St, Boston, MA 02108", [42.3585, -71.0618]],
+  ["1600 Pennsylvania Ave NW, Washington, DC 20500", [38.897676, -77.036529]],
   ["Raleigh, NC", [35.77959, -78.638179]],
   ["Bar Harbor, ME 04609", [44.3876, -68.2043]],
   ["John F. Kennedy International Airport, Queens, NY 11430", [40.641311, -73.778139]],
@@ -289,6 +290,7 @@ const JFK = "John F. Kennedy International Airport, Queens, NY 11430";
 const SECAUCUS_STREET = "806 6th Street, Secaucus, NJ";
 const NIAGARA = "Niagara Falls, NY 14303";
 const PHILADELPHIA = "1500 Market St, Philadelphia, PA 19102";
+const WASHINGTON = "1600 Pennsylvania Ave NW, Washington, DC 20500";
 const EWR = "Newark Liberty International Airport, Newark, NJ 07114";
 const RIVERSIDE = "19 Coventry Ln, Riverside, CT 06878";
 const STEAMBOAT = "1 Steamboat Rd, Greenwich, CT 06830";
@@ -320,6 +322,10 @@ const ROUTES = [
   [MANHATTAN, "1 Beacon St, Boston, MA 02108", 290, 215.4, 1790],
   ["1 Beacon St, Boston, MA 02108", MANHATTAN, 295, 215.8, 1790],
   [PHILADELPHIA, JFK, 118, 97.5],
+  [MANHATTAN, PHILADELPHIA, 125, 95.6, 2117],
+  [PHILADELPHIA, MANHATTAN, 130, 95.9, 1717],
+  [MANHATTAN, WASHINGTON, 250, 226.2, 3150],
+  [WASHINGTON, MANHATTAN, 255, 226.6, 3150],
   [MANHATTAN, "Raleigh, NC", 480, 501],
   [JFK, "Raleigh, NC", 505, 524.6],
   [MANHATTAN, "Bar Harbor, ME 04609", 721, 480],

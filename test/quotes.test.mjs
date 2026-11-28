@@ -4,8 +4,10 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { JSDOM } from "jsdom";
 import { readInput, readSettings, resolveTrip, checkTrip, priceTrip, priceRide, distanceFare, billedMinutes, routeCap, capPrice, requestOnly, feeOf, nycToUtc, rateKey } from "../api/_trip.mjs";
-import { CLASSES, AIRPORT_TOTALS, AIRPORT_FARES, LONG_RATES, LONG_MILES, ROUTE_CAPS, TIME_CAP_PER_MILE, TIME_CAP_BASE, DISTANCE_RATES, VEHICLES } from "../api/_rates.mjs";
+import { sessionParams } from "../api/_stripe.mjs";
+import { CLASSES, AIRPORT_TOTALS, AIRPORT_FARES, LONG_RATES, LONG_MILES, ROUTE_CAPS, TIME_CAP_PER_MILE, TIME_CAP_BASE, DISTANCE_RATES, DISTANCE_LIMITS, VEHICLES } from "../api/_rates.mjs";
 import { REASONS, HEADINGS } from "../api/_copy.mjs";
+import { classifyText } from "../api/_places.mjs";
 import { routeKey, signRoute, signTicket } from "../api/_ticket.mjs";
 import { POST } from "../api/book.mjs";
 
@@ -17,6 +19,10 @@ const MANHATTAN = "350 5th Ave, New York, NY 10118";
 const GREENWICH = "Greenwich, CT 06830";
 const BOSTON = "1 Beacon St, Boston, MA 02108";
 const MONTAUK = "1 Ocean Rd, Montauk, NY 11954";
+const PHILADELPHIA = "1500 Market St, Philadelphia, PA 19102";
+const WASHINGTON = "1600 Pennsylvania Ave NW, Washington, DC 20500";
+const FAR_AIRPORTS = ["Boston Logan International Airport, East Boston, MA 02128", "Philadelphia International Airport, Philadelphia, PA 19153", "Washington Dulles International Airport, Dulles, VA 20166"];
+const PRICE_SHOWN = "You see the price when you book, and you can pay online.";
 const T4 = { from_text: "John F. Kennedy (JFK), Terminal 4", from_id: "jfk-t4" };
 const CPW = "500 Communipaw Avenue, Jersey City, NJ";
 const CARS = ["suv", "premium", "first", "sedan", "electric"];
@@ -44,6 +50,11 @@ const withEnv = async (env, fn) => {
   }
 };
 const mocked = (fn) => withEnv({ GOOGLE_MOCK: "true", BOOK_MOCK: "true", PAYMENTS_ENABLED: "true" }, fn);
+const stripeSum = (params) => {
+  let sum = 0;
+  for (let i = 0; params.has(`line_items[${i}][price_data][unit_amount]`); i++) sum += Number(params.get(`line_items[${i}][price_data][unit_amount]`)) * Number(params.get(`line_items[${i}][quantity]`));
+  return sum;
+};
 const post = (fields, form = false) =>
   POST(new Request(`${SITE}/api/book`, { method: "POST", headers: form ? { "content-type": "application/x-www-form-urlencoded", origin: SITE } : { "content-type": "application/json", accept: "application/json", origin: SITE }, body: form ? new URLSearchParams(fields).toString() : JSON.stringify(fields) }));
 const ny = (ms) => {
@@ -85,27 +96,41 @@ await test("no page shows a per-mile, per-minute or base fare figure or names th
   assert.deepEqual(hits, []);
 });
 
-await test("the public pages say trips of LONG_MILES miles or more and Sprinters other than airport transfers are by quote, and that trips to Canada run 24/7 for tourism and transfers in every vehicle, on the rates page, the long-distance page and the FAQ", () => {
+await test("the public pages say long-distance trips show their price when you book and pay online, with no quote wording left for them, while Sprinters other than airport transfers and trips to Canada stay by quote, on the rates page, the long-distance pages and the FAQ", () => {
   assert.equal(LONG_MILES, 75);
   const text = (file) => new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document.querySelector("main").textContent.replace(/\s+/g, " ");
   const canada = "We drive to Canada 24/7 for tourism and transfers, in every vehicle, by quote.";
   for (const file of ["long-distance-car-service.html", "faq.html"]) assert.ok(text(file).includes(canada), file);
   assert.ok(text("rates.html").includes("We drive to Canada 24/7 for tourism and transfers, in every vehicle, request a quote"));
-  assert.ok(text("rates.html").includes(`For ${LONG_MILES} miles or more, request a quote`));
+  assert.ok(text("rates.html").includes(`For ${LONG_MILES} miles or more, the price shows when you book and you can pay online`));
+  assert.ok(text("rates.html").includes(`For other one-way trips up to ${DISTANCE_LIMITS.miles} miles, you see the total before you pay`));
   assert.ok(text("rates.html").includes("For Sprinter trips other than airport transfers, request a quote"));
-  assert.ok(text("long-distance-car-service.html").includes(`Trips of ${LONG_MILES} miles or more are by quote.`));
-  for (const t of [canada, REASONS["long-distance"].text, REASONS["sprinter-check"].text, REASONS["sprinter-quote"].text, HEADINGS.quote, HEADINGS.check]) assert.doesNotMatch(t, /[–—;]/, t);
+  assert.ok(text("long-distance-car-service.html").includes(PRICE_SHOWN));
+  assert.ok(text("long-distance-car-service.html").includes("You can pay online. Sprinters are by quote."));
+  for (const route of ["nyc-to-philadelphia", "nyc-to-boston", "nyc-to-washington-dc", "nyc-to-atlantic-city", "nyc-to-connecticut"]) assert.ok(text(`long-distance-car-service/${route}.html`).includes(PRICE_SHOWN), route);
+  assert.ok(text("faq.html").includes("Outside New York City, one-way trips are priced when you book, and you can pay online."));
+  const stale = /\b75 miles or more(, like this one,)? are by quote|\b75 miles or more, request a quote|\b[Ll]onger trips are by quote|\b[Ll]ong trips are by quote|price we send you|\bBy quote\. Send us the trip|[Uu]nder 75 miles/;
+  const hits = [];
+  for (const file of htmlFiles(ROOT)) {
+    const doc = new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document;
+    const parts = [doc.body.textContent, ...[...doc.querySelectorAll("meta[content]")].map((m) => m.getAttribute("content")), ...[...doc.querySelectorAll('script[type="application/ld+json"]')].map((x) => x.textContent)].join(" ").replace(/\s+/g, " ");
+    const m = stale.exec(parts);
+    if (m) hits.push(`${file}: ${parts.slice(Math.max(0, m.index - 60), m.index + 60)}`);
+  }
+  assert.deepEqual(hits, []);
+  for (const t of [canada, PRICE_SHOWN, REASONS["sprinter-check"].text, REASONS["sprinter-quote"].text, HEADINGS.quote, HEADINGS.check]) assert.doesNotMatch(t, /[\u2013\u2014;]/, t);
 });
 
-await test("every full booking form carries the Request a quote block for long trips, after the very long trip block, and pay.js labels the bar Request a quote or Request this Sprinter", () => {
+await test("no booking form, reason or pay.js label is left for a long-distance request, and pay.js still labels the bar Request a quote or Request this Sprinter for Sprinters", () => {
+  assert.equal("long-distance" in REASONS, false);
   for (const file of ["book.html", "index.html", "locations/jfk-airport.html", "locations/laguardia-airport.html", "locations/newark-airport.html", "locations/teterboro-airport.html"]) {
     const d = new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document;
-    const q = d.getElementById("q-long-distance");
-    assert.deepEqual([q.className, q.previousElementSibling.id, q.querySelector("h3").textContent, q.querySelector("p").textContent], ["bk-q", "q-long-trip", HEADINGS.quote, REASONS["long-distance"].text], file);
+    assert.deepEqual([d.getElementById("q-long-distance"), d.getElementById("q-long-trip").nextElementSibling.id, d.getElementById("q-sprinter-quote").querySelector("h3").textContent], [null, "q-other-airport", HEADINGS.quote], file);
   }
   const book = readFileSync(join(ROOT, "book.html"), "utf8");
   const pay = readFileSync(join(ROOT, "assets", book.match(/assets\/(pay\.[A-Za-z0-9_-]+\.js)/)[1]), "utf8");
-  assert.ok(pay.includes('"long-distance":["Request a quote"],"sprinter-quote":["Request a quote"],"sprinter-check":["Request this Sprinter"]'));
+  assert.ok(!pay.includes("long-distance"));
+  assert.ok(pay.includes('"sprinter-quote":["Request a quote"],"sprinter-check":["Request this Sprinter"]'));
   assert.ok(pay.includes('P.hidden=!1;qb(HO||r.reason);bh(!r.pay)'), "a priced Sprinter shows its request block and no pay button");
 });
 
@@ -250,7 +275,7 @@ await test("the owner's JFK Terminal 4 to 500 Communipaw Ave, Jersey City at 5 P
   });
 });
 
-await test("ROUTE_CAPS.boston: anywhere in New York City to Boston and back in an Executive Sedan never passes $780, the other classes in the ratio of their long-distance card at 215 miles and 230 minutes, while the public booking shows Boston only as a request", async () => {
+await test("ROUTE_CAPS.boston: anywhere in New York City to Boston and back in an Executive Sedan never passes $780, the other classes in the ratio of their long-distance card at 215 miles and 230 minutes, and the booking shows those capped prices and pays them online", async () => {
   const { boston } = ROUTE_CAPS;
   assert.deepEqual(boston.from, ["manhattan", "brooklyn", "queens", "bronx", "staten-island", "jfk", "lga"]);
   assert.deepEqual([boston.state, boston.towns, boston.miles], ["MA", ["Boston"], 260]);
@@ -260,7 +285,7 @@ await test("ROUTE_CAPS.boston: anywhere in New York City to Boston and back in a
   await withEnv({ GOOGLE_MOCK: "true" }, async () => {
     for (const [from, to] of [[MANHATTAN, BOSTON], [BOSTON, MANHATTAN]]) {
       const trip = await resolveTrip(readInput({ ...BASE, from_text: from, to_text: to, class: "sedan" }), { now: NOW });
-      assert.deepEqual(checkTrip(trip, NOW, ON), { kind: "quote", reason: "long-distance", field: "" });
+      assert.deepEqual(checkTrip(trip, NOW, ON), { kind: "price", reason: "", hold: "" });
       assert.ok(trip.legs[0].ride.tenths > 2100 && trip.legs[0].ride.minutes > 280, JSON.stringify(trip.legs[0].ride));
       for (const cls of [...CARS, "sprinter"]) {
         const key = rateKey(cls, cls === "sprinter" ? "sprinter-executive" : "");
@@ -275,31 +300,129 @@ await test("ROUTE_CAPS.boston: anywhere in New York City to Boston and back in a
     const philly = await resolveTrip(readInput({ ...BASE, from_text: "1500 Market St, Philadelphia, PA 19102", to_text: BOSTON, class: "sedan" }), { now: NOW });
     assert.ok(priceTrip(philly, ON).total > 78000, "Philadelphia is not New York City");
   });
+  await mocked(async () => {
+    const fields = { ...BASE, from_text: MANHATTAN, to_text: BOSTON, date: SOON, time: "10:00", class: "sedan", ...ME };
+    const options = await (await post({ ...fields, action: "options", nonce: "nonce-quotes-boston-0001" })).json();
+    assert.deepEqual([options.kind, options.service, options.reason, options.pay, options.price.total_cents], ["options", "distance", "", true, 78000]);
+    assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents]), [["suv", 87037], ["premium", 100061], ["first", 124045], ["sedan", 78000], ["electric", 108403], ["sprinter", null]]);
+    assert.ok(options.classes.every((c) => c.total_cents === null || c.total_cents <= boston.totals[rateKey(c.class)]), JSON.stringify(options.classes));
+    assert.equal(options.price.lines.reduce((sum, l) => sum + l.cents, 0), 78000);
+    assert.ok(decodeURIComponent(options.whatsapp).endsWith("\nTotal shown: $780.00"));
+    const paid = await (await post({ ...fields, route: options.route, nonce: "nonce-quotes-boston-0002" })).json();
+    assert.equal(paid.kind, "pay");
+    const form = await post({ ...fields, route: options.route, nonce: "nonce-quotes-boston-0003" }, true);
+    assert.match(form.headers.get("location"), /^\/booking-confirmed\?session_id=cs_mock_/);
+    const van = await (await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-quotes-boston-0004" })).json();
+    assert.deepEqual([van.kind, van.reason, "url" in van], ["quote", "sprinter-quote", false]);
+  });
 });
 
-await test("long trips are never paid online: a ride of LONG_MILES miles or more is the long-distance request, as options, quote, pay and a form post, with no price on any card and no price in the messages, while 74.9 miles is priced and pays", async () => {
+await test("long trips are paid online like any other trip: a ride of LONG_MILES miles or more shows its price on the cards and the price box, as options, quote and pay and a form post, the Stripe line items add up to the total, while 74.9 miles prices on the same rule, a long Sprinter trip is still a request with no price and a trip to Canada is still a quote", async () => {
   await mocked(async () => {
     const departure = nycToUtc(SOON, "10:00").toISOString();
     const key = routeKey({ address: MANHATTAN }, { address: GREENWICH }, departure);
     const fields = { ...BASE, from_text: MANHATTAN, to_text: GREENWICH, date: SOON, time: "10:00", ...ME };
-    for (const [tenths, want] of [[750, "long-distance"], [1200, "long-distance"], [749, ""]]) {
+    for (const tenths of [749, 750, 1200]) {
       const route = signRoute([[key, tenths, 90]], Date.now());
-      for (const action of ["options", "quote", "pay"]) {
+      for (const action of ["options", "quote"]) {
         const body = await (await post({ ...fields, route, action, nonce: `nonce-quotes-long-${tenths}-${action}` })).json();
-        if (want) {
-          assert.deepEqual([body.kind, body.reason, "url" in body, "price" in body], ["quote", want, false, false], `${tenths} ${action}`);
-          assert.ok(body.classes.every((c) => c.total_cents === null && c.reason === want), `${tenths} ${action}`);
-          assert.doesNotMatch(decodeURIComponent(body.whatsapp) + decodeURIComponent(body.mailto), /Total shown|\$\d/, `${tenths} ${action}`);
-        } else assert.equal(body.kind, action === "pay" ? "pay" : "options", `${tenths} ${action}`);
+        assert.deepEqual([body.kind, body.reason, body.pay, body.price.total_cents > 0], ["options", "", true, true], `${tenths} ${action}`);
+        assert.deepEqual(body.classes.map((c) => c.total_cents === null), [false, false, false, false, false, true], `${tenths} ${action}`);
+        assert.equal(body.classes.find((c) => c.class === "suv").total_cents, body.price.total_cents);
+        assert.ok(decodeURIComponent(body.whatsapp).includes("\nTotal shown: $"), `${tenths} ${action}`);
       }
+      const paid = await (await post({ ...fields, route, nonce: `nonce-quotes-long-${tenths}-pay` })).json();
+      assert.equal(paid.kind, "pay", String(tenths));
       const form = await post({ ...fields, route }, true);
-      assert.equal(form.headers.get("location"), want ? "/book#q-long-distance" : form.headers.get("location"), String(tenths));
-      if (!want) assert.match(form.headers.get("location"), /^\/booking-confirmed\?session_id=cs_mock_/);
+      assert.match(form.headers.get("location"), /^\/booking-confirmed\?session_id=cs_mock_/, String(tenths));
+      const van = await (await post({ ...fields, route, class: "sprinter", nonce: `nonce-quotes-long-${tenths}-van` })).json();
+      assert.deepEqual([van.kind, van.reason, "url" in van], ["quote", "sprinter-quote", false], String(tenths));
+      assert.doesNotMatch(decodeURIComponent(van.whatsapp) + decodeURIComponent(van.mailto), /Total shown|\$\d/, String(tenths));
+      assert.equal((await post({ ...fields, route, class: "sprinter" }, true)).headers.get("location"), "/book#q-sprinter-quote");
     }
-    for (const to_text of [MONTAUK, BOSTON]) {
+    for (const to_text of [MONTAUK, BOSTON, PHILADELPHIA]) {
       const body = await (await post({ ...fields, to_text, nonce: `nonce-quotes-far-${to_text.length}` })).json();
-      assert.deepEqual([body.kind, body.reason, "url" in body], ["quote", "long-distance", false], to_text);
+      assert.deepEqual([body.kind, "url" in body], ["pay", true], to_text);
     }
+    const canada = await (await post({ ...fields, to_text: "Toronto, ON M5V 3L9", action: "options", nonce: "nonce-quotes-canada-001" })).json();
+    assert.deepEqual([canada.kind, canada.reason, "price" in canada, canada.classes.every((c) => c.total_cents === null)], ["quote", "outside-us", false, true]);
+    assert.equal((await post({ ...fields, to_text: "Toronto, ON M5V 3L9" }, true)).headers.get("location"), "/book#q-outside-us");
+  });
+  await withEnv({ GOOGLE_MOCK: "true" }, async () => {
+    const trip = await resolveTrip(readInput({ ...BASE, from_text: MANHATTAN, to_text: PHILADELPHIA }), { now: NOW });
+    assert.ok(trip.legs[0].ride.tenths >= LONG_MILES * 10, JSON.stringify(trip.legs[0].ride));
+    assert.deepEqual([checkTrip(trip, NOW, ON), requestOnly(trip)], [{ kind: "price", reason: "", hold: "" }, ""]);
+    for (const cls of CARS) {
+      const priced = { ...trip, class: cls };
+      const price = priceTrip(priced, ON);
+      const params = sessionParams(priced, price, "48213590", ON, NOW, SITE);
+      assert.deepEqual([stripeSum(params), Number(params.get("metadata[total_cents]")), price.lines.reduce((sum, l) => sum + l.cents, 0)], [price.total, price.total, price.total], cls);
+      assert.ok(price.tolls > 0, `${cls}: the tolls are in the price`);
+    }
+    assert.equal(requestOnly({ ...trip, class: "sprinter", vehicle: "sprinter-executive" }), "sprinter-quote");
+  });
+});
+
+await test("a search snippet that says Book online names no place that is still a quote: the long-distance meta and og:description lines name no airport, and a Sprinter named there is by quote", async () => {
+  const files = htmlFiles(ROOT).filter((file) => file.startsWith("long-distance-car-service"));
+  assert.ok(files.length >= 6, files.join(" "));
+  for (const file of files) {
+    const doc = new JSDOM(readFileSync(join(ROOT, file), "utf8")).window.document;
+    for (const selector of ['meta[name="description"]', 'meta[property="og:description"]']) {
+      const text = doc.querySelector(selector).getAttribute("content");
+      if (!/book online/i.test(text)) continue;
+      assert.doesNotMatch(text, /\b(?:Logan|PHL|Reagan|Dulles|BWI|ACY|airports?)\b/i, `${file} ${selector}`);
+      if (/Sprinter/.test(text)) assert.match(text, /Sprinter[^.]*by quote\./, `${file} ${selector}`);
+    }
+  }
+});
+
+await test("a far airport typed and not picked from the list is another airport, so Logan, PHL and Dulles stay a quote both ways as options, pay and a form post, also with a signed route, while a street named Airport Road and a hotel by a New York airport keep their own place", async () => {
+  for (const text of FAR_AIRPORTS) assert.deepEqual(classifyText(text), { zone: "airport-other", id: "" }, text);
+  for (const [text, zone] of [["123 Airport Rd, Allentown, PA 18109", "outside"], ["Airport Rd, Hazleton, PA", "outside"], ["1 Airport Blvd, Pittsburgh, PA 15231", "outside"], ["Hilton Newark Airport, 1170 Spring St, Elizabeth, NJ 07201", "outside"], ["Crowne Plaza JFK Airport, 138-10 135th Ave, Queens, NY 11436", "queens"], ["Newark Liberty International Airport, Newark, NJ 07114", "ewr"], ["Westchester County Airport, White Plains, NY", "airport-other"], [PHILADELPHIA, "outside"]]) assert.equal(classifyText(text).zone, zone, text);
+  await mocked(async () => {
+    let n = 0;
+    for (const airport of FAR_AIRPORTS) {
+      for (const ends of [{ from_text: MANHATTAN, to_text: airport }, { from_text: airport, to_text: MANHATTAN }]) {
+        const fields = { ...BASE, ...ends, date: SOON, time: "10:00", class: "sedan", ...ME };
+        const options = await (await post({ ...fields, action: "options", nonce: `nonce-quotes-typed-air-${++n}` })).json();
+        assert.deepEqual([options.kind, options.reason, "price" in options, "url" in options, options.classes.every((c) => c.total_cents === null)], ["quote", "other-airport", false, false, true], `${airport} options`);
+        const route = signRoute([[routeKey({ address: ends.from_text }, { address: ends.to_text }, nycToUtc(SOON, "10:00").toISOString()), 2154, 290]], Date.now());
+        const paid = await (await post({ ...fields, route, nonce: `nonce-quotes-typed-air-${++n}` })).json();
+        assert.deepEqual([paid.kind, paid.reason, "url" in paid], ["quote", "other-airport", false], `${airport} pay`);
+        assert.doesNotMatch(decodeURIComponent(paid.whatsapp) + decodeURIComponent(paid.mailto), /Total shown|\$\d/, airport);
+        assert.equal((await post({ ...fields, route }, true)).headers.get("location"), "/book#q-other-airport", airport);
+      }
+    }
+  });
+});
+
+await test("Midtown to the White House, 226.2 miles and 250 minutes with $31.50 of tolls, shows every car class priced on the long-distance card, the price lines and the Stripe line items add up to the total, the Executive Sedan pays $1,024.87 online and the Sprinter is a request", async () => {
+  await mocked(async () => {
+    const fields = { ...BASE, from_text: MANHATTAN, to_text: WASHINGTON, date: SOON, time: "10:00", class: "sedan", ...ME };
+    const options = await (await post({ ...fields, action: "options", nonce: "nonce-quotes-dc-0000001" })).json();
+    assert.deepEqual([options.kind, options.service, options.reason, options.pay, options.price.total_cents], ["options", "distance", "", true, 102487]);
+    assert.deepEqual(options.classes.map((c) => [c.class, c.total_cents]), [["suv", 114021], ["premium", 130622], ["first", 161156], ["sedan", 102487], ["electric", 141209], ["sprinter", null]]);
+    assert.equal(options.price.lines.reduce((sum, l) => sum + l.cents, 0), 102487);
+    assert.ok(decodeURIComponent(options.whatsapp).endsWith("\nTotal shown: $1,024.87"));
+    const paid = await (await post({ ...fields, route: options.route, nonce: "nonce-quotes-dc-0000002" })).json();
+    assert.deepEqual([paid.kind, "url" in paid], ["pay", true]);
+    const form = await post({ ...fields, route: options.route, nonce: "nonce-quotes-dc-0000003" }, true);
+    assert.match(form.headers.get("location"), /^\/booking-confirmed\?session_id=cs_mock_/);
+    const van = await (await post({ ...fields, class: "sprinter", route: options.route, nonce: "nonce-quotes-dc-0000004" })).json();
+    assert.deepEqual([van.kind, van.reason, "url" in van], ["quote", "sprinter-quote", false]);
+    assert.equal((await post({ ...fields, class: "sprinter", route: options.route }, true)).headers.get("location"), "/book#q-sprinter-quote");
+  });
+  await withEnv({ GOOGLE_MOCK: "true" }, async () => {
+    const trip = await resolveTrip(readInput({ ...BASE, from_text: MANHATTAN, to_text: WASHINGTON }), { now: NOW });
+    assert.deepEqual([trip.legs[0].ride.tenths, trip.legs[0].ride.minutes, trip.legs[0].ride.tolls, checkTrip(trip, NOW, ON)], [2262, 250, 3150, { kind: "price", reason: "", hold: "" }]);
+    for (const [cls, total] of [["suv", 114021], ["premium", 130622], ["first", 161156], ["sedan", 102487], ["electric", 141209]]) {
+      const priced = { ...trip, class: cls };
+      const price = priceTrip(priced, ON);
+      const params = sessionParams(priced, price, "48213591", ON, NOW, SITE);
+      assert.deepEqual([price.total, stripeSum(params), Number(params.get("metadata[total_cents]")), price.lines.reduce((sum, l) => sum + l.cents, 0)], [total, total, total, total], cls);
+    }
+    assert.equal(requestOnly({ ...trip, class: "sprinter", vehicle: "sprinter-executive" }), "sprinter-quote");
   });
 });
 

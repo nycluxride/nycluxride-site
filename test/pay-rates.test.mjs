@@ -25,6 +25,7 @@ import {
   LONG_RATES,
   SHORT_MILES,
   LONG_MILES,
+  DISTANCE_LIMITS,
   STOP_FEE_CENTS,
   WAIT_CENTS_PER_MINUTE,
   CANCEL_TIERS,
@@ -370,25 +371,25 @@ test("the fixed-price routes table gives the highest total for each car class be
   assert.deepEqual([...page.querySelectorAll(".jumps a")].map((a) => [a.getAttribute("href"), squash(a)]), [["#airport", "Airport transfers"], ["#hourly", "Hourly"], ["#routes", "Fixed-price routes"], ["#distance", "Quotes"], ["#add-ons", "Add-ons and terms"], ["#policies", "Policies"]]);
 });
 
-test("the quotes section says other one-way trips under LONG_MILES show their total before you pay, each stop adds the stop fee, and long distance, Sprinters and Canada are plain Request a quote lines, with Canada 24/7 for tourism and transfers in every vehicle", () => {
+test("the quotes section says other one-way trips up to DISTANCE_LIMITS.miles show their total before you pay, each stop adds the stop fee, long distance from LONG_MILES shows its price when you book and pays online, and Sprinters and Canada are plain Request a quote lines, with Canada 24/7 for tourism and transfers in every vehicle", () => {
   assert.equal(LONG_MILES, 75);
   assert.equal(squash(row("distance").querySelector("h2")), "Other trips and quotes");
-  assert.deepEqual([...row("distance").querySelectorAll(".prose.c1-4 p")].map(squash), [`For other one-way trips under ${LONG_MILES} miles, you see the total before you pay, with tolls in the price. Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Parking is charged after the ride.`]);
+  assert.deepEqual([...row("distance").querySelectorAll(".prose.c1-4 p")].map(squash), [`For other one-way trips up to ${DISTANCE_LIMITS.miles} miles, you see the total before you pay, with tolls in the price. Each stop adds ${dollars(STOP_FEE_CENTS)}, or more if it takes the car out of the way. Parking is charged after the ride.`]);
   const quotes = [...row("quotes").querySelectorAll("dt")].map((dt) => [squash(dt), squash(dt.nextElementSibling), [...dt.nextElementSibling.querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)])]);
   assert.deepEqual(quotes, [
-    ["Long distance", `For ${LONG_MILES} miles or more, request a quote`, [["/long-distance-car-service", "request a quote"]]],
+    ["Long distance", `For ${LONG_MILES} miles or more, the price shows when you book and you can pay online`, [["/long-distance-car-service", `For ${LONG_MILES} miles or more`]]],
     ["Sprinters", "For Sprinter trips other than airport transfers, request a quote", [["/sprinter-van-service-nyc", "request a quote"]]],
     ["Canada", "We drive to Canada 24/7 for tourism and transfers, in every vehicle, request a quote", [["/long-distance-car-service#canada", "request a quote"]]],
   ]);
 });
 
-test("the airport section says that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City shows its total before payment, links the fixed-price routes and the quotes, and api/_trip.mjs never prices its Fare line below the airport fare", () => {
+test("the airport section says that a trip between JFK, LaGuardia, Newark or Teterboro and an address outside New York City shows its total before payment, links the fixed-price routes, and api/_trip.mjs never prices its Fare line below the airport fare", () => {
   assert.deepEqual([...page.querySelectorAll("#airport .prose p")].map(squash), [
     "Each transfer is a one-way, flat-rate ride to or from any address in the five boroughs. We track your flight and move the pickup if it lands early or late. The price stays the same.",
     "Pickup details for JFK, LaGuardia and Newark are on their airport pages.",
-    "Airport rides to or from a place outside New York City show the total before you pay, with tolls in the price. Some have a fixed price. Trips of 75 miles or more are by quote.",
+    "Airport rides to or from a place outside New York City show the total before you pay, with tolls in the price. Some have a fixed price.",
   ]);
-  assert.deepEqual([...page.querySelectorAll("#airport .prose p")[2].querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["#routes", "fixed price"], ["#distance", "are by quote"]]);
+  assert.deepEqual([...page.querySelectorAll("#airport .prose p")[2].querySelectorAll("a")].map((a) => [a.getAttribute("href"), squash(a)]), [["#routes", "fixed price"]]);
   for (const cls of DISTANCE_KEYS) {
     for (const airport of AIRPORT_PLACES) {
       assert.equal(trip.priceDistance(rateKey(cls), { tenths: 0, minutes: 0 }, airport).fare, AIRPORT_FARES[rateKey(cls)][airport], `${cls} ${airport}`);

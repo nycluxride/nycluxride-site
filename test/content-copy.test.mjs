@@ -100,7 +100,7 @@ const USED = {
 
 const FAQ_TOLLS = "Airport rides to or from New York City include tolls, airport fees and the service fee. On distance trips, tolls are added at booking. Parking, and tolls on hourly trips, are charged to your card after the ride, with a receipt. A gratuity is optional and chosen when you book.";
 const TERMS_PAYMENTS = "Booking, pricing, invoicing and payments may be handled by third-party providers. Online bookings are paid on a Stripe payment page. The total shown at checkout is charged when you book. It includes the fare, the service fee, tolls and airport fees on airport rides to or from New York City, tolls on distance trips, and any stop fees, meet and greet, child seats, pets and gratuity you chose. Service animals ride free and are never charged as pets. Prices for each kind of trip are on our rates page. The card you pay with is saved for charges we only know after the ride, like extra waiting, stops added during the ride, parking and any tolls not in the price. Each charge comes with an itemized receipt.";
-const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips under 75 miles are priced when you book, and longer trips are by quote. Each stop adds a fee, or more if it takes the car out of the way. For trips outside the United States, we'll send you a price.";
+const FAQ_OUTSIDE = "Yes. Outside New York City, one-way trips are priced when you book, and you can pay online. Each stop adds a fee, or more if it takes the car out of the way. For trips outside the United States, we'll send you a price.";
 const FAQ_CANADA = "Yes. We drive to Canada 24/7 for tourism and transfers, in every vehicle, by quote.";
 
 const RATES_TITLE = "Car Service Rates and Airport Cost from $145 | NYC LUX RIDE";
@@ -301,7 +301,7 @@ check("faq.html: the tolls and gratuity answer is exact, visible and in json-ld,
   assert.equal(faqAnswer(p, question), FAQ_TOLLS);
 });
 
-check("faq.html: the outside New York City answer prices one-way trips under 75 miles when you book, makes longer trips a quote, each stop at the stop fee or more, and sends a price for trips outside the United States, exact, visible and in json-ld, and the next answer says trips to Canada run 24/7 for tourism and transfers in every vehicle, by quote", () => {
+check("faq.html: the outside New York City answer prices one-way trips when you book with online payment, each stop at the stop fee or more, and sends a price for trips outside the United States, exact, visible and in json-ld, and the next answer says trips to Canada run 24/7 for tourism and transfers in every vehicle, by quote", () => {
   const p = pages.get("faq.html");
   const question = "Do you drive outside New York City?";
   assert.equal(visibleAnswer(p, question), FAQ_OUTSIDE);
@@ -356,11 +356,11 @@ check("faq.html: the family answer gives the Luxury Sprinter its 14 seats, a fla
   assert.equal(faqAnswer(p, question), want);
 });
 
-check("about.html: What we do says other one-way trips under 75 miles are priced when you book and longer trips are by quote, linked to the quotes on the rates page", () => {
+check("about.html: What we do says other one-way trips are priced when you book and paid online, linked to the quotes on the rates page", () => {
   const p = pages.get("about.html");
   const para = [...p.document.querySelectorAll("main p")].find((x) => squash(x.textContent).startsWith("Airport rides have a flat price from anywhere in New York City"));
   assert.ok(para, "no What we do paragraph");
-  assert.ok(squash(para.textContent).endsWith("with a 3-hour minimum, or 4 hours in a Sprinter. Other one-way trips under 75 miles are priced when you book, and longer trips are by quote."), squash(para.textContent));
+  assert.ok(squash(para.textContent).endsWith("with a 3-hour minimum, or 4 hours in a Sprinter. Other one-way trips are priced when you book, and you can pay online."), squash(para.textContent));
   assert.deepEqual([...para.querySelectorAll('a[href="/rates#distance"]')].map((a) => squash(a.textContent)), ["priced when you book"]);
 });
 

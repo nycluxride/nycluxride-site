@@ -435,16 +435,15 @@ RAILS["locations/newark-airport.html"][2] = ["Airport price", "One total by clas
 RAILS["chauffeur-service-nyc.html"] = [["By the hour", "3 to 12 hours online, with a 3-hour minimum. Sprinters by the hour are by quote, with a 4-hour minimum."], ["Between stops", "The same car and chauffeur wait for you."], PRICE("New York City address"), CHILD, AHEAD];
 RAILS["limousine-service-nyc.html"] = [["Seats", "Up to 14 in a Luxury Sprinter, with 10 large and 2 small bags."], HOUR, ["Sprinter by the hour", "By quote, with a 4-hour minimum."], ["No smoking", "In any of our vehicles."], AHEAD_SPRINTER];
 RAILS["black-car-service-brooklyn.html"] = [PRICE("address in Brooklyn"), FREE, HOUR, CHILD, AHEAD];
-const DISTANCE = ["Your price", "Under 75 miles, you see the total before you pay. Longer trips are by quote."];
-const LONG_QUOTE = ["Your price", "By quote. Send us the trip and we'll reply with a price."];
+const DISTANCE = ["Your price", "You see the price when you book, and you can pay online."];
 const DOGS = ["Dogs", "Small and large dogs, charged once per booking. Service animals ride free."];
 const STOPS = ["Stops", "Up to 2 stops on the way, added when you book."];
 const QUOTE = ["Your price", "For this airport, we'll send you a price."];
 RAILS["locations/teterboro-airport.html"] = [["Your FBO", "The FBOs at Teterboro"], PRICE("New York City address"), CHILD, DOGS, AHEAD];
 for (const [file, name] of Object.entries(AIRPORT_DISTANCE)) RAILS[file] = [["Where we meet you", `How we meet you at ${name.replace(/ Airport$/, "")}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], QUOTE, FREE, CHILD, AHEAD];
 for (const file of Object.keys(OUTSIDE)) RAILS[file] = [DISTANCE, FREE, CHILD, DOGS, AHEAD];
-RAILS["long-distance-car-service.html"] = [["How far", "Up to 500 miles from New York City, and Canada, by quote."], DISTANCE, STOPS, ["Coming back", "Add the return trip to the same booking."], CHILD];
-RAILS["long-distance-car-service/nyc-to-philadelphia.html"] = [["Distance", "About 97 miles from Midtown to Center City."], ["Drive", "Close to 2 hours with light traffic."], LONG_QUOTE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service.html"] = [["How far", "Up to 500 miles from New York City, booked online. Canada is by quote."], DISTANCE, STOPS, ["Coming back", "Add the return trip to the same booking."], CHILD];
+RAILS["long-distance-car-service/nyc-to-philadelphia.html"] = [["Distance", "About 97 miles from Midtown to Center City."], ["Drive", "Close to 2 hours with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
 const DOG_PRICE = `$${SMALL_DOG_CENTS / 100} per small dog and $${LARGE_DOG_CENTS / 100} per large dog`;
 const FBO = (field) => [["Your FBO", `The FBOs at ${field}`], QUOTE, CHILD, DOGS, AHEAD];
 const UNLISTED = (at) => [["Where we meet you", `How we meet you at ${at}`], ["Flight tracking", "We move the pickup if your flight lands early or late."], QUOTE, FREE, CHILD, AHEAD];
@@ -453,9 +452,9 @@ RAILS["locations/morristown-airport.html"] = FBO("Morristown");
 RAILS["locations/republic-airport.html"] = FBO("Republic");
 RAILS["locations/philadelphia-airport.html"] = UNLISTED("PHL");
 RAILS["locations/bradley-airport.html"] = UNLISTED("Bradley");
-RAILS["long-distance-car-service/nyc-to-boston.html"] = [["Distance", "About 210 miles from Midtown to Back Bay."], ["Drive", "About 4 hours 30 minutes with light traffic."], LONG_QUOTE, STOPS, CHILD, DOGS];
-RAILS["long-distance-car-service/nyc-to-washington-dc.html"] = [["Distance", "About 228 miles from Midtown to Capitol Hill."], ["Drive", "Close to 4 hours 50 minutes with light traffic."], LONG_QUOTE, STOPS, CHILD, DOGS];
-RAILS["long-distance-car-service/nyc-to-atlantic-city.html"] = [["Distance", "About 128 miles from Midtown to the Boardwalk."], ["Drive", "Close to 2 hours 45 minutes with light traffic."], LONG_QUOTE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-boston.html"] = [["Distance", "About 210 miles from Midtown to Back Bay."], ["Drive", "About 4 hours 30 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-washington-dc.html"] = [["Distance", "About 228 miles from Midtown to Capitol Hill."], ["Drive", "Close to 4 hours 50 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
+RAILS["long-distance-car-service/nyc-to-atlantic-city.html"] = [["Distance", "About 128 miles from Midtown to the Boardwalk."], ["Drive", "Close to 2 hours 45 minutes with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
 RAILS["long-distance-car-service/nyc-to-connecticut.html"] = [["Distance", "About 31 miles to Greenwich, 78 miles to New Haven and 138 miles to Foxwoods."], ["Drive", "About 50 minutes to Greenwich and close to 2 hours to New Haven with light traffic."], DISTANCE, STOPS, CHILD, DOGS];
 RAILS["pet-friendly-car-service-nyc.html"] = [["Dogs", "Up to 3 small and 3 large dogs on one booking, in any class."], ["Dog price", `${DOG_PRICE}, charged once per booking.`], ["Service animals", "Free on every trip, as the law requires."], CHILD, AHEAD];
 RAILS["private-jet-car-service-nyc.html"] = [["Airfields", "Six private airfields around New York"], ["Teterboro price", PRICE("New York City address")[1]], ["Other airfields", "For these airports, we'll send you a price."], ["For a passenger", "Add their name and mobile number, and the receipt comes to you."], CHILD, AHEAD];
@@ -854,12 +853,12 @@ check("locations/staten-island.html and black-car-service-brooklyn.html: the tol
   assert.ok([...si.querySelectorAll("main p")].some((p) => norm(p.textContent).endsWith("Tolls are included. On distance trips, bridge tolls are added at booking. On hourly trips, they are charged after the ride.")), "the route paragraph");
   const toll = "Yes, both ways. Airport rides include tolls. On distance trips, tolls are added at booking, and on hourly trips they are charged after the ride. A round trip over the bridge means two tolls.";
   assert.deepEqual([norm(si.querySelector("#q-toll .acc__body").textContent), ldAnswer(si, "Is the Verrazzano toll charged both ways?")], [toll, toll]);
-  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and the service fee included. Other one-way trips show their total on the booking page, and trips of 75 miles or more are by quote. We price hourly bookings by vehicle class, with a 3-hour minimum, or 4 hours in a Sprinter, for days with several stops. See all rates.";
+  const cost = "Airport rides to or from JFK, LaGuardia, Newark and Teterboro are one flat price by vehicle class from anywhere in New York City, with tolls, airport fees and the service fee included. Other one-way trips, long ones too, show their total on the booking page. We price hourly bookings by vehicle class, with a 3-hour minimum, or 4 hours in a Sprinter, for days with several stops. See all rates.";
   assert.deepEqual([norm(bk.querySelector("#q-brooklyn-cost .acc__body").textContent), ldAnswer(bk, "How much does black car service in Brooklyn cost?")], [cost, cost]);
 });
-check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport rides to or from New York City and hourly bookings, and says other one-way trips show their total before you pay and trips of 75 miles or more are by quote, visible and in JSON-LD", () => {
+check("corporate-car-service-nyc.html: the busy times answer keeps the no surge claim to airport rides to or from New York City and hourly bookings, and says other one-way trips, long ones too, show their total before you pay, visible and in JSON-LD", () => {
   const { document } = read("corporate-car-service-nyc.html");
-  const answer = "Not on airport rides to or from New York City or on hourly bookings. Those have set prices with no surge. Other one-way trips show their total before you pay, and trips of 75 miles or more are by quote. See all rates.";
+  const answer = "Not on airport rides to or from New York City or on hourly bookings. Those have set prices with no surge. Other one-way trips, long ones too, show their total before you pay. See all rates.";
   assert.deepEqual([norm(document.querySelector("#q-busy-times .acc__body").textContent), ldAnswer(document, "Do busy times change the price?")], [answer, answer]);
 });
 
